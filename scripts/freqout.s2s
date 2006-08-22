@@ -1,0 +1,142 @@
+' $Id$
+
+
+' File system reference vars. Each var is a directory path, WITHOUT the trailing slash. 
+var bin$, script$;
+script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder containing this script
+bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Get Current configuration START
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func GetCurrentConfiguration$()
+	var key$;
+	var s$;
+	key$:="Reclab";
+	Profile(key$, "CurrentConfiguration", "default", s$);
+	return s$;
+end;
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Get Current configuration END
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Data parameters START
+'
+'	Vars that control where data is stored. 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+var dataPathRoot$;		' base path for data storage
+var dataDataSet$;		' folder under data path where data files placed
+var dataCellName$;		' part of base name for all data files
+var dataDataSetTextItem%;	' 
+
+proc GetDataParameters()
+	var stmp$;
+	var key$;
+
+	key$:="Reclab\\Data";
+
+	Profile(key$, "PathRoot", "C:\\data", dataPathRoot$);
+	Profile(key$, "DataSet", "", dataDataSet$);
+	Profile(key$, "CellName", "", dataCellName$);
+	return;
+end;
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Data parameters END
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Start here. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+' Experimental parameters
+
+var tAcquisition;                   ' time allowed for subject to get in fixation window -- "acquire" the target
+var tFixation;                      ' time after acquisition before we consider subject "fixated"
+var xFixation, yFixation;           ' xy of fixation point
+var wFixation;                      ' fixation window
+var tMaintain;                      ' must maintain fixation for this long
+var iStimCues%;                     ' will stim cues be used - usage undetermined at this point
+var tResponse;                      ' time allowed for subject to respond
+var tPunish;                        ' wait period after incorrect response
+
+var xTargetL, yTargetL;             ' left answer target coordinates
+var xTargetR, yTargetR;             ' right answer target coordinates
+var wTargetL, wTargetR;             ' target windows
+
+proc GetFreqoutScriptParameters()
+	var stmp$;
+	var key$;
+	key$:="Reclab\\" + GetCurrentConfiguration$() + "\\Scripts\\Freqout";
+
+	Profile(key$, "tAcquisition", "2.0", stmp$);
+	tAcquisition := val(stmp$);
+	Profile(key$, "tFixation", "2.0", stmp$);
+	tFixation := val(stmp$);
+	Profile(key$, "xFixation", "2.0", stmp$);
+	xFixation := val(stmp$);
+	Profile(key$, "yFixation", "2.0", stmp$);
+	yFixation := val(stmp$);
+	Profile(key$, "tMaintain", "2.0", stmp$);
+	tMaintain := val(stmp$);
+	Profile(key$, "tResponse", "2.0", stmp$);
+	tResponse := val(stmp$);
+	Profile(key$, "tPunish", "2.0", stmp$);
+	tPunish := val(stmp$);
+end;
+
+proc SaveFreqoutScriptParameters()
+	var key$;
+	key$:="Reclab\\" + GetCurrentConfiguration$() + "\\Scripts\\Freqout";
+	Profile(key$, "tAcquisition", str$(tAcquisition));
+	Profile(key$, "tFixation", str$(tFixation));
+    Profile(key$, "xFixation", str$(xFixation));
+    Profile(key$, "yFixation", str$(yFixation));
+	Profile(key$, "tMaintain", str$(tMaintain));
+	Profile(key$, "tResponse", str$(tResponse));
+	Profile(key$, "tPunish", str$(tPunish));
+end;
+
+func FreqoutScriptDialog%()
+	var i% := 0;
+	GetFreqoutScriptParameters();
+	DlgCreate("Experimental Parameters");
+	DlgReal(1, "Acquisition time(s)", 0.1, 100);
+	DlgReal(2, "Fixation time(s)", 0.1, 100);
+	DlgReal(3, "Fixation X (degrees)", -90, 90);
+	DlgReal(4, "Fixation Y (degrees)", -90, 90);
+	DlgReal(5, "Maintain time(s)", 0.1, 100);
+	DlgReal(6, "Response time(s)", 0.1, 100);
+	DlgReal(7, "Punish time(s)", 0.1, 100);
+
+	i% := DlgShow(tAcquisition, tFixation, xFixation, yFixation, tMaintain, tResponse, tPunish);
+	' If i% is 1 the user hit "OK". If its 0, user hit "Cancel". 
+	' When user hits OK we always save the parameters, and when user hit Cancel we don't.
+	if i% = 1 then
+		SaveFreqoutScriptParameters();
+	endif;
+
+    return i%;
+end;
+
+
+
+FreqoutScriptDialog%();

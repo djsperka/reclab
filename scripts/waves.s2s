@@ -1,0 +1,10 @@
+' This example generates two waveforms, 
+' one a rising ramp out of DAC 0 and the other a falling ramp from DAC 1. 
+' They are played at 1000 Hz.
+
+var wave%[1024][2], dacs%[2];    'space for the waves and dac list
+ArrConst(wave%[][0], 16); ArrIntgl(wave%[][0]);  'ramp up
+ArrConst(wave%[][1], -16); ArrIntgl(wave%[][1]); 'ramp down
+dacs%[0] := 0; dacs%[1] := 1;    'list of dacs
+PlayWaveAdd("X", "Ramps2", dacs%[], 1000, wave%[][]);
+
