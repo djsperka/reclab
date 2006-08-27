@@ -5,6 +5,7 @@
 var bin$, script$;
 script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder containing this script
 bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
+stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
 
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''

@@ -1,0 +1,25 @@
+# parameters for reclab stimuli
+# Lines that begin with # are comments and are ignored. 
+# Blank lines and lines with only whitespace are also ignored
+# The first non-comment, non-empty line must have three things, 
+# - a name for the stim set (this will be part of the data filename). Letters
+# and numbers only, please, and no spaces!
+# - output sampling rate in Hz, e.g. 10000
+# - Total length of stim1 + pause + stim2 + padding (in seconds)
+# Here's an example - stim set name is "StimSet1", sampling at 10kHz, for 3s.
+# StimSet1 10000 3
+# Of course an actual line would NOT include the #!!!
+#
+stim1 10000 3
+#
+#
+#
+# now additional lines define stimuli. 
+# For the purposes of this file a "stimuli" consists of a stim for both 
+# output channels. 
+# The two channels are separated by a "|". If one of the two is not to be 
+# used, the "|" must still be present. 
+# Each channel is specified by the basename of a file (extension must be 
+# ".num" containing integers, one per line. 
+# TODO: WHAT IS RANGE? 
+# 

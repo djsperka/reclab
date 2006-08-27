@@ -1,0 +1,48 @@
+' File system reference vars. Each var is a directory path, WITHOUT the trailing slash. 
+var bin$, script$, stim$;
+script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder containing this script
+bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
+stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
+
+
+' scan for txt files
+var txtFiles$[100];
+var count%:=0;
+var i%;
+FilePathSet(stim$);
+count% := FileList(txtFiles$, 1);
+
+PrintLog("Found " + str$(count%) + " txt files.\n");
+for i% := 0 to count%-1 do
+    PrintLog(str$(i%) + ") " + txtFiles$[i%] + "\n");
+    ScanFileContents%(txtFiles$[i%]);
+next;
+
+
+' Scan txt file contents. Return 0 if its a valid script, negative on error.
+func ScanFileContents%(file$)
+var handle;
+
+handle := FileOpen(file$, 8, 0);
+if (handle < 0) then
+    PrintLog("Cannot open file " + file$ + "\n");
+    return -1;
+endif
+
+' file is opened, read line by line
+
+var line$;
+var rcount%;
+while Read(line$)>=0 do
+    PrintLog(line$ + "\n");
+    
+    ' is it a comment?
+    if InStr(line$, "#") = 1 then
+        PrintLog("COMMENT\n");
+    endif
+    
+    wend;
+
+FileClose();
+return 0;
+end;
