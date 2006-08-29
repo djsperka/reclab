@@ -9,18 +9,35 @@ stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' L
 var txtFiles$[100];
 var count%:=0;
 var i%;
+var status%;
 FilePathSet(stim$);
 count% := FileList(txtFiles$, 1);
 
 PrintLog("Found " + str$(count%) + " txt files.\n");
-for i% := 0 to count%-1 do
-    PrintLog(str$(i%) + ") " + txtFiles$[i%] + "\n");
-    ScanFileContents%(txtFiles$[i%]);
-next;
 
+DlgCreate("Select stim set");
+DlgList(1, "Stim set:", txtFiles$, count%);
+status% := DlgShow(i%);
+if (status% = 1) then
+    PrintLog("Selected " + txtFiles$[i%] + "\n");
+    status% := LoadSpecFile%(txtFiles$[i%]);
+    if (status% < 0) then
+        Message("Cannot load spec file " + txtFiles$[i%]);
+        halt;
+    endif
+endif
+'for i% := 0 to count%-1 do
+'    PrintLog(str$(i%) + ") " + txtFiles$[i%] + "\n");
+'    LoadSpecFile%(txtFiles$[i%]);
+'next;
 
-' Scan txt file contents. Return 0 if its a valid script, negative on error.
-func ScanFileContents%(file$)
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Load stimuli from the file file$. Returns 0 on success, or -1 if an error was 
+' encountered.
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func LoadSpecFile%(file$)
 var handle;
 
 handle := FileOpen(file$, 8, 0);
@@ -31,18 +48,133 @@ endif
 
 ' file is opened, read line by line
 
-var line$;
+var line$;              ' lines read into this string
+var linesRead% := 0;    ' # of lines read. 
 var rcount%;
+var headerLineFound% := 0;  
+
+var freqOutput%;            ' output sampling freq - from spec file
+var sampleSeconds;          ' length of samples in seconds
+var sampleExpectedLength%;  ' freqOutput% * sampleSeconds
+
+const maxStim% := 20;
+const maxStimLength% := 50000;
+var stim0%[maxStim%][maxStimLength%];
+var stim1%[maxStim%][maxStimLength%];
+var stimCount% := 0;        ' Number of stim in stimN arrays
+var errFlag% := 0;
+
+
+
 while Read(line$)>=0 do
-    PrintLog(line$ + "\n");
+    linesRead%+=1;
     
     ' is it a comment?
-    if InStr(line$, "#") = 1 then
-        PrintLog("COMMENT\n");
+    if InStr(line$, "#") <> 1 then
+        ' if header hasn't been read yet, then this is it
+        if headerLineFound% = 0 then
+            if (ReadStr(line$, freqOutput%, sampleSeconds) = 2) then
+                headerLineFound% := 1;
+                PrintLog("Found header: freqOutput = " + str$(freqOutput%) + " seconds = " + str$(sampleSeconds) + "\n");
+                sampleExpectedLength% := freqOutput% * sampleSeconds;
+            else
+                PrintLog("ERROR at line " + str$(linesRead%) + ": expected header.\n");
+            endif
+        else
+            ' header line has been found, so we're expecting a line that
+            ' specifies a stimulus. Check that the line contains "|".
+            var iSep%;
+            var sStims$[10];
+            var nStims%;
+            var iStim%;
+            var tmpStim0Size%;
+            var tmpStim1Size%;
+            
+            ReadSetup(""," ","",""," ,");
+            
+            iSep% := InStr(line$, "|");            
+            if iSep% = 0 then
+'                PrintLog("SKIP line " + str$(linesRead%) + ": no separator \"|\"\n");
+                PrintLog("SKIP line " + str$(linesRead%) + ": no separator |\n");
+            else
+                ' read stims for chan 0 from line$
+                nStims% := ReadStr(Mid$(line$, 1, iSep%-1), sStims$);
+                tmpStim0Size% := LoadStim%(sStims$, nStims%, stim0%[stimCount%][], maxStimLength%);
+                if (tmpStim0Size% < 0) then
+                    PrintLog("Error: Cannot load stim0 from line " + str$(linesRead%) + "\n");
+                    errFlag% := 1;
+                endif
+                                
+                ' read stims for chan 1 from line$
+                nStims% := ReadStr(Mid$(line$, iSep%+1), sStims$);
+                tmpStim1Size% := LoadStim%(sStims$, nStims%, stim1%[stimCount%][], maxStimLength%);
+                if (tmpStim1Size% < 0) then
+                    PrintLog("Error: Cannot load stim1 from line " + str$(linesRead%) + "\n");
+                    errFlag% := 1;
+                endif
+                
+            endif
+            ReadSetup();
+        endif
     endif
     
     wend;
 
 FileClose();
 return 0;
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' LoadStim
+'
+' Loads a stimulus by reading files and contatenating them into the array provided. 
+' The string array should contain the basenames of the stim files - in other words these
+' strings, with ".bin" appended should be a file in the current directory. The number
+' of stim files can vary between stimuli; n% files will be read and loaded here. 
+' The array stim% will be filled with at most maxSamples% samples. The return value is 
+' the number of samples loaded, or -1 on error (most likely the file could not be found).
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+func LoadStim%(s$[], n%, stim%[], maxSamples%)
+
+var i%;
+var icount%:=0;
+var iread%:=0;
+var totalSamples% := 0;
+var saveHandle;
+var stimHandle;
+var f$;
+
+saveHandle := View();
+
+for i% := 0 to n%-1 do
+    
+    ' Open stim file
+    iread% := 0;
+    icount% := 0;
+    f$ := s$[i%]+".bin";
+    stimHandle := FileOpen(f$, 8, 0);
+    if (stimHandle < 0) then
+        PrintLog("LoadStim: Cannot open file " + f$ + "\n");
+        return -1;
+    else
+        ' read stim file - expect one number per line
+        while (icount% >= 0 and totalSamples%+iread% < maxSamples%) do
+            icount% := Read(stim%[iread%]);
+            if (icount% = 1) then iread% += 1; endif;
+            wend;
+        FileClose();
+        PrintLog("Read " + str$(iread%) + " values from file " + f$ + "\n");
+        totalSamples% += iread%;
+    endif
+    
+    next;
+
+View(saveHandle);
+
+return totalSamples%;
 end;
