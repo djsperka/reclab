@@ -1,25 +1,72 @@
-const maxQueue% := 100;
-var iQueue%[maxQueue%];
-var nQueue%;                ' Number of items in queue
+' This is a spike2 script implementation of a queue. It holds up to
+' maxQueue% integers. 
+'
+' The array iQueue% holds the values. The const noValue% indicates that 
+' the item is undefined. This value cannot be added to the queue! Choose
+' it wisely. 
+'
+' Usage:
+' Copy between the lines labelled "CUT HERE" and paste into your script.
+' Your use of the queue must fall BELOW the stuff you add (because global
+' vars in Spike2 are only available BELOW where they appear in the script).
+' Initialize the queue by calling QClear();
+' Add an integer to the queue by calling QPushBack%(value%);
+' More properly, you should check the return value to make sure the 
+' queue is not full:
+' if QPushBack%(value%) = 0 then
+'    PrintLog("Queue is full! Increase size of maxQueue%!!!\n");
+' endif
+'
+' To get the next item off the queue, first check if the queue is empty, 
+' then call either QFront% or QPop% (depending on what behavior you want).
+'
+' if QEmpty%() = 0 then
+'    value% := QFront%();   MUST STILL QPop% to remove the value!
+'    QPop%();
+' endif
+'
+' Internal info:
+'
+' The vars iHead% and iTail% are the indices of the front and back of the 
+' queue. Both are -1 when the queue is empty. Otherwise, the first item
+' in the queue is iQueue%[iHead%] and the last item is iQueue%[iTail%]. 
+' 
+' QEmpty%() returns 1 if the queue is empty, 0 otherwise. 
+' QFront%() returns the value of the first item in the queue (or noValue%
+'           if the queue is empty). 
+' QPop%() returns the first item (like QFront%), but it also removes that
+'         item from the queue. 
+' QPushBack%() adds a value to the end of the queue. It returns 0 if the 
+'              queue is full, otherwise it returns 1. 
+
+
+
+
+''''''''''' CUT HERE '''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+const maxQueue% := 100;     ' maximum number of items in queue
+const noValue% := -999;     ' dummy value which indicates no data
+var iQueue%[maxQueue%];     ' the array which holds the queue
 var iHead%:=-1;             ' Position of head of queue
 var iTail%:=-1;             ' Position of tail of queue (next available pos)
 
 
-' Initialize queue
-var i%;
-ArrConst(iQueue%, -1);
-for i% := 0 to 10 do
-    iQueue%[i%] := i%;
-    next;
-iHead% := 0;
-iTail% := 11;
-
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' QClear - empties/initializes queue
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc QClear()
+ArrConst(iQueue%, noValue%);
+iHead% := -1;
+iTail% := -1;
+end;
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' 
 ' QEmpty - returns 1(0) if queue is (not) empty.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-var QEmpty%()
+func QEmpty%()
 var ireturn% := 0;
 if iHead%<0 then ireturn% := 1; endif;
 return ireturn%;
@@ -28,36 +75,178 @@ end;
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' QPop
 ' Pop (remove) the value off the front of the queue. 
-' Returns the value removed, or -1 if queue is empty.
+' Returns the value removed, or noValue% if queue is empty.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func QPop%()
-var ireturn% := -1;
-if QEmpty%() <> 0 then
+var ireturn% := noValue%;
+if QEmpty%() <> 1 then
     ' remove item, advance head.
-    iQueue%[iHead%] = -1;
-    iHead% += 1;
-    if iHead% = maxQueue% then iHead% := 0; endif;
-    ' if Head is same as tail, then queue is empty
-    if iHead% = iTail% then
+    ireturn% := iQueue%[iHead%];
+    iQueue%[iHead%] := noValue%;
+    
+    ' Was this the last item left in the queue? If so, then 
+    ' the queue is now empty. Otherwise, advance the value of iHead%, 
+    ' but make sure it hasn't gone off the end of the array. 
+    if iHead% = iTail% then 
         iHead% := -1;
         iTail% := -1;
+    else
+        iHead% += 1;
+        if iHead% = maxQueue% then iHead% := 0; endif;
     endif
 endif
+return ireturn%;
 end;
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' QFront - returns the value at the head of the queue, -1 if empty.
+' This does NOT remove the item from the queue - QPop does that. 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 func QFront%()
-var ivalue% := -1;
-if QEmpty%() = 0 then ivalue% := iQueue%[iHead%]; endif;
+var ivalue% := noValue%;
+if QEmpty%() <> 1 then ivalue% := iQueue%[iHead%]; endif;
 return ivalue%;
 end;
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' QPushBack - adds an item to the end of the queue. Returns 0 on success, 
+' -1 on failure (queue empty). 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
 func QPushBack%(ivalue%)
-if iTail% < maxQueue%-1 then
-    iTail% += 1;
-    iQueue%[iTail%] = ivalue%;
+
+var ireturn% := 1;
+docase
+case QEmpty%() = 1 then
+    ' queue is empty, then this is simple
+    iQueue%[0] := ivalue%;
+    iHead% := 0;
+    iTail% := 0;
 else
-    ' 
+    ' Figure out where next item should go. If its the same as iHead%, 
+    ' then queue is full!
+    var iTemp%;
+    iTemp% := iTail% + 1;
+    if iTemp% = maxQueue% then
+        iTemp% := 0;
+    endif
+    if iTemp% = iHead% then
+        ireturn% := 0;          ' Queue is full!
+    else
+        iTail% := iTemp%;
+        iQueue%[iTail%] := ivalue%;
+    endif
+endcase;
+return ireturn%;
+end;
+
+proc QDump()
+
+var i%;
+var iEnd%;
+
+PrintLog("iHead% " + str$(iHead%) + "\n");
+PrintLog("iTail% " + str$(iTail%) + "\n");
+PrintLog("empty? " + str$(QEmpty%()) + "\n");
+PrintLog("Queue contents:\n");
+if QEmpty%() <> 1 then
+    ' from ihead to end of array
+    if iTail% < iHead% then 
+        iEnd% := maxQueue%-1; 
+    else
+        iEnd% := iTail%;
+    endif
+    
+    for i% := iHead% to iEnd% do
+        PrintLog("[" + str$(i%) + "] " + str$(iQueue%[i%]) + "\n");
+        next;
+    
+    ' Now from 0 to the tail if necessary
+    if iTail% < iHead% then
+        for i% := 0 to iTail% do
+            PrintLog("[" + str$(i%) + "] " + str$(iQueue%[i%]) + "\n");
+            next;
+    endif
+endif
+PrintLog("Queue contents done.\n");
+
+end;
+        
+
+''''''''''' CUT HERE '''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+
+
+
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Test queue
+'
+'
+var index%;
+
+QClear();
+PrintLog("Queue is empty: dump\n");
+QDump();
+PrintLog("Add 1 to queue: " + str$(QPushBack%(1)) + "\n");
+QDump();
+PrintLog("Front = " + str$(QFront%()) + "\n");
+PrintLog("Pop = " + str$(QPop%()) + "\n");
+PrintLog("Front = " + str$(QFront%()) + "\n");
+PrintLog("Pop = " + str$(QPop%()) + "\n");
+
+PrintLog("Queue should be empty: dump\n");
+QDump();
+PrintLog("Add 10 items to queue\n");
+for index% := 1 to 10 do
+    QPushBack%(index%);
+    next;
+
+QDump();
+PrintLog("Front = " + str$(QFront%()) + "\n");
+PrintLog("Pop = " + str$(QPop%()) + "\n");
+PrintLog("Front = " + str$(QFront%()) + "\n");
+PrintLog("Pop = " + str$(QPop%()) + "\n");
+QDump();
+
+PrintLog("Add 91 items to queue\n");
+for index% := 11 to 101 do
+    QPushBack%(index%);
+    next;
+
+QDump();
+PrintLog("Front = " + str$(QFront%()) + "\n");
+PrintLog("Pop = " + str$(QPop%()) + "\n");
+PrintLog("Front = " + str$(QFront%()) + "\n");
+PrintLog("Pop = " + str$(QPop%()) + "\n");
+QDump();
+
+PrintLog("Now add 4 more items - the 4th should fill the queue\n");
+PrintLog("QPushBack(102)=" + str$(QPushBack%(102)) + "\n");
+PrintLog("QPushBack(103)=" + str$(QPushBack%(103)) + "\n");
+PrintLog("QPushBack(104)=" + str$(QPushBack%(104)) + "\n");
+PrintLog("QPushBack(105)=" + str$(QPushBack%(105)) + "\n");
+QDump();
+
+
+PrintLog("Clear queue\n");
+QClear();
+QDump();
+PrintLog("Add maxQueue% items\n");
+for index% := 1 to maxQueue% do
+    QPushBack%(index%);
+    next;
+
+QDump();
+PrintLog("Attempt to add one more item: " + str$(QPushBack%(maxQueue%+1)) + "\n");
+
