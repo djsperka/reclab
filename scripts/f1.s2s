@@ -4,32 +4,84 @@ script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder conta
 bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
 stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
 
+var StimSetSpecFile$;       ' The file containing the stimuli specifications - selected by user. 
 
-' scan for txt files
-var txtFiles$[100];
-var count%:=0;
-var i%;
-var status%;
-FilePathSet(stim$);
-count% := FileList(txtFiles$, 1);
+var freqOutput%;            ' output sampling freq - from spec file
+var sampleSeconds;          ' length of samples in seconds
+var sampleExpectedLength%;  ' freqOutput% * sampleSeconds
 
-PrintLog("Found " + str$(count%) + " txt files.\n");
+const maxStim% := 20;                   ' max number of stim
+const maxStimLength% := 50000;          ' max number of samples in a stim
+var stim0%[maxStim%][maxStimLength%];   ' These stim will be played on dac out 0
+var stim1%[maxStim%][maxStimLength%];   ' these will be played on dac out 1
+var stimCount% := 0;        ' Number of stim in stimN arrays
 
-DlgCreate("Select stim set");
-DlgList(1, "Stim set:", txtFiles$, count%);
-status% := DlgShow(i%);
-if (status% = 1) then
-    PrintLog("Selected " + txtFiles$[i%] + "\n");
-    status% := LoadSpecFile%(txtFiles$[i%]);
-    if (status% < 0) then
-        Message("Cannot load spec file " + txtFiles$[i%]);
-        halt;
+
+
+' prompt user to select stim set for processing.....
+
+if SelectStimSet%(stim$, StimSetSpecFile$)<0 then
+    halt
+else
+    if LoadSpecFile%(StimSetSpecFile$) < 0 then
+        Message("Cannot load spec file " + StimSetSpecFile$);
+        halt
     endif
 endif
-'for i% := 0 to count%-1 do
-'    PrintLog(str$(i%) + ") " + txtFiles$[i%] + "\n");
-'    LoadSpecFile%(txtFiles$[i%]);
-'next;
+
+' Stimuli are loaded. Check that 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' prompts user to select a stim set spec file from the folder stimFilePath$.
+' Returns 0 on success, -1 on failure. 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func SelectStimSet%(stimFilePath$, &specFile$)
+
+    ' scan for txt files
+    var txtFiles$[100];
+    var count%:=0;
+    var i%;
+    var status%;
+    FilePathSet(stimFilePath$);
+    count% := FileList(txtFiles$, 1);
+
+    PrintLog("Found " + str$(count%) + " txt files.\n");
+
+    DlgCreate("Select stim set");
+    DlgList(1, "Stim set:", txtFiles$, count%);
+    status% := DlgShow(i%);
+    if (status% = 1) then
+        specFile$ := txtFiles$[i%];
+    else
+        return -1;
+    endif
+
+    return 0;
+end
+
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -40,6 +92,7 @@ endif
 func LoadSpecFile%(file$)
 var handle;
 
+PrintLog("Load spec file " + file$ + "\n");
 handle := FileOpen(file$, 8, 0);
 if (handle < 0) then
     PrintLog("Cannot open file " + file$ + "\n");
@@ -52,16 +105,6 @@ var line$;              ' lines read into this string
 var linesRead% := 0;    ' # of lines read. 
 var rcount%;
 var headerLineFound% := 0;  
-
-var freqOutput%;            ' output sampling freq - from spec file
-var sampleSeconds;          ' length of samples in seconds
-var sampleExpectedLength%;  ' freqOutput% * sampleSeconds
-
-const maxStim% := 20;
-const maxStimLength% := 50000;
-var stim0%[maxStim%][maxStimLength%];
-var stim1%[maxStim%][maxStimLength%];
-var stimCount% := 0;        ' Number of stim in stimN arrays
 var errFlag% := 0;
 
 
@@ -129,7 +172,7 @@ end;
 '
 ' LoadStim
 '
-' Loads a stimulus by reading files and contatenating them into the array provided. 
+' Loads a stimulus by reading files and concatenating them into the array provided. 
 ' The string array should contain the basenames of the stim files - in other words these
 ' strings, with ".bin" appended should be a file in the current directory. The number
 ' of stim files can vary between stimuli; n% files will be read and loaded here. 
