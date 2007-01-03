@@ -5,7 +5,7 @@ bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Loc
 stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
 
 var StimSetSpecFile$;       ' The file containing the stimuli specifications - selected by user. 
-
+var StimSetID$;             ' basename of stim set spec file (without the .txt and dir)
 var freqOutput%;            ' output sampling freq - from spec file
 var sampleSeconds;          ' length of samples in seconds
 var sampleExpectedLength%;  ' freqOutput% * sampleSeconds
@@ -14,9 +14,14 @@ const maxStim% := 20;                   ' max number of stim
 const maxStimLength% := 50000;          ' max number of samples in a stim
 var stim0%[maxStim%][maxStimLength%];   ' These stim will be played on dac out 0
 var stim1%[maxStim%][maxStimLength%];   ' these will be played on dac out 1
+var stimS0%[maxStimLength%];             ' Standard stim
+var stimS1%[maxStimLength%];             ' Standard stim
 var stimCount% := 0;        ' Number of stim in stimN arrays
+var stimTrialCount%[maxStim%];              ' Number of complete trials for each stim
+var stimCurrentIndex%;                  ' stim being used for current trial
 
-
+' Control variables
+var isPaused% := 0;           ' set to 1 when paused
 
 ' prompt user to select stim set for processing.....
 
@@ -29,31 +34,61 @@ else
     endif
 endif
 
-' Stimuli are loaded. Check that 
+' Stimuli are loaded. Extract stim set ID
+StimSetID$ := Left$(StimSetSpecFile$, InStr(StimSetSpecFile$, "."));
+if Len(StimSetID$) = 0 then
+    PrintLog("Error in stim set filename - no dot!!!\n");
+    halt;
+else
+    PrintLog("\n\n--------------------------------------------------------\n\n");
+    PrintLog("Stim set " + StimSetID$ + "\n");
+    PrintLog("Output frequency:  " + str$(freqOutput%) + "\n");
+    PrintLog("Sample seconds:    " + str$(sampleSeconds) + "\n");
+    PrintLog("Number of stimuli: " + str$(stimCount%) + "\n");
+endif
+
+' Initialize trial counters
+ArrConst(stimTrialCount%[], 0);
+
+' Make sure sampling is started.....
+
+if (SampleStatus() <> 2) then
+    if Query("Sampling not started. Start sampling now?") = 1 then
+        if SampleStart(0) <> 0 then
+            halt;
+        endif
+    else
+        halt;
+    endif
+endif
+
+
+
+' Prepare toolbar
+InitializeToolbar();
 
 
 
 
+' Save experimental control parameters to registry
+proc SaveParameters()
+    
+end;
+
+' Get experimental control parameters from registry
+proc GetParameters()
+    
+end;
+
+' Show parameters dialog
+func ParametersDialog%()
+    
+    
+    return 1;
+end;
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' prompts user to select a stim set spec file from the folder stimFilePath$.
 ' Returns 0 on success, -1 on failure. 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -105,6 +140,7 @@ var line$;              ' lines read into this string
 var linesRead% := 0;    ' # of lines read. 
 var rcount%;
 var headerLineFound% := 0;  
+var standardStimFound% := 0;    
 var errFlag% := 0;
 
 
@@ -142,18 +178,42 @@ while Read(line$)>=0 do
             else
                 ' read stims for chan 0 from line$
                 nStims% := ReadStr(Mid$(line$, 1, iSep%-1), sStims$);
-                tmpStim0Size% := LoadStim%(sStims$, nStims%, stim0%[stimCount%][], maxStimLength%);
-                if (tmpStim0Size% < 0) then
-                    PrintLog("Error: Cannot load stim0 from line " + str$(linesRead%) + "\n");
-                    errFlag% := 1;
-                endif
-                                
-                ' read stims for chan 1 from line$
-                nStims% := ReadStr(Mid$(line$, iSep%+1), sStims$);
-                tmpStim1Size% := LoadStim%(sStims$, nStims%, stim1%[stimCount%][], maxStimLength%);
-                if (tmpStim1Size% < 0) then
-                    PrintLog("Error: Cannot load stim1 from line " + str$(linesRead%) + "\n");
-                    errFlag% := 1;
+                    
+                if standardStimFound% = 0 then
+                        
+                    ' Read standard stim for chan 0
+                    tmpStim0Size% := LoadStim%(sStims$, nStims%, stimS0%[], maxStimLength%);
+                    if (tmpStim0Size% < 0) then
+                        PrintLog("Error: Cannot load standard stim from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                                    
+                    ' Read standard stim for chan 1
+                    nStims% := ReadStr(Mid$(line$, iSep%+1), sStims$);
+                    tmpStim1Size% := LoadStim%(sStims$, nStims%, stimS1%[], maxStimLength%);
+                    if (tmpStim1Size% < 0) then
+                        PrintLog("Error: Cannot load standard stim from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                        
+                    standardStimFound% := 1;
+                else
+                        
+                    tmpStim0Size% := LoadStim%(sStims$, nStims%, stim0%[stimCount%][], maxStimLength%);
+                    if (tmpStim0Size% < 0) then
+                        PrintLog("Error: Cannot load stim0 from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                                    
+                    ' read stims for chan 1 from line$
+                    nStims% := ReadStr(Mid$(line$, iSep%+1), sStims$);
+                    tmpStim1Size% := LoadStim%(sStims$, nStims%, stim1%[stimCount%][], maxStimLength%);
+                    if (tmpStim1Size% < 0) then
+                        PrintLog("Error: Cannot load stim1 from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                        
+                    stimCount% += 1;
                 endif
                 
             endif
@@ -162,9 +222,26 @@ while Read(line$)>=0 do
     endif
     
     wend;
-
-FileClose();
-return 0;
+    
+    FileClose();
+    
+    ' Check that there were no errors, and that the standard stim was found, and that
+    ' at least one additional stim was found....
+    var i% := 0;
+    if headerLineFound% = 0 then
+        i% := -1;
+        PrintLog("Error reading spec file - no header line found!\n");
+    else 
+        if standardStimFound% = 0 then
+            i% := -1;
+            PrintLog("Error reading spec file - standard stim not found!\n");
+        endif
+        if stimCount% = 0 then
+            i% := -1;
+            PrintLog("Error reading spec file - no stims found!\n");
+        endif
+    endif
+    return i%;
 end;
 
 
@@ -220,4 +297,115 @@ for i% := 0 to n%-1 do
 View(saveHandle);
 
 return totalSamples%;
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitilizeToolbar - prepare toolbar buttons. 
+' Note that the idle processing function (ToolbarSet(0, blah, blah)) is 
+' not set here. That's done when the user hits the start button.
+'
+proc InitializeToolbar()
+	ToolbarVisible(1);
+	ToolbarSet(1,"Start",Start%);
+	ToolbarSet(2,"Stop", Stop%);
+	ToolbarSet(3,"Pause",Pause%);
+	ToolbarSet(4,"Resume",Resume%);
+	ToolbarSet(5,"Reward",Reward%);
+	ToolbarEnable(2,0);
+	ToolbarEnable(3,0);
+	ToolbarEnable(4,0);
+	ToolbarEnable(5,1);
+	Toolbar("Go", 0x3ff);
+end;
+
+func Start%()
+    ToolbarSet(0, "", StateProcessor%);
+    ToolbarEnable(1, 0);
+    ToolbarEnable(2, 1);
+    ToolbarEnable(3, 1);
+    ToolbarText("Running....");
+    return 1;
+end;
+
+func Stop%()
+    SampleStop();
+    ToolbarSet(0, "");
+    return 0;
+end;
+
+func Pause%()
+    isPaused% := 1;
+    ToolbarEnable(3, 0);
+    ToolbarEnable(4, 1);
+    ToolbarText("Paused....");
+    return 1;
+end;
+
+func Resume%()
+    isPaused% := 0;
+    ToolbarEnable(3, 1);
+    ToolbarEnable(4, 0);
+    ToolbarText("Running....");
+    return 1;
+end;
+
+func Reward%()
+    return 1;
+end;
+
+' State name constants
+const stateStartTrial% := 1;
+const stateDone% := 99;
+const stateWaitForAcquisition% := 2;
+const stateWaitForFixation% := 3;
+const stateFailAcquisition% := 4;
+const stateFailFixation% := 5;
+const stateMaintainFixation% := 6;
+const stateWaitForResponse% := 7;
+const stateCorrectResponse% := 8;
+const stateIncorrectResponse% := 9;
+
+var iCurrentState% := stateStartTrial%;
+var tNow := -1;
+var tLast:= -1;
+
+func StateProcessor%()
+    var returnValue% := 1;      ' set to 0 to stop paradigm completely
+    
+    ' if paused get out now
+    if isPaused% <> 0 then
+        return returnValue%;
+    endif
+    
+	tNow := MaxTime();
+
+	docase 	
+	case iCurrentState% = stateStartTrial% then
+        
+    case iCurrentState% = stateWaitForAcquisition% then
+        
+	case iCurrentState% = stateDone% then
+        
+    case iCurrentState% = stateFailAcquisition% then
+        
+    case iCurrentState% = stateFailFixation% then
+        
+    case iCurrentState% = stateMaintainFixation% then
+        
+    case iCurrentState% = stateCorrectResponse% then
+        
+    case iCurrentState% = stateIncorrectResponse% then
+    
+    else 
+
+        ' Unknown state!
+        Message("Unknown state=" + str$(iCurrentState%));
+        halt;
+    
+    endcase;
+    
+    tLast := tNow;
+    return returnValue%;
 end;

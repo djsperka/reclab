@@ -216,15 +216,9 @@ proc InitializeToolbar()
 	ToolbarVisible(1);
 	ToolbarSet(1,"Sample start",Start%);
 	ToolbarSet(2,"Sample stop", Stop%);
-'	ToolbarSet(3,"Juice", Reward%);
-'	ToolbarSet(4,"Pause stimuli",PauseStimuli%);
-'	ToolbarSet(5,"Resume stimuli",ResumeStimuli%);
-'	ToolbarSet(6,"Exp Parameters",AttentionScriptDialog%);
-	ToolbarSet(7,"Quit",Quit%);
-	ToolbarEnable(2,0);         ' can't stop until you've started....
-'	ToolbarEnable(4,0);
-'	ToolbarEnable(5,0);
-    ToolbarEnable(7, 1);
+	ToolbarSet(3,"Quit",Quit%);
+	ToolbarEnable(2, 0);         ' can't stop until you've started....
+    ToolbarEnable(3, 1);
 	Toolbar("Go",0x3ff);
 
 end;
@@ -356,11 +350,11 @@ FreqoutScriptDialog%();
 
 ' Open sampling configuration
 
-SamplingConfiguration();
+'SamplingConfiguration();
 
 ' Get display windows ready. This also opens the data file .
 
-InitializeWindows();
+'InitializeWindows();
 
 ' Configure toolbar
 
