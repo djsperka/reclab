@@ -22,6 +22,13 @@ var stimCurrentIndex%;                  ' stim being used for current trial
 
 ' Control variables
 var isPaused% := 0;           ' set to 1 when paused
+var CompleteTrials% := 0;       ' Number of complete trials of each stim type required
+var UseCorrectionTrials% := 0;  ' if 1, require complete trials to be correct also
+
+' Channel numbers
+var ElectrodeChannel% := 1;
+var XChannel% := 2;
+var YChannel% := 3;
 
 ' prompt user to select stim set for processing.....
 
@@ -50,18 +57,14 @@ endif
 ' Initialize trial counters
 ArrConst(stimTrialCount%[], 0);
 
-' Make sure sampling is started.....
 
-if (SampleStatus() <> 2) then
-    if Query("Sampling not started. Start sampling now?") = 1 then
-        if SampleStart(0) <> 0 then
-            halt;
-        endif
-    else
-        halt;
-    endif
+' parameters
+if FreqoutParametersDialog%() = 0 then
+    halt;
 endif
 
+' 
+' Sampling configuration
 
 
 ' Prepare toolbar
@@ -69,23 +72,27 @@ InitializeToolbar();
 
 
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc CreateSampleConfiguration()
+	var index;
+	SampleClear(); 'Set standard sampling state
+	SampleAutoComment(0); 'Prompt for comment after sampling
+	SampleAutoCommit(60); 'Seconds between each file commit
 
-' Save experimental control parameters to registry
-proc SaveParameters()
-    
+	SampleWaveMark(ElectrodeChannel%, 0, 2000, 34, 15, 28000); ' chan, port, event rate, points, pre-trigger, rate
+	SampleTitle$(ElectrodeChannel%, "Electrode")); 
+
+	'EYE COIL CHANNELS. Last # is sampling freq in Hz. 
+	SampleWaveform(XChannel%, 6, 1000);
+	SampleTitle$(XChannel%,"Eye X");
+	SampleWaveform(YChannel%, 7, 1000);
+	SampleTitle$(YChannel%, "Eye Y");
+
+	SampleSequencer(script$ + "Freqout.pls");
+	SampleOptimise(2, 2, 2, 2, 50);  'Set optimise mode (do this last)
+	SampleMode(1); 'Continuous sampling
 end;
 
-' Get experimental control parameters from registry
-proc GetParameters()
-    
-end;
-
-' Show parameters dialog
-func ParametersDialog%()
-    
-    
-    return 1;
-end;
 
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -99,6 +106,7 @@ func SelectStimSet%(stimFilePath$, &specFile$)
     var txtFiles$[100];
     var count%:=0;
     var i%;
+    var sp% := 1;
     var status%;
     FilePathSet(stimFilePath$);
     count% := FileList(txtFiles$, 1);
@@ -107,7 +115,9 @@ func SelectStimSet%(stimFilePath$, &specFile$)
 
     DlgCreate("Select stim set");
     DlgList(1, "Stim set:", txtFiles$, count%);
-    status% := DlgShow(i%);
+    DlgInteger(2, "# complete trials for each stim", 1, 100, 0, 0, sp%);
+    DlgCheck(3, "Use correction trials?");
+    status% := DlgShow(i%, CompleteTrials%, UseCorrectionTrials%);
     if (status% = 1) then
         specFile$ := txtFiles$[i%];
     else
@@ -355,6 +365,111 @@ func Reward%()
     return 1;
 end;
 
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' EyePos
+' 
+' Determines eye position. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func EyePos(&x, &y)
+    var returnValue% := 0;
+    return returnValue%;
+end;
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Get Current configuration START
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func GetCurrentConfiguration$()
+	var key$;
+	var s$;
+	key$:="Reclab";
+	Profile(key$, "CurrentConfiguration", "default", s$);
+	return s$;
+end;
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Freqout parameters START
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+var WindowRadius;
+var FixationTime;
+var AcquisitionTime;
+var ResponseTime;
+var FixationX;
+var FixationY;
+
+proc GetFreqoutParameters()
+	var stmp$;
+	var key$;
+	key$ := "Reclab\\" + GetCurrentConfiguration$() + "\\Freqout";
+	Profile(key$, "WindowRadius", "2.0", stmp$);
+    WindowRadius := val(stmp$);
+	Profile(key$, "FixationX", "0.0", stmp$);
+    FixationX := val(stmp$);
+	Profile(key$, "FixationY", "0.0", stmp$);
+    FixationY := val(stmp$);
+    Profile(key$, "AcquisitionTime", "1.0", stmp$);
+    AcquisitionTime := val(stmp$);
+    Profile(key$, "FixationTime", "1.0", stmp$);
+    FixationTime := val(stmp$);
+    Profile(key$, "ResponseTime", "1.0", stmp$);
+    ResponseTime := val(stmp$);
+end;
+
+proc SaveFreqoutParameters()
+	var key$;
+	key$ := "Reclab\\" + GetCurrentConfiguration$() + "\\Freqout";
+	Profile(key$, "WindowRadius", str$(WindowRadius));
+	Profile(key$, "FixationX", str$(FixationX));
+	Profile(key$, "FixationY", str$(FixationY));
+    Profile(key$, "AcquisitionTime", str$(AcquisitionTime));
+    Profile(key$, "FixationTime", str$(FixationTime));
+    Profile(key$, "ResponseTime", str$(ResponseTime));
+end;
+
+
+func FreqoutParametersDialog%()
+
+	var i%;
+	GetFreqoutParameters();
+	DlgCreate("Freqout parameters: " + GetCurrentConfiguration$(), 25, 10);
+	DlgReal(1, "Fixation X:", -40, 40);
+	DlgReal(2, "Fixation Y:", -40, 40);
+	DlgReal(3, "Window radius:", .1, 10);
+	DlgReal(4, "Acquisition time(s):", .1, 30);
+	DlgReal(5, "Fixation time(s):", .1, 30);
+	DlgReal(6, "Response time(s):", .1, 30);
+    
+	i% := DlgShow(FixationX, FixationY, WindowRadius, AcquisitionTime, FixationTime, ResponseTime);	
+
+	' If user cancelled, reload params
+	if i% = 0 then
+		GetFreqoutParameters();
+	else
+		SaveFreqoutParameters();
+	endif
+
+	return 1;
+end;
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' State variables
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
 ' State name constants
 const stateStartTrial% := 1;
 const stateDone% := 99;
@@ -366,34 +481,93 @@ const stateMaintainFixation% := 6;
 const stateWaitForResponse% := 7;
 const stateCorrectResponse% := 8;
 const stateIncorrectResponse% := 9;
+const statePlayStandardStim% := 21;
+const stateWaitStandardStim% := 22;
+const statePause1 := 23;
+const statePlayStim% := 24;
+const stateWaitStim% := 25;
+const statePause2 := 26;
 
 var iCurrentState% := stateStartTrial%;
 var tNow := -1;
 var tLast:= -1;
+var tStateStart := -1;
+var TrialStimIndex% := -1;
+var TrialStimIndexHeldOver% := 0;
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' StateProcessor
+'
+' Handles state logic for the paradigm. 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func StateProcessor%()
     var returnValue% := 1;      ' set to 0 to stop paradigm completely
+    var xEye, yEye;
     
     ' if paused get out now
     if isPaused% <> 0 then
         return returnValue%;
     endif
     
+    if EyePos(xEye, yEye) <> 0 then
+        PrintLog("Error getting eye position!\n");
+        xEye := 999999;
+        yEye := 999999;
+    endif
+    
 	tNow := MaxTime();
-
+    
 	docase 	
 	case iCurrentState% = stateStartTrial% then
+    
+        GetTrialStimIndex%();
+        if TrialStimIndex% < 0 then
+            iCurrentState% := stateDone%;
+        else
+            ' turn on fix point and change state
+            SampleKey("F");
+            iCurrentState% := stateWaitForAcquisition%;
+            tStateStart := tNow;
+        endif
         
     case iCurrentState% = stateWaitForAcquisition% then
-        
+
+        ' Check eye position. If it is within window before AcquisitionTime, 
+        ' change state to stateWaitForFixation. Otherwise change state to 
+        ' stateFailAcquisition.
+        if tNow - tStateStart > AcquisitionTime then
+            iCurrentState% := stateFailAcquisition%;
+        else
+            if InFixationWindow%(xEye, yEye) then
+                iCurrentState% := stateWaitForFixation%;
+                tStateStart := tNow;
+            endif
+        endif
+
 	case iCurrentState% = stateDone% then
         
     case iCurrentState% = stateFailAcquisition% then
         
     case iCurrentState% = stateFailFixation% then
         
-    case iCurrentState% = stateMaintainFixation% then
+    case iCurrentState% = stateWaitForFixation% then
+        ' Eye must stay within fixation window for FixationTime
+        if tNow - tStateStart > FixationTime then
+            iCurrentState% := stateMaintainFixation%;
+            tStateStart := tNow;
+        else
+            if InFixationWindow%(xEye, yEye) = 0 then
+                iCurrentState% := stateFailFixation%
+            endif
+        endif
         
+    case iCurrentState% = stateMaintainFixation% then
+
+    case iCurrentState% = stateWaitForResponse% then
+        ' ResponseTime
     case iCurrentState% = stateCorrectResponse% then
         
     case iCurrentState% = stateIncorrectResponse% then
@@ -408,4 +582,22 @@ func StateProcessor%()
     
     tLast := tNow;
     return returnValue%;
+end;
+
+
+
+' TODO this proc does nothing
+
+proc GetTrialStimIndex%()
+    if TrialStimIndexHeldOver% <> 1 then
+        TrialStimIndex% := 1;
+    endif
+end;
+
+' TODO this proc does nothing
+
+func InFixationWindow%(x, y)
+    var in% := 0;
+    
+    return in%;
 end;

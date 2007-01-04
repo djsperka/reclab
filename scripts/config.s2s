@@ -212,12 +212,152 @@ end;
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Freqout parameters START
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+var WindowRadius;
+var FixationTime;
+var AcquisitionTime;
+var ResponseTime;
+var FixationX;
+var FixationY;
+
+proc GetFreqoutParameters()
+	var stmp$;
+	var key$;
+	key$ := "Reclab\\" + GetCurrentConfiguration$() + "\\Freqout";
+	Profile(key$, "WindowRadius", "2.0", stmp$);
+    WindowRadius := val(stmp$);
+	Profile(key$, "FixationX", "0.0", stmp$);
+    FixationX := val(stmp$);
+	Profile(key$, "FixationY", "0.0", stmp$);
+    FixationY := val(stmp$);
+    Profile(key$, "AcquisitionTime", "1.0", stmp$);
+    AcquisitionTime := val(stmp$);
+    Profile(key$, "FixationTime", "1.0", stmp$);
+    FixationTime := val(stmp$);
+    Profile(key$, "ResponseTime", "1.0", stmp$);
+    ResponseTime := val(stmp$);
+end;
+
+proc SaveFreqoutParameters()
+	var key$;
+	key$ := "Reclab\\" + GetCurrentConfiguration$() + "\\Freqout";
+	Profile(key$, "WindowRadius", str$(WindowRadius));
+	Profile(key$, "FixationX", str$(FixationX));
+	Profile(key$, "FixationY", str$(FixationY));
+    Profile(key$, "AcquisitionTime", str$(AcquisitionTime));
+    Profile(key$, "FixationTime", str$(FixationTime));
+    Profile(key$, "ResponseTime", str$(ResponseTime));
+end;
+
+
+func FreqoutParametersDialog%()
+
+	var i%;
+	GetFreqoutParameters();
+	DlgCreate("Freqout parameters: " + GetCurrentConfiguration$(), 25, 10);
+	DlgReal(1, "Fixation X:", -40, 40);
+	DlgReal(2, "Fixation Y:", -40, 40);
+	DlgReal(3, "Window radius:", .1, 10);
+	DlgReal(4, "Acquisition time(s):", .1, 30);
+	DlgReal(5, "Fixation time(s):", .1, 30);
+	DlgReal(6, "Response time(s):", .1, 30);
+    
+	i% := DlgShow(FixationX, FixationY, WindowRadius, AcquisitionTime, FixationTime, ResponseTime);	
+
+	' If user cancelled, reload params
+	if i% = 0 then
+		GetFreqoutParameters();
+	else
+		SaveFreqoutParameters();
+	endif
+
+	return 1;
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Freqout parameters END
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Functions specific to this script ONLY - START
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func RigConfigDialog%(config$)
+
+	DlgCreate("Rig Configuration: " + config$, 25, 10, 40);
+	DlgGroup("Settings", 0, 1, 16, 2);
+	DlgButton(1, "Data", DataParametersDialog%, 2, 2);
+
+	DlgGroup("Scripts", 18, 1, 16, 2);
+	DlgButton(2, "Freqout", FreqoutParametersDialog%, 20, 2);
+
+	DlgShow();
+
+end;
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Functions specific to this script ONLY - END
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+
+
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' Start here. 
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-SelectConfigurationDialog%();
-DataParametersDialog%();
+var iState%:=0;
+const stateStart% := 0;
+const stateQuit% := 9;
+const stateNew% := 1;
+const stateRigConfigDialog% := 4;
+
+' Initialize state
+iState% := stateStart%;
+
+' Infinite loop......
+repeat
+	
+	docase 
+		case iState% = stateStart% then
+
+			if SelectConfigurationDialog%() = 1 then
+				iState% := stateRigConfigDialog%;
+			else
+				iState% := stateQuit%;
+			endif;
+
+		case iState% = stateRigConfigDialog% then
+
+			RigConfigDialog%(GetCurrentConfiguration$());
+
+			iState% := stateQuit%;
+
+	endcase;
+
+
+until iState% = stateQuit%;
+
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	END of script body...
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
