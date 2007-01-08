@@ -1,11 +1,384 @@
-' $Id$
-
-
 ' File system reference vars. Each var is a directory path, WITHOUT the trailing slash. 
-var bin$, script$;
+var bin$, script$, stim$;
 script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder containing this script
 bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
 stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
+
+var StimSetSpecFile$;       ' The file containing the stimuli specifications - selected by user. 
+var StimSetID$;             ' basename of stim set spec file (without the .txt and dir)
+var freqOutput%;            ' output sampling freq - from spec file
+var sampleSeconds;          ' length of samples in seconds
+var sampleExpectedLength%;  ' freqOutput% * sampleSeconds
+
+const maxStim% := 20;                   ' max number of stim
+const maxStimLength% := 50000;          ' max number of samples in a stim
+var stim0%[maxStim%][maxStimLength%];   ' These stim will be played on dac out 0
+var stim1%[maxStim%][maxStimLength%];   ' these will be played on dac out 1
+var stimS0%[maxStimLength%];             ' Standard stim
+var stimS1%[maxStimLength%];             ' Standard stim
+var stimCount% := 0;        ' Number of stim in stimN arrays
+var stimTrialCount%[maxStim%];              ' Number of complete trials for each stim
+var stimCurrentIndex%;                  ' stim being used for current trial
+
+' Control variables
+var isPaused% := 0;           ' set to 1 when paused
+var CompleteTrials% := 0;       ' Number of complete trials of each stim type required
+var UseCorrectionTrials% := 0;  ' if 1, require complete trials to be correct also
+
+' Channel numbers
+var ElectrodeChannel% := 1;
+var XChannel% := 2;
+var YChannel% := 3;
+
+' prompt user to select stim set for processing.....
+
+if SelectStimSet%(stim$, StimSetSpecFile$)<0 then
+    halt
+else
+    if LoadSpecFile%(StimSetSpecFile$) < 0 then
+        Message("Cannot load spec file " + StimSetSpecFile$);
+        halt
+    endif
+endif
+
+' Stimuli are loaded. Extract stim set ID
+StimSetID$ := Left$(StimSetSpecFile$, InStr(StimSetSpecFile$, "."));
+if Len(StimSetID$) = 0 then
+    PrintLog("Error in stim set filename - no dot!!!\n");
+    halt;
+else
+    PrintLog("\n\n--------------------------------------------------------\n\n");
+    PrintLog("Stim set " + StimSetID$ + "\n");
+    PrintLog("Output frequency:  " + str$(freqOutput%) + "\n");
+    PrintLog("Sample seconds:    " + str$(sampleSeconds) + "\n");
+    PrintLog("Number of stimuli: " + str$(stimCount%) + "\n");
+endif
+
+' Initialize trial counters
+ArrConst(stimTrialCount%[], 0);
+
+
+' parameters
+if FreqoutParametersDialog%() = 0 then
+    halt;
+endif
+
+ 
+' Sampling configuration
+'CreateSampleConfiguration();
+
+' Prepare toolbar
+InitializeToolbar();
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'proc CreateSampleConfiguration()
+'	var index;
+'	SampleClear(); 'Set standard sampling state
+'	SampleAutoComment(0); 'Prompt for comment after sampling
+'	SampleAutoCommit(60); 'Seconds between each file commit
+'
+'	SampleWaveMark(ElectrodeChannel%, 0, 2000, 34, 15, 28000); ' chan, port, event rate, points, pre-trigger, rate
+'	SampleTitle$(ElectrodeChannel%, "Electrode")); 
+'
+'	'EYE COIL CHANNELS. Last # is sampling freq in Hz. 
+'	SampleWaveform(XChannel%, 6, 1000);
+'	SampleTitle$(XChannel%,"Eye X");
+'	SampleWaveform(YChannel%, 7, 1000);
+'	SampleTitle$(YChannel%, "Eye Y");
+'
+'	SampleSequencer(script$ + "Freqout.pls");
+'	SampleOptimise(2, 2, 2, 2, 50);  'Set optimise mode (do this last)
+'	SampleMode(1); 'Continuous sampling
+'end;
+
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' prompts user to select a stim set spec file from the folder stimFilePath$.
+' Returns 0 on success, -1 on failure. 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func SelectStimSet%(stimFilePath$, &specFile$)
+
+    ' scan for txt files
+    var txtFiles$[100];
+    var count%:=0;
+    var i%;
+    var sp% := 1;
+    var status%;
+    FilePathSet(stimFilePath$);
+    count% := FileList(txtFiles$, 1);
+
+    PrintLog("Found " + str$(count%) + " txt files.\n");
+
+    DlgCreate("Select stim set");
+    DlgList(1, "Stim set:", txtFiles$, count%);
+    DlgInteger(2, "# complete trials for each stim", 1, 100, 0, 0, sp%);
+    DlgCheck(3, "Use correction trials?");
+    status% := DlgShow(i%, CompleteTrials%, UseCorrectionTrials%);
+    if (status% = 1) then
+        specFile$ := txtFiles$[i%];
+    else
+        return -1;
+    endif
+
+    return 0;
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Load stimuli from the file file$. Returns 0 on success, or -1 if an error was 
+' encountered.
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func LoadSpecFile%(file$)
+var handle;
+
+PrintLog("Load spec file " + file$ + "\n");
+handle := FileOpen(file$, 8, 0);
+if (handle < 0) then
+    PrintLog("Cannot open file " + file$ + "\n");
+    return -1;
+endif
+
+' file is opened, read line by line
+
+var line$;              ' lines read into this string
+var linesRead% := 0;    ' # of lines read. 
+var rcount%;
+var headerLineFound% := 0;  
+var standardStimFound% := 0;    
+var errFlag% := 0;
+
+
+
+while Read(line$)>=0 do
+    linesRead%+=1;
+    
+    ' is it a comment?
+    if InStr(line$, "#") <> 1 then
+        ' if header hasn't been read yet, then this is it
+        if headerLineFound% = 0 then
+            if (ReadStr(line$, freqOutput%, sampleSeconds) = 2) then
+                headerLineFound% := 1;
+                PrintLog("Found header: freqOutput = " + str$(freqOutput%) + " seconds = " + str$(sampleSeconds) + "\n");
+                sampleExpectedLength% := freqOutput% * sampleSeconds;
+            else
+                PrintLog("ERROR at line " + str$(linesRead%) + ": expected header.\n");
+            endif
+        else
+            ' header line has been found, so we're expecting a line that
+            ' specifies a stimulus. Check that the line contains "|".
+            var iSep%;
+            var sStims$[10];
+            var nStims%;
+            var iStim%;
+            var tmpStim0Size%;
+            var tmpStim1Size%;
+            
+            ReadSetup(""," ","",""," ,");
+            
+            iSep% := InStr(line$, "|");            
+            if iSep% = 0 then
+'                PrintLog("SKIP line " + str$(linesRead%) + ": no separator \"|\"\n");
+                PrintLog("SKIP line " + str$(linesRead%) + ": no separator |\n");
+            else
+                ' read stims for chan 0 from line$
+                nStims% := ReadStr(Mid$(line$, 1, iSep%-1), sStims$);
+                    
+                if standardStimFound% = 0 then
+                        
+                    ' Read standard stim for chan 0
+                    tmpStim0Size% := LoadStim%(sStims$, nStims%, stimS0%[], maxStimLength%);
+                    if (tmpStim0Size% < 0) then
+                        PrintLog("Error: Cannot load standard stim from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                                    
+                    ' Read standard stim for chan 1
+                    nStims% := ReadStr(Mid$(line$, iSep%+1), sStims$);
+                    tmpStim1Size% := LoadStim%(sStims$, nStims%, stimS1%[], maxStimLength%);
+                    if (tmpStim1Size% < 0) then
+                        PrintLog("Error: Cannot load standard stim from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                        
+                    standardStimFound% := 1;
+                else
+                        
+                    tmpStim0Size% := LoadStim%(sStims$, nStims%, stim0%[stimCount%][], maxStimLength%);
+                    if (tmpStim0Size% < 0) then
+                        PrintLog("Error: Cannot load stim0 from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                                    
+                    ' read stims for chan 1 from line$
+                    nStims% := ReadStr(Mid$(line$, iSep%+1), sStims$);
+                    tmpStim1Size% := LoadStim%(sStims$, nStims%, stim1%[stimCount%][], maxStimLength%);
+                    if (tmpStim1Size% < 0) then
+                        PrintLog("Error: Cannot load stim1 from line " + str$(linesRead%) + "\n");
+                        errFlag% := 1;
+                    endif
+                        
+                    stimCount% += 1;
+                endif
+                
+            endif
+            ReadSetup();
+        endif
+    endif
+    
+    wend;
+    
+    FileClose();
+    
+    ' Check that there were no errors, and that the standard stim was found, and that
+    ' at least one additional stim was found....
+    var i% := 0;
+    if headerLineFound% = 0 then
+        i% := -1;
+        PrintLog("Error reading spec file - no header line found!\n");
+    else 
+        if standardStimFound% = 0 then
+            i% := -1;
+            PrintLog("Error reading spec file - standard stim not found!\n");
+        endif
+        if stimCount% = 0 then
+            i% := -1;
+            PrintLog("Error reading spec file - no stims found!\n");
+        endif
+    endif
+    return i%;
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' LoadStim
+'
+' Loads a stimulus by reading files and concatenating them into the array provided. 
+' The string array should contain the basenames of the stim files - in other words these
+' strings, with ".bin" appended should be a file in the current directory. The number
+' of stim files can vary between stimuli; n% files will be read and loaded here. 
+' The array stim% will be filled with at most maxSamples% samples. The return value is 
+' the number of samples loaded, or -1 on error (most likely the file could not be found).
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+func LoadStim%(s$[], n%, stim%[], maxSamples%)
+
+var i%;
+var icount%:=0;
+var iread%:=0;
+var totalSamples% := 0;
+var saveHandle;
+var stimHandle;
+var f$;
+
+saveHandle := View();
+
+for i% := 0 to n%-1 do
+    
+    ' Open stim file
+    iread% := 0;
+    icount% := 0;
+    f$ := s$[i%]+".bin";
+    stimHandle := FileOpen(f$, 8, 0);
+    if (stimHandle < 0) then
+        PrintLog("LoadStim: Cannot open file " + f$ + "\n");
+        return -1;
+    else
+        ' read stim file - expect one number per line
+        while (icount% >= 0 and totalSamples%+iread% < maxSamples%) do
+            icount% := Read(stim%[iread%]);
+            if (icount% = 1) then iread% += 1; endif;
+            wend;
+        FileClose();
+        PrintLog("Read " + str$(iread%) + " values from file " + f$ + "\n");
+        totalSamples% += iread%;
+    endif
+    
+    next;
+
+View(saveHandle);
+
+return totalSamples%;
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitilizeToolbar - prepare toolbar buttons. 
+' Note that the idle processing function (ToolbarSet(0, blah, blah)) is 
+' not set here. That's done when the user hits the start button.
+'
+proc InitializeToolbar()
+	View(App(8)).WindowVisible(0);	'Hide the standard sample bar
+	ToolbarVisible(1);
+	ToolbarSet(1,"Start",Start%);
+	ToolbarSet(2,"Stop", Stop%);
+	ToolbarSet(3,"Pause",Pause%);
+	ToolbarSet(4,"Resume",Resume%);
+	ToolbarSet(5,"Reward",Reward%);
+	ToolbarEnable(2,0);
+	ToolbarEnable(3,0);
+	ToolbarEnable(4,0);
+	ToolbarEnable(5,1);
+	Toolbar("Go", 0x3ff);
+end;
+
+func Start%()
+    ToolbarSet(0, "", StateProcessor%);
+    ToolbarEnable(1, 0);
+    ToolbarEnable(2, 1);
+    ToolbarEnable(3, 1);
+    ToolbarText("Running....");
+    return 1;
+end;
+
+func Stop%()
+    SampleStop();
+    ToolbarSet(0, "");
+    return 0;
+end;
+
+func Pause%()
+    isPaused% := 1;
+    ToolbarEnable(3, 0);
+    ToolbarEnable(4, 1);
+    ToolbarText("Paused....");
+    return 1;
+end;
+
+func Resume%()
+    isPaused% := 0;
+    ToolbarEnable(3, 1);
+    ToolbarEnable(4, 0);
+    ToolbarText("Running....");
+    return 1;
+end;
+
+func Reward%()
+    return 1;
+end;
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' EyePos
+' 
+' Determines eye position. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func EyePos(&x, &y)
+    var returnValue% := 0;
+    return returnValue%;
+end;
 
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -22,341 +395,210 @@ func GetCurrentConfiguration$()
 	return s$;
 end;
 
-
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-'	Get Current configuration END
-'
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-'	Data parameters START
-'
-'	Vars that control where data is stored. 
+' Freqout parameters START
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-var dataPathRoot$;		' base path for data storage
-var dataDataSet$;		' folder under data path where data files placed
-var dataCellName$;		' part of base name for all data files
-var dataDataSetTextItem%;	' 
+var WindowRadius;
+var FixationTime;
+var AcquisitionTime;
+var ResponseTime;
+var FixationX;
+var FixationY;
 
-proc GetDataParameters()
+proc GetFreqoutParameters()
 	var stmp$;
 	var key$;
-
-	key$:="Reclab\\Data";
-
-	Profile(key$, "PathRoot", "C:\\data", dataPathRoot$);
-	Profile(key$, "DataSet", "", dataDataSet$);
-	Profile(key$, "CellName", "", dataCellName$);
-	return;
+	key$ := "Reclab\\" + GetCurrentConfiguration$() + "\\Freqout";
+	Profile(key$, "WindowRadius", "2.0", stmp$);
+    WindowRadius := val(stmp$);
+	Profile(key$, "FixationX", "0.0", stmp$);
+    FixationX := val(stmp$);
+	Profile(key$, "FixationY", "0.0", stmp$);
+    FixationY := val(stmp$);
+    Profile(key$, "AcquisitionTime", "1.0", stmp$);
+    AcquisitionTime := val(stmp$);
+    Profile(key$, "FixationTime", "1.0", stmp$);
+    FixationTime := val(stmp$);
+    Profile(key$, "ResponseTime", "1.0", stmp$);
+    ResponseTime := val(stmp$);
 end;
 
-
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' Data parameters END
-'
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' Start here. 
-'
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-' Experimental parameters
-
-var tAcquisition;                   ' time allowed for subject to get in fixation window -- "acquire" the target
-var tFixation;                      ' time after acquisition before we consider subject "fixated"
-var xFixation, yFixation;           ' xy of fixation point
-var wFixation;                      ' fixation window
-var tMaintain;                      ' must maintain fixation for this long
-var iStimCues%;                     ' will stim cues be used - usage undetermined at this point
-var tResponse;                      ' time allowed for subject to respond
-var tPunish;                        ' wait period after incorrect response
-
-var xTargetL, yTargetL;             ' left answer target coordinates
-var xTargetR, yTargetR;             ' right answer target coordinates
-var wTargetL, wTargetR;             ' target windows
-
-
-' Channel numbers
-var NumberOfElectrodes% := 1;
-var XChannel%;
-var YChannel%; 
-
-' Window handles
-var DataWindow%;
-
-
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-proc GetFreqoutScriptParameters()
-	var stmp$;
+proc SaveFreqoutParameters()
 	var key$;
-	key$:="Reclab\\" + GetCurrentConfiguration$() + "\\Scripts\\Freqout";
-
-	Profile(key$, "tAcquisition", "2.0", stmp$);
-	tAcquisition := val(stmp$);
-	Profile(key$, "tFixation", "2.0", stmp$);
-	tFixation := val(stmp$);
-	Profile(key$, "xFixation", "2.0", stmp$);
-	xFixation := val(stmp$);
-	Profile(key$, "yFixation", "2.0", stmp$);
-	yFixation := val(stmp$);
-	Profile(key$, "tMaintain", "2.0", stmp$);
-	tMaintain := val(stmp$);
-	Profile(key$, "tResponse", "2.0", stmp$);
-	tResponse := val(stmp$);
-	Profile(key$, "tPunish", "2.0", stmp$);
-	tPunish := val(stmp$);
-end;
-
-proc SaveFreqoutScriptParameters()
-	var key$;
-	key$:="Reclab\\" + GetCurrentConfiguration$() + "\\Scripts\\Freqout";
-	Profile(key$, "tAcquisition", str$(tAcquisition));
-	Profile(key$, "tFixation", str$(tFixation));
-    Profile(key$, "xFixation", str$(xFixation));
-    Profile(key$, "yFixation", str$(yFixation));
-	Profile(key$, "tMaintain", str$(tMaintain));
-	Profile(key$, "tResponse", str$(tResponse));
-	Profile(key$, "tPunish", str$(tPunish));
-end;
-
-func FreqoutScriptDialog%()
-	var i% := 0;
-	GetFreqoutScriptParameters();
-	DlgCreate("Experimental Parameters");
-	DlgReal(1, "Acquisition time(s)", 0.1, 100);
-	DlgReal(2, "Fixation time(s)", 0.1, 100);
-	DlgReal(3, "Fixation X (degrees)", -90, 90);
-	DlgReal(4, "Fixation Y (degrees)", -90, 90);
-	DlgReal(5, "Maintain time(s)", 0.1, 100);
-	DlgReal(6, "Response time(s)", 0.1, 100);
-	DlgReal(7, "Punish time(s)", 0.1, 100);
-
-	i% := DlgShow(tAcquisition, tFixation, xFixation, yFixation, tMaintain, tResponse, tPunish);
-	' If i% is 1 the user hit "OK". If its 0, user hit "Cancel". 
-	' When user hits OK we always save the parameters, and when user hit Cancel we don't.
-	if i% = 1 then
-		SaveFreqoutScriptParameters();
-	endif;
-
-    return i%;
+	key$ := "Reclab\\" + GetCurrentConfiguration$() + "\\Freqout";
+	Profile(key$, "WindowRadius", str$(WindowRadius));
+	Profile(key$, "FixationX", str$(FixationX));
+	Profile(key$, "FixationY", str$(FixationY));
+    Profile(key$, "AcquisitionTime", str$(AcquisitionTime));
+    Profile(key$, "FixationTime", str$(FixationTime));
+    Profile(key$, "ResponseTime", str$(ResponseTime));
 end;
 
 
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' Load sampling configuration
-' 
-' The configuration file freqout.s2c also loads the sequencer file freqout.pls
-'
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func FreqoutParametersDialog%()
 
-proc SamplingConfiguration()
-	var index;
+	var i%;
+	GetFreqoutParameters();
+	DlgCreate("Freqout parameters: " + GetCurrentConfiguration$(), 25, 10);
+	DlgReal(1, "Fixation X:", -40, 40);
+	DlgReal(2, "Fixation Y:", -40, 40);
+	DlgReal(3, "Window radius:", .1, 10);
+	DlgReal(4, "Acquisition time(s):", .1, 30);
+	DlgReal(5, "Fixation time(s):", .1, 30);
+	DlgReal(6, "Response time(s):", .1, 30);
+    
+	i% := DlgShow(FixationX, FixationY, WindowRadius, AcquisitionTime, FixationTime, ResponseTime);	
 
-'    FileOpen(script$ + "\\freqout.s2c", 6);
+	' If user cancelled, reload params
+	if i% = 0 then
+		GetFreqoutParameters();
+	else
+		SaveFreqoutParameters();
+	endif
 
-    SampleClear(); 'Set standard sampling state
-	SampleAutoComment(0); 'Prompt for comment after sampling
-	SampleAutoCommit(60); 'Seconds between each file commit
-
-'   ports 0, 1, 2, ... are used for WaveMark channels. 
-'   NumberOfElectrodes% is initialized to 1. If at some point more electrodes
-'   are used, then that value should be changed - either hardcoded or via a dialog. 
-'   Also, be aware that the Power 1401 has only 8 ADC inputs. Two (ports 6 and 7) are
-'   taken up by the 
-
-	for index := 1 to NumberOfElectrodes% do
-		SampleWaveMark(index, index-1, 2000, 34, 15, 28000); ' chan, port, event rate, points, pre-trigger, rate
-        SampleTitle$(index, "E "+Str$(index)); 
-	next
-
-    XChannel% := NumberOfElectrodes% + 1;
-    YChannel% := NumberOfElectrodes% + 2;
-	SampleWaveform(XChannel%,6,1000);
-	SampleTitle$(XChannel%,"Eye X");
-	SampleWaveform(YChannel%,7,1000);
-	SampleTitle$(YChannel%,"Eye Y");
-	
-	SampleSequencer(script$ + "freqout.pls");
-	SampleOptimise(2,2,2,2,50);  'Set optimise mode (do this last)
-	SampleMode(1); 'Continuous sampling
-end;
-
-
-
-
-proc InitializeWindows()
-
-	'Open the data sampling window
-	DataWindow% := FileNew(0,4);
-	Window(0, 0, 100, 50);
-	View(DataWindow%).WindowVisible(1);
-
-end;
-
-
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' InitilizeToolbar - prepare toolbar buttons. Note that the idle processing function (ToolbarSet(0, blah, blah)) is 
-' not set here. That's done when the user hits the start button.
-'
-proc InitializeToolbar()
-
-	View(App(8)).WindowVisible(0);	'Hide the standard sample bar
-	ToolbarVisible(1);
-	ToolbarSet(1,"Sample start",Start%);
-	ToolbarSet(2,"Sample stop", Stop%);
-	ToolbarSet(3,"Quit",Quit%);
-	ToolbarEnable(2, 0);         ' can't stop until you've started....
-    ToolbarEnable(3, 1);
-	Toolbar("Go",0x3ff);
-
-end;
-
-
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' Give reward. 
-'
-' TODO: re-implement this for reclab. 
-func Reward%()
-'	var i%;
-'	for i%:=1 to JuicePerReward% do Yield(.05); SampleKey("J"); next
-    SampleKey("J");
 	return 1;
 end;
 
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-func Start%()
-	
-	SampleStart(0); 'Start sampling
-	
-	ToolbarSet(0, "", IdleProcessing%);	'Enable the IdleProcessing function
-	ToolbarEnable(2,1);                 ' now you can stop
-	ToolbarEnable(1,0);                 ' but you can't start again
-	ToolbarEnable(7,0);                 ' No quitting anymore - data is lost !!!
 
-    return 1;
-end;
-
-''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-func Stop%()
-
-	' Disable idle process func
-	ToolbarSet(0,"");
-	ToolbarEnable(2,0);                 ' but you can't stop again
-	SampleStop();
-    return 1;
-
-end;
-
-' Used to hard-quit from toolbar. This will close data files without saving!!! 
-' It is important that this function be disabled once sampling is started!!!
-
-func Quit%()
-	FileClose(-1,-1);
-	return 0;
-end;
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' IdleProcessing - this function is called repeatedly during sampling. 
+' State variables
 '
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+
+' State name constants
+const stateStartTrial% := 1;
+const stateDone% := 99;
+const stateWaitForAcquisition% := 2;
+const stateWaitForFixation% := 3;
+const stateFailAcquisition% := 4;
+const stateFailFixation% := 5;
+const stateMaintainFixation% := 6;
+const stateWaitForResponse% := 7;
+const stateCorrectResponse% := 8;
+const stateIncorrectResponse% := 9;
+const statePlayStandardStim% := 21;
+const stateWaitStandardStim% := 22;
+const statePause1 := 23;
+const statePlayStim% := 24;
+const stateWaitStim% := 25;
+const statePause2 := 26;
+
+var iCurrentState% := stateStartTrial%;
+var tNow := -1;
+var tLast:= -1;
+var tStateStart := -1;
+var TrialStimIndex% := -1;
+var TrialStimIndexHeldOver% := 0;
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' StateProcessor
+'
+' Handles state logic for the paradigm. 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-' Constants for states
-const stateStart%               := -1;
-const stateSelectTrial%         := 0;
-const stateFixPtOn%             := 1;
-const stateWaitForAcquisition%  := 2;
-const stateWaitForFixation%     := 3;
-const stateMaintainFixation%    := 4;
-const stateAnswerPoints%        := 5;
-const stateWaitForResponse%     := 6;
-const stateCorrectResponse%     := 7;
-const stateIncorrectResponse%   := 8;
-const stateTrialFailed%         := 9;
-const stateDone%                := 10;	
-var iState% := stateStart%;
+func StateProcessor%()
+    var returnValue% := 1;      ' set to 0 to stop paradigm completely
+    var xEye, yEye;
+    
+    ' if paused get out now
+    if isPaused% <> 0 then
+        return returnValue%;
+    endif
+    
+    if EyePos(xEye, yEye) <> 0 then
+        PrintLog("Error getting eye position!\n");
+        xEye := 999999;
+        yEye := 999999;
+    endif
+    
+	tNow := MaxTime();
+    
+	docase 	
+	case iCurrentState% = stateStartTrial% then
+    
+        GetTrialStimIndex();
+        if TrialStimIndex% < 0 then
+            iCurrentState% := stateDone%;
+        else
+            ' turn on fix point and change state
+            SampleKey("F");
+            iCurrentState% := stateWaitForAcquisition%;
+            tStateStart := tNow;
+        endif
+        
+    case iCurrentState% = stateWaitForAcquisition% then
 
-var nTrialsStarted%:=0;
-var nTrialsCompleted%:=0;
-var nTrialsAborted% :=0;		' 
+        ' Check eye position. If it is within window before AcquisitionTime, 
+        ' change state to stateWaitForFixation. Otherwise change state to 
+        ' stateFailAcquisition.
+        if tNow - tStateStart > AcquisitionTime then
+            iCurrentState% := stateFailAcquisition%;
+        else
+            if InFixationWindow%(xEye, yEye) then
+                iCurrentState% := stateWaitForFixation%;
+                tStateStart := tNow;
+            endif
+        endif
 
-var tNow;
-var xEye;
-var yEye;
-var tLastUpdate;
-var tStateStart;
+	case iCurrentState% = stateDone% then
+        
+    case iCurrentState% = stateFailAcquisition% then
+        
+    case iCurrentState% = stateFailFixation% then
+        
+    case iCurrentState% = stateWaitForFixation% then
+        ' Eye must stay within fixation window for FixationTime
+        if tNow - tStateStart > FixationTime then
+            iCurrentState% := stateMaintainFixation%;
+            tStateStart := tNow;
+        else
+            if InFixationWindow%(xEye, yEye) = 0 then
+                iCurrentState% := stateFailFixation%
+            endif
+        endif
+        
+    case iCurrentState% = stateMaintainFixation% then
 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-proc ChangeStateTo(stateTo%, tStart)
-	iState% := stateTo%;
-	if tStart > 0 then tStateStart := tStart; endif;
+    case iCurrentState% = stateWaitForResponse% then
+        ' ResponseTime
+    case iCurrentState% = stateCorrectResponse% then
+        
+    case iCurrentState% = stateIncorrectResponse% then
+    
+    else 
+
+        ' Unknown state!
+        Message("Unknown state=" + str$(iCurrentState%));
+        halt;
+    
+    endcase;
+    
+    tLast := tNow;
+    return returnValue%;
 end;
 
 
 
-func IdleProcessing%()
-    var iStatus% := 1;	
-    var iExit% := 0;
+' TODO this proc does nothing
 
-    tNow := MaxTime();
-	xEye := ChanMeasure(XChannel%,2,tNow-.001,tNow-.006)*DegreesPerVoltX;
-	yEye := ChanMeasure(YChannel%,2,tNow-.001,tNow-.006)*DegreesPerVoltY;
-
-	' Don't update display every time....
-'	if tNow-tLastUpdate > .005 then
-'		View(XYWindow%).XYAddData(1,xEye,yEye);
-'		tLastUpdate := tNow;
-'	endif
-
-while iExit% = 0 do
-    
-	docase 
-		case iState% = stateStart% then
-    
-            ChangeStateTo(stateSelectTrial%, tNow);
-
-		case iState% = stateVSGWaitConfirm% then
-
-
-
-func IdleProcessing%()
-
-    
-
-
-
-    return 1;
+proc GetTrialStimIndex()
+    if TrialStimIndexHeldOver% <> 1 then
+        TrialStimIndex% := 1;
+    endif
 end;
 
+' TODO this proc does nothing
 
-' Dialog to set experimental parameters
-
-FreqoutScriptDialog%();
-
-' Open sampling configuration
-
-'SamplingConfiguration();
-
-' Get display windows ready. This also opens the data file .
-
-'InitializeWindows();
-
-' Configure toolbar
-
-InitializeToolbar();
-
+func InFixationWindow%(x, y)
+    var in% := 0;
+    
+    return in%;
+end;
