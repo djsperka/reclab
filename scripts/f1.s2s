@@ -65,7 +65,7 @@ endif
 
 ' 
 ' Sampling configuration
-
+CreateSampleConfiguration();
 
 ' Prepare toolbar
 InitializeToolbar();

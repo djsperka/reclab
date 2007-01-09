@@ -588,6 +588,22 @@ end;
 
 
 ' TODO this proc does nothing
+' The trial stim index is selected and set in the global var TrialStimIndex%. 
+' That means that the stim signal for output channel 0 (1) are in 
+' stim0%[TrialStimIndex%][] (stim1%[TrialStimIndex%][]). 
+' 
+' There are two methods by which the stim index is chosen. 
+'
+' The simplest is when TrialStimIndexHeldOver% is set to 1. In this case we do nothing
+' here and the trial stim index from the last trial is re-used. This happens when 
+' correction trials were chosen and the last trial was a failure of some sort. The same
+' trial is to be re-done until the subject gets it right. 
+' 
+' The other case is more complicated. The experimenter specified how many complete trials
+' of each type are required (CompleteTrials%). 
+
+var stim0%[maxStim%][maxStimLength%];   ' These stim will be played on dac out 0
+var stim1%[maxStim%][maxStimLength%];   ' these will be played on dac out 1
 
 proc GetTrialStimIndex()
     if TrialStimIndexHeldOver% <> 1 then
