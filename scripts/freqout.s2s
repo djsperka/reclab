@@ -18,11 +18,12 @@ var stimS0%[maxStimLength%];             ' Standard stim
 var stimS1%[maxStimLength%];             ' Standard stim
 var stimCount% := 0;        ' Number of stim in stimN arrays
 var stimTrialCount%[maxStim%];              ' Number of complete trials for each stim
+var stimTrialCompleteRounds%;           ' Number of complete rounds of trials thus far
 var stimCurrentIndex%;                  ' stim being used for current trial
 
 ' Control variables
 var isPaused% := 0;           ' set to 1 when paused
-var CompleteTrials% := 0;       ' Number of complete trials of each stim type required
+var CompleteTrialsRequired% := 0;       ' Number of complete trials of each stim type required
 var UseCorrectionTrials% := 0;  ' if 1, require complete trials to be correct also
 
 ' Channel numbers
@@ -117,7 +118,7 @@ func SelectStimSet%(stimFilePath$, &specFile$)
     DlgList(1, "Stim set:", txtFiles$, count%);
     DlgInteger(2, "# complete trials for each stim", 1, 100, 0, 0, sp%);
     DlgCheck(3, "Use correction trials?");
-    status% := DlgShow(i%, CompleteTrials%, UseCorrectionTrials%);
+    status% := DlgShow(i%, CompleteTrialsRequired%, UseCorrectionTrials%);
     if (status% = 1) then
         specFile$ := txtFiles$[i%];
     else
@@ -473,6 +474,7 @@ end;
 
 ' State name constants
 const stateStartTrial% := 1;
+const stateError% := 98;
 const stateDone% := 99;
 const stateWaitForAcquisition% := 2;
 const stateWaitForFixation% := 3;
@@ -507,6 +509,7 @@ var TrialStimIndexHeldOver% := 0;
 func StateProcessor%()
     var returnValue% := 1;      ' set to 0 to stop paradigm completely
     var xEye, yEye;
+    var tmp%;
     
     ' if paused get out now
     if isPaused% <> 0 then
@@ -524,15 +527,18 @@ func StateProcessor%()
 	docase 	
 	case iCurrentState% = stateStartTrial% then
     
-        GetTrialStimIndex();
-        if TrialStimIndex% < 0 then
+        tmp% := GetTrialStimIndex%();
+        docase 
+        case tmp% = 1 then
             iCurrentState% := stateDone%;
+        case tmp% < 0 then
+            iCurrentState% := stateError%;
         else
             ' turn on fix point and change state
             SampleKey("F");
             iCurrentState% := stateWaitForAcquisition%;
             tStateStart := tNow;
-        endif
+        endcase
         
     case iCurrentState% = stateWaitForAcquisition% then
 
@@ -549,6 +555,8 @@ func StateProcessor%()
         endif
 
 	case iCurrentState% = stateDone% then
+
+	case iCurrentState% = stateError% then
         
     case iCurrentState% = stateFailAcquisition% then
         
@@ -587,7 +595,6 @@ end;
 
 
 
-' TODO this proc does nothing
 ' The trial stim index is selected and set in the global var TrialStimIndex%. 
 ' That means that the stim signal for output channel 0 (1) are in 
 ' stim0%[TrialStimIndex%][] (stim1%[TrialStimIndex%][]). 
@@ -600,14 +607,74 @@ end;
 ' trial is to be re-done until the subject gets it right. 
 ' 
 ' The other case is more complicated. The experimenter specified how many complete trials
-' of each type are required (CompleteTrials%). 
+' of each type are required (CompleteTrialsRequired%). We tally the number of complete trials for
+' each type in stimTrialCount%[]. We use the var stimTrialCompleteRounds% to keep track of 
+' how many times we've completed the entire set of trials. Thus, when 
+' stimTrialCompleteRounds% is 1 it means that we've had one (1) complete trial of each type 
+' and we're working on the second round. So to choose the next stim we run through 
+' stimTrialCount%[] and gather up all the indexes (indices?) i% whose value 
+' stimTrialCount%[i%] is equal to stimTrialCompleteRounds%. If there's none of those, then
+' increment stimTrialCompleteRounds% and do it again. Once we've gathered a list of indices
+' then generate a random number and make a choice of index. That index is the value we
+' set in TrialStimIndex%.
 
-var stim0%[maxStim%][maxStimLength%];   ' These stim will be played on dac out 0
-var stim1%[maxStim%][maxStimLength%];   ' these will be played on dac out 1
+func GetTrialStimIndex%()
+    var status% := 0;
+    var index% := 0;
+    var j% := 0;
+    var count% := 0;
+    var candidateIndices%[maxStim%];
 
-proc GetTrialStimIndex()
+    ArrConst(candidateIndices%[], -1);
     if TrialStimIndexHeldOver% <> 1 then
-        TrialStimIndex% := 1;
+
+        ' run through stimTrialCount% and see if we have to increment stimTrialCompleteRounds%
+        for j% := 0 to (stimCount%-1) do
+            if stimTrialCount%[j%] = stimTrialCompleteRounds% then
+                count% += 1;
+            endif
+        next;
+
+        if count% = 0 then
+            ' increment stimTrialCompleteRounds%
+            stimTrialCompleteRounds% += 1;
+        endif
+        
+        ' check if we've completed all the required trials
+        if stimTrialCompleteRounds% = CompleteTrialsRequired% then
+            status% := 1;
+        endif
+
+        if status% = 0 then
+
+            ' Now build a list of indices to choose from
+            count% := 0;
+            
+            for j% := 0 to (stimCount%-1) do
+                if stimTrialCount%[j%] = stimTrialCompleteRounds% then
+                    candidateIndices%[count%] := j%;
+                    count% += 1;
+                endif
+            next;
+            
+            ' Now if count% is 0 we have a serious problem. If not then generate
+            ' a random number and use it to choose the next index.
+            if count% = 0 then
+                status% := -1;
+            else
+                index% := Rand(0, count%);      ' random value 0<=rand<count% is truncated
+                TrialStimIndex% := candidateIndices%[index%];
+                if TrialStimIndex% < 0 then
+                    PrintLog("Bad error! TrialStimIndex% = -1!!!\n");
+                    status% := -2;
+                endif
+            endif
+        endif
+
+
+
+
+
     endif
 end;
 
