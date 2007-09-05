@@ -1,0 +1,86 @@
+var port% := 1;
+var baud% := 38400;
+var parity% := 0;
+var bits% := 8;
+var stopb% := 1;
+var status% := 0;
+var i%;
+var cmd%;
+var data%;
+
+PrintLog("Hello\n");
+
+
+status% := SerialOpen(port%, baud%, bits%, parity%, stopb%);
+PrintLog("SerialOpen returned " + str$(status%) + "\n");
+
+
+' send 20 ERR_ACK
+cmd% := 0xC2;
+PrintLog("Write ERR_ACK x 20\n");
+for i%:=1 to 20 do
+	status% := SerialWrite(port%, cmd%);
+	if status% <> 1 then
+		PrintLog("SerialWrite returned " + str$(status%) + "\n");
+	endif
+next;
+
+cmd% := 0x00;
+PrintLog("Write SNOP x 20\n");
+for i%:=1 to 20 do
+	status% := SerialWrite(port%, cmd%);
+	if status% <> 1 then
+		PrintLog("SerialWrite returned " + str$(status%) + "\n");
+	endif
+next;
+
+
+PrintLog("Reading...\n");
+
+i% := 1000;
+repeat
+	i% := i% - 1;
+	status% := SerialRead(port%, data%);
+until (i% <= 0 or status% <= 0);
+
+PrintLog("i=" + str$(i%) + " status=" + str$(status%) + "\n");
+
+
+
+
+' Now look for devices
+var pn% := 0; 
+var rn% := 0;
+for rn% := 0 to 1 do
+	for pn% := 0 to 3 do
+
+		data% := rn% * 4 + pn%;
+		cmd% := 0x08;
+		status% := SerialWrite(port%, data%);
+		status% := SerialWrite(port%, cmd%);
+
+		' send 40 SNOPs
+		cmd% := 0x00;
+		for i% := 1 to 40 do
+			SerialWrite(port%, cmd%);
+		next;
+		data% := 999;
+		status% := SerialRead(port%, data%);
+
+		docase
+			case status% = 1 then 
+			PrintLog("Found device at r,p=" + str$(rn%) + "," + str$(pn%) + " " + str$(data%) + "\n");
+			case status% = 0 then
+			PrintLog("SerialRead returned 0 when searching device at r,p=" + str$(rn%) + "," + str$(pn%) + "\n");
+			else
+			PrintLog("SerialRead returned " + str$(status%) + "when searching device at r,p=" + str$(rn%) + "," + str$(pn%) + "\n");
+		endcase;
+
+	next;
+
+next;
+
+
+status% := SerialClose(port%);
+PrintLog("SerialClose returned " + str$(status%) + "\n");
+
