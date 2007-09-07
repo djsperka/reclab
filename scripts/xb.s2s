@@ -8,27 +8,52 @@ var i%;
 var cmd%;
 var data%;
 
-PrintLog("Hello\n");
+' xbdrv command numbers. All are same as found in xbdrv.h, with "xbcmd" prefix and "_" removed
+' because spike2 doesn't like them. 
+const xbcmdSNOP%				:=	0x00;
+const xbcmdVERREQUEST%		:= 0x06;
+const xbcmdXTRIG%				:= 0x07;
+const xbcmdIDENTREQUEST%	:= 0x08;
+const xbcmdHOSTRTR%			:= 0x09;
+const xbcmdARBERR%			:= 0xC0;
+const xbcmdHOSTERR%			:= 0xC1;
+const xbcmdERRACK%			:= 0xC2;
+const xbcmdSLAVEACK%			:= 0xC3;
+const xbcmdHARDRST%			:= 0xC5;
+const xbcmdSLAVEERR%			:= 0xC6;
+const xbcmdBAUDLOCK%			:= 0xCA;
+const xbcmdARBACK%			:= 0xCB;
+const xbcmdARBID%				:= 0xCC;
+const xbcmdARBRST%			:= 0xCD;
+const xbcmdGTRIG%				:= 0xD2;
+const xbcmdLTRIG%				:= 0xD3;
+const xbcmdARBVERREQ%		:= 0xD4;
 
+const xbcmdPA4ATT%			:= 0x20;
+
+const xbTIMEOUT%				:= 100;
+const xbMAXTRYS%				:= 3;
+
+PrintLog("Hello\n");
 
 status% := SerialOpen(port%, baud%, bits%, parity%, stopb%);
 PrintLog("SerialOpen returned " + str$(status%) + "\n");
 
 
+
+
 ' send 20 ERR_ACK
-cmd% := 0xC2;
 PrintLog("Write ERR_ACK x 20\n");
 for i%:=1 to 20 do
-	status% := SerialWrite(port%, cmd%);
+	status% := SerialWrite(port%, xbcmdERRACK%);
 	if status% <> 1 then
 		PrintLog("SerialWrite returned " + str$(status%) + "\n");
 	endif
 next;
 
-cmd% := 0x00;
 PrintLog("Write SNOP x 20\n");
 for i%:=1 to 20 do
-	status% := SerialWrite(port%, cmd%);
+	status% := SerialWrite(port%, xbcmdSNOP%);
 	if status% <> 1 then
 		PrintLog("SerialWrite returned " + str$(status%) + "\n");
 	endif
@@ -43,44 +68,155 @@ repeat
 	status% := SerialRead(port%, data%);
 until (i% <= 0 or status% <= 0);
 
-PrintLog("i=" + str$(i%) + " status=" + str$(status%) + "\n");
-
-
-
 
 ' Now look for devices
 var pn% := 0; 
 var rn% := 0;
-for rn% := 0 to 1 do
+var dev%;
+for rn% := 1 to 2 do
 	for pn% := 0 to 3 do
-
-		data% := rn% * 4 + pn%;
-		cmd% := 0x08;
-		status% := SerialWrite(port%, data%);
-		status% := SerialWrite(port%, cmd%);
-
-		' send 40 SNOPs
-		cmd% := 0x00;
-		for i% := 1 to 40 do
-			SerialWrite(port%, cmd%);
-		next;
-		data% := 999;
-		status% := SerialRead(port%, data%);
-
-		docase
-			case status% = 1 then 
-			PrintLog("Found device at r,p=" + str$(rn%) + "," + str$(pn%) + " " + str$(data%) + "\n");
-			case status% = 0 then
-			PrintLog("SerialRead returned 0 when searching device at r,p=" + str$(rn%) + "," + str$(pn%) + "\n");
-			else
-			PrintLog("SerialRead returned " + str$(status%) + "when searching device at r,p=" + str$(rn%) + "," + str$(pn%) + "\n");
-		endcase;
-
+		dev% := XBGetDeviceCode%(rn%, pn%);
+		PrintLog("Check for device at " + str$(rn%) + "," + str$(pn%) + ": " + str$(dev%) + "\n");
 	next;
-
 next;
+
+
+' Set atten on pa4 at 1,2
+PrintLog("Set atten to 20 at 2,1 = ");
+i% := PA4atten%(port%, 2, 1, 20.0);
+PrintLog(str$(i%) + "\n");
+
+
 
 
 status% := SerialClose(port%);
 PrintLog("SerialClose returned " + str$(status%) + "\n");
+
+
+
+func xbFlush(port%)
+	var i%;
+	var cmd%;
+	var count%;
+	var status%;
+	var v%;
+
+	cmd% := xbcmdERRACK%;
+	for i% := 1 to 20 do
+		SerialWrite(port%, cmd%);
+	next;
+	cmd% := xbcmdSNOP%;
+	for i% := 1 to 20 do
+		SerialWrite(port%, cmd%);
+	next;
+
+	count% := 1000;
+	repeat
+		count% -= 1;
+		status% := SerialRead(port%, v%);
+	until count% = 0 or status% = 0;
+
+	if count% = 0 then
+		PrintLog("Error - unable to flush serial line!\n");
+		return -1;
+	else
+		return 0;
+	endif
+end
+
+func xbStandForm(port%, xln%, c%[], n%)
+	var i%;
+	var s% := 0;
+	var v%;
+	var trys% := 0;
+
+	if n% > 63 then
+		PrintLog("Too many characters for standard form command (" + str$(n%) + "\n");
+		return -1;
+	endif
+
+	' attempt to send command up to xbMAXTRYS times
+	repeat
+
+		trys% += 1;
+
+		' send xln
+		status% := SerialWrite(port%, xln%);
+		PrintLog("write xln status=" + str$(status%) + "\n");
+
+		' send number of bytes to be sent, with an extra bit (0x40) set.
+		' Number of bytes is the number of command bytes + 1 
+		v% := (n%+1) | 0x40;
+		status% := SerialWrite(port%, v%);
+		PrintLog("write n status=" + str$(status%) + "\n");
+
+		' send command bytes and checksum
+		for i% := 0 to (n%-1) do
+			s% += c%[i%];				' checksum
+			status% := SerialWrite(port%, c%[i%]);
+			PrintLog("write (" + str$(i%) + ") status=" + str$(status%) + "\n");
+		next
+		status% := SerialWrite(port%, s%);
+		PrintLog("write checksum status=" + str$(status%) + "\n");
+
+		' Wait for SLAVE_ACK
+		status% := SerialRead(port%, v%);
+		PrintLog("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
+
+	until trys% = xbMAXTRYS% or v% = xbcmdSLAVEACK%;
+
+	if v% = xbcmdSLAVEACK% then
+		return 0;
+	else
+		return 1;
+	endif
+end
+
+
+
+func PA4atten%(port%, rn%, pn%, atten)
+
+	var cmd%[3];
+	const len% := 3;
+	var v%;
+	var xln%;
+
+	xln% := rn%*4 + pn%;
+	cmd%[0] := xbcmdPA4ATT%;
+	v% := atten*10 + 0.05;
+	cmd%[1] := v% / 256;
+	cmd%[2] := v% mod 256;
+
+	return xbStandForm(port%, xln%, cmd%, len%);
+
+end
+
+
+
+func XBGetDeviceCode%(rackNum%, positionNum%)
+	var xln%;
+	var status%;
+	var data%;
+
+	' send xln then the IDENT_REQUEST command
+	xln%  := rackNum% * 4 + positionNum%;
+	status% := SerialWrite(port%, xln%);
+	status% := SerialWrite(port%, xbcmdIDENTREQUEST%);
+
+	' send 40 SNOPs
+	' I guess this is a way of waiting for a reply?
+	for i% := 1 to 40 do
+		SerialWrite(port%, xbcmdSNOP%);
+	next;
+
+	data% := 0;
+	status% := SerialRead(port%, data%);
+
+	docase
+		case status% < 0 then 
+			data% := -1;	' error condition
+	endcase;
+
+	return data%;
+end
 

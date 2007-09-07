@@ -1,0 +1,34 @@
+var port% := 1;
+var baud% := 38400;
+var parity% := 0;
+var bits% := 8;
+var stopb% := 1;
+var hsk% := 1;
+var status% := 0;
+var i%;
+var j%;
+var cmd%;
+var data%;
+
+PrintLog("BAUD_LOCK\n");
+
+
+'status% := SerialOpen(port%, baud%, bits%, parity%, stopb%);
+status% := SerialOpen(port%, baud%, bits%);
+PrintLog("SerialOpen returned " + str$(status%) + "\n");
+
+
+' send 100 BAUD_LOCK
+cmd% := 0xCA;
+PrintLog("Write BAUD_LOCK x 100\n");
+for i%:=1 to 100 do
+	status% := SerialWrite(port%, cmd%);
+	yield(.05);
+	if status% <> 1 then
+		PrintLog("SerialWrite returned " + str$(status%) + "\n");
+	endif
+next;
+
+
+status% := SerialClose(port%);
+PrintLog("SerialClose returned " + str$(status%) + "\n");
