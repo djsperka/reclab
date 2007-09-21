@@ -1,0 +1,322 @@
+var status;
+var port% := 1;
+var baud% := 9600;
+var bits% := 8;
+var par% := 1;
+var stop% := 1;
+var hsk% := 1;
+var counter% := 0;
+var data%;
+var ready% := 0;
+var i%, n%, j%;
+var reply%;
+var cmdstatus%[2];
+
+status := SerialOpen(port%, baud%, bits%, par%, stop%, hsk%);    ' defaults 9600 baud, no parity, 7+1 bits
+if (status < 0) then
+    PrintLog("Open status = " + str$(status) + "\n");
+endif
+
+repeat
+    data% := 0x7f;
+    SerialWrite(port%, data%);
+    Yield(.5);
+    data% := 0;
+    status := SerialRead(port%, data%);
+    docase
+        case (status = 0) then
+            PrintLog("Timeout waiting for TDTSERV response\n");
+        case (status < 0) then
+            PrintLog("Read error status = " + str$(status) + "\n");
+        case (status = 1) then
+            if (data% = 0x7f) then 
+                ready% := 1; 
+                PrintLog("Got OK reply\n");
+            else
+                PrintLog("Got reply, but init error!\n");
+                halt;
+            endif;
+            
+    endcase;
+    
+    counter% += 1;
+until ready%=1 or counter% = 10;
+
+docase
+    case (ready% = 0) then
+        PrintLog("No READY signal from TDTSERV. Quitting.\n");
+        halt;
+    case (ready% = 1) then
+        PrintLog("READY signal received from TDTSERV.\n");
+endcase;
+
+
+Message("Hit enter to send pm1_clear(1)");
+tdtPM1Clear(1);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+Message("Hit enter to send pm1_config(1, 1)");
+tdtPM1Config(1, 1);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+Message("Hit enter to send pm1_mode(1, 1)");
+tdtPM1Mode(1, 1);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+Message("Hit enter to send pm1_spkon(1, 1)");
+tdtPM1Spkon(1, 1);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+Message("Hit enter to send pm1_spkoff(1, 1)");
+tdtPM1Spkoff(1, 1);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+var atten;
+atten := Input("Enter atten", 10.0);
+tdtPA4Atten(1, atten);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+atten := Input("Enter atten", atten);
+tdtPA4Atten(1, atten);
+status := readTDTReply%(cmdstatus%[]);
+if (status = 2) then
+    PrintLog("Got reply " + str$(cmdstatus%[0]) + "\n");
+else
+    PrintLog("Got reply status " + str$(status) + "\n");
+endif
+
+'for i% := 0 to 256 do
+
+'repeat
+    
+'    i% := Input("Enter command length:", 0);
+'    n% := Input("Enter number to send:", 0);
+'    if i% >=0 and i% <= 256 then
+'        for j%:=1 to n% do
+'            status := sendCommand%(i%);
+'            PrintLog(str$(j%) + " sendCommand(" + str$(i%) + "): " + str$(status) + "\n");
+'            reply% := readReply%();
+'            PrintLog(str$(j%) + " Reply status=" + str$(reply%) + "\n");
+'        next;
+'    endif
+
+'next;
+'until  i%<0 or i%>256;
+
+PrintLog("Closing serial port...\n");
+SerialClose(port%);
+
+
+func sendCommand%(len%)
+    var status;
+    var cmd%[258];
+    var i%;
+    cmd%[0] := 0xaa;
+    cmd%[1] := len%;
+    for i% := 0 to len% do
+        cmd%[2 + i%] := i%;
+    next;
+    
+    PrintLog("Sending command, length " + str$(len%) + "(" + str$(len(cmd%[:2+len%])) + ")\n");
+    status := SerialWrite(port%, cmd%[:2+len%]);
+    return status;
+end
+
+func sendTDTCommand%(cmd%[])
+    var status;
+    var len%;
+    len% := len(cmd%[]);
+    PrintLog("Sending command, length " + str$(len%) + ")\n");
+    status := SerialWrite(port%, cmd%[]);
+    return status;
+end
+
+
+func readReply%()
+    var data% := 0;
+    var counter% := 0;
+    var status%;
+    repeat
+        status% := SerialRead(port%, data%);
+        counter% += 1;
+    until status%=1 or counter% = 10;
+
+    return status%;
+end
+
+func readTDTReply%(data%[])
+    var counter% := 0;
+    var status%;
+    var len% := 0;
+    repeat
+        status% := SerialCount(port%);
+        counter% += 1;
+    until status%=2 or counter% = 10;
+
+    if (status% = 2) then
+        len% := SerialRead(port%, data%[]);
+    endif
+    return len%;
+end
+
+
+#include "tdtconst.s2s"
+
+proc tdtPM1Clear(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPM1CLEAR%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPM1Config(din%, ccode%)
+    var cmd%[4];
+    cmd%[0] := cmdPM1CONFIG%;
+    cmd%[1] := 2;
+    cmd%[2] := din%;
+    cmd%[3] := ccode%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPM1Mode(din%, mode%)
+    var cmd%[4];
+    cmd%[0] := cmdPM1MODE%;
+    cmd%[1] := 2;
+    cmd%[2] := din%;
+    cmd%[3] := mode%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPM1Spkon(din%, sn%)
+    var cmd%[4];
+    cmd%[0] := cmdPM1SPKON%;
+    cmd%[1] := 2;
+    cmd%[2] := din%;
+    cmd%[3] := sn%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPM1Spkoff(din%, sn%)
+    var cmd%[4];
+    cmd%[0] := cmdPM1SPKOFF%;
+    cmd%[1] := 2;
+    cmd%[2] := din%;
+    cmd%[3] := sn%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Atten(din%, atten)
+    var cmd%[5];
+    var i%;
+    cmd%[0] := cmdPA4ATTEN%;
+    cmd%[1] := 3;
+    cmd%[2] := din%;
+    ' mult by 10, convert to int, pass high byte and low byte....
+    i% := atten * 10;
+    cmd%[3] := i% / 256;
+    cmd%[4] := i% mod 256;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Setup(din%, base, stepval)
+    var cmd%[7];
+    var i%;
+    cmd%[0] := cmdPA4SETUP%;
+    cmd%[1] := 5;
+    cmd%[2] := din%;
+    ' mult by 10, convert to int, pass high byte and low byte....
+    i% := base * 10;
+    cmd%[3] := i% / 256;
+    cmd%[4] := i% mod 256;
+    i% := stepval * 10;
+    cmd%[5] := i% / 256;
+    cmd%[6] := i% mod 256;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Auto(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4AUTO%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Man(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4MAN%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Mute(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4MUTE%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Nomute(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4NOMUTE%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Ac(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4AC%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Dc(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4DC%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
+
+proc tdtPA4Read(din%)
+    var cmd%[3];
+    cmd%[0] := cmdPA4READ%;
+    cmd%[1] := 1;
+    cmd%[2] := din%;
+    sendTDTCommand%(cmd%[]);
+end
