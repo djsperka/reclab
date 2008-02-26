@@ -1,0 +1,80 @@
+' This is the preferred way of initializing the TDT-Spike2 connection. 
+' The serial port is opened and we PING the server - just a check to see if the server
+' is there and responding. After that a series of TDT commands are issued. These commands
+' are taken from space1_g et al. 
+
+#include "tdt.s2s"
+#include "recfuncs.s2s"
+var status%:=0;
+var i%;
+
+if tdtSerial(1, 0) < 0 then
+    PrintLog("Error in tdtSerial\n");
+    halt;
+else
+    printLog("Serial open OK\n");
+endif
+
+status% := tdtPING%();
+printLog("ping status " + str$(status%) + "\n");
+if status% <> 0 then
+    Message("Cannot ping TDT server. Check that TDTSERV is running.");
+    halt;
+endif
+
+
+' Initialize tdt stuff
+if tdtInit%() <> 0 then
+    Message("tdt initialization failed " + str$(i%) + "\n");
+    halt;
+endif
+
+' Sample of checking whether lever is up, down or if there was an error checking. 
+status% := recLeverDown%();
+if status% = 1 then
+    PrintLog("Lever is down\n");
+else
+    if status% = 0 then
+        PrintLog("Lever is up\n");
+    else
+        PrintLog("ERROR in recLeverDown%\n");
+    endif
+endif
+
+
+' Try duplicating 'check_lever()'. This func should blink the light and wait until
+' the lever is down. Light then is set on and left that way. 
+
+status% := recBlinkUntilLeverDown%(.5, 10.0);
+
+docase
+    case status% = 1 then
+        PrintLog("Lever pressed\n");
+    case status% = 0 then
+        PrintLog("Timeout!\n");
+    else
+        PrintLog("Error in recBlinkUntilLeverDown!\n");
+endcase
+    
+
+
+
+
+tdtSerial(0, 0);
+
+
+func tdtInit%()
+    tdtPI2Clear%(1);
+    tdtPI2Outs%(1, 207);
+    tdtPI2Logic%(1, 0x00, 0x20);
+    tdtPI2OutsX%(1, 1);
+    tdtPI2OutsX%(1, 2);
+    tdtPI2writeX%(1, 1, 0);
+    tdtPI2WriteX%(1, 2, 0);
+    tdtPM1Clear%(1);
+    tdtPM1Config%(1, 1);
+    tdtPM1Mode%(1, 1);
+    tdtPA4Atten%(1, 30);
+
+    return 0;
+end
