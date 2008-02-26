@@ -1,3 +1,4 @@
+const cmdPING%     := 0x7d;
 const cmdPM1CLEAR% := 0x1;
 const cmdPM1CONFIG%:= 0x2;
 const cmdPM1MODE%  := 0x3;
@@ -52,3 +53,6 @@ const paramPM1SN15%    := 15;
 const paramPM1SN16%    := 16;
 const paramPM1CHANA%    := 0;
 const paramPM1CHANB%    := 1;
+
+const replyOK%      := 0x7f;
+const replyERROR%   := 0x6f;
