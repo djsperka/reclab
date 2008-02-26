@@ -1,0 +1,93 @@
+#include "tdt.s2s"
+
+
+' recLeverDown%()
+'
+' Returns 1 (0) if lever is held down (not held down). Returns -1 if an error occurred
+' reading the TDT PI2. Assumes that the PI2 bit 5 is always set (0x10 = 16), and that bit 6
+' is also set (0x30 = 48) when the lever circuit is closed (lever down). 
+
+func recLeverDown%()
+    var pii% := 0;
+    var status% := 0;
+    var down% := 0;
+
+    ' read PI2
+    status% := tdtPI2Read%(1, pii%);
+    'PrintLog("pii = " + str$(pii%) + "\n");
+    if status% = 0 then
+        if pii% = 48 then status% := 1; endif;
+    else
+        status% := -1;
+    endif
+    return status%;
+end
+
+
+' recBlinkUntilLeverDown%(yieldTime, maxTime)
+'
+' Causes LED (PI2 bit 2 = 0x2) to blink until the lever is down. LED is held on/off 
+' for approximately the time (in seconds) in yieldTime (subject to the spike2 function 
+' Yield() and Windows clock). Seems to work well with yieldTime=0.5, though I doubt that
+' the blinking is very uniform. 
+' 
+' if maxTime <= 0, this will go on forever until the lever is pressed. If maxTime is 
+' greater than 0, however, we quit if the lever has not been pressed in (approximately)
+' that amount of time. The time is not measured, we merely increment a counter by 
+' yieldTime every time there is a Yield(). Since Yield() is not that accurate, the actual
+' time measurement is only approximate. 
+' 
+' Returns 1 when lever is down. Returns -1 if an error occurred. Returns 0 if maxTime>0 
+' and the lever is not pressed in that time. 
+
+func recBlinkUntilLeverDown%(yieldTime, maxTime)
+    var status%:= 0;
+    var s%;
+    var idone% := 0;
+    var t% := 1;
+    var approxTime := 0;
+
+    if yieldTime < 0 then yieldTime := 0; endif
+    
+    while idone% = 0 and (maxTime <= 0 or (maxTime > 0 and approxTime < maxTime)) do
+    
+        if t% = 1 then
+            s% := tdtPI2Setbit%(1, 2);
+            if s% <> 0 then
+                PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2Setbit%()\n");
+                return -1;
+            endif
+        else
+            s% := tdtPI2Clrbit%(1, 2);
+            if s% < 0 then
+                PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2ClrBit%()\n");
+                return -1;
+            endif
+        endif
+        t% := 1 - t%;   ' toggles t% between 1 and 0. 
+        
+        ' Check the lever
+        s% := recLeverDown%();
+        if s% < 0 then
+            PrintLog("recBlinkUntilLeverDown%(): Error in recLeverDown%()\n");
+            return -1;
+        else
+            if s% = 1 then 
+                idone% := 1; 
+            else
+                Yield(yieldTime);
+            endif
+        endif
+        approxTime := approxTime + yieldTime;
+    wend
+
+    if idone% = 1 then
+        s% := tdtPI2Setbit%(1, 2);
+        if s% <> 0 then
+            PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2Setbit%()\n");
+            return -1;
+        endif
+    endif
+    
+    return idone%;
+end
