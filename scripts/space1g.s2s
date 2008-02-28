@@ -1,0 +1,161 @@
+' $Log$
+' Revision 1.1  2008/02/28 21:40:15  devel
+' Initial add of this script.
+'
+
+'-------- space1g configuration dialog ---------------------------------------
+
+var spcOutputRoot$;                 ' root filename for output file
+var spcNoise%               := 1;
+var spcTone%                := 0;
+var spcFreq%                := 20000;
+var spcNTrialsPerStim%      := 0;
+var spcMinDelay             := 0.5;
+var spcVarDelay             := 0.5;
+var spcInterStimInterval    := 1.0;
+var spcMissTimeout          := 2.0;
+
+
+const spcdlgRoot%       := 1;
+const spcdlgNoise%      := 2;
+const spcdlgTone%       := 3;
+const spcdlgFreq%       := 4;
+const spcdlgNTrials%    := 5;
+const spcdlgMinDelay%   := 6;
+const spcdlgVarDelay%   := 7;
+const spcdlgInterStimInterval% := 8;
+const spcdlgMissTimeout%:= 9;
+
+
+proc Space1gScriptDialogSaveParams()
+    PrintLog("TODO: proc Space1gScriptDialogSaveParams()\n");
+end
+
+proc Space1gScriptDialogGetParams()
+    PrintLog("TODO: proc Space1gScriptDialogGetParams()\n");
+end
+
+
+func Space1gDlgChanged%(item%)
+    var status% := 1;
+    var value%;
+
+
+    docase 
+    case item% = spcdlgNoise% then
+    
+        ' Get value, toggle it, and set the toggled value in Tone checkbox. 
+    
+        value% := DlgValue(spcdlgNoise%);
+        DlgValue(spcdlgTone%, 1-value%);
+        
+    case item% = spcdlgTone% then
+
+        ' Get value, toggle it, and set the toggled value in Noise checkbox. 
+    
+        value% := DlgValue(spcdlgTone%);
+        DlgValue(spcdlgNoise%, 1-value%);
+    
+    endcase
+
+    ' enable or disable frequency box as needed
+'        if item% = spcdlgNoise% or item% = spcdlgNoise% then
+    DlgEnable(DlgValue(spcdlgTone%), spcdlgFreq%);
+'        endif
+        
+    
+    return status%
+end
+
+
+func Space1gCheckOK%()
+    var status% := 0;
+    var o$;
+
+    ' Verify that output root is not null
+    o$ := DlgValue$(spcdlgRoot%);
+    if len(o$) = 0 then
+        Message("Please enter an output root.");
+        status% := 1;
+    endif
+
+    ' TODO: Check that output file does not exist. 
+    
+    return status%;
+end
+
+func Space1gScriptDialog%()
+    var i%;
+    var status% := 0;
+    
+    ' Fetch parameters from registry
+    
+    Space1gScriptDialogGetParams();
+
+    ' Generate the dialog
+    
+	DlgCreate("Space1g Parameters", 25, 10);
+    DlgString(spcdlgRoot%, "Output file root|Base name of output file, e.g. a022098a", 32, "a-zA-Z0-9_-");
+    DlgCheck(spcdlgNoise%, "Noise");
+    DlgCheck(spcdlgTone%, "Tone");
+    DlgInteger(spcdlgFreq%, "Frequency(Hz)", 1, 100000);
+    DlgInteger(spcdlgNTrials%, "# trials per stim", 1, 500, 0, 0, 1);
+    DlgReal(spcdlgMinDelay%, "Min delay(s)", 0.0, 5.0);
+    DlgReal(spcdlgVarDelay%, "Var delay(s)", 0.0, 5.0);
+    DlgReal(spcdlgInterStimInterval%, "ISI(s)", 0.0, 5.0);
+    DlgReal(spcdlgMissTimeout%, "Miss timeout(s)", 0.0, 5.0);
+
+    DlgButton(1, "OK", Space1gCheckOK%);
+    DlgButton(0, "Cancel");
+    DlgAllow(0, 0, Space1gDlgChanged%);
+
+    ' Show the dialog. 
+
+	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcTone%, spcFreq%, spcNTrialsPerStim%, spcMinDelay, spcVarDelay, spcInterStimInterval, spcMissTimeout);
+
+    ' If user hit OK then save parameters (and return 1). 
+
+	if i% = 1 then
+        Space1gScriptDialogSaveParams();
+        status% := 1;
+    else
+        status% := 0;
+    endif
+
+	return status%;
+end;
+
+
+
+
+
+'==========================   Start script here ===========================================================
+
+' States
+const statePrepareTrial%        := 1;
+const stateWaitLvrDown%         := 2;
+const stateDelayInterval%       := 3;
+const statePlaySound%           := 4;
+const stateWaitSoundDone%       := 5;
+const stateWaitISI%             := 6;
+const statePlaySound2%          := 7;
+const stateFreeReward%          := 8;
+const stateWaitLvrUp%           := 9;
+const stateLvrUpReward%         := 10;
+const stateMissTimeout%         := 11;
+
+
+
+' Check if sampling is happening. If not, quit. 
+' Alt: Create sampling config here. 
+
+'if SampleStatus() <> 2 then
+'    Message("Sampling must be started before script is run!!!");
+'    halt;
+'endif
+
+
+if Space1gScriptDialog%() = 0 then
+    halt;
+endif
+
