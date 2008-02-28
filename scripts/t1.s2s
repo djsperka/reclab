@@ -57,8 +57,7 @@ docase
 endcase
     
 
-
-
+tdtREWARD%(5);
 
 tdtSerial(0, 0);
 

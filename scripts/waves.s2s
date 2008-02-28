@@ -2,9 +2,23 @@
 ' one a rising ramp out of DAC 0 and the other a falling ramp from DAC 1. 
 ' They are played at 1000 Hz.
 
-var wave%[1024][2], dacs%[2];    'space for the waves and dac list
-ArrConst(wave%[][0], 16); ArrIntgl(wave%[][0]);  'ramp up
-ArrConst(wave%[][1], -16); ArrIntgl(wave%[][1]); 'ramp down
-dacs%[0] := 0; dacs%[1] := 1;    'list of dacs
-PlayWaveAdd("X", "Ramps2", dacs%[], 1000, wave%[][]);
+'var wave%[1024][2], dacs%[2];    'space for the waves and dac list
+'ArrConst(wave%[][0], 16); ArrIntgl(wave%[][0]);  'ramp up
+'ArrConst(wave%[][1], -16); ArrIntgl(wave%[][1]); 'ramp down
+'dacs%[0] := 0; dacs%[1] := 1;    'list of dacs
+'PlayWaveAdd("X", "Ramps2", dacs%[], 1000, wave%[][]);
 
+var pi;
+const amp := 1;
+var i%;
+var dwave[4000][2], dacs%[2];    'space for the waves and dac list
+
+pi := 4.0*ATan(1.0);
+
+' dwave is real - this means it should have voltage between +-5V
+dacs%[0] := 0; dacs%[1] := 1;    'list of dacs
+for i%:=0 to 3999 do
+    dwave[i%][0] := amp * sin(2*pi*(i% mod 50)/50);
+    dwave[i%][1] := amp * sin(2*pi*(i% mod 50)/50);
+next;
+PlayWaveAdd("X", "Ramps2", dacs%[], 1000, dwave[][]);
