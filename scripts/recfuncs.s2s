@@ -1,3 +1,9 @@
+' $Log$
+' Revision 1.2  2008/02/28 21:42:47  devel
+' recLeverDown and recBlinkUntilLeverDown funcs.
+'
+
+
 #include "tdt.s2s"
 
 
@@ -91,3 +97,4 @@ func recBlinkUntilLeverDown%(yieldTime, maxTime)
     
     return idone%;
 end
+
