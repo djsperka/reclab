@@ -1,3 +1,4 @@
+const cmdREWARD%   := 0x7c;
 const cmdPING%     := 0x7d;
 const cmdPM1CLEAR% := 0x1;
 const cmdPM1CONFIG%:= 0x2;

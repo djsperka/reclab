@@ -104,7 +104,6 @@ func readTDTReply%(data%[])
 end
 
 
-
 func tdtPING%()
     var cmd%[2];
     var reply%[2];
@@ -122,6 +121,26 @@ func tdtPING%()
     endif
     return status%;
 end
+
+func tdtREWARD%(rewardLength%)
+    var cmd%[3];
+    var reply%[2];
+    var status%:=0;
+    cmd%[0] := cmdREWARD%;
+    cmd%[1] := 1;
+    cmd%[2] := rewardLength%;
+    sendTDTCommand%(cmd%[]);
+    Yield();
+    if (readTDTReply%(reply%[]) < 0) then
+        status% := -1;
+    else
+        if reply%[0] <> replyOK% then
+            status% := 1;
+        endif
+    endif
+    return status%;
+end
+
 
 func tdtPM1Clear%(din%)
     var cmd%[3];
