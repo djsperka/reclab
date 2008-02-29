@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.1  2008/02/28 21:40:15  devel
+' Revision 1.2  2008/02/29 19:35:48  devel
+' Add toolbar and sampling funcs. Still need FileNew() and Idle() funcs.
+'
+' Revision 1.1  2008-02-28 21:40:15  devel
 ' Initial add of this script.
 '
 
@@ -127,6 +130,131 @@ end;
 
 
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' CreateSampleConfiguration - prepare toolbar buttons. Note that the idle processing function 
+' (ToolbarSet(0, blah, blah)) is not set here. That's done when the user hits the start 
+' button.
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+var DAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
+var Trode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
+                                ' for anything other than electrodes!
+
+proc CreateSampleConfiguration()
+
+	var index;
+
+    ' Initialize sampling settings
+    
+	SampleClear();
+	SampleAutoComment(0);
+	SampleAutoCommit(60);
+
+    ' DAC0 (sound output) -> record this channel? It will inflate the file sizes......
+    
+
+	' Electrode
+    
+	SampleWaveMark(Trode1Channel%, 0, 100, 34, 15, 28000); ' chan, port, event rate, points, pre-trigger, rate
+	SampleTitle$(index, "Trode 1"); 
+
+    ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
+    ' The second arg groups channels with same ideal rates together so they all get same 
+    ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
+    ' assuming you use same ideal rate (in SampleWavemark()). 
+    
+	SampleOptimise(2, 1, 5, 2, 50);  
+    SampleMode(1);
+end
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitilizeToolbar - prepare toolbar buttons. Note that the idle processing function 
+' (ToolbarSet(0, blah, blah)) is not set here. That's done when the user hits the start 
+' button.
+'
+
+const tbStart%  := 1;
+const tbStop%   := 2;
+const tbPause%  := 3;
+const tbResume% := 4;
+const tbReward% := 5;
+
+proc InitializeToolbar()
+
+	View(App(8)).WindowVisible(0);	'Hide the standard sample bar
+	ToolbarVisible(1);
+	ToolbarSet(tbStart%, "Start", Start%);
+	ToolbarSet(tbStop%, "Stop", Stop%);
+	ToolbarSet(tbPause%, "Pause", Pause%);
+	ToolbarSet(tbResume%, "Resume", Resume%);
+	ToolbarSet(tbReward%, "Reward", Reward%);
+
+    ' Explicitly set enabled state of things...
+    ToolbarEnable(tbStart%, 1);
+    ToolbarEnable(tbStop%, 0);
+    ToolbarEnable(tbPause%, 0);
+    ToolbarEnable(tbResume%, 0);
+    ToolbarEnable(tbReward%, 1);
+
+end;
+
+
+var fPaused%    := 0;
+var fStarted%   := 0;
+
+func Start%()
+    fStarted% := 1;
+
+    ' Disable start button, enable stop and pause
+    
+    ToolbarEnable(tbStart%, 0);
+    ToolbarEnable(tbStop%, 1);
+    ToolbarEnable(tbPause%, 1);
+    
+    ' Oh yeah, start the sampling. 
+    
+    SampleStart();
+    
+    ' Tell the world about it. 
+    
+    ToolbarText("Sampling started.");
+    return 1;
+end
+
+func Stop%()
+    
+    ' Stop sampling....
+    
+    SampleStop();
+    
+    ' Returning zero from here any ToolbarSet() functions causes the 
+    ' Toolbar() function to return.
+    return 0;
+end
+
+func Pause%()
+    fPaused% := 1;
+    ToolbarEnable(tbResume%, 1);
+    ToolbarEnable(tbPause%, 0);
+    return 1;
+end
+
+func Resume%()
+    fPaused% := 0;
+    ToolbarEnable(tbResume%, 0);
+    ToolbarEnable(tbPause%, 1);
+    return 1;
+end
+
+func Reward%()
+    ' TODO: Add reward func here!
+    return 1;
+end
 
 
 '==========================   Start script here ===========================================================
@@ -158,4 +286,15 @@ const stateMissTimeout%         := 11;
 if Space1gScriptDialog%() = 0 then
     halt;
 endif
+
+' Setup sampling config
+
+CreateSampleConfiguration();
+
+' Initialize toolbar
+
+InitializeToolbar();
+Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
+
+
 
