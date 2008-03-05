@@ -1,10 +1,32 @@
 ' $Log$
-' Revision 1.2  2008/02/29 19:35:48  devel
+' Revision 1.3  2008/03/05 00:15:32  devel
+' Added a working idle function. Still more work needed, but we're getting close.
+'
+' Revision 1.2  2008-02-29 19:35:48  devel
 ' Add toolbar and sampling funcs. Still need FileNew() and Idle() funcs.
 '
 ' Revision 1.1  2008-02-28 21:40:15  devel
 ' Initial add of this script.
 '
+
+
+#include "filesystemvars.s2s"
+#include "tdt.s2s"
+#include "recfuncs.s2s"
+
+
+'-------- global vars --------------------------------------------------------
+const gspcTTMaxSpeakers% := 100;
+var gspcTTSpeakers%[gspcTTMaxSpeakers%];    ' speaker numbers - each is considered a trial type. Can have duplicates. 
+var gspcTTAtten[gspcTTMaxSpeakers%];        ' atten to use for each speaker number in g_spcTTSpeakers%[]
+var gspcTTTallies[gspcTTMaxSpeakers%];      ' running tally of the number of completed trials of each type
+var gspcNTrialTypes% := 0;
+var gwindowData%;
+const gtrialListMin% := 3;                             ' min size of the trial list
+const gtrialListMax% := 7;
+var gtrialList[gtrialListMax%];       ' The trial list is a list of speakers to use in a series
+var gntrialList%;
+var gtrialListIndex%;
 
 '-------- space1g configuration dialog ---------------------------------------
 
@@ -17,17 +39,31 @@ var spcMinDelay             := 0.5;
 var spcVarDelay             := 0.5;
 var spcInterStimInterval    := 1.0;
 var spcMissTimeout          := 2.0;
+var spcLeverTimeout         := 0.0;
+var spcTrialTypesFile$      := "";
+var spcBlockSize%           := 2;
+var spcFreeRewardSize%      := 50;
+var spcFreeRewardCheck%     := 0;
+var spcLongRewardSize%      := 100;
+var spcLongRewardCheck%     := 0;
 
 
 const spcdlgRoot%       := 1;
 const spcdlgNoise%      := 2;
 const spcdlgTone%       := 3;
 const spcdlgFreq%       := 4;
-const spcdlgNTrials%    := 5;
-const spcdlgMinDelay%   := 6;
-const spcdlgVarDelay%   := 7;
-const spcdlgInterStimInterval% := 8;
-const spcdlgMissTimeout%:= 9;
+const spcdlgTTSelection%:= 5;
+const spcdlgNTrials%    := 6;
+const spcdlgBlockSize%  := 7;
+const spcdlgMinDelay%   := 8;
+const spcdlgVarDelay%   := 9;
+const spcdlgInterStimInterval% := 10;
+const spcdlgMissTimeout%:= 11;
+const spcdlgLeverTimeout% := 12;
+const spcdlgFreeRewardCheck% := 13;
+const spcdlgFreeRewardSize% := 14;
+const spcdlgLongRewardCheck% := 15;
+const spcdlgLongRewardSize% := 16;
 
 
 proc Space1gScriptDialogSaveParams()
@@ -62,9 +98,9 @@ func Space1gDlgChanged%(item%)
     endcase
 
     ' enable or disable frequency box as needed
-'        if item% = spcdlgNoise% or item% = spcdlgNoise% then
     DlgEnable(DlgValue(spcdlgTone%), spcdlgFreq%);
-'        endif
+    DlgEnable(DlgValue(spcdlgFreeRewardCheck%), spcdlgFreeRewardSize%);
+    DlgEnable(DlgValue(spcdlgLongRewardCheck%), spcdlgLongRewardSize%);
         
     
     return status%
@@ -82,6 +118,12 @@ func Space1gCheckOK%()
         status% := 1;
     endif
 
+    ' Check that spcNTrialsPerStim% is a multiple of spcBlockSize%
+    if spcNTrialsPerStim% mod spcBlockSize% <> 0 then
+        Message("NTrialsPerStim must be a multiple of block size!");
+        status% := 1;
+    endif
+
     ' TODO: Check that output file does not exist. 
     
     return status%;
@@ -90,11 +132,24 @@ end
 func Space1gScriptDialog%()
     var i%;
     var status% := 0;
+    var sFiles$[100];
+    var sFileCount% := 0;
+    var sFileMask$ := "spc*.txt";
+    var iFileSelection% := 0;
     
     ' Fetch parameters from registry
     
     Space1gScriptDialogGetParams();
 
+    ' Get file list for trial types. If no files are found in stim$ matching the mask, 
+    ' show a message and quit. 
+    FilePathSet(stim$);
+    sFileCount% := FileList(sFiles$, -1, sFileMask$);
+    if sFileCount% = 0 then
+        Message("There are no files in dir %s matching the mask %s", stim$, sFileMask$);
+        return 0;   ' will look as if user hit Cancel
+    endif
+    
     ' Generate the dialog
     
 	DlgCreate("Space1g Parameters", 25, 10);
@@ -102,11 +157,18 @@ func Space1gScriptDialog%()
     DlgCheck(spcdlgNoise%, "Noise");
     DlgCheck(spcdlgTone%, "Tone");
     DlgInteger(spcdlgFreq%, "Frequency(Hz)", 1, 100000);
-    DlgInteger(spcdlgNTrials%, "# trials per stim", 1, 500, 0, 0, 1);
+    DlgList(spcdlgTTSelection%, "Stim set:", sFiles$, sFileCount%);
+    DlgInteger(spcdlgNTrials%, "# trials per stim", 1, 20, 0, 0, 1);
+    DlgInteger(spcdlgBlockSize%, "block size", 1, 5, 0, 0, 1);
     DlgReal(spcdlgMinDelay%, "Min delay(s)", 0.0, 5.0);
     DlgReal(spcdlgVarDelay%, "Var delay(s)", 0.0, 5.0);
     DlgReal(spcdlgInterStimInterval%, "ISI(s)", 0.0, 5.0);
     DlgReal(spcdlgMissTimeout%, "Miss timeout(s)", 0.0, 5.0);
+    DlgReal(spcdlgLeverTimeout%, "Lever timeout(s)", 0.0, 5.0);
+    DlgCheck(spcdlgFreeRewardCheck%, "Free reward?");
+    DlgInteger(spcdlgFreeRewardSize%, "Free reward size", 5, 500, 0, 0, 10);
+    DlgCheck(spcdlgLongRewardCheck%, "Long reward?");
+    DlgInteger(spcdlgLongRewardSize%, "Long reward size", 5, 500, 0, 0, 10);
 
     DlgButton(1, "OK", Space1gCheckOK%);
     DlgButton(0, "Cancel");
@@ -114,11 +176,14 @@ func Space1gScriptDialog%()
 
     ' Show the dialog. 
 
-	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcTone%, spcFreq%, spcNTrialsPerStim%, spcMinDelay, spcVarDelay, spcInterStimInterval, spcMissTimeout);
+	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcTone%, spcFreq%, iFileSelection%, spcNTrialsPerStim%, spcBlocksize%, 
+                spcMinDelay, spcVarDelay, spcInterStimInterval, spcMissTimeout, spcLeverTimeout, 
+                spcFreeRewardCheck%, spcFreeRewardSize%, spcLongRewardCheck%, spcLongRewardSize%);
 
     ' If user hit OK then save parameters (and return 1). 
 
 	if i% = 1 then
+        spcTrialTypesFile$ := sFiles$[iFileSelection%];
         Space1gScriptDialogSaveParams();
         status% := 1;
     else
@@ -127,6 +192,57 @@ func Space1gScriptDialog%()
 
 	return status%;
 end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' LoadTrialTypes%() - open and read trial types file. 
+' Expecting format with two numbers per line:
+' spk atten
+' where spk is speaker number and atten is attenuation
+' Will load array g_spcTTSpeakers%[g_spcTTMaxSpeakers%] and g_spcTTAtten[g_spcTTMaxSpeakers%], 
+' and will set spcNTrialTypes% to be the number of speaker/atten pairs read. 
+
+func LoadTrialTypes%(sTTFile$)
+    var handle;
+    var line$;
+    var count% := 0;
+    
+    ' open file
+    handle := FileOpen(sTTFile$, 8, 0);
+    if handle = 0 then
+        PrintLog("Cannot open trial types file " + sTTFile$ + "\n");
+        return -1;
+    endif
+    
+    ' Now read a line at a time, discard any that begin with #
+    while Read(line$)>=0 do
+        ' is it a comment?
+        if InStr(line$, "#") <> 1 then
+            if (ReadStr(line$, gspcTTSpeakers%[count%], gspcTTAtten[count%]) = 2) then
+                count% := count% + 1;
+            endif
+        endif
+    wend
+    gspcNTrialTypes% := count%;
+    
+    FileClose();
+  
+    return count%;
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' PrepareTrials%()
+'
+' Prepares a list of trials to run. The list may be from 3-7 trials long. 
+
+func PrepareTrials%()
+
+
+
+end
 
 
 
@@ -169,6 +285,17 @@ proc CreateSampleConfiguration()
     SampleMode(1);
 end
 
+
+
+
+proc InitializeWindows()
+
+	'Open the data sampling window
+	gwindowData% := FileNew(0,4);
+	Window(0, 0, 100, 100); 
+	View(gwindowData%).WindowVisible(1);
+
+end;
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -219,6 +346,9 @@ func Start%()
     ' Oh yeah, start the sampling. 
     
     SampleStart();
+
+    ' Set idle function
+    ToolbarSet(0, "", IdleLoop%);
     
     ' Tell the world about it. 
     
@@ -257,10 +387,10 @@ func Reward%()
 end
 
 
-'==========================   Start script here ===========================================================
 
 ' States
-const statePrepareTrial%        := 1;
+const stateStart%               := 0;
+const statePrepareTrials%        := 1;
 const stateWaitLvrDown%         := 2;
 const stateDelayInterval%       := 3;
 const statePlaySound%           := 4;
@@ -271,6 +401,143 @@ const stateFreeReward%          := 8;
 const stateWaitLvrUp%           := 9;
 const stateLvrUpReward%         := 10;
 const stateMissTimeout%         := 11;
+const stateLeverTimeout%        := 12;
+const stateDone%                := 20;
+
+var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
+var tLast:=-1;		' last time we checked for a trigger. 
+var iState%:=stateStart%;		' present state
+var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
+var delayIntervalTime;  ' time to delay before a set of trials are started 
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' ChangeStateTo
+' 
+' Call this function on exit from a state. The var stateTo% should be the state to enter
+' on the next call to the loop function. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc ChangeStateTo(stateTo%)
+	iState% := stateTo%;
+    tStateStart := MaxTime();
+end;
+
+func IdleLoop%()
+    var status% := 1;
+	var iStatus% := 1;	' this is return value. value of 1 (0) continues (stops) processing
+	tNow := MaxTime();
+
+	' What state are we in? 
+	docase 
+
+	
+		case iState% = stateStart% then
+
+            ChangeStateTo(statePrepareTrials%);
+            
+        case iState% = statePrepareTrials% then
+        
+            ' prepare values for the next trial.....
+            if PrepareTrials%() = 0 then
+                ChangeStateTo(stateDone%);
+            else
+                ChangeStateTo(stateWaitLvrDown%);
+            endif
+            
+        case iState% = stateWaitLvrDown% then
+            var s%;
+            s% := recBlinkUntilLeverDown%(.5, 10.0);
+
+            docase
+                case s% = 1 then
+                    delayIntervalTime := spcMinDelay + Rand(spcVarDelay, 0);
+                    ChangeStateTo(stateDelayInterval%);
+                case s% = 0 then
+                    ChangeStateTo(stateLeverTimeout%);
+                else
+                    Message("Error in recBlinkUntilLeverDown!");
+                    ChangeStateTo(stateDone%);
+                    status% := 0;
+            endcase
+            
+        case iState% = stateDelayInterval% then
+        
+            if tNow - tStateStart >= delayIntervalTime then
+                ChangeStateTo(statePlaySound%);
+            endif
+
+        case iState% = statePlaySound% then
+
+            Message("Playing sound");
+            ChangeStateTo(stateWaitISI%);
+            
+        case iState% = stateWaitISI% then
+        
+            if tNow - tStateStart > spcInterStimInterval then
+                ChangeStateTo(statePlaySound2%);
+            endif
+            
+        case iState% = statePlaySound2% then
+        
+            Message("Playing sound 2");
+            ChangeStateTo(stateFreeReward%);
+            
+        case iState% = stateFreeReward% then
+        
+            ' Are we giving free rewards? If we are, then do so, otherwise we just pass on through. 
+            if spcFreeRewardCheck% = 1 then
+                tdtREWARD%(spcFreeRewardSize%);
+            endif
+            ChangeStateTo(stateWaitLvrUp%);
+            
+        case iState% = stateWaitLvrUp% then
+        
+            var stmp%;
+            stmp% := recLeverDown%();
+            if stmp% < 0 then
+                PrintLog("ERROR in recLeverDown()!!!\n");
+            endif
+            
+            if stmp% = 0 then
+                ChangeStateTo(stateLvrUpReward%);
+            else
+                if tNow - tStateStart > spcdlgLeverTimeout% then
+                    ChangeStateTo(stateMissTimeout%);
+                endif
+            endif
+
+        case iState% = stateMissTimeout% then
+        
+            if tNow - tStateStart > spcMissTimeout then
+                ChangeStateTo(statePrepareTrials%);
+            endif
+            
+        case iState% = stateLvrUpReward% then
+        
+            if spcLongRewardCheck% = 1 then
+                tdtREWARD%(spcLongRewardSize%);
+            endif
+            ChangeStateTo(statePrepareTrials%);
+            
+        case iState% = stateDone% then
+        
+            iStatus% := 0;
+            
+        else
+        
+            Message("Unknown state (%d)!", iState%);
+            iStatus% := 0;
+            
+    endcase
+        
+
+    return status%;
+end
+
+
+'==========================   Start script here ===========================================================
+
 
 
 
@@ -287,9 +554,16 @@ if Space1gScriptDialog%() = 0 then
     halt;
 endif
 
+if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
+    Message("Cannot load trial types file " + spcTrialTypesFile$);
+    halt;
+endif
+PrintLog("Loaded %d trial types from %s\n", gspcNTrialTypes%, spcTrialTypesFile$);
+
 ' Setup sampling config
 
 CreateSampleConfiguration();
+InitializeWindows();
 
 ' Initialize toolbar
 
