@@ -2,7 +2,7 @@ var port% := 1;
 var baud% := 9600;
 var bits% := 8;
 var par% := 0;
-var stop% := 1;
+var stopbit% := 1;
 var hsk% := 0;
 var timeoutCounterDefault% := 100;
 var timeoutCounter% := 100;
@@ -18,7 +18,7 @@ func tdtSerial(open%, to%)
     else timeoutCounter% := timeoutCounterDefault%; endif
     
     if open% > 0 then
-        status := SerialOpen(port%, baud%, bits%, par%, stop%, hsk%);    ' defaults 9600 baud, no parity, 7+1 bits
+        status := SerialOpen(port%, baud%, bits%, par%, stopbit%, hsk%);    ' defaults 9600 baud, no parity, 7+1 bits
         if (status < 0) then
             PrintLog("Open status = " + str$(status) + "\n");
         endif
