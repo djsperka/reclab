@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.3  2008/03/05 00:15:32  devel
+' Revision 1.4  2008/03/06 20:08:42  devel
+' Fix bugs in state logic. Still in testing. Need sound() funcs and PrepareTrials algorithm.
+'
+' Revision 1.3  2008-03-05 00:15:32  devel
 ' Added a working idle function. Still more work needed, but we're getting close.
 '
 ' Revision 1.2  2008-02-29 19:35:48  devel
@@ -13,7 +16,7 @@
 #include "filesystemvars.s2s"
 #include "tdt.s2s"
 #include "recfuncs.s2s"
-
+var spcDebug% := 1;
 
 '-------- global vars --------------------------------------------------------
 const gspcTTMaxSpeakers% := 100;
@@ -237,10 +240,11 @@ end
 ' PrepareTrials%()
 '
 ' Prepares a list of trials to run. The list may be from 3-7 trials long. 
+' Returns 0 when all trials are done. Otherwise return nonzero value.
 
 func PrepareTrials%()
 
-
+    return 1;
 
 end
 
@@ -292,7 +296,7 @@ proc InitializeWindows()
 
 	'Open the data sampling window
 	gwindowData% := FileNew(0,4);
-	Window(0, 0, 100, 100); 
+	Window(0, 0, 100, 50); 
 	View(gwindowData%).WindowVisible(1);
 
 end;
@@ -359,8 +363,10 @@ end
 func Stop%()
     
     ' Stop sampling....
-    
-    SampleStop();
+
+    if SampleStatus() <> -1 then
+        SampleStop();
+    endif
     
     ' Returning zero from here any ToolbarSet() functions causes the 
     ' Toolbar() function to return.
@@ -418,6 +424,14 @@ var delayIntervalTime;  ' time to delay before a set of trials are started
 ' on the next call to the loop function. 
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+proc LogStatus(stateName$, msg$)
+    if spcDebug% = 1 then
+        PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
+    endif
+end
+
+
 proc ChangeStateTo(stateTo%)
 	iState% := stateTo%;
     tStateStart := MaxTime();
@@ -434,26 +448,38 @@ func IdleLoop%()
 	
 		case iState% = stateStart% then
 
+            LogStatus("Start", "Preparing trials");
             ChangeStateTo(statePrepareTrials%);
             
         case iState% = statePrepareTrials% then
         
-            ' prepare values for the next trial.....
-            if PrepareTrials%() = 0 then
-                ChangeStateTo(stateDone%);
-            else
-                ChangeStateTo(stateWaitLvrDown%);
+            ' prepare values for the next trial.
+            ' this is the point where the expt can be paused. Operator can hit the pause
+            ' button anytime, but the actual pause will not happen until here. 
+            if fPaused% = 0 then
+
+                if PrepareTrials%() = 0 then
+                    LogStatus("PrepareTrials", "All done!");
+                    ChangeStateTo(stateDone%);
+                else
+                    LogStatus("PrepareTrials", "Trials selected.");
+                    ChangeStateTo(stateWaitLvrDown%);
+                endif
+
             endif
             
         case iState% = stateWaitLvrDown% then
             var s%;
+            LogStatus("WaitLvrDown", "Blink/Wait.");
             s% := recBlinkUntilLeverDown%(.5, 10.0);
 
             docase
                 case s% = 1 then
                     delayIntervalTime := spcMinDelay + Rand(spcVarDelay, 0);
+                    LogStatus("WaitLvrDown", "Delay interval=" + str$(delayIntervalTime) + " s.");
                     ChangeStateTo(stateDelayInterval%);
                 case s% = 0 then
+                    LogStatus("WaitLvrDown", "Timeout waiting for lever down.");
                     ChangeStateTo(stateLeverTimeout%);
                 else
                     Message("Error in recBlinkUntilLeverDown!");
@@ -461,33 +487,45 @@ func IdleLoop%()
                     status% := 0;
             endcase
             
+        case iState% = stateLeverTimeout% then
+        
+            if tNow - tStateStart > spcMissTimeout then
+                LogStatus("LeverTimeout", "Timeout period done.");
+                ChangeStateTo(statePrepareTrials%);
+            endif
+            
         case iState% = stateDelayInterval% then
         
             if tNow - tStateStart >= delayIntervalTime then
+                LogStatus("DelayInterval", "Delay done.");
                 ChangeStateTo(statePlaySound%);
             endif
 
         case iState% = statePlaySound% then
 
-            Message("Playing sound");
+            LogStatus("PlaySound", "");
             ChangeStateTo(stateWaitISI%);
             
         case iState% = stateWaitISI% then
         
             if tNow - tStateStart > spcInterStimInterval then
+                LogStatus("WaitISI", "ISI done.");
                 ChangeStateTo(statePlaySound2%);
             endif
             
         case iState% = statePlaySound2% then
         
-            Message("Playing sound 2");
+            LogStatus("PlaySound2", "");
             ChangeStateTo(stateFreeReward%);
             
         case iState% = stateFreeReward% then
         
             ' Are we giving free rewards? If we are, then do so, otherwise we just pass on through. 
             if spcFreeRewardCheck% = 1 then
+                LogStatus("FreeReward", "Giving free reward size " + str$(spcFreeRewardSize%));
                 tdtREWARD%(spcFreeRewardSize%);
+            else
+                LogStatus("FreeReward", "No free reward.");
             endif
             ChangeStateTo(stateWaitLvrUp%);
             
@@ -500,9 +538,11 @@ func IdleLoop%()
             endif
             
             if stmp% = 0 then
+                LogStatus("WaitLvrUp", "Lever is up");
                 ChangeStateTo(stateLvrUpReward%);
             else
                 if tNow - tStateStart > spcdlgLeverTimeout% then
+                    LogStatus("WaitLvrUp", "Lever not up - timed out!");
                     ChangeStateTo(stateMissTimeout%);
                 endif
             endif
@@ -510,29 +550,35 @@ func IdleLoop%()
         case iState% = stateMissTimeout% then
         
             if tNow - tStateStart > spcMissTimeout then
+                LogStatus("MissTimeout", "Timeout period done.");
                 ChangeStateTo(statePrepareTrials%);
             endif
             
         case iState% = stateLvrUpReward% then
         
             if spcLongRewardCheck% = 1 then
+                LogStatus("LvrUpReward", "(long)) Reward size=" + str$(spcLongRewardSize%));
                 tdtREWARD%(spcLongRewardSize%);
             endif
             ChangeStateTo(statePrepareTrials%);
             
         case iState% = stateDone% then
         
+            LogStatus("Done", "");
+            Stop%();
             iStatus% := 0;
             
         else
         
+            LogStatus("UNKNOWN STATE", "iState%=" + str$(iState%));
             Message("Unknown state (%d)!", iState%);
+            Stop%();
             iStatus% := 0;
             
     endcase
         
 
-    return status%;
+    return iStatus%;
 end
 
 
@@ -550,9 +596,20 @@ end
 'endif
 
 
+' Do TDT initializations
+
+if recInitTDT%() < 0 then
+    halt;
+endif
+
+
+' Open dialog for expt parameters. 
+
 if Space1gScriptDialog%() = 0 then
     halt;
 endif
+
+' Now open and load trial types file.
 
 if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
     Message("Cannot load trial types file " + spcTrialTypesFile$);
@@ -560,15 +617,18 @@ if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
 endif
 PrintLog("Loaded %d trial types from %s\n", gspcNTrialTypes%, spcTrialTypesFile$);
 
-' Setup sampling config
+' Setup sampling config and open windows
 
 CreateSampleConfiguration();
 InitializeWindows();
 
-' Initialize toolbar
+' Initialize toolbar. Once Toolbar is called the expt is controlled by the toolbar
+' buttons. Toolbar() does not return until one of the toolbar functions returns 0 - Stop%()
+' does that, as does IdleLoop%() when it reaches the end of all trials. 
 
 InitializeToolbar();
-Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
+Toolbar("Hit \"Start\" to begin sampling.", 0x7);
+'Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
 
 
 
