@@ -1,0 +1,192 @@
+' $Log$
+' Revision 1.1  2008/03/07 20:17:53  devel
+' Initial add.
+'
+'
+' Trial list generator
+'
+' Usage:
+'
+' 1. include in another script: #include "trialistgen.s2s"
+' 2. initialize first - before calling any other routines here: tlgInit()
+' 3. call tlgGetTrialList() to get a list. This function returns the number in the list
+'    returned. When it returns 0, it means all blocks/trials are completed.
+' 4. As trials are completed, call tlgTrialCompleted(trialIndex%), where trialIndex% is the 
+'    index of the completed trial (duh). This function increments counters, checks for 
+'    completed blocks and initializes new blocks as needed. 
+'
+' Remember - tlgGetTrialList() will return 0 when all blocks are complete. You MUST call 
+' tlgTrialCompleted as each trial is completed, however, otherwise tlgTrialList will return 
+' trial lists FOREVER. 
+'
+
+const tlgMaxPossibleChoices% := 5000;    ' This should be more than NTrialTypes% * NTrialsPerBlock can ever be! 
+var tlgPossibleChoices%[tlgMaxPossibleChoices%];    ' used in tlgGetNextTrial%() only
+const tlgMaxTrialTypes% := 100;         ' This has to be at least as large as that used in main
+var tlgNTrialTypes%:= 0;                ' must be supplied in TLGInit(N)
+var tlgTrialsCompletedThisBlock%[tlgMaxTrialTypes%];
+var tlgTrialsCompleted%[tlgMaxTrialTypes%];
+var tlgNTrialsPerBlock% := 0;
+var tlgNBlocksCompleted% := 0;
+var tlgNBlocksRequired% := 0;
+var tlgMinListSize% := 0;
+var tlgMaxListSize% := 0;
+var tlgInitialized% := 0;
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListSize%)
+'
+' this should be called once, before calling any other tlg* functions or procs. 
+' nTypes% is the number of trial types. 
+' nTrialsPerBlock% is the number of trials for each type needed to complete a "block". 
+' nBlocksRequired% is the number of "blocks" before we don't serve any more trial lists. 
+' minListSize%, maxListSize% is the range of list sizes which will be returned by 
+' tlgGetTrialList%(). 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+proc tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListSize%)
+    tlgNTrialTypes% := nTypes%;
+    tlgNTrialsPerBlock% := nTrialsPerBlock%;
+    tlgNBlocksRequired% := nBlocksRequired%;
+    tlgMinListSize% := minListSize%;
+    tlgMaxListSize% := maxListSize%;
+    tlgInitialized% := 1;
+    tlgInitBlock();
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' tlgInitBlock()
+'
+' Called internally (don't call this from anywhere outside this file!) to initialize the 
+' counters for a block. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+proc tlgInitBlock()
+    var index%;
+    for index% := 0 to tlgNTrialTypes%-1 do
+        tlgTrialsCompletedThisBlock%[index%] := 0;
+    next
+end    
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' tlgTrialIndexCompleted(trialIndex%)
+' 
+' Call this function after a trial of trial index 'trialIndex%' has been 
+' successfully completed. 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+proc tlgTrialIndexCompleted(trialIndex%)
+    var index%;
+    var incomplete% := 0;
+
+    if tlgInitialized% = 0 then Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); endif
+    
+    tlgTrialsCompletedThisBlock%[trialIndex%] += 1;
+    
+    ' Is the current block complete? 
+    while incomplete% = 0 and index% < tlgNTrialTypes% do
+        if tlgTrialsCompletedThisBlock%[index%] < tlgNTrialsPerBlock% then
+            incomplete% := 1;
+        endif
+        index% += 1;
+    wend
+    
+    ' If current block is complete, then increment block counter and re-init block
+    if incomplete% = 0 then
+        tlgNBlocksCompleted% += 1;
+        tlgInitBlock();
+    endif
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' tlgGetTrialList%(trialList%[])
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func tlgGetTrialList%(trialList%[])
+    var n%;
+    var i%;
+    var last% := -1;
+
+    ' check that tlg was initialized
+    if tlgInitialized% = 0 then Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); endif
+    
+    ' Are we all done? 
+    if tlgNBlocksCompleted% = tlgNBlocksRequired% then
+        return 0;
+    endif
+
+    ' Since the current block is not done, we will generate a trial list. First, decide
+    ' how many trials will be in the list
+    
+    n% := Rand(tlgMaxListSize%-tlgMinListSize%, tlgMinListSize%);
+    for i% := 0 to n%-1 do
+        trialList%[i%] := tlgGetNextTrial%(last%);
+        last% := trialList%[i%];
+    next
+    return n%;
+end
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' tlgGetNextTrial%(last%)
+'
+' Generates a trial index. The index generated will NOT be the same as last%.
+' It is ASSUMED that all blocks are NOT completed yet! 
+' Given that, this func uses one of two methods:
+'
+' If there are any choices available for trial indices OTHER THAN last, we 
+' make a choice from one of them. If NOT, i.e. last% is also the ONLY CHOICE LEFT
+' in the current block, then we choose from a list of the other indices. In the
+' latter case you'll end up with indices returned which have already had all 
+' the trials required for the block. No matter - its a messy algorithm and this is 
+' one possible messy solution. 
+'
+' Remember that when choices are made here we do NOT increment the counters in
+' tlgTrialsCompletedThisBlock%[]. That is done in tlgTrialCompleted. 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func tlgGetNextTrial%(last%)
+    var count% := 0;
+    var i%, j%;
+    var choice%;
+
+    ' Generate choice list. 
+    for i% := 0 to tlgNTrialTypes% do
+        if i% <> last% then
+            for j% := tlgTrialsCompletedThisBlock%[i%]+1 to tlgNTrialsPerBlock% do
+                tlgPossibleChoices%[count%] := i%;
+                count% += 1;
+            next
+        endif
+    next
+
+    ' Are there any choices? If not, then generate a dummy list from all possibilities except
+    ' for last% 
+    
+    if count% = 0 then
+        for i% := 0 to tlgNTrialTypes% do
+            if i% <> last% then
+                tlgPossibleChoices%[count%] := i%;
+                count% += 1;
+            endif
+        next
+    endif
+    
+    ' Now choose one from the list. It doesn't matter here which method was used to generate
+    ' the list. 
+    
+    choice% := Rand(count%, 0);
+    return tlgPossibleChoices%[choice%];
+end

@@ -1,0 +1,25 @@
+#include "triallistgen.s2s"
+
+var nTypes% := 4;
+var nTrialsPerBlock% := 2;
+var nBlocksRequired% := 2;
+var minListSize% := 2;
+var maxListSize% := 4;
+var trialList%[7];
+var ntrials%;
+var i%;
+
+tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListSize%);
+
+ntrials% := tlgGetTrialList%(trialList%[]);
+while ntrials% > 0 do
+    PrintLog("%d: ", ntrials%);
+    for i% := 0 to ntrials% do
+        PrintLog("%d ", trialList%[i%]);
+        tlgTrialIndexCompleted(trialList%[i%]);
+    next
+    PrintLog("\n");
+    Yield();
+    ntrials% := tlgGetTrialList%(trialList%[]);
+wend
+
