@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.4  2008/03/06 20:08:42  devel
+' Revision 1.5  2008/03/11 19:28:42  devel
+' Integrate trial list generator script, triallistgen.s2s
+'
+' Revision 1.4  2008-03-06 20:08:42  devel
 ' Fix bugs in state logic. Still in testing. Need sound() funcs and PrepareTrials algorithm.
 '
 ' Revision 1.3  2008-03-05 00:15:32  devel
@@ -16,6 +19,7 @@
 #include "filesystemvars.s2s"
 #include "tdt.s2s"
 #include "recfuncs.s2s"
+#include "triallistgen.s2s"
 var spcDebug% := 1;
 
 '-------- global vars --------------------------------------------------------
@@ -27,7 +31,7 @@ var gspcNTrialTypes% := 0;
 var gwindowData%;
 const gtrialListMin% := 3;                             ' min size of the trial list
 const gtrialListMax% := 7;
-var gtrialList[gtrialListMax%];       ' The trial list is a list of speakers to use in a series
+var gtrialList%[gtrialListMax%];       ' The trial list is a list of speakers to use in a series
 var gntrialList%;
 var gtrialListIndex%;
 
@@ -244,7 +248,18 @@ end
 
 func PrepareTrials%()
 
-    return 1;
+    var i%;
+    gntrialList% := tlgGetTrialList%(gtrialList%[]);
+
+    if spcDebug% = 1 then
+        PrintLog("TrialList ");
+        for i% := 0 to gntrialList% do
+            PrintLog(str$(gtrialList%[i%]) + " ");
+        next
+        PrintLog("\n");
+    endif
+
+    return gntrialList%;
 
 end
 
@@ -440,6 +455,8 @@ end;
 func IdleLoop%()
     var status% := 1;
 	var iStatus% := 1;	' this is return value. value of 1 (0) continues (stops) processing
+    var stmp%;
+
 	tNow := MaxTime();
 
 	' What state are we in? 
@@ -456,13 +473,14 @@ func IdleLoop%()
             ' prepare values for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
             ' button anytime, but the actual pause will not happen until here. 
+            gtrialListIndex% := 0;
             if fPaused% = 0 then
 
                 if PrepareTrials%() = 0 then
                     LogStatus("PrepareTrials", "All done!");
                     ChangeStateTo(stateDone%);
                 else
-                    LogStatus("PrepareTrials", "Trials selected.");
+                    LogStatus("PrepareTrials", str$(gntrialList%) + " trials selected.");
                     ChangeStateTo(stateWaitLvrDown%);
                 endif
 
@@ -503,14 +521,34 @@ func IdleLoop%()
 
         case iState% = statePlaySound% then
 
-            LogStatus("PlaySound", "");
+            LogStatus("PlaySound", 
+                        "SPK " + str$(gspcTTSpeakers%[gtrialList%[gtrialListIndex%]]) + 
+                        "ATT " + str$(gspcTTAtten[gtrialList%[gtrialListIndex%]]) + "\n");
+            tlgTrialIndexCompleted(gtrialList%[gtrialListIndex%]);
+            gtrialListIndex% += 1;
             ChangeStateTo(stateWaitISI%);
             
         case iState% = stateWaitISI% then
-        
-            if tNow - tStateStart > spcInterStimInterval then
-                LogStatus("WaitISI", "ISI done.");
-                ChangeStateTo(statePlaySound2%);
+ 
+            ' Check that lever is still down.
+            stmp% := recLeverDown%();
+            if stmp% < 0 then
+                PrintLog("ERROR in recLeverDown()!!!\n");
+            endif
+            
+            if stmp% = 0 then
+                LogStatus("WaitISI", "FAIL! Lever is up");
+                ChangeStateTo(stateMissTimeout%);
+            else
+                if tNow - tStateStart > spcInterStimInterval then
+                    LogStatus("WaitISI", "ISI done.");
+                    
+                    if gtrialListIndex% = gntrialList% then
+                        ChangeStateTo(statePlaySound2%);
+                    else
+                        ChangeStateTo(statePlaySound%);
+                    endif
+                endif
             endif
             
         case iState% = statePlaySound2% then
@@ -531,7 +569,6 @@ func IdleLoop%()
             
         case iState% = stateWaitLvrUp% then
         
-            var stmp%;
             stmp% := recLeverDown%();
             if stmp% < 0 then
                 PrintLog("ERROR in recLeverDown()!!!\n");
@@ -541,7 +578,7 @@ func IdleLoop%()
                 LogStatus("WaitLvrUp", "Lever is up");
                 ChangeStateTo(stateLvrUpReward%);
             else
-                if tNow - tStateStart > spcdlgLeverTimeout% then
+                if tNow - tStateStart > spcLeverTimeout then
                     LogStatus("WaitLvrUp", "Lever not up - timed out!");
                     ChangeStateTo(stateMissTimeout%);
                 endif
@@ -616,6 +653,10 @@ if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
     halt;
 endif
 PrintLog("Loaded %d trial types from %s\n", gspcNTrialTypes%, spcTrialTypesFile$);
+
+' initialize trial list generator
+
+tlgInit(gspcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, gtrialListMin%, gtrialListMax%);
 
 ' Setup sampling config and open windows
 
