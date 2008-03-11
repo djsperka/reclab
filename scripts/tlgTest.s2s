@@ -8,15 +8,22 @@ var maxListSize% := 4;
 var trialList%[7];
 var ntrials%;
 var i%;
+var r%;
 
 tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListSize%);
 
 ntrials% := tlgGetTrialList%(trialList%[]);
 while ntrials% > 0 do
     PrintLog("%d: ", ntrials%);
-    for i% := 0 to ntrials% do
-        PrintLog("%d ", trialList%[i%]);
-        tlgTrialIndexCompleted(trialList%[i%]);
+    for i% := 0 to ntrials%-1 do
+        r% := Rand(3, 0); 'PrintLog(" r=" + str$(r%) + " ");
+        if r% <> 1 then
+            PrintLog("%d ", trialList%[i%]);
+            tlgTrialIndexCompleted(trialList%[i%]);
+        else 
+            ' This is a trial that failed. Test that we still get full blocks.
+            PrintLog("%dX ", trialList%[i%]);
+        endif
     next
     PrintLog("\n");
     Yield();
