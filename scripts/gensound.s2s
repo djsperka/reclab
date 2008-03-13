@@ -1,0 +1,34 @@
+const gensoundpi := 3.141592653589793;
+
+' Generate sz% monotone voltage values in array v[]. The last value, v[sz%-1], is set to 0 
+' (since the 1401 DAC will be left at the last value after the waveform has been 
+' played). The waveform will be a sinusoid, with freq 'toneHz'. The DAC output 
+' sampling rate should be set in 'sampleHz'. 
+
+Proc GenerateTone(v[], sz%, vmin, vmax, toneHz, sampleHz)
+
+    var i%;
+    for i% := 0 to sz%-1 do
+        v[i%] := vmin + (vmax-vmin)*sin(2*gensoundpi*toneHz*i%/sampleHz);
+    next
+
+    ' Set the last value to 0
+    v[sz%-1] := 0;
+
+end
+
+
+' Generate sz% voltage values in array v[] representing noise for space1g. 
+' The last value, v[sz%-1], is set to 0 
+' (since the 1401 DAC will be left at the last value after the waveform has been 
+' played). The DAC output sampling rate should be set in 'sampleHz'. 
+
+Proc GenerateNoise(v[], sz%, vmin, vmax, sampleHz)
+    var i%;
+    
+    ' dummy here just set 0's.
+    for i% := 0 to sz%-1 do
+        v[i%] := 0;
+    next
+
+end
