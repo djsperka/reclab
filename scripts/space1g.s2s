@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.5  2008/03/11 19:28:42  devel
+' Revision 1.6  2008/03/13 19:19:45  devel
+' Incorporate sound generation procs in gensound.s2s
+'
+' Revision 1.5  2008-03-11 19:28:42  devel
 ' Integrate trial list generator script, triallistgen.s2s
 '
 ' Revision 1.4  2008-03-06 20:08:42  devel
@@ -20,6 +23,8 @@
 #include "tdt.s2s"
 #include "recfuncs.s2s"
 #include "triallistgen.s2s"
+#include "gensound.s2s"
+
 var spcDebug% := 1;
 
 '-------- global vars --------------------------------------------------------
@@ -276,16 +281,31 @@ end
 var DAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
 var Trode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
                                 ' for anything other than electrodes!
+var spcDAC0Key$        := "A";
+const dac0%         := 0;
+const soundSize%    := 33333;
+var spcDAC0Rate     := 166666.6666667;
+var spcSoundVolts[spcSoundSize%];
 
 proc CreateSampleConfiguration()
 
 	var index;
+    var r;
 
     ' Initialize sampling settings
     
 	SampleClear();
 	SampleAutoComment(0);
-	SampleAutoCommit(60);
+	SampleAutoCommit(30);
+
+    ' PlayWave area "A" is for our sounds. 
+    r := PlayWaveAdd(spcDAC0Key$, spcDAC0Key$, dac0%, spcDAC0Rate, soundSize%);
+
+    if r < 0 then
+        PrintLog("Error in PlayWaveAdd");
+        halt;
+    endif
+    
 
     ' DAC0 (sound output) -> record this channel? It will inflate the file sizes......
     
@@ -293,7 +313,7 @@ proc CreateSampleConfiguration()
 	' Electrode
     
 	SampleWaveMark(Trode1Channel%, 0, 100, 34, 15, 28000); ' chan, port, event rate, points, pre-trigger, rate
-	SampleTitle$(index, "Trode 1"); 
+	SampleTitle$(Trode1Channel%, "Trode 1"); 
 
     ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
     ' The second arg groups channels with same ideal rates together so they all get same 
