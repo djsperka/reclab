@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.6  2008/03/13 19:19:45  devel
+' Revision 1.7  2008/03/18 19:49:39  devel
+' Incorporate sound gen and playing. Add triggering (still must debug), configurable debug mode, etc.
+'
+' Revision 1.6  2008-03-13 19:19:45  devel
 ' Incorporate sound generation procs in gensound.s2s
 '
 ' Revision 1.5  2008-03-11 19:28:42  devel
@@ -40,6 +43,16 @@ var gtrialList%[gtrialListMax%];       ' The trial list is a list of speakers to
 var gntrialList%;
 var gtrialListIndex%;
 
+'-------- global vars RE: sound -------------------------------------------------
+const gDAC0Key$        := "A";
+const gDAC0%         := 0;
+const gspcSoundSize%    := 33333;
+const gspcVoltsMin      := 0;
+const gspcVoltsMax      := 5;
+var gspcDAC0Rate     := 166666.6666667;
+var gspcSoundVolts[gspcSoundSize%];
+var gspcToneCopiedToPlayWaveArea% := 0;
+
 '-------- space1g configuration dialog ---------------------------------------
 
 var spcOutputRoot$;                 ' root filename for output file
@@ -76,6 +89,7 @@ const spcdlgFreeRewardCheck% := 13;
 const spcdlgFreeRewardSize% := 14;
 const spcdlgLongRewardCheck% := 15;
 const spcdlgLongRewardSize% := 16;
+const spcdlgDebug% := 17;
 
 
 proc Space1gScriptDialogSaveParams()
@@ -181,6 +195,7 @@ func Space1gScriptDialog%()
     DlgInteger(spcdlgFreeRewardSize%, "Free reward size", 5, 500, 0, 0, 10);
     DlgCheck(spcdlgLongRewardCheck%, "Long reward?");
     DlgInteger(spcdlgLongRewardSize%, "Long reward size", 5, 500, 0, 0, 10);
+    DlgCheck(spcdlgDebug%, "Debug?");
 
     DlgButton(1, "OK", Space1gCheckOK%);
     DlgButton(0, "Cancel");
@@ -190,7 +205,8 @@ func Space1gScriptDialog%()
 
 	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcTone%, spcFreq%, iFileSelection%, spcNTrialsPerStim%, spcBlocksize%, 
                 spcMinDelay, spcVarDelay, spcInterStimInterval, spcMissTimeout, spcLeverTimeout, 
-                spcFreeRewardCheck%, spcFreeRewardSize%, spcLongRewardCheck%, spcLongRewardSize%);
+                spcFreeRewardCheck%, spcFreeRewardSize%, spcLongRewardCheck%, spcLongRewardSize%, 
+                spcDebug%);
 
     ' If user hit OK then save parameters (and return 1). 
 
@@ -248,7 +264,11 @@ end
 '
 ' PrepareTrials%()
 '
-' Prepares a list of trials to run. The list may be from 3-7 trials long. 
+' Prepares a list of trials to run and copies data to DAC PlayWave areas if needed. 
+' The list may be from 3-7 trials long. When user has chosen TONE, there's just
+' one sound. When NOISE is selected, we allocate gtrialListMax% areas. 
+' TODO: There is a limit to how much memory can be allocated to the PlayWave areas. 
+' Should check this and return an error!?!
 ' Returns 0 when all trials are done. Otherwise return nonzero value.
 
 func PrepareTrials%()
@@ -264,10 +284,100 @@ func PrepareTrials%()
         PrintLog("\n");
     endif
 
+    docase
+    case spcTone% = 1 then
+
+        ' Only need to copy tone once
+        if gspcToneCopiedToPlayWaveArea% = 0 then
+        
+            GenerateTone(gspcSoundVolts[], gspcSoundSize%, gspcVoltsMin, gspcVoltsMax, spcFreq%, gspcDAC0Rate);
+            PlayWaveCopy(GetPlayWaveKey$(0), gspcSoundVolts[]);
+            gspcToneCopiedToPlayWaveArea% := 1;
+
+        endif
+        
+    case spcNoise% = 1 then
+    
+        ' Load noise for each of the trials
+        for i% := 0 to gntrialList%-1 do
+        
+            GenerateNoise(gspcSoundVolts[], gspcSoundSize%, gspcVoltsMin, gspcVoltsMax, gspcDAC0Rate);
+            PlayWaveCopy(GetPlayWaveKey$(i%), gspcSoundVolts[]);
+
+        next
+        
+    endcase
+    
+
     return gntrialList%;
 
 end
 
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitializePlayWaveAreas - add play wave areas for sounds. 
+' If TONE was chosen (spcTone% = 1) then we need just one area = "A".
+' If NOISE was chosen (spcNoise% = 1) then we need to allocate gtriallistMax%
+' areas "A", "B", ....
+
+Proc InitializePlayWaveAreas()
+    var st;
+    var i%;
+    if spcTone% = 1 then
+    
+        st := PlayWaveAdd(GetPlayWaveKey$(0), GetPlayWaveKey$(0), gDAC0%, gspcDAC0Rate, gspcSoundSize%);
+        if st < 0 then
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
+            halt;
+        else
+            PlayWaveTrigger(GetPlayWaveKey$(0), 1);
+        endif
+
+    else
+    
+        for i% := 0 to gtrialListMax% do
+        
+            st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), gDAC0%, gspcDAC0Rate, gspcSoundSize%);
+            if st < 0 then
+                Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+                halt;
+            else
+                PlayWaveTrigger(GetPlayWaveKey$(i%), 1);
+            endif        
+        
+        next
+
+    endif
+
+end
+
+
+func GetPlayWaveKey$(index%)
+
+    return Chr$(Asc(gDAC0Key$)+index%);
+    
+end
+
+
+Proc PlaySound(ind%)
+
+    ' Set speaker and atten
+    recSpeaker%(gspcTTSpeakers%[gtrialList%[ind%]]);
+    recAtten%(gspcTTAtten[gtrialList%[ind%]]);
+
+    ' Send sample key for the play wave area. The play wave areas are triggered, so this 
+    ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
+    
+    SampleText(str$(gspcTTSpeakers%[gtrialList%[ind%]]));
+    if spcNoise% then
+        SampleKey(GetPlayWaveKey$(ind%));
+    else
+        SampleKey(GetPlayWaveKey$(0));
+    endif
+'    SampleKey("T");
+    
+end
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -281,11 +391,7 @@ end
 var DAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
 var Trode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
                                 ' for anything other than electrodes!
-var spcDAC0Key$        := "A";
-const dac0%         := 0;
-const soundSize%    := 33333;
-var spcDAC0Rate     := 166666.6666667;
-var spcSoundVolts[spcSoundSize%];
+var TrigChannel% := 2;
 
 proc CreateSampleConfiguration()
 
@@ -294,20 +400,24 @@ proc CreateSampleConfiguration()
 
     ' Initialize sampling settings
     
-	SampleClear();
+'	SampleClear();
 	SampleAutoComment(0);
 	SampleAutoCommit(30);
 
-    ' PlayWave area "A" is for our sounds. 
-    r := PlayWaveAdd(spcDAC0Key$, spcDAC0Key$, dac0%, spcDAC0Rate, soundSize%);
 
-    if r < 0 then
-        PrintLog("Error in PlayWaveAdd");
-        halt;
-    endif
-    
+    ' Event channel 0 is for sound triggers
+    SampleEvent(TrigChannel%, 0, 1, 10);
+    SampleTitle$(TrigChannel%, "Trigger");
+
+    ' Text marks
+    SampleTextMark(10);
 
     ' DAC0 (sound output) -> record this channel? It will inflate the file sizes......
+
+    if spcDebug% = 1 then
+        SampleWaveform(DAC0Channel%, 6, 50000);
+        SampleTitle$(DAC0Channel%, "DAC0");
+    endif
     
 
 	' Electrode
@@ -320,6 +430,7 @@ proc CreateSampleConfiguration()
     ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
     ' assuming you use same ideal rate (in SampleWavemark()). 
     
+    SampleSequencer(script$ + "space1g.pls");
 	SampleOptimise(2, 1, 5, 2, 50);  
     SampleMode(1);
 end
@@ -431,7 +542,7 @@ end
 
 ' States
 const stateStart%               := 0;
-const statePrepareTrials%        := 1;
+const statePrepareTrials%       := 1;
 const stateWaitLvrDown%         := 2;
 const stateDelayInterval%       := 3;
 const statePlaySound%           := 4;
@@ -443,6 +554,8 @@ const stateWaitLvrUp%           := 9;
 const stateLvrUpReward%         := 10;
 const stateMissTimeout%         := 11;
 const stateLeverTimeout%        := 12;
+const statePlaySoundWait%       := 13;
+const statePlaySound2Wait%      := 14;
 const stateDone%                := 20;
 
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
@@ -542,11 +655,18 @@ func IdleLoop%()
         case iState% = statePlaySound% then
 
             LogStatus("PlaySound", 
-                        "SPK " + str$(gspcTTSpeakers%[gtrialList%[gtrialListIndex%]]) + 
-                        "ATT " + str$(gspcTTAtten[gtrialList%[gtrialListIndex%]]) + "\n");
-            tlgTrialIndexCompleted(gtrialList%[gtrialListIndex%]);
-            gtrialListIndex% += 1;
-            ChangeStateTo(stateWaitISI%);
+                      "SPK " + str$(gspcTTSpeakers%[gtrialList%[gtrialListIndex%]]) + 
+                      "ATT " + str$(gspcTTAtten[gtrialList%[gtrialListIndex%]]) + "\n");
+            PlaySound(gtrialListIndex%);
+            ChangeStateTo(statePlaySoundWait%);
+            
+        case iState% = statePlaySoundWait% then
+        
+            if PlayWaveStatus$() = "" then
+                tlgTrialIndexCompleted(gtrialList%[gtrialListIndex%]);
+                gtrialListIndex% += 1;
+                ChangeStateTo(stateWaitISI%);
+            endif
             
         case iState% = stateWaitISI% then
  
@@ -573,8 +693,18 @@ func IdleLoop%()
             
         case iState% = statePlaySound2% then
         
-            LogStatus("PlaySound2", "");
-            ChangeStateTo(stateFreeReward%);
+            LogStatus("PlaySound2", 
+                      "SPK " + str$(gspcTTSpeakers%[gtrialList%[gtrialListIndex%-1]]) + 
+                      "ATT " + str$(gspcTTAtten[gtrialList%[gtrialListIndex%-1]]) + "\n");
+            PlaySound(gtrialListIndex%-1);
+            ChangeStateTo(statePlaySound2Wait%);
+            
+        case iState% = statePlaySound2Wait% then
+        
+            if PlayWaveStatus$() = "" then
+                LogStatus("PlaySound2", "Sound done playing.");
+                ChangeStateTo(stateFreeReward%);
+            endif
             
         case iState% = stateFreeReward% then
         
@@ -677,6 +807,13 @@ PrintLog("Loaded %d trial types from %s\n", gspcNTrialTypes%, spcTrialTypesFile$
 ' initialize trial list generator
 
 tlgInit(gspcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, gtrialListMin%, gtrialListMax%);
+
+' Initialize sound generator and PlayWave areas. The call to InitializePlayWaveAreas MUST
+' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
+' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
+
+GenerateSoundInit();
+InitializePlayWaveAreas();
 
 ' Setup sampling config and open windows
 
