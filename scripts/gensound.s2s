@@ -1,5 +1,14 @@
 const gensoundpi := 3.141592653589793;
 
+
+Proc GenerateSoundInit()
+
+    PrintLog("TODO: Initialize sound gen!\n");
+    ' Probably only have to do something if NOISE will be required - load a file list or
+    ' something. 
+    
+end
+
 ' Generate sz% monotone voltage values in array v[]. The last value, v[sz%-1], is set to 0 
 ' (since the 1401 DAC will be left at the last value after the waveform has been 
 ' played). The waveform will be a sinusoid, with freq 'toneHz'. The DAC output 
