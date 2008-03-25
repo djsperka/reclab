@@ -1,11 +1,33 @@
 const gensoundpi := 3.141592653589793;
+const gensoundMaxFiles% := 400;
+var gensoundFileList$[gensoundMaxFiles%];
+var gensoundRandom%[gensoundMaxFiles%];
+var gensoundCurrentIndex% := 0;
+var gensoundNumFileList% := 0;
+var gensoundDebug% := 1;
 
+#include "genrandom.s2s"
 
-Proc GenerateSoundInit()
+Proc GenerateSoundInit(soundsDir$, soundsMask$)
 
-    PrintLog("TODO: Initialize sound gen!\n");
+    PrintLog("GenerateSoundInit: Loading files from " + soundsDir$ + " using mask " + soundsMask$ + "\n");
+    
     ' Probably only have to do something if NOISE will be required - load a file list or
     ' something. 
+
+    if Len(soundsDir$) > 0 then
+        var sdirtmp$;   ' Save current dir
+        sdirtmp$ := FilePath$(0);       ' save current dir
+        if FilePathSet(soundsDir$, 0) < 0 then
+            Message("Cannot set dir to sounds dir \"" + soundsDir$ + "\"");
+        else
+            gensoundNumFileList% := FileList(gensoundFileList$[], -1, soundsMask$);
+            genrandomIndices(gensoundRandom%[], gensoundNumFileList%);
+            FilePathSet(sdirtmp$, 0);       ' restore dir
+        endif
+    endif
+    
+    PrintLog("GenerateSoundInit: Loaded " + str$(gensoundNumFileList%) + " sound files.\n");
     
 end
 
@@ -41,3 +63,24 @@ Proc GenerateNoise(v[], sz%, vmin, vmax, sampleHz)
     next
 
 end
+
+
+
+' Gets sz% voltage values in array v[] representing noise for space1g. 
+' Values are fetched from a file in the list obtained in GenerateSoundInit. The 
+' filename used is returned in 
+' The last value, v[sz%-1], is set to 0 
+' (since the 1401 DAC will be left at the last value after the waveform has been 
+' played). The DAC output sampling rate should be set in 'sampleHz'. 
+
+Proc GenerateNoiseRandomList(v[], sz%, vmin, vmax, sampleHz, file$)
+    var i%;
+    
+    ' dummy here just set 0's.
+    for i% := 0 to sz%-1 do
+        v[i%] := 0;
+    next
+
+end
+
+
