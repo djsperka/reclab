@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.7  2008/03/18 19:49:39  devel
+' Revision 1.8  2008/03/26 17:17:08  devel
+' Incorporate random list for noise files. Add selection of dir and mask for noise files.
+'
+' Revision 1.7  2008-03-18 19:49:39  devel
 ' Incorporate sound gen and playing. Add triggering (still must debug), configurable debug mode, etc.
 '
 ' Revision 1.6  2008-03-13 19:19:45  devel
@@ -40,6 +43,7 @@ var gwindowData%;
 const gtrialListMin% := 3;                             ' min size of the trial list
 const gtrialListMax% := 7;
 var gtrialList%[gtrialListMax%];       ' The trial list is a list of speakers to use in a series
+var gtrialListFilenames$[gtrialListMax%];   ' When noise chosen, these are filenames of noise files used
 var gntrialList%;
 var gtrialListIndex%;
 
@@ -57,6 +61,8 @@ var gspcToneCopiedToPlayWaveArea% := 0;
 
 var spcOutputRoot$;                 ' root filename for output file
 var spcNoise%               := 1;
+var spcNoiseDir$            := "c:/reclab/space1g";
+var spcNoiseMask$           := "noise*.bin";
 var spcTone%                := 0;
 var spcFreq%                := 20000;
 var spcNTrialsPerStim%      := 0;
@@ -65,7 +71,9 @@ var spcVarDelay             := 0.5;
 var spcInterStimInterval    := 1.0;
 var spcMissTimeout          := 2.0;
 var spcLeverTimeout         := 0.0;
+var spcTrialTypesFileSelection% := 0;
 var spcTrialTypesFile$      := "";
+var spcTrialTypesFileList$[100];
 var spcBlockSize%           := 2;
 var spcFreeRewardSize%      := 50;
 var spcFreeRewardCheck%     := 0;
@@ -75,21 +83,23 @@ var spcLongRewardCheck%     := 0;
 
 const spcdlgRoot%       := 1;
 const spcdlgNoise%      := 2;
-const spcdlgTone%       := 3;
-const spcdlgFreq%       := 4;
-const spcdlgTTSelection%:= 5;
-const spcdlgNTrials%    := 6;
-const spcdlgBlockSize%  := 7;
-const spcdlgMinDelay%   := 8;
-const spcdlgVarDelay%   := 9;
-const spcdlgInterStimInterval% := 10;
-const spcdlgMissTimeout%:= 11;
-const spcdlgLeverTimeout% := 12;
-const spcdlgFreeRewardCheck% := 13;
-const spcdlgFreeRewardSize% := 14;
-const spcdlgLongRewardCheck% := 15;
-const spcdlgLongRewardSize% := 16;
-const spcdlgDebug% := 17;
+const spcdlgNoiseDir%   := 3;
+const spcdlgNoiseMask%  := 4;
+const spcdlgTone%       := 5;
+const spcdlgFreq%       := 6;
+const spcdlgTTSelection%:= 7;
+const spcdlgNTrials%    := 8;
+const spcdlgBlockSize%  := 9;
+const spcdlgMinDelay%   := 10;
+const spcdlgVarDelay%   := 11;
+const spcdlgInterStimInterval% := 12;
+const spcdlgMissTimeout%:= 13;
+const spcdlgLeverTimeout% := 14;
+const spcdlgFreeRewardCheck% := 15;
+const spcdlgFreeRewardSize% := 16;
+const spcdlgLongRewardCheck% := 16;
+const spcdlgLongRewardSize% := 17;
+const spcdlgDebug% := 18;
 
 
 proc Space1gScriptDialogSaveParams()
@@ -125,6 +135,8 @@ func Space1gDlgChanged%(item%)
 
     ' enable or disable frequency box as needed
     DlgEnable(DlgValue(spcdlgTone%), spcdlgFreq%);
+    DlgEnable(DlgValue(spcdlgNoise%), spcdlgNoiseDir%);
+    DlgEnable(DlgValue(spcdlgNoise%), spcdlgNoiseMask%);
     DlgEnable(DlgValue(spcdlgFreeRewardCheck%), spcdlgFreeRewardSize%);
     DlgEnable(DlgValue(spcdlgLongRewardCheck%), spcdlgLongRewardSize%);
         
@@ -133,35 +145,12 @@ func Space1gDlgChanged%(item%)
 end
 
 
-func Space1gCheckOK%()
-    var status% := 0;
-    var o$;
-
-    ' Verify that output root is not null
-    o$ := DlgValue$(spcdlgRoot%);
-    if len(o$) = 0 then
-        Message("Please enter an output root.");
-        status% := 1;
-    endif
-
-    ' Check that spcNTrialsPerStim% is a multiple of spcBlockSize%
-    if spcNTrialsPerStim% mod spcBlockSize% <> 0 then
-        Message("NTrialsPerStim must be a multiple of block size!");
-        status% := 1;
-    endif
-
-    ' TODO: Check that output file does not exist. 
-    
-    return status%;
-end
 
 func Space1gScriptDialog%()
     var i%;
     var status% := 0;
-    var sFiles$[100];
     var sFileCount% := 0;
     var sFileMask$ := "spc*.txt";
-    var iFileSelection% := 0;
     
     ' Fetch parameters from registry
     
@@ -170,7 +159,7 @@ func Space1gScriptDialog%()
     ' Get file list for trial types. If no files are found in stim$ matching the mask, 
     ' show a message and quit. 
     FilePathSet(stim$);
-    sFileCount% := FileList(sFiles$, -1, sFileMask$);
+    sFileCount% := FileList(spcTrialTypesFileList$, -1, sFileMask$);
     if sFileCount% = 0 then
         Message("There are no files in dir %s matching the mask %s", stim$, sFileMask$);
         return 0;   ' will look as if user hit Cancel
@@ -181,9 +170,11 @@ func Space1gScriptDialog%()
 	DlgCreate("Space1g Parameters", 25, 10);
     DlgString(spcdlgRoot%, "Output file root|Base name of output file, e.g. a022098a", 32, "a-zA-Z0-9_-");
     DlgCheck(spcdlgNoise%, "Noise");
+    DlgString(spcdlgNoiseDir%, "Noise file dir:", 255, "a-zA-Z0-9_-:/\\.");
+    DlgString(spcdlgNoiseMask%, "Noise file mask:", 255, "a-zA-Z0-9_-*?.");
     DlgCheck(spcdlgTone%, "Tone");
     DlgInteger(spcdlgFreq%, "Frequency(Hz)", 1, 100000);
-    DlgList(spcdlgTTSelection%, "Stim set:", sFiles$, sFileCount%);
+    DlgList(spcdlgTTSelection%, "Stim set:", spcTrialTypesFileList$, sFileCount%);
     DlgInteger(spcdlgNTrials%, "# trials per stim", 1, 20, 0, 0, 1);
     DlgInteger(spcdlgBlockSize%, "block size", 1, 5, 0, 0, 1);
     DlgReal(spcdlgMinDelay%, "Min delay(s)", 0.0, 5.0);
@@ -203,7 +194,7 @@ func Space1gScriptDialog%()
 
     ' Show the dialog. 
 
-	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcTone%, spcFreq%, iFileSelection%, spcNTrialsPerStim%, spcBlocksize%, 
+	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcNoiseDir$, spcNoiseMask$, spcTone%, spcFreq%, spcTrialTypesFileSelection%, spcNTrialsPerStim%, spcBlocksize%, 
                 spcMinDelay, spcVarDelay, spcInterStimInterval, spcMissTimeout, spcLeverTimeout, 
                 spcFreeRewardCheck%, spcFreeRewardSize%, spcLongRewardCheck%, spcLongRewardSize%, 
                 spcDebug%);
@@ -211,7 +202,6 @@ func Space1gScriptDialog%()
     ' If user hit OK then save parameters (and return 1). 
 
 	if i% = 1 then
-        spcTrialTypesFile$ := sFiles$[iFileSelection%];
         Space1gScriptDialogSaveParams();
         status% := 1;
     else
@@ -220,6 +210,58 @@ func Space1gScriptDialog%()
 
 	return status%;
 end;
+
+
+
+func Space1gCheckOK%()
+    var status% := 0;
+    var o$;
+
+    ' Verify that output root is not null
+    o$ := DlgValue$(spcdlgRoot%);
+    if len(o$) = 0 then
+        Message("Please enter an output root.");
+        status% := 1;
+    endif
+
+    ' Check that spcNTrialsPerStim% is a multiple of spcBlockSize%
+    if spcNTrialsPerStim% mod spcBlockSize% <> 0 then
+        Message("NTrialsPerStim must be a multiple of block size!");
+        status% := 1;
+    endif
+
+    ' Now open and load trial types file.
+
+    spcTrialTypesFile$ := spcTrialTypesFileList$[spcTrialTypesFileSelection%];
+    if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
+        Message("Cannot load trial types file " + spcTrialTypesFile$);
+        status% := 1;
+    endif
+    PrintLog("Loaded %d trial types from %s\n", gspcNTrialTypes%, spcTrialTypesFile$);
+
+
+    ' If noise is selected, init the random noise selection and ensure there are enough files
+    if DlgValue(spcdlgNoise%) = 1 then
+        var ntemp%;
+        spcNoiseDir$ := DlgValue$(spcdlgNoiseDir%);
+        spcNoiseMask$ := DlgValue$(spcdlgNoiseMask%);
+        ntemp% := gensoundInitRandomList%(spcNoiseDir$, spcNoiseMask$);
+        if ntemp% = 0 then
+            Message("No noise files found in dir " + spcNoiseDir$ + " using mask " + spcNoiseMask$);
+            status% := 1;
+        else
+            if ntemp% < (spcNTrialsPerStim%*gspcNTrialTypes%) then
+                if Query("Found just " + str$(ntemp%) + " noise files in dir " + spcNoiseDir$ + " using mask " + 
+                        spcNoiseMask$ + ". With " + str$(spcNTrialsPerStim%) + " trials per stim, and with " + 
+                        str$(gspcNTrialTypes%) + " trial types loaded from " + spcTrialTypesFile$ + " there will be repeats. Continue?") = 0 then
+                    status% := 1;
+                endif
+            endif
+        endif
+    endif
+    
+    return status%;
+end
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -290,7 +332,7 @@ func PrepareTrials%()
         ' Only need to copy tone once
         if gspcToneCopiedToPlayWaveArea% = 0 then
         
-            GenerateTone(gspcSoundVolts[], gspcSoundSize%, gspcVoltsMin, gspcVoltsMax, spcFreq%, gspcDAC0Rate);
+            gensoundTone(gspcSoundVolts[], gspcSoundSize%, gspcVoltsMin, gspcVoltsMax, spcFreq%, gspcDAC0Rate);
             PlayWaveCopy(GetPlayWaveKey$(0), gspcSoundVolts[]);
             gspcToneCopiedToPlayWaveArea% := 1;
 
@@ -300,8 +342,11 @@ func PrepareTrials%()
     
         ' Load noise for each of the trials
         for i% := 0 to gntrialList%-1 do
-        
-            GenerateNoise(gspcSoundVolts[], gspcSoundSize%, gspcVoltsMin, gspcVoltsMax, gspcDAC0Rate);
+            
+            if (gensoundRandomFromList%(gspcSoundVolts[], gspcSoundSize%, gtrialListFilenames$[i%]) <> 0) then
+                Message("Error loading random sounds. Check log.");
+                halt;
+            endif
             PlayWaveCopy(GetPlayWaveKey$(i%), gspcSoundVolts[]);
 
         next
@@ -361,15 +406,18 @@ end
 
 
 Proc PlaySound(ind%)
+    var spk%[1];
 
     ' Set speaker and atten
     recSpeaker%(gspcTTSpeakers%[gtrialList%[ind%]]);
     recAtten%(gspcTTAtten[gtrialList%[ind%]]);
+    spk%[0] := gtrialList%[ind%];
+
 
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
     
-    SampleText(str$(gspcTTSpeakers%[gtrialList%[ind%]]));
+    SampleText(str$(gspcTTSpeakers%[gtrialList%[ind%]]), -1, spk%[]);
     if spcNoise% then
         SampleKey(GetPlayWaveKey$(ind%));
     else
@@ -796,23 +844,15 @@ if Space1gScriptDialog%() = 0 then
     halt;
 endif
 
-' Now open and load trial types file.
-
-if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
-    Message("Cannot load trial types file " + spcTrialTypesFile$);
-    halt;
-endif
-PrintLog("Loaded %d trial types from %s\n", gspcNTrialTypes%, spcTrialTypesFile$);
 
 ' initialize trial list generator
 
 tlgInit(gspcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, gtrialListMin%, gtrialListMax%);
 
-' Initialize sound generator and PlayWave areas. The call to InitializePlayWaveAreas MUST
+' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
 ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
 ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
 
-GenerateSoundInit();
 InitializePlayWaveAreas();
 
 ' Setup sampling config and open windows
