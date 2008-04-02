@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.8  2008/03/26 17:17:08  devel
+' Revision 1.9  2008/04/02 18:10:26  devel
+' Now ready for testing. Still need to deal with file naming. Dialog params saved and restored.
+'
+' Revision 1.8  2008-03-26 17:17:08  devel
 ' Incorporate random list for noise files. Add selection of dir and mask for noise files.
 '
 ' Revision 1.7  2008-03-18 19:49:39  devel
@@ -59,26 +62,26 @@ var gspcToneCopiedToPlayWaveArea% := 0;
 
 '-------- space1g configuration dialog ---------------------------------------
 
-var spcOutputRoot$;                 ' root filename for output file
+var spcOutputRoot$          := "output";        ' root filename for output file
 var spcNoise%               := 1;
 var spcNoiseDir$            := "c:/reclab/space1g";
 var spcNoiseMask$           := "noise*.bin";
 var spcTone%                := 0;
 var spcFreq%                := 20000;
+var spcTrialTypesFileSelection% := 0;
+var spcTrialTypesFile$      := "";
+var spcTrialTypesFileList$[100];
 var spcNTrialsPerStim%      := 0;
+var spcBlockSize%           := 2;
 var spcMinDelay             := 0.5;
 var spcVarDelay             := 0.5;
 var spcInterStimInterval    := 1.0;
 var spcMissTimeout          := 2.0;
 var spcLeverTimeout         := 0.0;
-var spcTrialTypesFileSelection% := 0;
-var spcTrialTypesFile$      := "";
-var spcTrialTypesFileList$[100];
-var spcBlockSize%           := 2;
-var spcFreeRewardSize%      := 50;
 var spcFreeRewardCheck%     := 0;
-var spcLongRewardSize%      := 100;
+var spcFreeRewardSize%      := 50;
 var spcLongRewardCheck%     := 0;
+var spcLongRewardSize%      := 100;
 
 
 const spcdlgRoot%       := 1;
@@ -97,18 +100,71 @@ const spcdlgMissTimeout%:= 13;
 const spcdlgLeverTimeout% := 14;
 const spcdlgFreeRewardCheck% := 15;
 const spcdlgFreeRewardSize% := 16;
-const spcdlgLongRewardCheck% := 16;
-const spcdlgLongRewardSize% := 17;
-const spcdlgDebug% := 18;
+const spcdlgLongRewardCheck% := 17;
+const spcdlgLongRewardSize% := 18;
+const spcdlgDebug% := 19;
 
 
 proc Space1gScriptDialogSaveParams()
-    PrintLog("TODO: proc Space1gScriptDialogSaveParams()\n");
+	var stmp$;
+	var key$;
+
+	key$:="Reclab\\Space1g";
+	Profile(key$, "OutputRoot", spcOutputRoot$);
+	Profile(key$, "NoiseCheck", spcNoise%);
+	Profile(key$, "NoiseDir", spcNoiseDir$);
+	Profile(key$, "NoiseMask", spcNoiseMask$);
+	Profile(key$, "ToneCheck", spcTone%);
+	Profile(key$, "ToneFreq", spcFreq%);
+    Profile(key$, "TrialTypesFileSelection", spcTrialTypesFileSelection%);
+	Profile(key$, "NTrialsPerStim", spcNTrialsPerStim%);
+	Profile(key$, "StimBlockSize", spcBlockSize%);
+    Profile(key$, "MinDelay", str$(spcMinDelay));
+    Profile(key$, "VarDelay", str$(spcVarDelay));
+    Profile(key$, "InterStimInterval", str$(spcInterStimInterval));
+    Profile(key$, "MissTimeout", str$(spcMissTimeout));
+    Profile(key$, "LeverTimeout", str$(spcLeverTimeout));
+	Profile(key$, "FreeRewardCheck", spcFreeRewardCheck%);
+	Profile(key$, "FreeRewardSize", spcFreeRewardSize%);
+	Profile(key$, "LongRewardCheck", spcLongRewardCheck%);
+	Profile(key$, "LongRewardSize", spcLongRewardSize%);
+	Profile(key$, "DebugCheck", spcDebug%);
+
+	return;
 end
 
 proc Space1gScriptDialogGetParams()
-    PrintLog("TODO: proc Space1gScriptDialogGetParams()\n");
+	var stmp$;
+	var key$;
+
+    key$:="Reclab\\Space1g";
+	Profile(key$, "OutputRoot", spcOutputRoot$, spcOutputRoot$);
+	Profile(key$, "NoiseCheck", spcNoise%, spcNoise%);
+	Profile(key$, "NoiseDir", spcNoiseDir$, spcNoiseDir$);
+	Profile(key$, "NoiseMask", spcNoiseMask$, spcNoiseMask$);
+	Profile(key$, "ToneCheck", spcTone%, spcTone%);
+	Profile(key$, "ToneFreq", spcFreq%, spcFreq%);
+    Profile(key$, "TrialTypesFileSelection", spcTrialTypesFileSelection%, spcTrialTypesFileSelection%);
+	Profile(key$, "NTrialsPerStim", spcNTrialsPerStim%, spcNTrialsPerStim%);
+	Profile(key$, "StimBlockSize", spcBlockSize%, spcBlockSize%);
+    Profile(key$, "MinDelay", str$(spcMinDelay), stmp$);
+    spcMinDelay := val(stmp$);
+    Profile(key$, "VarDelay", str$(spcVarDelay), stmp$);
+    spcVarDelay := val(stmp$);
+    Profile(key$, "InterStimInterval", str$(spcInterStimInterval), stmp$);
+    spcInterStimInterval := val(stmp$);
+    Profile(key$, "MissTimeout", str$(spcMissTimeout), stmp$);
+    spcMissTimeout := val(stmp$);
+    Profile(key$, "LeverTimeout", str$(spcLeverTimeout), stmp$);
+    spcLeverTimeout := val(stmp$);
+	Profile(key$, "FreeRewardCheck", spcFreeRewardCheck%, spcFreeRewardCheck%);
+	Profile(key$, "FreeRewardSize", spcFreeRewardSize%, spcFreeRewardSize%);
+	Profile(key$, "LongRewardCheck", spcLongRewardCheck%, spcLongRewardCheck%);
+	Profile(key$, "LongRewardSize", spcLongRewardSize%, spcLongRewardSize%);
+	Profile(key$, "DebugCheck", spcDebug%, spcDebug%);
+	return;
 end
+
 
 
 func Space1gDlgChanged%(item%)
@@ -233,6 +289,7 @@ func Space1gCheckOK%()
     ' Now open and load trial types file.
 
     spcTrialTypesFile$ := spcTrialTypesFileList$[spcTrialTypesFileSelection%];
+    
     if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
         Message("Cannot load trial types file " + spcTrialTypesFile$);
         status% := 1;
@@ -423,7 +480,7 @@ Proc PlaySound(ind%)
     else
         SampleKey(GetPlayWaveKey$(0));
     endif
-'    SampleKey("T");
+    SampleKey("T");
     
 end
 
@@ -454,7 +511,7 @@ proc CreateSampleConfiguration()
 
 
     ' Event channel 0 is for sound triggers
-    SampleEvent(TrigChannel%, 0, 1, 10);
+    SampleEvent(TrigChannel%, 0, 0, 10);
     SampleTitle$(TrigChannel%, "Trigger");
 
     ' Text marks
