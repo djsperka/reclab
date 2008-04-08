@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.9  2008/04/02 18:10:26  devel
+' Revision 1.10  2008/04/08 18:54:28  devel
+' Clean up dialog wording. Fix up naming of timeout and max time vars.
+'
+' Revision 1.9  2008-04-02 18:10:26  devel
 ' Now ready for testing. Still need to deal with file naming. Dialog params saved and restored.
 '
 ' Revision 1.8  2008-03-26 17:17:08  devel
@@ -75,9 +78,12 @@ var spcNTrialsPerStim%      := 0;
 var spcBlockSize%           := 2;
 var spcMinDelay             := 0.5;
 var spcVarDelay             := 0.5;
+var spcMaxLvrDownTime       := 10.0;
+var spcLvrDownTimeout       := 2.0;
+var spcFalsePositiveTimeout := 2.0;
 var spcInterStimInterval    := 1.0;
-var spcMissTimeout          := 2.0;
-var spcLeverTimeout         := 0.0;
+var spcMaxLvrUpTime         := 2.0;
+var spcLvrUpTimeout         := 2.0;
 var spcFreeRewardCheck%     := 0;
 var spcFreeRewardSize%      := 50;
 var spcLongRewardCheck%     := 0;
@@ -95,14 +101,17 @@ const spcdlgNTrials%    := 8;
 const spcdlgBlockSize%  := 9;
 const spcdlgMinDelay%   := 10;
 const spcdlgVarDelay%   := 11;
-const spcdlgInterStimInterval% := 12;
-const spcdlgMissTimeout%:= 13;
-const spcdlgLeverTimeout% := 14;
-const spcdlgFreeRewardCheck% := 15;
-const spcdlgFreeRewardSize% := 16;
-const spcdlgLongRewardCheck% := 17;
-const spcdlgLongRewardSize% := 18;
-const spcdlgDebug% := 19;
+'const spcdlgMaxLvrDownTime%     := 12;
+'const spcdlgLvrDownTimeout%     := 13;
+const spcdlgInterStimInterval%  := 12;
+const spcdlgMaxLvrUpTime%       := 13;
+const spcdlgLvrUpTimeout%       := 14;
+const spcdlgFalsePositiveTimeout% := 15;
+const spcdlgFreeRewardCheck% := 16;
+const spcdlgFreeRewardSize% := 17;
+const spcdlgLongRewardCheck% := 18;
+const spcdlgLongRewardSize% := 19;
+const spcdlgDebug% := 20;
 
 
 proc Space1gScriptDialogSaveParams()
@@ -121,9 +130,12 @@ proc Space1gScriptDialogSaveParams()
 	Profile(key$, "StimBlockSize", spcBlockSize%);
     Profile(key$, "MinDelay", str$(spcMinDelay));
     Profile(key$, "VarDelay", str$(spcVarDelay));
+    Profile(key$, "MaxLvrDownTime", str$(spcMaxLvrDownTime));
+    Profile(key$, "LvrDownTimeout", str$(spcLvrDownTimeout));
     Profile(key$, "InterStimInterval", str$(spcInterStimInterval));
-    Profile(key$, "MissTimeout", str$(spcMissTimeout));
-    Profile(key$, "LeverTimeout", str$(spcLeverTimeout));
+    Profile(key$, "MaxLvrUpTime", str$(spcMaxLvrUpTime));
+    Profile(key$, "LvrUpTimeout", str$(spcLvrUpTimeout));
+    Profile(key$, "FalsePositiveTimeout", str$(spcFalsePositiveTimeout));
 	Profile(key$, "FreeRewardCheck", spcFreeRewardCheck%);
 	Profile(key$, "FreeRewardSize", spcFreeRewardSize%);
 	Profile(key$, "LongRewardCheck", spcLongRewardCheck%);
@@ -151,12 +163,18 @@ proc Space1gScriptDialogGetParams()
     spcMinDelay := val(stmp$);
     Profile(key$, "VarDelay", str$(spcVarDelay), stmp$);
     spcVarDelay := val(stmp$);
+    Profile(key$, "MaxLvrDownTime", str$(spcMaxLvrDownTime), stmp$);
+    spcMaxLvrDownTime := val(stmp$);
+    Profile(key$, "LvrDownTimeout", str$(spcLvrDownTimeout), stmp$);
+    spcLvrDownTimeout := val(stmp$);
     Profile(key$, "InterStimInterval", str$(spcInterStimInterval), stmp$);
     spcInterStimInterval := val(stmp$);
-    Profile(key$, "MissTimeout", str$(spcMissTimeout), stmp$);
-    spcMissTimeout := val(stmp$);
-    Profile(key$, "LeverTimeout", str$(spcLeverTimeout), stmp$);
-    spcLeverTimeout := val(stmp$);
+    Profile(key$, "MaxLvrUpTime", str$(spcMaxLvrUpTime), stmp$);
+    spcMaxLvrUpTime := val(stmp$);
+    Profile(key$, "LvrUpTimeout", str$(spcLvrUpTimeout), stmp$);
+    spcLvrUpTimeout := val(stmp$);
+    Profile(key$, "FalsePositiveTimeout", str$(spcFalsePositiveTimeout), stmp$);
+    spcFalsePositiveTimeout := val(stmp$);
 	Profile(key$, "FreeRewardCheck", spcFreeRewardCheck%, spcFreeRewardCheck%);
 	Profile(key$, "FreeRewardSize", spcFreeRewardSize%, spcFreeRewardSize%);
 	Profile(key$, "LongRewardCheck", spcLongRewardCheck%, spcLongRewardCheck%);
@@ -235,11 +253,14 @@ func Space1gScriptDialog%()
     DlgInteger(spcdlgBlockSize%, "block size", 1, 5, 0, 0, 1);
     DlgReal(spcdlgMinDelay%, "Min delay(s)", 0.0, 5.0);
     DlgReal(spcdlgVarDelay%, "Var delay(s)", 0.0, 5.0);
+'    DlgReal(spcdlgMaxLvrDownTime%, "Max lvr down time(s)", 0.0, 120.0);
+'    DlgReal(spcdlgLvrDownTimeout%, "Lvr down timeout(s)", 0.0, 120.0);
     DlgReal(spcdlgInterStimInterval%, "ISI(s)", 0.0, 5.0);
-    DlgReal(spcdlgMissTimeout%, "Miss timeout(s)", 0.0, 5.0);
-    DlgReal(spcdlgLeverTimeout%, "Lever timeout(s)", 0.0, 5.0);
-    DlgCheck(spcdlgFreeRewardCheck%, "Free reward?");
-    DlgInteger(spcdlgFreeRewardSize%, "Free reward size", 5, 500, 0, 0, 10);
+    DlgReal(spcdlgMaxLvrUpTime%, "Max lvr up time(s)", 0.0, 120.0);
+    DlgReal(spcdlgLvrUpTimeout%, "Lvr up timeout(s)", 0.0, 120.0);
+    DlgReal(spcdlgFalsePositiveTimeout%, "False positive timeout(s)", 0.0, 5.0);
+    DlgCheck(spcdlgFreeRewardCheck%, "Training reward?");
+    DlgInteger(spcdlgFreeRewardSize%, "Training reward size", 5, 500, 0, 0, 10);
     DlgCheck(spcdlgLongRewardCheck%, "Long reward?");
     DlgInteger(spcdlgLongRewardSize%, "Long reward size", 5, 500, 0, 0, 10);
     DlgCheck(spcdlgDebug%, "Debug?");
@@ -250,8 +271,12 @@ func Space1gScriptDialog%()
 
     ' Show the dialog. 
 
-	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcNoiseDir$, spcNoiseMask$, spcTone%, spcFreq%, spcTrialTypesFileSelection%, spcNTrialsPerStim%, spcBlocksize%, 
-                spcMinDelay, spcVarDelay, spcInterStimInterval, spcMissTimeout, spcLeverTimeout, 
+	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcNoiseDir$, spcNoiseMask$, spcTone%, 
+                spcFreq%, spcTrialTypesFileSelection%, spcNTrialsPerStim%, spcBlocksize%, 
+                spcMinDelay, spcVarDelay, 
+'                spcMaxLvrDownTime, spcLvrDownTimeout, 
+                spcInterStimInterval, 
+                spcMaxLvrUpTime, spcLvrUpTimeout, spcFalsePositiveTimeout, 
                 spcFreeRewardCheck%, spcFreeRewardSize%, spcLongRewardCheck%, spcLongRewardSize%, 
                 spcDebug%);
 
@@ -508,7 +533,9 @@ proc CreateSampleConfiguration()
 '	SampleClear();
 	SampleAutoComment(0);
 	SampleAutoCommit(30);
-
+    FilePathSet(data$, 3, 1);
+    SampleAutoName$(spcOutputRoot$);
+    SampleAutoFile(1);
 
     ' Event channel 0 is for sound triggers
     SampleEvent(TrigChannel%, 0, 0, 10);
@@ -649,18 +676,19 @@ end
 const stateStart%               := 0;
 const statePrepareTrials%       := 1;
 const stateWaitLvrDown%         := 2;
-const stateDelayInterval%       := 3;
-const statePlaySound%           := 4;
-const stateWaitSoundDone%       := 5;
-const stateWaitISI%             := 6;
-const statePlaySound2%          := 7;
-const stateFreeReward%          := 8;
-const stateWaitLvrUp%           := 9;
-const stateLvrUpReward%         := 10;
-const stateMissTimeout%         := 11;
-const stateLeverTimeout%        := 12;
-const statePlaySoundWait%       := 13;
-const statePlaySound2Wait%      := 14;
+const stateLvrDownTimeout%      := 3;
+const stateDelayInterval%       := 4;
+const statePlaySound%           := 5;
+const stateWaitSoundDone%       := 6;
+const stateWaitISI%             := 7;
+const statePlaySound2%          := 8;
+const stateFreeReward%          := 9;
+const stateWaitLvrUp%           := 10;
+const stateLvrUpReward%         := 11;
+const stateFalsePositive%       := 12;
+const stateLvrUpTimeout%        := 13;
+const statePlaySoundWait%       := 14;
+const statePlaySound2Wait%      := 15;
 const stateDone%                := 20;
 
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
@@ -727,7 +755,7 @@ func IdleLoop%()
         case iState% = stateWaitLvrDown% then
             var s%;
             LogStatus("WaitLvrDown", "Blink/Wait.");
-            s% := recBlinkUntilLeverDown%(.5, 10.0);
+            s% := recBlinkUntilLeverDown%(.5, spcMaxLvrDownTime);
 
             docase
                 case s% = 1 then
@@ -736,17 +764,17 @@ func IdleLoop%()
                     ChangeStateTo(stateDelayInterval%);
                 case s% = 0 then
                     LogStatus("WaitLvrDown", "Timeout waiting for lever down.");
-                    ChangeStateTo(stateLeverTimeout%);
+                    ChangeStateTo(stateLvrDownTimeout%);
                 else
                     Message("Error in recBlinkUntilLeverDown!");
                     ChangeStateTo(stateDone%);
                     status% := 0;
             endcase
             
-        case iState% = stateLeverTimeout% then
+        case iState% = stateLvrDownTimeout% then
         
-            if tNow - tStateStart > spcMissTimeout then
-                LogStatus("LeverTimeout", "Timeout period done.");
+            if tNow - tStateStart > spcLvrDownTimeout then
+                LogStatus("LvrDownTimeout", "Timeout period done.");
                 ChangeStateTo(statePrepareTrials%);
             endif
             
@@ -783,7 +811,7 @@ func IdleLoop%()
             
             if stmp% = 0 then
                 LogStatus("WaitISI", "FAIL! Lever is up");
-                ChangeStateTo(stateMissTimeout%);
+                ChangeStateTo(stateFalsePositive%);
             else
                 if tNow - tStateStart > spcInterStimInterval then
                     LogStatus("WaitISI", "ISI done.");
@@ -827,22 +855,30 @@ func IdleLoop%()
             stmp% := recLeverDown%();
             if stmp% < 0 then
                 PrintLog("ERROR in recLeverDown()!!!\n");
+                ChangeStateTo(stateDone%);
             endif
             
             if stmp% = 0 then
                 LogStatus("WaitLvrUp", "Lever is up");
                 ChangeStateTo(stateLvrUpReward%);
             else
-                if tNow - tStateStart > spcLeverTimeout then
+                if tNow - tStateStart > spcMaxLvrUpTime then
                     LogStatus("WaitLvrUp", "Lever not up - timed out!");
-                    ChangeStateTo(stateMissTimeout%);
+                    ChangeStateTo(stateLvrUpTimeout%);
                 endif
             endif
 
-        case iState% = stateMissTimeout% then
+        case iState% = stateLvrUpTimeout% then
         
-            if tNow - tStateStart > spcMissTimeout then
-                LogStatus("MissTimeout", "Timeout period done.");
+            if tNow - tStateStart > spcLvrUpTimeout then
+                LogStatus("LvrUpTimeout", "Timeout period done.");
+                ChangeStateTo(statePrepareTrials%);
+            endif
+            
+        case iState% = stateFalsePositive% then
+        
+            if tNow - tStateStart > spcFalsePositiveTimeout then
+                LogStatus("FalsePositiveTimeout", "Timeout period done.");
                 ChangeStateTo(statePrepareTrials%);
             endif
             
