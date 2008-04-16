@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.10  2008/04/08 18:54:28  devel
+' Revision 1.11  2008/04/16 18:25:16  devel
+' Reading noise files now. Clean up error handling in noise file load, init.
+'
+' Revision 1.10  2008-04-08 18:54:28  devel
 ' Clean up dialog wording. Fix up naming of timeout and max time vars.
 '
 ' Revision 1.9  2008-04-02 18:10:26  devel
@@ -57,10 +60,9 @@ var gtrialListIndex%;
 const gDAC0Key$        := "A";
 const gDAC0%         := 0;
 const gspcSoundSize%    := 33333;
-const gspcVoltsMin      := 0;
-const gspcVoltsMax      := 5;
 var gspcDAC0Rate     := 166666.6666667;
 var gspcSoundVolts[gspcSoundSize%];
+var gspcSoundDAC%[gspcSoundSize%];          ' 16 bit ints; -32768 to 32767. Should start/stop at 0!!!
 var gspcToneCopiedToPlayWaveArea% := 0;
 
 '-------- space1g configuration dialog ---------------------------------------
@@ -327,6 +329,7 @@ func Space1gCheckOK%()
         var ntemp%;
         spcNoiseDir$ := DlgValue$(spcdlgNoiseDir%);
         spcNoiseMask$ := DlgValue$(spcdlgNoiseMask%);
+        gensoundSetDebug(1);
         ntemp% := gensoundInitRandomList%(spcNoiseDir$, spcNoiseMask$);
         if ntemp% = 0 then
             Message("No noise files found in dir " + spcNoiseDir$ + " using mask " + spcNoiseMask$);
@@ -398,6 +401,9 @@ end
 func PrepareTrials%()
 
     var i%;
+    var nread%:= 0;
+    var file$;
+    
     gntrialList% := tlgGetTrialList%(gtrialList%[]);
 
     if spcDebug% = 1 then
@@ -414,8 +420,8 @@ func PrepareTrials%()
         ' Only need to copy tone once
         if gspcToneCopiedToPlayWaveArea% = 0 then
         
-            gensoundTone(gspcSoundVolts[], gspcSoundSize%, gspcVoltsMin, gspcVoltsMax, spcFreq%, gspcDAC0Rate);
-            PlayWaveCopy(GetPlayWaveKey$(0), gspcSoundVolts[]);
+            gensoundTone(gspcSoundDAC%[], gspcSoundSize%, spcFreq%, gspcDAC0Rate);
+            PlayWaveCopy(GetPlayWaveKey$(0), gspcSoundDAC%[]);
             gspcToneCopiedToPlayWaveArea% := 1;
 
         endif
@@ -424,17 +430,21 @@ func PrepareTrials%()
     
         ' Load noise for each of the trials
         for i% := 0 to gntrialList%-1 do
-            
-            if (gensoundRandomFromList%(gspcSoundVolts[], gspcSoundSize%, gtrialListFilenames$[i%]) <> 0) then
+            ArrConst(gspcSoundDAC%[], 0);
+            nread% := gensoundRandomFromList%(gspcSoundDAC%[], gspcSoundSize%, gtrialListFilenames$[i%]);
+            PrintLog("returned file$ := " + gtrialListFilenames$[i%] + "\n");
+            if (nread% <= 0) then
                 Message("Error loading random sounds. Check log.");
                 halt;
             endif
-            PlayWaveCopy(GetPlayWaveKey$(i%), gspcSoundVolts[]);
+            if (nread% < gspcSoundSize%) then
+                PrintLog("WARNING: Sound file " + gtrialListFilenames$[i%] + " has " + str$(nread%) + " samples. Expecting " + str$(gspcSoundSize%) + "\n");
+            endif    
+            PlayWaveCopy(GetPlayWaveKey$(i%), gspcSoundDAC%[]);
 
-        next
-        
+        next        
     endcase
-    
+
 
     return gntrialList%;
 
@@ -489,21 +499,30 @@ end
 
 Proc PlaySound(ind%)
     var spk%[1];
-
+    var atten;
+    var s$;
+    
     ' Set speaker and atten
     recSpeaker%(gspcTTSpeakers%[gtrialList%[ind%]]);
-    recAtten%(gspcTTAtten[gtrialList%[ind%]]);
+
+    atten := gspcTTAtten[gtrialList%[ind%]] + 0.5*Floor(Rand(3, 0));
+    recAtten%(atten);
     spk%[0] := gtrialList%[ind%];
 
 
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
-    
-    SampleText(str$(gspcTTSpeakers%[gtrialList%[ind%]]), -1, spk%[]);
-    if spcNoise% then
+
+    if spcTone% then
         SampleKey(GetPlayWaveKey$(ind%));
+        ' saved string format speaker%,atten,frequency%
+        s$ := Print$("%d,%.1f,%d", gspcTTSpeakers%[gtrialList%[ind%]], atten, spcFreq%);
+        SampleText(s$, -1);
     else
         SampleKey(GetPlayWaveKey$(0));
+        ' saved string format speaker%,atten,soundfilename
+        s$ := Print$("%d,%.1f,%s", gspcTTSpeakers%[gtrialList%[ind%]], atten, gtrialListFilenames$[ind%]);
+        SampleText(s$, -1);
     endif
     SampleKey("T");
     
@@ -542,7 +561,7 @@ proc CreateSampleConfiguration()
     SampleTitle$(TrigChannel%, "Trigger");
 
     ' Text marks
-    SampleTextMark(10);
+    SampleTextMark(64);
 
     ' DAC0 (sound output) -> record this channel? It will inflate the file sizes......
 
@@ -639,6 +658,7 @@ func Start%()
 end
 
 func Stop%()
+    PrintLog("Stop called\n");
     
     ' Stop sampling....
 
@@ -652,6 +672,7 @@ func Stop%()
 end
 
 func Pause%()
+    PrintLog("Pause called\n");
     fPaused% := 1;
     ToolbarEnable(tbResume%, 1);
     ToolbarEnable(tbPause%, 0);
@@ -958,7 +979,7 @@ InitializeWindows();
 ' does that, as does IdleLoop%() when it reaches the end of all trials. 
 
 InitializeToolbar();
-Toolbar("Hit \"Start\" to begin sampling.", 0x7);
+Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
 'Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
 
 
