@@ -1,14 +1,19 @@
 ' gensound.s2s
 '
 ' These are utility functions for generating arrays of numbers suitable for sound generation with the 1401. 
-' There is a means to have a sound "generated" by reading voltage values from one of a list of files, 
+' There is a means to have a sound "generated" by reading DAC values from one of a list of files, 
 ' selected at random. Make sure to call gensoundInitRandomList first, then each call gensoundRandomFromList
 ' cycles through the list generated using the directory and file mask you provide. The list is randomized, 
 ' and every file in the list will be used once before running through the list again. Note that the list is 
-' NOT randomized again once you've run through it completely. 
+' NOT randomized again once you've run through it completely.
+'
+' DAC values in files should be 16 bit signed integers, values -32768<x<32767.  
 '
 ' $Log$
-' Revision 1.4  2008/03/26 17:16:14  devel
+' Revision 1.5  2008/04/16 18:24:31  devel
+' Fixes in gensoundRandomFromList. Must save dir from gensoundInitRandomList, then cd to it when opening files.
+'
+' Revision 1.4  2008-03-26 17:16:14  devel
 ' Change function names to gensound*. Fix bug in gensoundInitRandomList when
 ' no noise files found.
 '
@@ -17,12 +22,14 @@
 
 const gensoundpi := 3.141592653589793;
 const gensoundMaxFiles% := 400;
+var gensoundFileDir$;
 var gensoundFileList$[gensoundMaxFiles%];
 var gensoundRandom%[gensoundMaxFiles%];
 var gensoundCurrentIndex% := 0;
 var gensoundNumFileList% := 0;
 var gensoundDebug% := 0;
-
+const gensoundIntMax := 32767;
+const gensoundRampLengthMS% := 5;
 #include "genrandom.s2s"
 
 proc gensoundSetDebug(debug%)
@@ -33,6 +40,9 @@ proc gensoundSetDebug(debug%)
     endif
 end
 
+' Generates a list of files and randomizes the list. Subsequent calls to gensoundRandomFromList
+' will open the next file in the list and read/return the (int16) values. Looks in soundsDir$ for 
+' files matching the soundsMask$ (e.g. noise*.bin, or noise???.bin - see FileList() in spike2 doc). 
 
 func gensoundInitRandomList%(soundsDir$, soundsMask$)
 
@@ -49,6 +59,7 @@ func gensoundInitRandomList%(soundsDir$, soundsMask$)
         if FilePathSet(soundsDir$, 0) < 0 then
             Message("Cannot set dir to sounds dir \"" + soundsDir$ + "\"");
         else
+            gensoundFileDir$ := soundsDir$;
             gensoundNumFileList% := FileList(gensoundFileList$[], -1, soundsMask$);
             if gensoundNumFileList% > 0 then
                 genrandomIndices(gensoundRandom%[], gensoundNumFileList%);
@@ -70,15 +81,27 @@ end
 ' played). The waveform will be a sinusoid, with freq 'toneHz'. The DAC output 
 ' sampling rate should be set in 'sampleHz'. 
 
-Proc gensoundTone(v[], sz%, vmin, vmax, toneHz, sampleHz)
+Proc gensoundTone(v%[], sz%, toneHz, sampleHz)
 
     var i%;
+    var rampValue;
+    var rampLength%;
+    
+    rampLength% := gensoundRampLengthMS% * sampleHz / 1000;
     for i% := 0 to sz%-1 do
-        v[i%] := vmin + (vmax-vmin)*sin(2*gensoundpi*toneHz*i%/sampleHz);
-    next
 
-    ' Set the last value to 0
-    v[sz%-1] := 0;
+        ' Warning: ramp value must begin and end as a 0!!!
+        docase 
+        case i% < rampLength% then
+            rampValue := i%/rampLength%;
+        case i% > sz% - rampLength% - 1 then
+            rampValue := (sz% - i% - 1)/rampLength%;
+        else
+            rampValue := 1.0;
+        endcase
+            
+        v%[i%] := rampValue * gensoundIntMax * sin(2*gensoundpi*toneHz*i%/sampleHz);
+    next
 
 end
 
@@ -100,17 +123,16 @@ end
 
 
 
-' Gets sz% voltage values in array v[] representing noise for space1g. 
+' Gets at most sz% voltage values in array v%[] representing noise for space1g. 
 ' Values are fetched from a file in the list obtained in GenerateSoundInit. The 
-' filename used is returned in 
-' The last value, v[sz%-1], is set to 0 
-' (since the 1401 DAC will be left at the last value after the waveform has been 
-' played). The DAC output sampling rate should be set in 'sampleHz'. 
+' filename used is returned in file$. 
+' The array v% is set to 0 initially, and the number of values read is returned, neg on error. 
 
-func gensoundRandomFromList%(v[], sz%, file$)
+func gensoundRandomFromList%(v%[], sz%, &file$)
     var status% := 0;
     var handle;
     var nread% := 0;
+    var dirtmp$;
     
     if gensoundNumFileList% <= 0 then
         status% := -1;
@@ -118,25 +140,30 @@ func gensoundRandomFromList%(v[], sz%, file$)
         return status%;
     endif
     
-    
+    gensoundCurrentIndex% := gensoundCurrentIndex% + 1;
     if gensoundCurrentIndex% = gensoundNumFileList% then
         gensoundCurrentIndex% := 0;
     endif
 
     ' Open file
-    file$ := gensoundFileList$[gensoundCurrentIndex%];
-    handle := FileOpen(gensoundFileList$[gensoundCurrentIndex%], 1);
-    if handle < 0 then
+    dirtmp$ := FilePath$(0);       ' save current dir
+    if FilePathSet(gensoundFileDir$, 0) < 0 then
+        PrintLog("gensoundRandomFromList%: Cannot change dir to " + gensoundFileDir$ + ". Did you call gensoundInitRandomList?\n");
         status% := -1;
     else
-        nread% := BRead(v[]);
-        if nread% < sz% then
-            PrintLog("gensoundRandomFromList: File " + gensoundFileList$[gensoundCurrentIndex%] + " has only " + str$(nread%) + " values. Expecting at least " + str$(sz%) + ".\n");
+        file$ := gensoundFileList$[gensoundRandom%[gensoundCurrentIndex%]];
+        PrintLog("file$ := " + file$ + "\n");
+        handle := FileOpen(file$, 9);
+        if handle < 0 then
             status% := -1;
+        else
+            ArrConst(v%[], 0);
+            status% := BReadSize(2, v%[]);
+            FileClose(handle);
         endif
-        FileClose(handle);
+        FilePathSet(dirtmp$, 0);
     endif
-    
+
     return status%;
 end
 
