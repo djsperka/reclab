@@ -1,4 +1,4 @@
-var genrandomDebug% := 1;
+var genrandomDebug% := 0;
 
 ' Generate a list if num% random numbers, from 0 to num%-1, suitable for choosing from an 
 ' array with num% elements. List is chosen so each value occurs once in num% elements. 
