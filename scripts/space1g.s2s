@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.11  2008/04/16 18:25:16  devel
+' Revision 1.12  2008/04/29 17:42:05  devel
+' File naming cleaned up. Modified to prevent final trial of a stim set from being background. Begin (unfinished!!!) creation and writing of resultant data files.
+'
+' Revision 1.11  2008-04-16 18:25:16  devel
 ' Reading noise files now. Clean up error handling in noise file load, init.
 '
 ' Revision 1.10  2008-04-08 18:54:28  devel
@@ -43,12 +46,20 @@
 var spcDebug% := 1;
 
 '-------- global vars --------------------------------------------------------
+const gspcPI := 3.141592653589793;
 const gspcTTMaxSpeakers% := 100;
+const gspcMaxTrials%        := 100;         ' Maximum number of trials per speaker.
 var gspcTTSpeakers%[gspcTTMaxSpeakers%];    ' speaker numbers - each is considered a trial type. Can have duplicates. 
+var gspcTTSpikeCounts%[gspcTTMaxSpeakers%][gspcMaxTrials%]; ' spike counts for completed trials on each trial type
+var gspcTTSpikeRate[gspcTTMaxSpeakers%][gspcMaxTrials%];    ' spike rates for completed trials on each trial type
+var gspcTTSpikeRateMean[gspcTTMaxSpeakers%];' mean spike rate for each trial type
+var gspcTTSpikeRateStd[gspcTTMaxSpeakers%]; ' std dev for above. 
 var gspcTTAtten[gspcTTMaxSpeakers%];        ' atten to use for each speaker number in g_spcTTSpeakers%[]
-var gspcTTTallies[gspcTTMaxSpeakers%];      ' running tally of the number of completed trials of each type
+var gspcTTIndexBackground%;                 ' index into TT arrays which is the background speaker/atten pair. 
+var gspcTrialCount% := 0;                   ' overall trial counter - each trial gets a number!
 var gspcNTrialTypes% := 0;
 var gwindowData%;
+var gwindowXY%;
 const gtrialListMin% := 3;                             ' min size of the trial list
 const gtrialListMax% := 7;
 var gtrialList%[gtrialListMax%];       ' The trial list is a list of speakers to use in a series
@@ -56,10 +67,15 @@ var gtrialListFilenames$[gtrialListMax%];   ' When noise chosen, these are filen
 var gntrialList%;
 var gtrialListIndex%;
 
+'-------- global vars RE: xy plot
+var gspcUnitX[16];
+var gspcUnitY[16];
+
 '-------- global vars RE: sound -------------------------------------------------
 const gDAC0Key$        := "A";
 const gDAC0%         := 0;
 const gspcSoundSize%    := 33333;
+const gspcSampleLengthSec := 0.2;
 var gspcDAC0Rate     := 166666.6666667;
 var gspcSoundVolts[gspcSoundSize%];
 var gspcSoundDAC%[gspcSoundSize%];          ' 16 bit ints; -32768 to 32767. Should start/stop at 0!!!
@@ -227,6 +243,7 @@ func Space1gScriptDialog%()
     var status% := 0;
     var sFileCount% := 0;
     var sFileMask$ := "spc*.txt";
+    var pathTemp$;
     
     ' Fetch parameters from registry
     
@@ -299,6 +316,9 @@ end;
 func Space1gCheckOK%()
     var status% := 0;
     var o$;
+    var dummy$;
+    var i1%;
+    var i2%;
 
     ' Verify that output root is not null
     o$ := DlgValue$(spcdlgRoot%);
@@ -307,16 +327,27 @@ func Space1gCheckOK%()
         status% := 1;
     endif
 
+    ' See if output file(s) already exist. 
+    
+    FilePathSet(data$);
+    if FileList(dummy$, -1, o$ + ".*")>0 then
+        Message("Data files with this name (" + o$ + ") already exist.\nTry another name.");
+        status% := 1;
+    endif
+
     ' Check that spcNTrialsPerStim% is a multiple of spcBlockSize%
-    if spcNTrialsPerStim% mod spcBlockSize% <> 0 then
+    i1% := DlgValue(spcdlgNTrials%);
+    i2% := DlgValue(spcdlgBlockSize%);
+    if i1% mod i2% <> 0 then
         Message("NTrialsPerStim must be a multiple of block size!");
         status% := 1;
     endif
 
     ' Now open and load trial types file.
-
-    spcTrialTypesFile$ := spcTrialTypesFileList$[spcTrialTypesFileSelection%];
     
+    i1% := DlgValue(spcdlgTTSelection%);
+    spcTrialTypesFile$ := spcTrialTypesFileList$[i1%];
+    FilePathSet(stim$);    
     if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
         Message("Cannot load trial types file " + spcTrialTypesFile$);
         status% := 1;
@@ -355,6 +386,8 @@ end
 ' Expecting format with two numbers per line:
 ' spk atten
 ' where spk is speaker number and atten is attenuation
+' The last entry is treated as background in the online analysis!!! It doesn't matter what speaker it is. 
+' Lines that start with "#" are ignored. Blank lines are ignored too. 
 ' Will load array g_spcTTSpeakers%[g_spcTTMaxSpeakers%] and g_spcTTAtten[g_spcTTMaxSpeakers%], 
 ' and will set spcNTrialTypes% to be the number of speaker/atten pairs read. 
 
@@ -380,6 +413,7 @@ func LoadTrialTypes%(sTTFile$)
         endif
     wend
     gspcNTrialTypes% := count%;
+    gspcTTIndexBackground% := count%-1;
     
     FileClose();
   
@@ -403,12 +437,59 @@ func PrepareTrials%()
     var i%;
     var nread%:= 0;
     var file$;
-    
+    var swapIndex% := -1;
+
+    ' Get the trial list, then check if we're done. If so, return now, don't do the 
+    ' rest of the stuff here since there's nothing to do. 
     gntrialList% := tlgGetTrialList%(gtrialList%[]);
+    if gntrialList% = 0 then
+        return gntrialList%;
+    endif
+    
+    ' Check that the last trial in the list is NOT the background trial index. If it is, then 
+    ' swap it with one of the other non-background trial indices.
+
+    if gtrialList%[gntrialList%-1] = gspcNTrialTypes%-1 then
+    
+        PrintLog("Last trial in list is background. Fixing...\n");
+        
+        ' GREGG: should this start at 0 or 1? Is it OK for the first trial to be background? 
+        while i%<gntrialList%-2 and swapIndex% < 0 do
+            if gtrialList%[i%] <> gtrialList%[gntrialList%-1] then
+                swapIndex% := i%;
+            endif
+            i% := i%+1;
+        wend
+        
+        ' Should never happen, but if that loop failed I'm just gonna quit. 
+        ' The only way that could happen would be if the trial list generator sent back a 
+        ' list consisting of nothing but the background index. As long as we request 
+        ' lists with a min length > 1 that shouldn't happen, since the trial list 
+        ' generator doesn't allow repeated indices. 
+        if swapIndex% < 0 then
+            Message("Trial list error!");
+            halt;
+        endif
+
+        ' Now swap the indices and move on. 
+        i% := gtrialList%[gntrialList%-1];
+        gtrialList%[gntrialList%-1] := gtrialList%[swapIndex%];
+        gtrialList%[swapIndex%] := i%;
+        
+
+        PrintLog("Swapped trials to fix. Trial indices: ");
+        for i% := 0 to gntrialList%-1 do
+            PrintLog("%d", gtrialList%[i%]);
+            if i% < gntrialList%-1 then
+                PrintLog(",");
+            endif
+        next
+        PrintLog("\n");
+    endif
 
     if spcDebug% = 1 then
         PrintLog("TrialList ");
-        for i% := 0 to gntrialList% do
+        for i% := 0 to gntrialList%-1 do
             PrintLog(str$(gtrialList%[i%]) + " ");
         next
         PrintLog("\n");
@@ -432,7 +513,9 @@ func PrepareTrials%()
         for i% := 0 to gntrialList%-1 do
             ArrConst(gspcSoundDAC%[], 0);
             nread% := gensoundRandomFromList%(gspcSoundDAC%[], gspcSoundSize%, gtrialListFilenames$[i%]);
-            PrintLog("returned file$ := " + gtrialListFilenames$[i%] + "\n");
+            if spcDebug% = 1 then
+                PrintLog("gensoundRandomFromList returned file$ := " + gtrialListFilenames$[i%] + "\n");
+            endif
             if (nread% <= 0) then
                 Message("Error loading random sounds. Check log.");
                 halt;
@@ -501,7 +584,10 @@ Proc PlaySound(ind%)
     var spk%[1];
     var atten;
     var s$;
-    
+
+    ' Increment trial counter
+    gspcTrialCount% := gspcTrialCount% + 1;
+
     ' Set speaker and atten
     recSpeaker%(gspcTTSpeakers%[gtrialList%[ind%]]);
 
@@ -516,12 +602,12 @@ Proc PlaySound(ind%)
     if spcTone% then
         SampleKey(GetPlayWaveKey$(ind%));
         ' saved string format speaker%,atten,frequency%
-        s$ := Print$("%d,%.1f,%d", gspcTTSpeakers%[gtrialList%[ind%]], atten, spcFreq%);
+        s$ := Print$("S,%d,%d,%d,%.1f,%d", gspcTrialCount%, gtrialList%[ind%], gspcTTSpeakers%[gtrialList%[ind%]], atten, spcFreq%);
         SampleText(s$, -1);
     else
         SampleKey(GetPlayWaveKey$(0));
         ' saved string format speaker%,atten,soundfilename
-        s$ := Print$("%d,%.1f,%s", gspcTTSpeakers%[gtrialList%[ind%]], atten, gtrialListFilenames$[ind%]);
+        s$ := Print$("S,%d,%d,%d,%.1f,%s", gspcTrialCount%, gtrialList%[ind%], gspcTTSpeakers%[gtrialList%[ind%]], atten, gtrialListFilenames$[ind%]);
         SampleText(s$, -1);
     endif
     SampleKey("T");
@@ -541,6 +627,13 @@ var DAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC p
 var Trode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
                                 ' for anything other than electrodes!
 var TrigChannel% := 2;
+var xychanMean%;
+var xychanMeanPlus%;
+var xychanMeanMinus%;
+var xychanBkgd%;
+var xychanBkgdPlus%;
+var xychanBkgdMinus%;
+var xychanLines%;
 
 proc CreateSampleConfiguration()
 
@@ -552,13 +645,13 @@ proc CreateSampleConfiguration()
 '	SampleClear();
 	SampleAutoComment(0);
 	SampleAutoCommit(30);
-    FilePathSet(data$, 3, 1);
-    SampleAutoName$(spcOutputRoot$);
-    SampleAutoFile(1);
+    SampleAutoFile(0);
+    SampleAutoName$("space000");
 
     ' Event channel 0 is for sound triggers
     SampleEvent(TrigChannel%, 0, 0, 10);
     SampleTitle$(TrigChannel%, "Trigger");
+
 
     ' Text marks
     SampleTextMark(64);
@@ -590,7 +683,34 @@ end
 
 
 proc InitializeWindows()
+    var i%;
+    var ang;
 
+    ' Since we are opening files here, set the path. 
+    FilePathSet(data$, 1, 1);
+
+    ' Open text files for output. In the old "space1g", these were the "ecode_file" and the 
+    ' "bak_file". 
+    gEcodeFile% := FileOpen()zzzzzzzzzzzzzzzzzzzzzzzzzzz
+
+    ' Open xy window for radar plot. Initialize arrays for that plot as well. 
+    gwindowXY% := FileNew(12);
+	Window(0, 50, 50, 100); 
+	View(gwindowXY%).WindowVisible(1);
+    xychanMean% := XYSetChan(0, -16, 0, 2, 8);
+    xychanMeanPlus% := XYSetChan(0, -16, 0, 2, 7);
+    xychanMeanMinus% := XYSetChan(0, -16, 0, 2, 7);
+    xychanBkgd% := XYSetChan(0, -16, 0, 2, 0);
+    xychanBkgdPlus% := XYSetChan(0, -16, 0, 2, 5);
+    xychanBkgdMinus% := XYSetChan(0, -16, 0, 2, 5);
+    xychanLines% := XYSetChan(0, -32, 0, 2, 20);
+
+    for i%:=0 to 15 do
+        ang := -gspcPI/8*(5+i%);
+        gspcUnitX[i%] := cos(ang);
+        gspcUnitY[i%] := sin(ang);
+    next
+    
 	'Open the data sampling window
 	gwindowData% := FileNew(0,4);
 	Window(0, 0, 100, 50); 
@@ -664,6 +784,8 @@ func Stop%()
 
     if SampleStatus() <> -1 then
         SampleStop();
+        FilePathSet(data$);
+        FileSaveAs(spcOutputRoot$ + ".smr", -1);
     endif
     
     ' Returning zero from here any ToolbarSet() functions causes the 
@@ -691,6 +813,155 @@ func Reward%()
     return 1;
 end
 
+
+' UpdateOnlineAnalysis(tUpTo)
+' Look for trials completed in the period tOnlineLast - tUpTo
+
+var tOnlineLast := -1;
+
+proc UpdateOnlineAnalysis(tUpTo)
+    var begSpk% := -1;
+    var begBak% := -1;
+    var begInd% := -1;
+    var begTime := -1;
+    var begTrial% := 0;
+    var endSpk% := -1;
+    var endBak% := -1;
+    var endTime := -1;
+    var endTrial% := 0;
+    var haveBeg% := 0;  ' state desc. 0(1) = looking for beginning (end) of trial. 
+    var markers%[4];    ' not used, actually. 
+    var markerStr$;     ' text in the text marker
+    var s$;
+    var trcount%;
+    var spk%;
+    var ind%;
+    var att;
+    var t;
+    var tindex%;
+    var i%;
+    var arrx[16];
+    var arry[16];
+    var arrxl[32];
+    var arryl[32];
+    var maxrate := -99999;
+    
+    ' Look for text marks in the observation period
+    t := NextTime(30, tOnlineLast, markers%[], markerStr$);
+    while (t >= 0) do
+        ' determine if this is a beginning or end marker
+        if (InStr(markerStr$, "S")=1) then
+            if ReadStr(Mid$(markerStr$, 3), trcount%, ind%, spk%) = 3 then 
+                'PrintLog("Found start of trial " + str$(trcount%) + " ind, spk=" + str$(ind%) + "," + str$(spk%) + "\n");
+                begTrial% := trcount%;
+                begInd% := ind%;
+                begSpk% := spk%;
+                begTime := t;
+            else 
+                PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
+            endif
+        endif
+
+        if (InStr(markerStr$, "E")=1) then
+            if ReadStr(Mid$(markerStr$, 3), trcount%) = 1 then 
+                'PrintLog("Found end of trial " + str$(trcount%) + "\n");
+                if trcount% = begTrial% then
+                    endTime := t;
+                    
+                    ' Count up wavemarks
+                    tindex% := tlgTrialIndexHowManyCompleted%(begInd%)-1;
+                    gspcTTSpikeCounts%[begInd%][tindex%] := View(gwindowData%).Count(Trode1Channel%, begTime, endTime);   
+                    gspcTTSpikeRate[begInd%][tindex%] := gspcTTSpikeCounts%[begInd%][tindex%]/gspcSampleLengthSec;
+                    if (tindex% >= 1) then
+                        ArrSum(gspcTTSpikeRate[begInd%][0:tindex%], gspcTTSpikeRateMean[begInd%], gspcTTSpikeRateStd[begInd%]);
+                        'PrintLog("ind, spk=" + str$(begInd%) + "," + str$(begSpk%) + " rate+-std " + 
+                        '        str$(gspcTTSpikeRate[begInd%]) + "+-" + str$(gspcTTSpikeRateStd[begInd%]) + "\n");
+                    endif
+                endif
+            else 
+                PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
+            endif
+        endif
+        
+        if (InStr(markerStr$, "F")=1) then
+            ' F marker indicates end of the repeat/last trial of a trialList. We don't include
+            ' these spikes in the averages == space1g didn't, either. 
+        endif
+        
+        tOnlineLast := t;
+        t := NextTime(30, tOnlineLast, markers%[], markerStr$);
+    wend
+    
+    ' Update plots. WARNING: Assuming that there are 16 speakers, and there is just one background trial type -- 
+    ' and that the background is the last one. 
+    
+    ' rate. Get max rate while we're at it. 
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := gspcTTSpikeRateMean[i%] * gspcUnitX[i%];
+        arry[i%] := gspcTTSpikeRateMean[i%] * gspcUnitY[i%];
+        if abs(gspcTTSpikeRateMean[i%]) > maxrate then
+            maxrate := abs(gspcTTSpikeRateMean[i%]);
+        endif
+    next
+    View(gwindowXY%).XYAddData(xychanMean%, arrx, arry);
+    
+    ' rate+std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (gspcTTSpikeRateMean[i%] + gspcTTSpikeRateStd[i%]) * gspcUnitX[i%];
+        arry[i%] := (gspcTTSpikeRateMean[i%] + gspcTTSpikeRateStd[i%]) * gspcUnitY[i%];
+    next
+    View(gwindowXY%).XYAddData(xychanMeanPlus%, arrx, arry);
+
+    ' rate-std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (gspcTTSpikeRateMean[i%] - gspcTTSpikeRateStd[i%]) * gspcUnitX[i%];
+        arry[i%] := (gspcTTSpikeRateMean[i%] - gspcTTSpikeRateStd[i%]) * gspcUnitY[i%];
+    next
+    View(gwindowXY%).XYAddData(xychanMeanMinus%, arrx, arry);
+
+    ' bkgd
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := gspcTTSpikeRateMean[16] * gspcUnitX[i%];
+        arry[i%] := gspcTTSpikeRateMean[16] * gspcUnitY[i%];
+    next
+    View(gwindowXY%).XYAddData(xychanBkgd%, arrx, arry);
+
+    ' bkgd+std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (gspcTTSpikeRateMean[16] + gspcTTSpikeRateStd[16]) * gspcUnitX[i%];
+        arry[i%] := (gspcTTSpikeRateMean[16] + gspcTTSpikeRateStd[16]) * gspcUnitY[i%];
+    next
+    View(gwindowXY%).XYAddData(xychanBkgdPlus%, arrx, arry);
+
+    ' bkgd-std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (gspcTTSpikeRateMean[16] - gspcTTSpikeRateStd[16]) * gspcUnitX[i%];
+        arry[i%] := (gspcTTSpikeRateMean[16] - gspcTTSpikeRateStd[16]) * gspcUnitY[i%];
+    next
+    View(gwindowXY%).XYAddData(xychanBkgdMinus%, arrx, arry);
+
+    ' lines
+    ArrConst(arrxl, 0);
+    ArrConst(arryl, 0);
+    for i% := 0 to 15 do
+        arrxl[i%*2+1] := maxrate * 1.25 * gspcUnitX[i%];
+        arryl[i%*2+1] := maxrate * 1.25 * gspcUnitY[i%];
+    next
+    View(gwindowXY%).XYAddData(xychanLines%, arrxl, arryl);
+    
+end
 
 
 ' States
@@ -743,7 +1014,7 @@ func IdleLoop%()
     var status% := 1;
 	var iStatus% := 1;	' this is return value. value of 1 (0) continues (stops) processing
     var stmp%;
-
+    var strtmp$;
 	tNow := MaxTime();
 
 	' What state are we in? 
@@ -817,7 +1088,13 @@ func IdleLoop%()
         case iState% = statePlaySoundWait% then
         
             if PlayWaveStatus$() = "" then
+            
+                ' Record completed trial here, and update online analysis. 
+                strtmp$ := Print$("E,%d", gspcTrialCount%);
+                SampleText(strtmp$, -1);
                 tlgTrialIndexCompleted(gtrialList%[gtrialListIndex%]);
+                UpdateOnlineAnalysis(tNow); ' Should really call this after tlgTrialIndexCompleted, since the 
+                                            ' trial count is incremented there. 
                 gtrialListIndex% += 1;
                 ChangeStateTo(stateWaitISI%);
             endif
@@ -857,6 +1134,9 @@ func IdleLoop%()
         
             if PlayWaveStatus$() = "" then
                 LogStatus("PlaySound2", "Sound done playing.");
+                ' Record completed trial here, and update online analysis. 
+                strtmp$ := Print$("E,%d", gspcTrialCount%);
+                SampleText(strtmp$, -1);
                 ChangeStateTo(stateFreeReward%);
             endif
             
