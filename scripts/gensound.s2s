@@ -10,7 +10,10 @@
 ' DAC values in files should be 16 bit signed integers, values -32768<x<32767.  
 '
 ' $Log$
-' Revision 1.5  2008/04/16 18:24:31  devel
+' Revision 1.6  2008/05/06 18:21:40  devel
+' Fix bug in tone generation ramp. Was using integer division.... led to ramp values all being zero!
+'
+' Revision 1.5  2008-04-16 18:24:31  devel
 ' Fixes in gensoundRandomFromList. Must save dir from gensoundInitRandomList, then cd to it when opening files.
 '
 ' Revision 1.4  2008-03-26 17:16:14  devel
@@ -84,23 +87,30 @@ end
 Proc gensoundTone(v%[], sz%, toneHz, sampleHz)
 
     var i%;
+    var r;
     var rampValue;
-    var rampLength%;
+    var rampLength;
     
-    rampLength% := gensoundRampLengthMS% * sampleHz / 1000;
-    for i% := 0 to sz%-1 do
+    rampLength := round(gensoundRampLengthMS% * sampleHz / 1000);
+    
+    if gensoundDebug% = 1 then
+        PrintLog("gensoundTone: ramp length is " + str$(gensoundRampLengthMS%) + " ms, sample freq is " + str$(sampleHz) + " Hz, so ramp is " + str$(rampLength) + " samples.\n");
+    endif
+
+    for r := 0 to sz%-1 do
 
         ' Warning: ramp value must begin and end as a 0!!!
         docase 
-        case i% < rampLength% then
-            rampValue := i%/rampLength%;
-        case i% > sz% - rampLength% - 1 then
-            rampValue := (sz% - i% - 1)/rampLength%;
+        case r < rampLength then
+            rampValue := r/rampLength;
+            printLog("Ramp value " + str$(rampValue) + "\n");
+        case r > (sz% - rampLength - 1) then
+            rampValue := (sz% - r - 1)/rampLength;
         else
             rampValue := 1.0;
         endcase
             
-        v%[i%] := rampValue * gensoundIntMax * sin(2*gensoundpi*toneHz*i%/sampleHz);
+        v%[r] := rampValue * gensoundIntMax * sin(2*gensoundpi*toneHz*r/sampleHz);
     next
 
 end
