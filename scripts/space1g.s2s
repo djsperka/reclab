@@ -1,5 +1,8 @@
 ' $Log$
-' Revision 1.12  2008/04/29 17:42:05  devel
+' Revision 1.13  2008/05/06 18:23:50  devel
+' Fix bug when playing tone stim - first stim was tone, all others were noise. Sound2 trial completion code is now "F" to distinguish from regular "E" trials. PlaySound routine no longer uses ind argument - instead uses global gTrialListIndex%
+'
+' Revision 1.12  2008-04-29 17:42:05  devel
 ' File naming cleaned up. Modified to prevent final trial of a stim set from being background. Begin (unfinished!!!) creation and writing of resultant data files.
 '
 ' Revision 1.11  2008-04-16 18:25:16  devel
@@ -307,6 +310,11 @@ func Space1gScriptDialog%()
     else
         status% := 0;
     endif
+    
+    ' If debug was set, then turn on debugging for supporting scripts
+    if spcDebug% = 1 then
+        gensoundSetDebug(spcDebug%);
+    endif
 
 	return status%;
 end;
@@ -580,34 +588,45 @@ func GetPlayWaveKey$(index%)
 end
 
 
-Proc PlaySound(ind%)
+' PlaySound plays the sound for the trial number in gTrialListIndex.
+' If this is the repeated-last-index (if gtrialListIndex% = gntrialList%)
+' then play gntrialList%-1 sound - that makes the repeat happen.
+
+Proc PlaySound()
     var spk%[1];
     var atten;
     var s$;
+    var playInd%;
+
+    ' Determine what sound index to play. 
+    playInd% := gtrialListIndex%;
+    if gtrialListIndex% = gntrialList% then
+        playInd% := gntrialList%-1;
+    endif
 
     ' Increment trial counter
     gspcTrialCount% := gspcTrialCount% + 1;
 
     ' Set speaker and atten
-    recSpeaker%(gspcTTSpeakers%[gtrialList%[ind%]]);
+    recSpeaker%(gspcTTSpeakers%[gtrialList%[playInd%]]);
 
-    atten := gspcTTAtten[gtrialList%[ind%]] + 0.5*Floor(Rand(3, 0));
+    atten := gspcTTAtten[gtrialList%[playInd%]] + 0.5*Floor(Rand(3, 0));
     recAtten%(atten);
-    spk%[0] := gtrialList%[ind%];
+    spk%[0] := gtrialList%[playInd%];
 
 
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
 
     if spcTone% then
-        SampleKey(GetPlayWaveKey$(ind%));
+        SampleKey(GetPlayWaveKey$(0));
         ' saved string format speaker%,atten,frequency%
-        s$ := Print$("S,%d,%d,%d,%.1f,%d", gspcTrialCount%, gtrialList%[ind%], gspcTTSpeakers%[gtrialList%[ind%]], atten, spcFreq%);
+        s$ := Print$("S,%d,%d,%d,%.1f,%d", gspcTrialCount%, gtrialList%[playInd%], gspcTTSpeakers%[gtrialList%[playInd%]], atten, spcFreq%);
         SampleText(s$, -1);
     else
-        SampleKey(GetPlayWaveKey$(0));
+        SampleKey(GetPlayWaveKey$(playInd%));
         ' saved string format speaker%,atten,soundfilename
-        s$ := Print$("S,%d,%d,%d,%.1f,%s", gspcTrialCount%, gtrialList%[ind%], gspcTTSpeakers%[gtrialList%[ind%]], atten, gtrialListFilenames$[ind%]);
+        s$ := Print$("S,%d,%d,%d,%.1f,%s", gspcTrialCount%, gtrialList%[playInd%], gspcTTSpeakers%[gtrialList%[playInd%]], atten, gtrialListFilenames$[playInd%]);
         SampleText(s$, -1);
     endif
     SampleKey("T");
@@ -649,7 +668,7 @@ proc CreateSampleConfiguration()
     SampleAutoName$("space000");
 
     ' Event channel 0 is for sound triggers
-    SampleEvent(TrigChannel%, 0, 0, 10);
+    SampleEvent(TrigChannel%, 0, 2, 10);
     SampleTitle$(TrigChannel%, "Trigger");
 
 
@@ -691,7 +710,7 @@ proc InitializeWindows()
 
     ' Open text files for output. In the old "space1g", these were the "ecode_file" and the 
     ' "bak_file". 
-    gEcodeFile% := FileOpen()zzzzzzzzzzzzzzzzzzzzzzzzzzz
+'    gEcodeFile% := FileOpen()zzzzzzzzzzzzzzzzzzzzzzzzzzz
 
     ' Open xy window for radar plot. Initialize arrays for that plot as well. 
     gwindowXY% := FileNew(12);
@@ -1082,7 +1101,7 @@ func IdleLoop%()
             LogStatus("PlaySound", 
                       "SPK " + str$(gspcTTSpeakers%[gtrialList%[gtrialListIndex%]]) + 
                       "ATT " + str$(gspcTTAtten[gtrialList%[gtrialListIndex%]]) + "\n");
-            PlaySound(gtrialListIndex%);
+            PlaySound();
             ChangeStateTo(statePlaySoundWait%);
             
         case iState% = statePlaySoundWait% then
@@ -1127,7 +1146,7 @@ func IdleLoop%()
             LogStatus("PlaySound2", 
                       "SPK " + str$(gspcTTSpeakers%[gtrialList%[gtrialListIndex%-1]]) + 
                       "ATT " + str$(gspcTTAtten[gtrialList%[gtrialListIndex%-1]]) + "\n");
-            PlaySound(gtrialListIndex%-1);
+            PlaySound();
             ChangeStateTo(statePlaySound2Wait%);
             
         case iState% = statePlaySound2Wait% then
@@ -1135,7 +1154,7 @@ func IdleLoop%()
             if PlayWaveStatus$() = "" then
                 LogStatus("PlaySound2", "Sound done playing.");
                 ' Record completed trial here, and update online analysis. 
-                strtmp$ := Print$("E,%d", gspcTrialCount%);
+                strtmp$ := Print$("F,%d", gspcTrialCount%);
                 SampleText(strtmp$, -1);
                 ChangeStateTo(stateFreeReward%);
             endif
