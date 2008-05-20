@@ -1,0 +1,509 @@
+#include "recgen.s2s"
+#include "triallistgen.s2s"
+#include "gensound.s2s"
+
+
+const spcPI := 3.141592653589793;
+const spcTTMaxSpeakers% := 100;
+const spcMaxTrials%        := 100;         ' Maximum number of trials per speaker.
+const spcDAC0Key$        := "A";
+const spcDAC0%         := 0;
+const spcSoundSize%    := 33333;
+const spcSampleLengthSec := 0.2;
+const spcTrialListMin% := 3;                             ' min size of the trial list
+const spcTrialListMax% := 7;
+
+var spcTTSpeakers%[spcTTMaxSpeakers%];    ' speaker numbers - each is considered a trial type. Can have duplicates. 
+var spcTTSpikeCounts%[spcTTMaxSpeakers%][spcMaxTrials%]; ' spike counts for completed trials on each trial type
+var spcTTSpikeRate[spcTTMaxSpeakers%][spcMaxTrials%];    ' spike rates for completed trials on each trial type
+var spcTTSpikeRateMean[spcTTMaxSpeakers%];' mean spike rate for each trial type
+var spcTTSpikeRateStd[spcTTMaxSpeakers%]; ' std dev for above. 
+var spcTTAtten[spcTTMaxSpeakers%];        ' atten to use for each speaker number in g_spcTTSpeakers%[]
+var spcTTIndexBackground%;                 ' index into TT arrays which is the background speaker/atten pair. 
+var spcTrialCount% := 0;                   ' overall trial counter - each trial gets a number!
+var spcNTrialTypes% := 0;
+var spcDAC0Rate     := 166666.6666667;
+var spcSoundVolts[spcSoundSize%];
+var spcSoundDAC%[spcSoundSize%];          ' 16 bit ints; -32768 to 32767. Should start/stop at 0!!!
+var spcToneCopiedToPlayWaveArea% := 0;
+var spcDebug% := 0;
+var spcTrialList%[spcTrialListMax%];       ' The trial list is a list of speakers to use in a series
+var spcTrialListFilenames$[spcTrialListMax%];   ' When noise chosen, these are filenames of noise files used
+var spcNTrialList%;
+var spcTrialListIndex%;
+
+'-------- global vars RE: xy plot
+var spcUnitX[16];
+var spcUnitY[16];
+
+var spcOutputRoot$          := "output";        ' root filename for output file
+var spcNoise%               := 1;
+var spcNoiseDir$            := "c:/reclab/space";
+var spcNoiseMask$           := "noise*.bin";
+var spcTone%                := 0;
+var spcFreq%                := 20000;
+var spcTrialTypesFileSelection% := 0;
+var spcTrialTypesFile$      := "";
+var spcTrialTypesFileList$[100];
+var spcNTrialsPerStim%      := 0;
+var spcBlockSize%           := 2;
+
+const spcdlgRoot%       := 1;
+const spcdlgNoise%      := 2;
+const spcdlgNoiseDir%   := 3;
+const spcdlgNoiseMask%  := 4;
+const spcdlgTone%       := 5;
+const spcdlgFreq%       := 6;
+const spcdlgTTSelection%:= 7;
+const spcdlgNTrials%    := 8;
+const spcdlgBlockSize%  := 9;
+
+
+
+
+
+'------- InitializeExpt% --------------------------------------------------------
+'
+' Called after generic dialog. Open dialog, initialize stuff specific to this expt. 
+' Return 1 if all is well, 0 if user hit Cancel, or -1 to abort expt. 
+'
+'--------------------------------------------------------------------------------
+
+
+func InitializeExpt%(debug%)
+    var status% := 0;
+    
+    spcDebug% := debug%;
+    if spcDebug% = 1 then
+        gensoundSetDebug(spcDebug%);
+    endif
+    
+    status% := SpaceScriptDialog%();
+    if status% <= 0 then
+        return status%;
+    else
+    
+    ' initialize trial list generator
+
+    tlgInit(spcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, spcTrialListMin%, spcTrialListMax%);
+
+    ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
+    ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
+    ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
+
+    InitializePlayWaveAreas();
+    
+    endif
+    return status%;
+end
+
+func InitializeTrials%()
+    var status%;
+    status% := PrepareTrials%();
+end
+
+func Trial%(ttype%)
+PrintLog("Trial: type " + str$(ttype%) + "\n");
+return 0;
+end
+
+func TrialComplete%(ttype%, trsuccess%)
+PrintLog("TrialComplete: type " + str$(ttype%) + " success " + str$(trsuccess%) + "\n");
+return 0;
+end
+
+
+'-------- space1g configuration dialog ---------------------------------------
+
+
+proc SpaceScriptDialogSaveParams()
+	var stmp$;
+	var key$;
+
+	key$:="Reclab\\Space";
+	Profile(key$, "OutputRoot", spcOutputRoot$);
+	Profile(key$, "NoiseCheck", spcNoise%);
+	Profile(key$, "NoiseDir", spcNoiseDir$);
+	Profile(key$, "NoiseMask", spcNoiseMask$);
+	Profile(key$, "ToneCheck", spcTone%);
+	Profile(key$, "ToneFreq", spcFreq%);
+    Profile(key$, "TrialTypesFileSelection", spcTrialTypesFileSelection%);
+	Profile(key$, "NTrialsPerStim", spcNTrialsPerStim%);
+	Profile(key$, "StimBlockSize", spcBlockSize%);
+	return;
+end
+
+proc SpaceScriptDialogGetParams()
+	var stmp$;
+	var key$;
+
+    key$:="Reclab\\Space";
+	Profile(key$, "OutputRoot", spcOutputRoot$, spcOutputRoot$);
+	Profile(key$, "NoiseCheck", spcNoise%, spcNoise%);
+	Profile(key$, "NoiseDir", spcNoiseDir$, spcNoiseDir$);
+	Profile(key$, "NoiseMask", spcNoiseMask$, spcNoiseMask$);
+	Profile(key$, "ToneCheck", spcTone%, spcTone%);
+	Profile(key$, "ToneFreq", spcFreq%, spcFreq%);
+    Profile(key$, "TrialTypesFileSelection", spcTrialTypesFileSelection%, spcTrialTypesFileSelection%);
+	Profile(key$, "NTrialsPerStim", spcNTrialsPerStim%, spcNTrialsPerStim%);
+	Profile(key$, "StimBlockSize", spcBlockSize%, spcBlockSize%);
+	return;
+end
+
+
+
+func SpaceDlgChanged%(item%)
+    var status% := 1;
+    var value%;
+
+    docase 
+    case item% = spcdlgNoise% then
+    
+        ' Get value, toggle it, and set the toggled value in Tone checkbox. 
+    
+        value% := DlgValue(spcdlgNoise%);
+        DlgValue(spcdlgTone%, 1-value%);
+        
+    case item% = spcdlgTone% then
+
+        ' Get value, toggle it, and set the toggled value in Noise checkbox. 
+    
+        value% := DlgValue(spcdlgTone%);
+        DlgValue(spcdlgNoise%, 1-value%);
+    
+    endcase
+
+    ' enable or disable frequency box as needed
+    DlgEnable(DlgValue(spcdlgTone%), spcdlgFreq%);
+    DlgEnable(DlgValue(spcdlgNoise%), spcdlgNoiseDir%);
+    DlgEnable(DlgValue(spcdlgNoise%), spcdlgNoiseMask%);
+
+    return status%
+end
+
+
+
+func SpaceScriptDialog%()
+    var i%;
+    var status% := 0;
+    var sFileCount% := 0;
+    var sFileMask$ := "spc*.txt";
+    var pathTemp$;
+    
+    ' Fetch parameters from registry
+    
+    SpaceScriptDialogGetParams();
+
+    ' Get file list for trial types. If no files are found in stim$ matching the mask, 
+    ' show a message and quit. 
+    FilePathSet(stim$);
+    sFileCount% := FileList(spcTrialTypesFileList$, -1, sFileMask$);
+    if sFileCount% = 0 then
+        Message("There are no files in dir %s matching the mask %s", stim$, sFileMask$);
+        return 0;   ' will look as if user hit Cancel
+    endif
+    
+    ' Generate the dialog
+    
+	DlgCreate("Space1g Parameters", 25, 10);
+    DlgString(spcdlgRoot%, "Output file root|Base name of output file, e.g. a022098a", 32, "a-zA-Z0-9_-");
+    DlgCheck(spcdlgNoise%, "Noise");
+    DlgString(spcdlgNoiseDir%, "Noise file dir:", 255, "a-zA-Z0-9_-:/\\.");
+    DlgString(spcdlgNoiseMask%, "Noise file mask:", 255, "a-zA-Z0-9_-*?.");
+    DlgCheck(spcdlgTone%, "Tone");
+    DlgInteger(spcdlgFreq%, "Frequency(Hz)", 1, 100000);
+    DlgList(spcdlgTTSelection%, "Stim set:", spcTrialTypesFileList$, sFileCount%);
+    DlgInteger(spcdlgNTrials%, "# trials per stim", 1, 20, 0, 0, 1);
+    DlgInteger(spcdlgBlockSize%, "block size", 1, 5, 0, 0, 1);
+
+    DlgButton(1, "OK", SpaceCheckOK%);
+    DlgButton(0, "Cancel");
+    DlgAllow(0, 0, SpaceDlgChanged%);
+
+    ' Show the dialog. 
+
+	i%:=DlgShow(spcOutputRoot$, spcNoise%, spcNoiseDir$, spcNoiseMask$, spcTone%, 
+                spcFreq%, spcTrialTypesFileSelection%, spcNTrialsPerStim%, spcBlocksize%);
+
+    ' If user hit OK then save parameters (and return 1). 
+
+	if i% = 1 then
+        SpaceScriptDialogSaveParams();
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+    ' If debug was set, then turn on debugging for supporting scripts
+'    if spcDebug% = 1 then
+'        gensoundSetDebug(spcDebug%);
+'    endif
+
+	return status%;
+end;
+
+
+
+func SpaceCheckOK%()
+    var status% := 0;
+    var o$;
+    var dummy$;
+    var i1%;
+    var i2%;
+
+    ' Verify that output root is not null
+    o$ := DlgValue$(spcdlgRoot%);
+    if len(o$) = 0 then
+        Message("Please enter an output root.");
+        status% := 1;
+    endif
+
+    ' See if output file(s) already exist. 
+    
+    FilePathSet(data$);
+    if FileList(dummy$, -1, o$ + ".*")>0 then
+        Message("Data files with this name (" + o$ + ") already exist.\nTry another name.");
+        status% := 1;
+    endif
+
+    ' Check that spcNTrialsPerStim% is a multiple of spcBlockSize%
+    i1% := DlgValue(spcdlgNTrials%);
+    i2% := DlgValue(spcdlgBlockSize%);
+    if i1% mod i2% <> 0 then
+        Message("NTrialsPerStim must be a multiple of block size!");
+        status% := 1;
+    endif
+
+    ' Now open and load trial types file.
+    
+    i1% := DlgValue(spcdlgTTSelection%);
+    spcTrialTypesFile$ := spcTrialTypesFileList$[i1%];
+    FilePathSet(stim$);    
+    if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
+        Message("Cannot load trial types file " + spcTrialTypesFile$);
+        status% := 1;
+    endif
+    PrintLog("Loaded %d trial types from %s\n", spcNTrialTypes%, spcTrialTypesFile$);
+
+
+    ' If noise is selected, init the random noise selection and ensure there are enough files
+    if DlgValue(spcdlgNoise%) = 1 then
+        var ntemp%;
+        spcNoiseDir$ := DlgValue$(spcdlgNoiseDir%);
+        spcNoiseMask$ := DlgValue$(spcdlgNoiseMask%);
+        gensoundSetDebug(1);
+        ntemp% := gensoundInitRandomList%(spcNoiseDir$, spcNoiseMask$);
+        if ntemp% = 0 then
+            Message("No noise files found in dir " + spcNoiseDir$ + " using mask " + spcNoiseMask$);
+            status% := 1;
+        else
+            if ntemp% < (spcNTrialsPerStim%*spcNTrialTypes%) then
+                if Query("Found just " + str$(ntemp%) + " noise files in dir " + spcNoiseDir$ + " using mask " + 
+                        spcNoiseMask$ + ". With " + str$(spcNTrialsPerStim%) + " trials per stim, and with " + 
+                        str$(spcNTrialTypes%) + " trial types loaded from " + spcTrialTypesFile$ + " there will be repeats. Continue?") = 0 then
+                    status% := 1;
+                endif
+            endif
+        endif
+    endif
+    
+    return status%;
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' LoadTrialTypes%() - open and read trial types file. 
+' Expecting format with two numbers per line:
+' spk atten
+' where spk is speaker number and atten is attenuation
+' The last entry is treated as background in the online analysis!!! It doesn't matter what speaker it is. 
+' Lines that start with "#" are ignored. Blank lines are ignored too. 
+' Will load array g_spcTTSpeakers%[g_spcTTMaxSpeakers%] and g_spcTTAtten[g_spcTTMaxSpeakers%], 
+' and will set spcNTrialTypes% to be the number of speaker/atten pairs read. 
+
+func LoadTrialTypes%(sTTFile$)
+    var handle;
+    var line$;
+    var count% := 0;
+    
+    ' open file
+    handle := FileOpen(sTTFile$, 8, 0);
+    if handle = 0 then
+        PrintLog("Cannot open trial types file " + sTTFile$ + "\n");
+        return -1;
+    endif
+    
+    ' Now read a line at a time, discard any that begin with #
+    while Read(line$)>=0 do
+        ' is it a comment?
+        if InStr(line$, "#") <> 1 then
+            if (ReadStr(line$, spcTTSpeakers%[count%], spcTTAtten[count%]) = 2) then
+                count% := count% + 1;
+            endif
+        endif
+    wend
+    spcNTrialTypes% := count%;
+    spcTTIndexBackground% := count%-1;
+    
+    FileClose();
+  
+    return count%;
+end
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitializePlayWaveAreas - add play wave areas for sounds. 
+' If TONE was chosen (spcTone% = 1) then we need just one area = "A".
+' If NOISE was chosen (spcNoise% = 1) then we need to allocate gtriallistMax%
+' areas "A", "B", ....
+
+Proc InitializePlayWaveAreas()
+    var st;
+    var i%;
+    if spcTone% = 1 then
+    
+        st := PlayWaveAdd(GetPlayWaveKey$(0), GetPlayWaveKey$(0), spcDAC0%, spcDAC0Rate, spcSoundSize%);
+        if st < 0 then
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
+            halt;
+        else
+            PlayWaveTrigger(GetPlayWaveKey$(0), 1);
+        endif
+
+    else
+    
+        for i% := 0 to spcTrialListMax% do
+        
+            st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), spcDAC0%, spcDAC0Rate, spcSoundSize%);
+            if st < 0 then
+                Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+                halt;
+            else
+                PlayWaveTrigger(GetPlayWaveKey$(i%), 1);
+            endif        
+        
+        next
+
+    endif
+
+end
+
+func GetPlayWaveKey$(index%)
+
+    return Chr$(Asc(spcDAC0Key$)+index%);
+    
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' PrepareTrials%()
+'
+' Prepares a list of trials to run and copies data to DAC PlayWave areas if needed. 
+' The list may be from 3-7 trials long. When user has chosen TONE, there's just
+' one sound. When NOISE is selected, we allocate gtrialListMax% areas. 
+' TODO: There is a limit to how much memory can be allocated to the PlayWave areas. 
+' Should check this and return an error!?!
+' Returns 0 when all trials are done. Otherwise return nonzero value.
+
+func PrepareTrials%()
+
+    var i%;
+    var nread%:= 0;
+    var file$;
+    var swapIndex% := -1;
+
+    ' Get the trial list, then check if we're done. If so, return now, don't do the 
+    ' rest of the stuff here since there's nothing to do. 
+    gntrialList% := tlgGetTrialList%(gtrialList%[]);
+    if gntrialList% = 0 then
+        return gntrialList%;
+    endif
+    
+    ' Check that the last trial in the list is NOT the background trial index. If it is, then 
+    ' swap it with one of the other non-background trial indices.
+
+    if gtrialList%[gntrialList%-1] = gspcNTrialTypes%-1 then
+    
+        PrintLog("Last trial in list is background. Fixing...\n");
+        
+        ' GREGG: should this start at 0 or 1? Is it OK for the first trial to be background? 
+        while i%<gntrialList%-2 and swapIndex% < 0 do
+            if gtrialList%[i%] <> gtrialList%[gntrialList%-1] then
+                swapIndex% := i%;
+            endif
+            i% := i%+1;
+        wend
+        
+        ' Should never happen, but if that loop failed I'm just gonna quit. 
+        ' The only way that could happen would be if the trial list generator sent back a 
+        ' list consisting of nothing but the background index. As long as we request 
+        ' lists with a min length > 1 that shouldn't happen, since the trial list 
+        ' generator doesn't allow repeated indices. 
+        if swapIndex% < 0 then
+            Message("Trial list error!");
+            halt;
+        endif
+
+        ' Now swap the indices and move on. 
+        i% := gtrialList%[gntrialList%-1];
+        gtrialList%[gntrialList%-1] := gtrialList%[swapIndex%];
+        gtrialList%[swapIndex%] := i%;
+        
+
+        PrintLog("Swapped trials to fix. Trial indices: ");
+        for i% := 0 to gntrialList%-1 do
+            PrintLog("%d", gtrialList%[i%]);
+            if i% < gntrialList%-1 then
+                PrintLog(",");
+            endif
+        next
+        PrintLog("\n");
+    endif
+
+    if spcDebug% = 1 then
+        PrintLog("TrialList ");
+        for i% := 0 to gntrialList%-1 do
+            PrintLog(str$(gtrialList%[i%]) + " ");
+        next
+        PrintLog("\n");
+    endif
+
+    docase
+    case spcTone% = 1 then
+
+        ' Only need to copy tone once
+        if gspcToneCopiedToPlayWaveArea% = 0 then
+        
+            gensoundTone(gspcSoundDAC%[], gspcSoundSize%, spcFreq%, gspcDAC0Rate);
+            PlayWaveCopy(GetPlayWaveKey$(0), gspcSoundDAC%[]);
+            gspcToneCopiedToPlayWaveArea% := 1;
+
+        endif
+        
+    case spcNoise% = 1 then
+    
+        ' Load noise for each of the trials
+        for i% := 0 to gntrialList%-1 do
+            ArrConst(gspcSoundDAC%[], 0);
+            nread% := gensoundRandomFromList%(gspcSoundDAC%[], gspcSoundSize%, gtrialListFilenames$[i%]);
+            if spcDebug% = 1 then
+                PrintLog("gensoundRandomFromList returned file$ := " + gtrialListFilenames$[i%] + "\n");
+            endif
+            if (nread% <= 0) then
+                Message("Error loading random sounds. Check log.");
+                halt;
+            endif
+            if (nread% < gspcSoundSize%) then
+                PrintLog("WARNING: Sound file " + gtrialListFilenames$[i%] + " has " + str$(nread%) + " samples. Expecting " + str$(gspcSoundSize%) + "\n");
+            endif    
+            PlayWaveCopy(GetPlayWaveKey$(i%), gspcSoundDAC%[]);
+
+        next        
+    endcase
+
+
+    return gntrialList%;
+
+end

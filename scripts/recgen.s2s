@@ -1,0 +1,602 @@
+#include "filesystemvars.s2s"
+#include "tdt.s2s"
+#include "recfuncs.s2s"
+
+
+'==========================   Global variables  ============================================
+
+' script control
+var rgMinDelay              := 0.5;
+var rgVarDelay              := 0.5;
+var rgMaxLvrDownTime        := 10.0;
+var rgLvrDownTimeout        := 2.0;
+var rgFalsePositiveTimeout  := 2.0;
+var rgInterStimInterval     := 1.0;
+var rgMaxLvrUpTime          := 2.0;
+var rgLvrUpTimeout          := 2.0;
+var rgTrainingRewardCheck%  := 0;
+var rgTrainingRewardSize%   := 50;
+var rgLongRewardCheck%      := 0;
+var rgLongRewardSize%       := 100;
+var rgDebug%                := 1;
+
+' channel numbers and window handles
+var rgDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
+var rgTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
+var rgTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
+                                ' for anything other than electrodes!
+var rgWindowXY%;
+var rgWindowData%;
+
+' toolbar button numbers
+const rgStartButton%  := 1;
+const rgStopButton%   := 2;
+const rgPauseButton%  := 3;
+const rgResumeButton% := 4;
+const rgRewardButton% := 5;
+
+' States and state control vars
+var rgIsPaused%                 := 0;
+var rgIsStarted%                := 0;
+const stateStart%               := 0;
+const stateInitializeTrials%    := 1;
+const stateWaitLvrDown%         := 2;
+const stateLvrDownTimeout%      := 3;
+const stateDelayInterval%       := 4;
+const stateTrialSoundA%         := 5;
+const stateWaitTrialSoundA%     := 6;
+const stateWaitISI%             := 7;
+const stateTrialSoundB%         := 8;
+const stateWaitTrialSoundB%     := 9;
+const stateTrainingReward%      := 10;
+const stateWaitLvrUp%           := 11;
+const stateLvrUpReward%         := 12;
+const stateFalsePositive%       := 13;
+const stateLvrUpTimeout%        := 14;
+const stateDone%                := 20;
+
+var rgDelayIntervalTime         := 0;
+var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
+var tLast:=-1;		' last time we checked for a trigger. 
+var iState%:=stateStart%;		' present state
+var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
+
+
+
+'==========================   Start script here ===========================================================
+
+'!!!!!!!!!!!!!!!!!!!!!!!!!!   INITIALIZATION PER-EXPT HERE
+
+' Do TDT initializations
+
+'if recInitTDT%() < 0 then
+ '   halt;
+'endif
+
+
+' Open dialog for expt parameters. 
+
+if RecgenScriptDialog%() = 0 then
+    halt;
+endif
+
+' Initialize experimental stuff
+if InitializeExpt%(rgDebug%) <> 0 then
+    halt;
+endif
+
+
+' Setup sampling config and open windows
+
+CreateSampleConfiguration();
+InitializeWindows();
+
+' Initialize toolbar. Once Toolbar is called the expt is controlled by the toolbar
+' buttons. Toolbar() does not return until one of the toolbar functions returns 0 - Stop%()
+' does that, as does IdleLoop%() when it reaches the end of all trials. 
+
+InitializeToolbar();
+Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
+
+
+
+
+
+'==========================  Local functions below ===========================================
+
+
+func RecGenScriptDialog%()
+    var i%;
+    var status% := 0;
+    
+    ' Fetch parameters from registry
+    
+    RecgenScriptDialogGetParams();
+
+    ' Generate the dialog
+    
+	DlgCreate("Reclab Generic Parameters", 25, 10);
+    DlgReal(1, "Min delay(s)", 0.0, 5.0);
+    DlgReal(2, "Var delay(s)", 0.0, 5.0);
+    DlgReal(3, "Max lvr down time(s)", 0.0, 120.0);
+    DlgReal(4, "Lvr down timeout(s)", 0.0, 120.0);
+    DlgReal(5, "ISI(s)", 0.0, 5.0);
+    DlgReal(6, "Max lvr up time(s)", 0.0, 120.0);
+    DlgReal(7, "Lvr up timeout(s)", 0.0, 120.0);
+    DlgReal(8, "False positive timeout(s)", 0.0, 5.0);
+    DlgCheck(9, "Training reward?");
+    DlgInteger(10, "Training reward size", 5, 500, 0, 0, 10);
+    DlgCheck(11, "Long reward?");
+    DlgInteger(12, "Long reward size", 5, 500, 0, 0, 10);
+    DlgCheck(13, "Debug?");
+
+    ' Show the dialog. 
+
+	i%:=DlgShow(rgMinDelay, rgVarDelay, 
+                rgMaxLvrDownTime, rgLvrDownTimeout, 
+                rgInterStimInterval, 
+                rgMaxLvrUpTime, rgLvrUpTimeout, rgFalsePositiveTimeout, 
+                rgTrainingRewardCheck%, rgTrainingRewardSize%, rgLongRewardCheck%, rgLongRewardSize%, 
+                rgDebug%);
+
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecgenScriptDialogSaveParams();
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+	return status%;
+end;
+
+
+proc RecgenScriptDialogSaveParams()
+	var stmp$;
+	var key$;
+
+	key$:="Reclab\\Recgen";
+    Profile(key$, "MinDelay", str$(rgMinDelay));
+    Profile(key$, "VarDelay", str$(rgVarDelay));
+    Profile(key$, "MaxLvrDownTime", str$(rgMaxLvrDownTime));
+    Profile(key$, "LvrDownTimeout", str$(rgLvrDownTimeout));
+    Profile(key$, "InterStimInterval", str$(rgInterStimInterval));
+    Profile(key$, "MaxLvrUpTime", str$(rgMaxLvrUpTime));
+    Profile(key$, "LvrUpTimeout", str$(rgLvrUpTimeout));
+    Profile(key$, "FalsePositiveTimeout", str$(rgFalsePositiveTimeout));
+	Profile(key$, "TrainingRewardCheck", rgTrainingRewardCheck%);
+	Profile(key$, "TrainingRewardSize", rgTrainingRewardSize%);
+	Profile(key$, "LongRewardCheck", rgLongRewardCheck%);
+	Profile(key$, "LongRewardSize", rgLongRewardSize%);
+	Profile(key$, "DebugCheck", rgDebug%);
+
+	return;
+end
+
+proc RecgenScriptDialogGetParams()
+	var stmp$;
+	var key$;
+
+    key$:="Reclab\\Recgen";
+    Profile(key$, "MinDelay", str$(rgMinDelay), stmp$);
+    rgMinDelay := val(stmp$);
+    Profile(key$, "VarDelay", str$(rgVarDelay), stmp$);
+    rgVarDelay := val(stmp$);
+    Profile(key$, "MaxLvrDownTime", str$(rgMaxLvrDownTime), stmp$);
+    rgMaxLvrDownTime := val(stmp$);
+    Profile(key$, "LvrDownTimeout", str$(rgLvrDownTimeout), stmp$);
+    rgLvrDownTimeout := val(stmp$);
+    Profile(key$, "InterStimInterval", str$(rgInterStimInterval), stmp$);
+    rgInterStimInterval := val(stmp$);
+    Profile(key$, "MaxLvrUpTime", str$(rgMaxLvrUpTime), stmp$);
+    rgMaxLvrUpTime := val(stmp$);
+    Profile(key$, "LvrUpTimeout", str$(rgLvrUpTimeout), stmp$);
+    rgLvrUpTimeout := val(stmp$);
+    Profile(key$, "FalsePositiveTimeout", str$(rgFalsePositiveTimeout), stmp$);
+    rgFalsePositiveTimeout := val(stmp$);
+	Profile(key$, "TrainingRewardCheck", rgTrainingRewardCheck%, rgTrainingRewardCheck%);
+	Profile(key$, "TrainingRewardSize", rgTrainingRewardSize%, rgTrainingRewardSize%);
+	Profile(key$, "LongRewardCheck", rgLongRewardCheck%, rgLongRewardCheck%);
+	Profile(key$, "LongRewardSize", rgLongRewardSize%, rgLongRewardSize%);
+	Profile(key$, "DebugCheck", rgDebug%, rgDebug%);
+	return;
+end
+
+
+proc CreateSampleConfiguration()
+
+	var index;
+    var r;
+
+    ' Initialize sampling settings
+    
+	SampleAutoComment(0);
+	SampleAutoCommit(30);
+    SampleAutoFile(0);
+    SampleAutoName$("reclab000");
+
+    ' Event channel 0 is for sound triggers
+    SampleEvent(rgTrigChannel%, 0, 2, 10);
+    SampleTitle$(rgTrigChannel%, "Trigger");
+
+
+    ' Text marks
+    SampleTextMark(64);
+
+    ' DAC0 (sound output) -> record this channel? It will inflate the file sizes......
+
+    if rgDebug% = 1 then
+        SampleWaveform(rgDAC0Channel%, 6, 50000);
+        SampleTitle$(rgDAC0Channel%, "DAC0");
+    endif
+    
+
+	' Electrode
+    
+	SampleWaveMark(rgTrode1Channel%, 0, 100, 34, 15, 28000); ' chan, port, event rate, points, pre-trigger, rate
+	SampleTitle$(rgTrode1Channel%, "Trode 1"); 
+
+    ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
+    ' The second arg groups channels with same ideal rates together so they all get same 
+    ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
+    ' assuming you use same ideal rate (in SampleWavemark()). 
+    
+    SampleSequencer(script$ + "recgen.pls");
+	SampleOptimise(2, 1, 5, 2, 50);  
+    SampleMode(1);
+end
+
+
+
+proc InitializeWindows()
+    var i%;
+    var ang;
+
+    ' Since we are opening files here, set the path. 
+    FilePathSet(data$, 1, 1);
+
+    ' Open xy window for use by expt.
+    rgWindowXY% := FileNew(12);
+	Window(0, 50, 50, 100); 
+	View(rgWindowXY%).WindowVisible(1);
+    
+	'Open the data sampling window
+	rgWindowData% := FileNew(0,4);
+	Window(0, 0, 100, 50); 
+	View(rgWindowData%).WindowVisible(1);
+
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitilizeToolbar - prepare toolbar buttons. Note that the idle processing function 
+' (ToolbarSet(0, blah, blah)) is not set here. That's done when the user hits the start 
+' button.
+'
+
+proc InitializeToolbar()
+
+	View(App(8)).WindowVisible(0);	'Hide the standard sample bar
+	ToolbarVisible(1);
+	ToolbarSet(rgStartButton%, "Start", Start%);
+	ToolbarSet(rgStopButton%, "Stop", Stop%);
+	ToolbarSet(rgPauseButton%, "Pause", Pause%);
+	ToolbarSet(rgResumeButton%, "Resume", Resume%);
+	ToolbarSet(rgRewardButton%, "Reward", Reward%);
+
+    ' Explicitly set enabled state of things...
+    ToolbarEnable(rgStartButton%, 1);
+    ToolbarEnable(rgStopButton%, 0);
+    ToolbarEnable(rgPauseButton%, 0);
+    ToolbarEnable(rgResumeButton%, 0);
+    ToolbarEnable(rgRewardButton%, 1);
+
+end;
+
+
+func Start%()
+    rgIsStarted% := 1;
+
+    ' Disable start button, enable stop and pause
+    
+    ToolbarEnable(rgStartButton%, 0);
+    ToolbarEnable(rgStopButton%, 1);
+    ToolbarEnable(rgPauseButton%, 1);
+    
+    ' Oh yeah, start the sampling. 
+    
+    SampleStart();
+
+    ' Set idle function
+    ToolbarSet(0, "", IdleLoop%);
+    
+    ' Tell the world about it. 
+    
+    ToolbarText("Sampling started.");
+    return 1;
+end
+
+func Stop%()
+    PrintLog("Stop called\n");
+    
+    ' Stop sampling....
+
+    if SampleStatus() <> -1 then
+        SampleStop();
+'        FilePathSet(data$);
+'        FileSaveAs(spcOutputRoot$ + ".smr", -1);
+    endif
+    
+    ' Returning zero from here any ToolbarSet() functions causes the 
+    ' Toolbar() function to return.
+    return 0;
+end
+
+func Pause%()
+    PrintLog("Pause called\n");
+    rgIsPaused% := 1;
+    ToolbarEnable(rgResumeButton%, 1);
+    ToolbarEnable(rgPauseButton%, 0);
+    return 1;
+end
+
+func Resume%()
+    rgIsPaused% := 0;
+    ToolbarEnable(rgResumeButton%, 0);
+    ToolbarEnable(rgPauseButton%, 1);
+    return 1;
+end
+
+func Reward%()
+    ' TODO: Add reward func here!
+    return 1;
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' LogStatus
+' 
+' Utility to write msg to log window. Will not write if rgDebug is not set. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc LogStatus(stateName$, msg$)
+    if rgDebug% = 1 then
+        PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
+    endif
+end
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' LogError
+' 
+' Like LogStatus, a utility to write msg to log window. 
+' Unlike LogStatus, LogError will write no matter what - regardless of rgDebug value.
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc LogError(stateName$, msg$)
+    PrintLog("ERROR===============================================\n");
+    PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
+    PrintLog("====================================================\n");
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' ChangeStateTo
+' 
+' Call this function on exit from a state. The var stateTo% should be the state to enter
+' on the next call to the loop function. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc ChangeStateTo(stateTo%)
+	iState% := stateTo%;
+    tStateStart := MaxTime();
+end;
+
+
+func IdleLoop%()
+	var iStatus% := 1;	' this is return value. value of 1 (0) continues (stops) processing
+    var stmp%;
+    var trtmp%;
+    var strtmp$;
+	tNow := MaxTime();
+
+	' What state are we in? 
+    docase
+	case iState% = stateStart% then
+
+        LogStatus("Start", "Starting expt state loop.");
+        ChangeStateTo(stateInitializeTrials%);
+            
+    case iState% = stateInitializeTrials% then
+        
+        ' prepare values for the next trial.
+        ' this is the point where the expt can be paused. Operator can hit the pause
+        ' button anytime, but the actual pause will not happen until here. 
+        if rgIsPaused% = 0 then
+            stmp% := InitializeTrials%();
+            docase
+            case stmp% > 0 then
+                LogStatus("InitializeTrials", "All done!");
+                ChangeStateTo(stateDone%);
+            case stmp% < 0 then
+                LogStatus("InitializeTrials", "Error return value from InitializeTrials%");
+                ChangeStateTo(stateDone%);
+            else
+                LogStatus("InitializeTrials", "Trials ready.");
+                ChangeStateTo(stateWaitLvrDown%);
+            endcase
+        endif
+            
+    case iState% = stateWaitLvrDown% then
+        LogStatus("WaitLvrDown", "Blink/Wait.");
+        stmp% := recBlinkUntilLeverDown%(.5, rgMaxLvrDownTime);
+
+        docase
+        case stmp% = 1 then
+            rgDelayIntervalTime := rgMinDelay + Rand(rgVarDelay, 0);
+            LogStatus("WaitLvrDown", "Delay interval=" + str$(rgDelayIntervalTime) + " s.");
+            ChangeStateTo(stateDelayInterval%);
+        case stmp% = 0 then
+            LogStatus("WaitLvrDown", "Timeout waiting for lever down.");
+            ChangeStateTo(stateLvrDownTimeout%);
+        else
+            Message("Error in recBlinkUntilLeverDown!");
+            ChangeStateTo(stateDone%);
+        endcase
+            
+    case iState% = stateLvrDownTimeout% then
+        
+        if tNow - tStateStart > rgLvrDownTimeout then
+            LogStatus("LvrDownTimeout", "Timeout period done.");
+            ChangeStateTo(stateInitializeTrials%);
+        endif
+            
+    case iState% = stateDelayInterval% then
+        
+        if tNow - tStateStart >= rgDelayIntervalTime then
+            LogStatus("DelayInterval", "Delay done.");
+            ChangeStateTo(stateTrialSoundA%);
+        endif
+
+    case iState% = stateTrialSoundA% then
+
+        LogStatus("TrialSoundA", "Call expt function");
+        stmp% := Trial%(0);
+        docase
+        case stmp% = 0 then
+            ChangeStateTo(stateWaitTrialSoundA%);
+        case stmp% < 0 then
+            LogStatus("TrialSoundA", "Trial returned negative value.");
+            ChangeStateTo(stateDone%);
+        else
+            LogStatus("TrialSoundA", "Trial returned unknown value (>0).");
+            ChangeStateTo(stateDone%);
+        endcase
+            
+    case iState% = stateWaitTrialSoundA% then
+        
+        if PlayWaveStatus$() = "" then
+            ChangeStateTo(stateWaitISI%);
+        endif
+            
+    case iState% = stateWaitISI% then
+ 
+        ' Check that lever is still down.
+        stmp% := recLeverDown%();
+        docase
+        case stmp% < 0 then
+            PrintLog("ERROR in recLeverDown()!!!\n");
+            ChangeStateTo(stateDone%);
+        case stmp% = 0 then
+            LogStatus("WaitISI", "FAIL! Lever is up");
+            TrialComplete%(0, 0);
+            ChangeStateTo(stateFalsePositive%);
+        else
+            if tNow - tStateStart > rgInterStimInterval then
+                LogStatus("WaitISI", "ISI done.");
+                trtmp% := TrialComplete%(0, 1);
+                docase 
+                case trtmp% = 0 then
+                    ChangeStateTo(stateTrialSoundA%);
+                case trtmp% = 1 then
+                    ChangeStateTo(stateTrialSoundB%);
+                else
+                    LogStatus("WaitISI", "Unknown return value from TrialComplete");
+                    ChangeStateTo(stateDone%);
+                endcase
+            endif
+        endcase
+    case iState% = stateTrialSoundB% then
+        LogStatus("TrialSoundB", "Call expt function");
+        stmp% := Trial%(1);
+        docase
+        case stmp% = 0 then
+            ChangeStateTo(stateWaitTrialSoundB%);
+        case stmp% < 0 then
+            LogStatus("TrialSoundB", "Trial returned negative value.");
+            ChangeStateTo(stateDone%);
+        else
+            ' This is probably where Trial can say to skip second sound
+            LogStatus("TrialSoundB", "Trial returned unknown value (>0).");
+            ChangeStateTo(stateDone%);
+        endcase
+    case iState% = stateWaitTrialSoundB% then
+       
+        if PlayWaveStatus$() = "" then
+            LogStatus("WaitTrialSoundB", "Sound done playing.");
+            ChangeStateTo(stateTrainingReward%);
+        endif
+            
+    case iState% = stateTrainingReward% then
+        
+        ' Are we giving free rewards? If we are, then do so, otherwise we just pass on through. 
+        if rgTrainingRewardCheck% = 1 then
+            LogStatus("TrainingReward", "Giving training reward size " + str$(rgTrainingRewardSize%));
+            tdtREWARD%(rgTrainingRewardSize%);
+        else
+            LogStatus("TrainingReward", "No free reward.");
+        endif
+        ChangeStateTo(stateWaitLvrUp%);
+            
+    case iState% = stateWaitLvrUp% then
+        
+        stmp% := recLeverDown%();
+        docase
+        case stmp% < 0 then
+            LogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
+            ChangeStateTo(stateDone%);
+        case stmp% = 0 then
+            LogStatus("WaitLvrUp", "Lever is up - HIT");
+            TrialComplete%(1, 1);
+            ChangeStateTo(stateLvrUpReward%);
+        else
+            if tNow - tStateStart > rgMaxLvrUpTime then
+                LogStatus("WaitLvrUp", "Lever not up - timed out - MISS");
+                TrialComplete%(1, 0);
+                ChangeStateTo(stateLvrUpTimeout%);
+            endif
+        endcase
+
+    case iState% = stateLvrUpTimeout% then
+        
+        if tNow - tStateStart > rgLvrUpTimeout then
+            LogStatus("LvrUpTimeout", "Timeout period done.");
+            ChangeStateTo(stateInitializeTrials%);
+        endif
+            
+    case iState% = stateFalsePositive% then
+        
+        if tNow - tStateStart > rgFalsePositiveTimeout then
+            LogStatus("FalsePositiveTimeout", "Timeout period done.");
+            ChangeStateTo(stateInitializeTrials%);
+        endif
+            
+    case iState% = stateLvrUpReward% then
+        
+        if rgLongRewardCheck% = 1 then
+            LogStatus("LvrUpReward", "(long)) Reward size=" + str$(rgLongRewardSize%));
+            tdtREWARD%(rgLongRewardSize%);
+        endif
+        ChangeStateTo(stateInitializeTrials%);
+            
+    case iState% = stateDone% then
+        
+        LogStatus("Done", "");
+        Stop%();
+        iStatus% := 0;
+            
+    else
+        
+        LogStatus("UNKNOWN STATE", "iState%=" + str$(iState%));
+        Message("Unknown state (%d)!", iState%);
+        Stop%();
+        iStatus% := 0;
+            
+    endcase
+
+    return iStatus%;
+end
+
