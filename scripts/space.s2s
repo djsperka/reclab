@@ -35,7 +35,17 @@ var spcTrialListIndex%;
 '-------- global vars RE: xy plot
 var spcUnitX[16];
 var spcUnitY[16];
-
+var spcWindowData%;
+var spcWindowXY%;
+var spcChanTrig%;
+var spcChanTrode1%;
+var spcChanMean%;
+var spcChanMeanPlus%;
+var spcChanMeanMinus%;
+var spcChanBkgd%;
+var spcChanBkgdPlus%;
+var spcChanBkgdMinus%;
+var spcChanLines%;
 var spcOutputRoot$          := "output";        ' root filename for output file
 var spcNoise%               := 1;
 var spcNoiseDir$            := "c:/reclab/space";
@@ -45,8 +55,8 @@ var spcFreq%                := 20000;
 var spcTrialTypesFileSelection% := 0;
 var spcTrialTypesFile$      := "";
 var spcTrialTypesFileList$[100];
-var spcNTrialsPerStim%      := 0;
-var spcBlockSize%           := 2;
+var spcNTrialsPerStim%      := 2;
+var spcBlockSize%           := 1;
 
 const spcdlgRoot%       := 1;
 const spcdlgNoise%      := 2;
@@ -70,46 +80,130 @@ const spcdlgBlockSize%  := 9;
 '--------------------------------------------------------------------------------
 
 
-func InitializeExpt%(debug%)
+func InitializeExpt%(debug%, wdata%, wxy%, chTrig%, chTrode%)
     var status% := 0;
+    var i%;
+    var ang;
     
     spcDebug% := debug%;
+    spcWindowData% := wdata%;
+    spcWindowXY% := wxy%;
+    spcChanTrig% := chTrig%;
+    spcChanTrode1% := chTrode%;
     if spcDebug% = 1 then
         gensoundSetDebug(spcDebug%);
     endif
     
     status% := SpaceScriptDialog%();
-    if status% <= 0 then
-        return status%;
-    else
-    
-    ' initialize trial list generator
+    if status% > 0 then
+        ' initialize trial list generator
+        tlgInit(spcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, spcTrialListMin%, spcTrialListMax%);
 
-    tlgInit(spcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, spcTrialListMin%, spcTrialListMax%);
+        ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
+        ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
+        ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
+        InitializePlayWaveAreas();
+        
+        spcChanMean% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 8);
+        spcChanMeanPlus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 7);
+        spcChanMeanMinus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 7);
+        spcChanBkgd% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 0);
+        spcChanBkgdPlus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 5);
+        spcChanBkgdMinus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 5);
+        spcChanLines% := View(spcWindowXY%).XYSetChan(0, -32, 0, 2, 20);
 
-    ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
-    ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
-    ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
+        for i%:=0 to 15 do
+            ang := -spcPI/8*(5+i%);
+            spcUnitX[i%] := cos(ang);
+            spcUnitY[i%] := sin(ang);
+        next
 
-    InitializePlayWaveAreas();
-    
+        
     endif
     return status%;
 end
 
 func InitializeTrials%()
     var status%;
+    spcTrialListIndex% := 0;
     status% := PrepareTrials%();
+    return status%;
 end
+
+
+func ExptComplete%()
+
+    FilePathSet(data$);
+    FileSaveAs(spcOutputRoot$ + ".smr", -1);
+    return 0;
+
+end
+
+'----------- Trial%(ttype%) ----------------------------------------------------------------
+'
+' Initiate a trial. When ttype% = 0 this trial is an S1 trial, when ttype% = 1  its an S2 trial. 
+' Return 0 if all is well, negative if not (script will exit immediately). 
+'
+'--------------------------------------------------------------------------------
 
 func Trial%(ttype%)
-PrintLog("Trial: type " + str$(ttype%) + "\n");
-return 0;
+    var status% := 0;
+    docase 
+    case ttype% = 0 then
+        PlaySound();
+    case ttype% = 1 then
+        PlaySound();
+    else
+        LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
+        status% := -1;
+    endcase
+    return status%;
 end
 
-func TrialComplete%(ttype%, trsuccess%)
-PrintLog("TrialComplete: type " + str$(ttype%) + " success " + str$(trsuccess%) + "\n");
-return 0;
+'----------- Trial%Complete(ttype%, success%) -----------------------------------
+'
+' Trial has ended. ttype% same meaning as for Trial%. success% 1=good, 0=bad. 
+' Record text marker, analysis update. 
+' Return value of -1 means an error has occurred, abort. 
+' When ttype%=0, return value of 0 means continue with S1 trials, return value of 1
+' means move on to S2 trial. 
+' When ttype%=1 the return value (unless it is negative) is ignored. 
+' 
+'
+'--------------------------------------------------------------------------------
+
+func TrialComplete%(ttype%, success%)
+    var status% := 0;
+    var strtmp$;
+    docase
+    case ttype% = 0 then
+        if success% = 1 then
+            ' Record completed trial here, and update online analysis. 
+            strtmp$ := Print$("E,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+            tlgTrialIndexCompleted(spcTrialList%[spcTrialListIndex%]);
+            UpdateOnlineAnalysis();
+            spcTrialListIndex% += 1;
+            if spcTrialListIndex% = spcNTrialList% then
+                status% := 1;
+            endif
+        else
+            strtmp$ := Print$("F,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+        endif
+    case ttype% = 1 then
+        if success% = 1 then
+            strtmp$ := Print$("H,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+        else
+            strtmp$ := Print$("M,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+        endif
+    else
+        LogError("TrialComplete", "Unknown ttype (" + str$(ttype%) + ")");
+        status% := -1;
+    endcase
+    return status%;
 end
 
 
@@ -405,7 +499,7 @@ end
 ' one sound. When NOISE is selected, we allocate gtrialListMax% areas. 
 ' TODO: There is a limit to how much memory can be allocated to the PlayWave areas. 
 ' Should check this and return an error!?!
-' Returns 0 when all trials are done. Otherwise return nonzero value.
+' Returns 0 when all trials are done, 1 if a trial set is ready to go.
 
 func PrepareTrials%()
 
@@ -416,21 +510,21 @@ func PrepareTrials%()
 
     ' Get the trial list, then check if we're done. If so, return now, don't do the 
     ' rest of the stuff here since there's nothing to do. 
-    gntrialList% := tlgGetTrialList%(gtrialList%[]);
-    if gntrialList% = 0 then
-        return gntrialList%;
+    spcNTrialList% := tlgGetTrialList%(spcTrialList%[]);
+    if spcNTrialList% = 0 then
+        return 0;
     endif
     
     ' Check that the last trial in the list is NOT the background trial index. If it is, then 
     ' swap it with one of the other non-background trial indices.
 
-    if gtrialList%[gntrialList%-1] = gspcNTrialTypes%-1 then
+    if spcTrialList%[spcNTrialList%-1] = spcNTrialTypes%-1 then
     
         PrintLog("Last trial in list is background. Fixing...\n");
         
         ' GREGG: should this start at 0 or 1? Is it OK for the first trial to be background? 
-        while i%<gntrialList%-2 and swapIndex% < 0 do
-            if gtrialList%[i%] <> gtrialList%[gntrialList%-1] then
+        while i%<spcNTrialList%-2 and swapIndex% < 0 do
+            if spcTrialList%[i%] <> spcTrialList%[spcNTrialList%-1] then
                 swapIndex% := i%;
             endif
             i% := i%+1;
@@ -447,15 +541,15 @@ func PrepareTrials%()
         endif
 
         ' Now swap the indices and move on. 
-        i% := gtrialList%[gntrialList%-1];
-        gtrialList%[gntrialList%-1] := gtrialList%[swapIndex%];
-        gtrialList%[swapIndex%] := i%;
+        i% := spcTrialList%[spcNTrialList%-1];
+        spcTrialList%[spcNTrialList%-1] := spcTrialList%[swapIndex%];
+        spcTrialList%[swapIndex%] := i%;
         
 
         PrintLog("Swapped trials to fix. Trial indices: ");
-        for i% := 0 to gntrialList%-1 do
-            PrintLog("%d", gtrialList%[i%]);
-            if i% < gntrialList%-1 then
+        for i% := 0 to spcNTrialList%-1 do
+            PrintLog("%d", spcTrialList%[i%]);
+            if i% < spcNTrialList%-1 then
                 PrintLog(",");
             endif
         next
@@ -464,8 +558,8 @@ func PrepareTrials%()
 
     if spcDebug% = 1 then
         PrintLog("TrialList ");
-        for i% := 0 to gntrialList%-1 do
-            PrintLog(str$(gtrialList%[i%]) + " ");
+        for i% := 0 to spcNTrialList%-1 do
+            PrintLog(str$(spcTrialList%[i%]) + " ");
         next
         PrintLog("\n");
     endif
@@ -474,36 +568,236 @@ func PrepareTrials%()
     case spcTone% = 1 then
 
         ' Only need to copy tone once
-        if gspcToneCopiedToPlayWaveArea% = 0 then
+        if spcToneCopiedToPlayWaveArea% = 0 then
         
-            gensoundTone(gspcSoundDAC%[], gspcSoundSize%, spcFreq%, gspcDAC0Rate);
-            PlayWaveCopy(GetPlayWaveKey$(0), gspcSoundDAC%[]);
-            gspcToneCopiedToPlayWaveArea% := 1;
+            gensoundTone(spcSoundDAC%[], spcSoundSize%, spcFreq%, spcDAC0Rate);
+            PlayWaveCopy(GetPlayWaveKey$(0), spcSoundDAC%[]);
+            spcToneCopiedToPlayWaveArea% := 1;
 
         endif
         
     case spcNoise% = 1 then
     
         ' Load noise for each of the trials
-        for i% := 0 to gntrialList%-1 do
-            ArrConst(gspcSoundDAC%[], 0);
-            nread% := gensoundRandomFromList%(gspcSoundDAC%[], gspcSoundSize%, gtrialListFilenames$[i%]);
+        for i% := 0 to spcNTrialList%-1 do
+            ArrConst(spcSoundDAC%[], 0);
+            nread% := gensoundRandomFromList%(spcSoundDAC%[], spcSoundSize%, spcTrialListFilenames$[i%]);
             if spcDebug% = 1 then
-                PrintLog("gensoundRandomFromList returned file$ := " + gtrialListFilenames$[i%] + "\n");
+                PrintLog("gensoundRandomFromList returned file$ := " + spcTrialListFilenames$[i%] + "\n");
             endif
             if (nread% <= 0) then
                 Message("Error loading random sounds. Check log.");
                 halt;
             endif
-            if (nread% < gspcSoundSize%) then
-                PrintLog("WARNING: Sound file " + gtrialListFilenames$[i%] + " has " + str$(nread%) + " samples. Expecting " + str$(gspcSoundSize%) + "\n");
+            if (nread% < spcSoundSize%) then
+                PrintLog("WARNING: Sound file " + spcTrialListFilenames$[i%] + " has " + str$(nread%) + " samples. Expecting " + str$(spcSoundSize%) + "\n");
             endif    
-            PlayWaveCopy(GetPlayWaveKey$(i%), gspcSoundDAC%[]);
+            PlayWaveCopy(GetPlayWaveKey$(i%), spcSoundDAC%[]);
 
         next        
     endcase
 
 
-    return gntrialList%;
+    return spcNTrialList%;
 
+end
+
+
+'----------------- PlaySound ---------------------------------------------------------------
+'
+' PlaySound plays the sound for the trial number in spcTrialListIndex.
+' If this is the repeated-last-index (if spcTrialListIndex% = spcNTrialList%)
+' then play spcNTrialList%-1 sound - that makes the repeat happen.
+
+Proc PlaySound()
+    var spk%[1];
+    var atten;
+    var s$;
+    var playInd%;
+
+    ' Determine what sound index to play. 
+    playInd% := spcTrialListIndex%;
+    if spcTrialListIndex% = spcNTrialList% then
+        playInd% := spcNTrialList%-1;
+    endif
+
+    ' Increment trial counter
+    spcTrialCount% := spcTrialCount% + 1;
+
+    ' Set speaker and atten
+    recSpeaker%(spcTTSpeakers%[spcTrialList%[playInd%]]);
+
+    atten := spcTTAtten[spcTrialList%[playInd%]] + 0.5*Floor(Rand(3, 0));
+    recAtten%(atten);
+    spk%[0] := spcTrialList%[playInd%];
+
+    LogStatus("PlaySound", 
+              "SPK " + str$(spcTTSpeakers%[spcTrialList%[playInd%]]) + 
+              "ATT " + str$(spcTTAtten[spcTrialList%[playInd%]]) + "\n");
+
+    ' Send sample key for the play wave area. The play wave areas are triggered, so this 
+    ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
+
+    if spcTone% then
+        SampleKey(GetPlayWaveKey$(0));
+        ' saved string format speaker%,atten,frequency%
+        s$ := Print$("S,%d,%d,%d,%.1f,%d", spcTrialCount%, spcTrialList%[playInd%], spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcFreq%);
+        SampleText(s$, -1);
+    else
+        SampleKey(GetPlayWaveKey$(playInd%));
+        ' saved string format speaker%,atten,soundfilename
+        s$ := Print$("S,%d,%d,%d,%.1f,%s", spcTrialCount%, spcTrialList%[playInd%], spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcTrialListFilenames$[playInd%]);
+        SampleText(s$, -1);
+    endif
+    SampleKey("T");
+    
+end
+
+
+var tOnlineLast := -1;
+
+proc UpdateOnlineAnalysis()
+    var begSpk% := -1;
+    var begBak% := -1;
+    var begInd% := -1;
+    var begTime := -1;
+    var begTrial% := 0;
+    var endSpk% := -1;
+    var endBak% := -1;
+    var endTime := -1;
+    var endTrial% := 0;
+    var haveBeg% := 0;  ' state desc. 0(1) = looking for beginning (end) of trial. 
+    var markers%[4];    ' not used, actually. 
+    var markerStr$;     ' text in the text marker
+    var s$;
+    var trcount%;
+    var spk%;
+    var ind%;
+    var att;
+    var t;
+    var tindex%;
+    var i%;
+    var arrx[16];
+    var arry[16];
+    var arrxl[32];
+    var arryl[32];
+    var maxrate := -99999;
+    
+    ' Look for text marks in the observation period
+    t := NextTime(30, tOnlineLast, markers%[], markerStr$);
+    while (t >= 0) do
+        ' determine if this is a beginning or end marker
+        if (InStr(markerStr$, "S")=1) then
+            if ReadStr(Mid$(markerStr$, 3), trcount%, ind%, spk%) = 3 then 
+                ' Search for next trigger in trigger channel
+                begTime := NextTime(spcChanTrig%, t);
+                'PrintLog("Found start of trial " + str$(trcount%) + " ind, spk=" + str$(ind%) + "," + str$(spk%) + "\n");
+                begTrial% := trcount%;
+                begInd% := ind%;
+                begSpk% := spk%;
+                begTime := t;
+            else 
+                PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
+            endif
+        endif
+
+        if (InStr(markerStr$, "E")=1) then
+            if ReadStr(Mid$(markerStr$, 3), trcount%) = 1 then 
+                'PrintLog("Found end of trial " + str$(trcount%) + "\n");
+                if trcount% = begTrial% then
+                    endTime := t;
+                    
+                    ' Count up wavemarks
+                    tindex% := tlgTrialIndexHowManyCompleted%(begInd%)-1;
+                    spcTTSpikeCounts%[begInd%][tindex%] := View(spcWindowData%).Count(spcChanTrode1%, begTime, endTime);   
+                    spcTTSpikeRate[begInd%][tindex%] := spcTTSpikeCounts%[begInd%][tindex%]/spcSampleLengthSec;
+                    if (tindex% >= 1) then
+                        ArrSum(spcTTSpikeRate[begInd%][0:tindex%], spcTTSpikeRateMean[begInd%], spcTTSpikeRateStd[begInd%]);
+                        'PrintLog("ind, spk=" + str$(begInd%) + "," + str$(begSpk%) + " rate+-std " + 
+                        '        str$(spcTTSpikeRate[begInd%]) + "+-" + str$(spcTTSpikeRateStd[begInd%]) + "\n");
+                    endif
+                endif
+            else 
+                PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
+            endif
+        endif
+        
+        if (InStr(markerStr$, "F")=1) then
+            ' F marker indicates end of the repeat/last trial of a trialList. We don't include
+            ' these spikes in the averages == space1g didn't, either. 
+        endif
+        
+        tOnlineLast := t;
+        t := NextTime(30, tOnlineLast, markers%[], markerStr$);
+    wend
+    
+    ' Update plots. WARNING: Assuming that there are 16 speakers, and there is just one background trial type -- 
+    ' and that the background is the last one. 
+    
+    ' rate. Get max rate while we're at it. 
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := spcTTSpikeRateMean[i%] * spcUnitX[i%];
+        arry[i%] := spcTTSpikeRateMean[i%] * spcUnitY[i%];
+        if abs(spcTTSpikeRateMean[i%]) > maxrate then
+            maxrate := abs(spcTTSpikeRateMean[i%]);
+        endif
+    next
+    View(spcWindowXY%).XYAddData(spcChanMean%, arrx, arry);
+    
+    ' rate+std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (spcTTSpikeRateMean[i%] + spcTTSpikeRateStd[i%]) * spcUnitX[i%];
+        arry[i%] := (spcTTSpikeRateMean[i%] + spcTTSpikeRateStd[i%]) * spcUnitY[i%];
+    next
+    View(spcWindowXY%).XYAddData(spcChanMeanPlus%, arrx, arry);
+
+    ' rate-std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (spcTTSpikeRateMean[i%] - spcTTSpikeRateStd[i%]) * spcUnitX[i%];
+        arry[i%] := (spcTTSpikeRateMean[i%] - spcTTSpikeRateStd[i%]) * spcUnitY[i%];
+    next
+    View(spcWindowXY%).XYAddData(spcChanMeanMinus%, arrx, arry);
+
+    ' bkgd
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := spcTTSpikeRateMean[16] * spcUnitX[i%];
+        arry[i%] := spcTTSpikeRateMean[16] * spcUnitY[i%];
+    next
+    View(spcWindowXY%).XYAddData(spcChanBkgd%, arrx, arry);
+
+    ' bkgd+std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (spcTTSpikeRateMean[16] + spcTTSpikeRateStd[16]) * spcUnitX[i%];
+        arry[i%] := (spcTTSpikeRateMean[16] + spcTTSpikeRateStd[16]) * spcUnitY[i%];
+    next
+    View(spcWindowXY%).XYAddData(spcChanBkgdPlus%, arrx, arry);
+
+    ' bkgd-std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to 15 do
+        arrx[i%] := (spcTTSpikeRateMean[16] - spcTTSpikeRateStd[16]) * spcUnitX[i%];
+        arry[i%] := (spcTTSpikeRateMean[16] - spcTTSpikeRateStd[16]) * spcUnitY[i%];
+    next
+    View(spcWindowXY%).XYAddData(spcChanBkgdMinus%, arrx, arry);
+
+    ' lines
+    ArrConst(arrxl, 0);
+    ArrConst(arryl, 0);
+    for i% := 0 to 15 do
+        arrxl[i%*2+1] := maxrate * 1.25 * spcUnitX[i%];
+        arryl[i%*2+1] := maxrate * 1.25 * spcUnitY[i%];
+    next
+    View(spcWindowXY%).XYAddData(spcChanLines%, arrxl, arryl);
+    
 end

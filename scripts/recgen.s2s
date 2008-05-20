@@ -69,27 +69,30 @@ var tStateStart:=-1;	' time that present state started. Used to measure wait tim
 
 ' Do TDT initializations
 
-'if recInitTDT%() < 0 then
- '   halt;
-'endif
+if recInitTDT%() < 0 then
+    halt;
+endif
 
 
 ' Open dialog for expt parameters. 
 
-if RecgenScriptDialog%() = 0 then
+if RecgenScriptDialog%() <> 1 then
+    LogError("NoState", "RecgenScriptDialog returned something other than 1.");
     halt;
 endif
-
-' Initialize experimental stuff
-if InitializeExpt%(rgDebug%) <> 0 then
-    halt;
-endif
-
 
 ' Setup sampling config and open windows
 
 CreateSampleConfiguration();
 InitializeWindows();
+
+' Initialize experimental stuff
+if InitializeExpt%(rgDebug%, rgWindowData%, rgWindowXY%, rgTrigChannel%, rgTrode1Channel%) <> 1 then
+    LogError("NoState", "InitializeExpt returned something other than 1.");
+    halt;
+endif
+
+
 
 ' Initialize toolbar. Once Toolbar is called the expt is controlled by the toolbar
 ' buttons. Toolbar() does not return until one of the toolbar functions returns 0 - Stop%()
@@ -98,7 +101,7 @@ InitializeWindows();
 InitializeToolbar();
 Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
 
-
+ExptComplete%();
 
 
 
@@ -418,7 +421,7 @@ func IdleLoop%()
         if rgIsPaused% = 0 then
             stmp% := InitializeTrials%();
             docase
-            case stmp% > 0 then
+            case stmp% = 0 then
                 LogStatus("InitializeTrials", "All done!");
                 ChangeStateTo(stateDone%);
             case stmp% < 0 then
