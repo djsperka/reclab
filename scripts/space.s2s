@@ -614,11 +614,14 @@ Proc PlaySound()
     var atten;
     var s$;
     var playInd%;
+    var playChar$;
 
     ' Determine what sound index to play. 
     playInd% := spcTrialListIndex%;
+    playChar$ := "S";
     if spcTrialListIndex% = spcNTrialList% then
         playInd% := spcNTrialList%-1;
+        playChar$ := "T";
     endif
 
     ' Increment trial counter
@@ -641,12 +644,12 @@ Proc PlaySound()
     if spcTone% then
         SampleKey(GetPlayWaveKey$(0));
         ' saved string format speaker%,atten,frequency%
-        s$ := Print$("S,%d,%d,%d,%.1f,%d", spcTrialCount%, spcTrialList%[playInd%], spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcFreq%);
+        s$ := Print$("%s,%d,%d,%d,%.1f,%d", playChar$, spcTrialCount%, playInd%, spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcFreq%);
         SampleText(s$, -1);
     else
         SampleKey(GetPlayWaveKey$(playInd%));
         ' saved string format speaker%,atten,soundfilename
-        s$ := Print$("S,%d,%d,%d,%.1f,%s", spcTrialCount%, spcTrialList%[playInd%], spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcTrialListFilenames$[playInd%]);
+        s$ := Print$("%s,%d,%d,%d,%.1f,%s", playChar$, spcTrialCount%, playInd%, spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcTrialListFilenames$[playInd%]);
         SampleText(s$, -1);
     endif
     SampleKey("T");
