@@ -440,6 +440,7 @@ func IdleLoop%()
         docase
         case stmp% = 1 then
             rgDelayIntervalTime := rgMinDelay + Rand(rgVarDelay, 0);
+            SampleKey("P");
             LogStatus("WaitLvrDown", "Delay interval=" + str$(rgDelayIntervalTime) + " s.");
             ChangeStateTo(stateDelayInterval%);
         case stmp% = 0 then
@@ -494,6 +495,7 @@ func IdleLoop%()
             PrintLog("ERROR in recLeverDown()!!!\n");
             ChangeStateTo(stateDone%);
         case stmp% = 0 then
+            SampleKey("R");
             LogStatus("WaitISI", "FAIL! Lever is up");
             TrialComplete%(0, 0);
             ChangeStateTo(stateFalsePositive%);
@@ -552,6 +554,7 @@ func IdleLoop%()
             LogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
             ChangeStateTo(stateDone%);
         case stmp% = 0 then
+            SampleKey("R");
             LogStatus("WaitLvrUp", "Lever is up - HIT");
             TrialComplete%(1, 1);
             ChangeStateTo(stateLvrUpReward%);
