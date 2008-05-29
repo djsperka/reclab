@@ -640,16 +640,24 @@ Proc PlaySound()
 
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
+    ' The sample text string contains the following (comma-separated) fields:
+    ' 1. playChar: S for S1 trials, T for S2 trial
+    ' 2. trial number: overall trial counter
+    ' 3. S1 trial index, starts at 0. S2 trial has same index as last S1 trial. 
+    ' 4. Trial type number. This may not be the same as the speaker number! Used as index in trial list generator, spcTTSpeaker[] and spcTTAtten[]. 
+    ' 5. speaker number
+    ' 6. atten
+    ' 7. freq for tone, filename for noise. 
 
     if spcTone% then
         SampleKey(GetPlayWaveKey$(0));
         ' saved string format speaker%,atten,frequency%
-        s$ := Print$("%s,%d,%d,%d,%.1f,%d", playChar$, spcTrialCount%, playInd%, spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcFreq%);
+        s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,%d", playChar$, spcTrialCount%, playInd%, spcTrialList%[playInd%], spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcFreq%);
         SampleText(s$, -1);
     else
         SampleKey(GetPlayWaveKey$(playInd%));
         ' saved string format speaker%,atten,soundfilename
-        s$ := Print$("%s,%d,%d,%d,%.1f,%s", playChar$, spcTrialCount%, playInd%, spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcTrialListFilenames$[playInd%]);
+        s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,\"%s\"", playChar$, spcTrialCount%, playInd%, spcTrialList%[playInd%], spcTTSpeakers%[spcTrialList%[playInd%]], atten, spcTrialListFilenames$[playInd%]);
         SampleText(s$, -1);
     endif
     SampleKey("T");
@@ -657,12 +665,13 @@ Proc PlaySound()
 end
 
 
-var tOnlineLast := -1;
+var tLastTextMark := -1;
 
 proc UpdateOnlineAnalysis()
     var begSpk% := -1;
     var begBak% := -1;
     var begInd% := -1;
+    var begType% := -1;
     var begTime := -1;
     var begTrial% := 0;
     var endSpk% := -1;
@@ -675,7 +684,8 @@ proc UpdateOnlineAnalysis()
     var s$;
     var trcount%;
     var spk%;
-    var ind%;
+    var trind%;
+    var trtype%;
     var att;
     var t;
     var tindex%;
@@ -687,18 +697,24 @@ proc UpdateOnlineAnalysis()
     var maxrate := -99999;
     
     ' Look for text marks in the observation period
-    t := NextTime(30, tOnlineLast, markers%[], markerStr$);
+    t := NextTime(30, tLastTextMark, markers%[], markerStr$);
     while (t >= 0) do
+    
+        LogStatus("UpdateOnlineAnalysis", "Found marker at t=" + str$(t) + ": " + markerStr$);
+
         ' determine if this is a beginning or end marker
         if (InStr(markerStr$, "S")=1) then
-            if ReadStr(Mid$(markerStr$, 3), trcount%, ind%, spk%) = 3 then 
-                ' Search for next trigger in trigger channel
+            if ReadStr(Mid$(markerStr$, 3), trcount%, trind%, trtype%, spk%) = 4 then 
+
+                ' Search for next trigger in trigger channel. Use the time of the text marker as the starting point
+                ' for the search. That's because the text marker precedes the sample text "T" which generates the 
+                ' trigger. 
                 begTime := NextTime(spcChanTrig%, t);
-                'PrintLog("Found start of trial " + str$(trcount%) + " ind, spk=" + str$(ind%) + "," + str$(spk%) + "\n");
+                LogStatus("UpdateOnlineAnalysis", "Start of trial " + str$(trcount%) + " type " + str$(trtype%) + " spk " + str$(spk%) + " trig at " + str$(begTime));
                 begTrial% := trcount%;
-                begInd% := ind%;
+                begInd% := trind%;
+                begType% := trtype%;
                 begSpk% := spk%;
-                begTime := t;
             else 
                 PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
             endif
@@ -711,11 +727,12 @@ proc UpdateOnlineAnalysis()
                     endTime := t;
                     
                     ' Count up wavemarks
-                    tindex% := tlgTrialIndexHowManyCompleted%(begInd%)-1;
-                    spcTTSpikeCounts%[begInd%][tindex%] := View(spcWindowData%).Count(spcChanTrode1%, begTime, endTime);   
-                    spcTTSpikeRate[begInd%][tindex%] := spcTTSpikeCounts%[begInd%][tindex%]/spcSampleLengthSec;
+                    tindex% := tlgTrialIndexHowManyCompleted%(begType%)-1;
+                    PrintLog("begInd %d tindex %d\n", begInd%, tindex%);
+                    spcTTSpikeCounts%[begType%][tindex%] := View(spcWindowData%).Count(spcChanTrode1%, begTime, endTime);   
+                    spcTTSpikeRate[begType%][tindex%] := spcTTSpikeCounts%[begType%][tindex%]/spcSampleLengthSec;
                     if (tindex% >= 1) then
-                        ArrSum(spcTTSpikeRate[begInd%][0:tindex%], spcTTSpikeRateMean[begInd%], spcTTSpikeRateStd[begInd%]);
+                        ArrSum(spcTTSpikeRate[begType%][0:tindex%], spcTTSpikeRateMean[begType%], spcTTSpikeRateStd[begType%]);
                         'PrintLog("ind, spk=" + str$(begInd%) + "," + str$(begSpk%) + " rate+-std " + 
                         '        str$(spcTTSpikeRate[begInd%]) + "+-" + str$(spcTTSpikeRateStd[begInd%]) + "\n");
                     endif
@@ -730,8 +747,8 @@ proc UpdateOnlineAnalysis()
             ' these spikes in the averages == space1g didn't, either. 
         endif
         
-        tOnlineLast := t;
-        t := NextTime(30, tOnlineLast, markers%[], markerStr$);
+        tLastTextMark := t;
+        t := NextTime(30, tLastTextMark, markers%[], markerStr$);
     wend
     
     ' Update plots. WARNING: Assuming that there are 16 speakers, and there is just one background trial type -- 
