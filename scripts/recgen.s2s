@@ -23,6 +23,7 @@ var rgDebug%                := 1;
 ' channel numbers and window handles
 var rgDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
 var rgTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
+var rgLeverChannel% := 3;
 var rgTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
                                 ' for anything other than electrodes!
 var rgWindowXY%;
@@ -222,6 +223,9 @@ proc CreateSampleConfiguration()
     SampleEvent(rgTrigChannel%, 0, 2, 10);
     SampleTitle$(rgTrigChannel%, "Trigger");
 
+    ' Event channel 1 is for the lever
+    SampleEvent(rgLeverChannel%, 1, 2, 10);
+    SampleTitle$(rgLeverChannel%, "Lever");
 
     ' Text marks
     SampleTextMark(64);
