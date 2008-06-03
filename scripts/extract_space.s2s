@@ -1,0 +1,61 @@
+' $Id$
+'
+'
+' extract_space
+'
+' This script extracts data from the space data file currently open. 
+
+
+#include "extract_space_functions.s2s"
+
+var hData%;
+var hXY%;
+var hEcode%;
+var hBak%;
+var chs%[10];
+var nchs%;
+var chanTextMark%;
+var chanWaveMark%;
+    
+    
+' Get data file....
+hData% := View(0);
+if (ViewKind(hData%) <> 0) then
+    Message("Current view must be a time view.");
+'        return;
+endif
+
+nchs% := ChanList(chs%[], 32);		' the '32' tells spike2 we want just text mark channels.
+'    PrintLog("nchs=" + str$(nchs%) + "\n");
+if nchs% <> 1 then
+    Message("Hmmm. There seems to be " + str$(nchs%) + " textmark channels in this data file. Expecting just 1...");
+    halt;
+else
+    chanTextMark% := chs%[1];
+endif
+
+
+nchs% := ChanList(chs%[], 16);		' the '16' tells spike2 we want just wave mark channels.
+'    PrintLog("nchs=" + str$(nchs%) + "\n");
+
+if nchs% = 0 then
+    Message("No wavemark channels found!");
+    halt;
+endif
+
+if nchs% > 1 then
+    Message("Hmmm. There seems to be " + str$(nchs%) + " wavemark channels in this data file. Do the first - TODO the rest!");
+endif
+chanWaveMark% := chs%[1];
+
+hEcode% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".beh", 8, 1);
+Print("trial\tpos\tS1\tS2\tatten\tresp\trxtime\t freq is ZZZZZZZZ\n");
+hBak% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".bak", 8, 1);
+
+
+' testing star plotupdate
+hXY% := FileNew(12);
+View(hXY%).WindowVisible(1);
+InitializeStarPlot(hXY%);
+
+ExtractSpace(-1, -1, hData%, hXY%, hEcode%, hBak%, chanWaveMark%, chanTextMark%, 2, 3);
