@@ -1,9 +1,9 @@
 #include "recgen.s2s"
 #include "triallistgen.s2s"
 #include "gensound.s2s"
+#include "extract_space_functions.s2s"
 
 
-const spcPI := 3.141592653589793;
 const spcTTMaxSpeakers% := 100;
 const spcMaxTrials%        := 100;         ' Maximum number of trials per speaker.
 const spcDAC0Key$        := "A";
@@ -32,20 +32,15 @@ var spcTrialListFilenames$[spcTrialListMax%];   ' When noise chosen, these are f
 var spcNTrialList%;
 var spcTrialListIndex%;
 
-'-------- global vars RE: xy plot
-var spcUnitX[16];
-var spcUnitY[16];
+var spcHBeh%;       ' ecode file
+var spcHBak%;       ' spikes
+var spcTLastProcessed := -1;
 var spcWindowData%;
 var spcWindowXY%;
 var spcChanTrig%;
-var spcChanTrode1%;
-var spcChanMean%;
-var spcChanMeanPlus%;
-var spcChanMeanMinus%;
-var spcChanBkgd%;
-var spcChanBkgdPlus%;
-var spcChanBkgdMinus%;
-var spcChanLines%;
+var spcChanWM%;
+var spcChanTM%;
+var spcChanLever%;
 var spcOutputRoot$          := "output";        ' root filename for output file
 var spcNoise%               := 1;
 var spcNoiseDir$            := "c:/reclab/space";
@@ -80,21 +75,24 @@ const spcdlgBlockSize%  := 9;
 '--------------------------------------------------------------------------------
 
 
-func InitializeExpt%(debug%, wdata%, wxy%, chTrig%, chTrode%)
-    var status% := 0;
+func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
+    var status% := 1;
     var i%;
     var ang;
     
     spcDebug% := debug%;
     spcWindowData% := wdata%;
     spcWindowXY% := wxy%;
-    spcChanTrig% := chTrig%;
-    spcChanTrode1% := chTrode%;
+    spcChanWM% := channels%[0];
+    spcChanTrig% := channels%[1];
+    spcChanLever% := channels%[2];
+    spcChanTM% := channels%[3];
     if spcDebug% = 1 then
         gensoundSetDebug(spcDebug%);
     endif
     
     status% := SpaceScriptDialog%();
+    PrintLog("SpaceScriptDialog returned %d\n", status%);
     if status% > 0 then
         ' initialize trial list generator
         tlgInit(spcNTrialTypes%, spcBlockSize%, spcNTrialsPerStim%/spcBlockSize%, spcTrialListMin%, spcTrialListMax%);
@@ -104,20 +102,7 @@ func InitializeExpt%(debug%, wdata%, wxy%, chTrig%, chTrode%)
         ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
         InitializePlayWaveAreas();
         
-        spcChanMean% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 8);
-        spcChanMeanPlus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 7);
-        spcChanMeanMinus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 7);
-        spcChanBkgd% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 0);
-        spcChanBkgdPlus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 5);
-        spcChanBkgdMinus% := View(spcWindowXY%).XYSetChan(0, -16, 0, 2, 5);
-        spcChanLines% := View(spcWindowXY%).XYSetChan(0, -32, 0, 2, 20);
-
-        for i%:=0 to 15 do
-            ang := -spcPI/8*(5+i%);
-            spcUnitX[i%] := cos(ang);
-            spcUnitY[i%] := sin(ang);
-        next
-
+        ExtractSpaceInitialize(spcWindowXY%);
         
     endif
     return status%;
@@ -134,7 +119,9 @@ end
 func ExptComplete%()
 
     FilePathSet(data$);
-    FileSaveAs(spcOutputRoot$ + ".smr", -1);
+    View(spcWindowData%).FileSaveAs(spcOutputRoot$ + ".smr", -1);
+    FileClose(spcHBak%);
+    FileClose(spcHBeh%);
     return 0;
 
 end
@@ -182,7 +169,9 @@ func TrialComplete%(ttype%, success%)
             strtmp$ := Print$("E,%d", spcTrialCount%);
             SampleText(strtmp$, -1);
             tlgTrialIndexCompleted(spcTrialList%[spcTrialListIndex%]);
-            UpdateOnlineAnalysis();
+            ExtractSpace(spcTLastProcessed, MaxTime(), spcWindowData%, spcWindowXY%, spcHBeh%, spcHBak%, spcChanWM%, spcChanTM%, spcChanTrig%, spcChanLever%);
+            spcTLastProcessed := MaxTime();
+            'UpdateOnlineAnalysis();
             spcTrialListIndex% += 1;
             if spcTrialListIndex% = spcNTrialList% then
                 status% := 1;
@@ -360,6 +349,16 @@ func SpaceCheckOK%()
         status% := 1;
     endif
 
+    ' Open ecode and bak file
+    dummy$ := data$ + "\\" + o$ + ".beh";
+    PrintLog("Opening ecode file %s\n", dummy$);
+    spcHBeh% := FileOpen(dummy$, 8, 1);
+    Print("trial\tpos\tS1\tS2\tatten\tresp\trxtime\t freq is %d\n", spcFreq%);
+    dummy$ := data$ + "\\" + o$ + ".bak";
+    PrintLog("Opening bak file %s\n", dummy$);
+    spcHBak% := FileOpen(dummy$, 8, 1);
+
+    
     ' Check that spcNTrialsPerStim% is a multiple of spcBlockSize%
     i1% := DlgValue(spcdlgNTrials%);
     i2% := DlgValue(spcdlgBlockSize%);
@@ -506,7 +505,7 @@ func PrepareTrials%()
     var i%;
     var nread%:= 0;
     var file$;
-    var swapIndex% := -1;
+    var reloadCount% := 0;
 
     ' Get the trial list, then check if we're done. If so, return now, don't do the 
     ' rest of the stuff here since there's nothing to do. 
@@ -514,47 +513,30 @@ func PrepareTrials%()
     if spcNTrialList% = 0 then
         return 0;
     endif
-    
-    ' Check that the last trial in the list is NOT the background trial index. If it is, then 
-    ' swap it with one of the other non-background trial indices.
 
-    if spcTrialList%[spcNTrialList%-1] = spcNTrialTypes%-1 then
-    
-        PrintLog("Last trial in list is background. Fixing...\n");
-        
-        ' GREGG: should this start at 0 or 1? Is it OK for the first trial to be background? 
-        while i%<spcNTrialList%-2 and swapIndex% < 0 do
-            if spcTrialList%[i%] <> spcTrialList%[spcNTrialList%-1] then
-                swapIndex% := i%;
-            endif
-            i% := i%+1;
-        wend
-        
-        ' Should never happen, but if that loop failed I'm just gonna quit. 
-        ' The only way that could happen would be if the trial list generator sent back a 
-        ' list consisting of nothing but the background index. As long as we request 
-        ' lists with a min length > 1 that shouldn't happen, since the trial list 
-        ' generator doesn't allow repeated indices. 
-        if swapIndex% < 0 then
-            Message("Trial list error!");
-            halt;
-        endif
+    ' Check that the last trial in the list is NOT the background trial index. If it is, then
+    ' get another trial list and check again. Repeat.
 
-        ' Now swap the indices and move on. 
-        i% := spcTrialList%[spcNTrialList%-1];
-        spcTrialList%[spcNTrialList%-1] := spcTrialList%[swapIndex%];
-        spcTrialList%[swapIndex%] := i%;
-        
-
-        PrintLog("Swapped trials to fix. Trial indices: ");
+    while spcTrialList%[spcNTrialList%-1] = spcNTrialTypes%-1 do
+        reloadCount% += 1;
+        PrintLog("Trial list has background as last trial. Bad list:\n");
+        PrintLog("TrialList ");
         for i% := 0 to spcNTrialList%-1 do
-            PrintLog("%d", spcTrialList%[i%]);
-            if i% < spcNTrialList%-1 then
-                PrintLog(",");
-            endif
+            PrintLog(str$(spcTrialList%[i%]) + " ");
         next
         PrintLog("\n");
-    endif
+        PrintLog("Get another list. Attempt # %d\n", reloadCount%);
+        spcNTrialList% := tlgGetTrialList%(spcTrialList%[]);
+        if spcNTrialList% = 0 then
+            return 0;
+        endif
+        if reloadCount% > 10 then
+            Message("Error fetching trial list! See log window.");
+            PrintLog("Cannot get a trial list without background as last trial! This should not happen! Contact dan.\n");
+            return 0;
+        endif
+    wend
+    
 
     if spcDebug% = 1 then
         PrintLog("TrialList ");
@@ -665,159 +647,3 @@ Proc PlaySound()
 end
 
 
-var tLastTextMark := -1;
-
-proc UpdateOnlineAnalysis()
-    var begSpk% := -1;
-    var begBak% := -1;
-    var begInd% := -1;
-    var begType% := -1;
-    var begTime := -1;
-    var begTrial% := 0;
-    var endSpk% := -1;
-    var endBak% := -1;
-    var endTime := -1;
-    var endTrial% := 0;
-    var haveBeg% := 0;  ' state desc. 0(1) = looking for beginning (end) of trial. 
-    var markers%[4];    ' not used, actually. 
-    var markerStr$;     ' text in the text marker
-    var s$;
-    var trcount%;
-    var spk%;
-    var trind%;
-    var trtype%;
-    var att;
-    var t;
-    var tindex%;
-    var i%;
-    var arrx[16];
-    var arry[16];
-    var arrxl[32];
-    var arryl[32];
-    var maxrate := -99999;
-    
-    ' Look for text marks in the observation period
-    t := NextTime(30, tLastTextMark, markers%[], markerStr$);
-    while (t >= 0) do
-    
-        LogStatus("UpdateOnlineAnalysis", "Found marker at t=" + str$(t) + ": " + markerStr$);
-
-        ' determine if this is a beginning or end marker
-        if (InStr(markerStr$, "S")=1) then
-            if ReadStr(Mid$(markerStr$, 3), trcount%, trind%, trtype%, spk%) = 4 then 
-
-                ' Search for next trigger in trigger channel. Use the time of the text marker as the starting point
-                ' for the search. That's because the text marker precedes the sample text "T" which generates the 
-                ' trigger. 
-                begTime := NextTime(spcChanTrig%, t);
-                LogStatus("UpdateOnlineAnalysis", "Start of trial " + str$(trcount%) + " type " + str$(trtype%) + " spk " + str$(spk%) + " trig at " + str$(begTime));
-                begTrial% := trcount%;
-                begInd% := trind%;
-                begType% := trtype%;
-                begSpk% := spk%;
-            else 
-                PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
-            endif
-        endif
-
-        if (InStr(markerStr$, "E")=1) then
-            if ReadStr(Mid$(markerStr$, 3), trcount%) = 1 then 
-                'PrintLog("Found end of trial " + str$(trcount%) + "\n");
-                if trcount% = begTrial% then
-                    endTime := t;
-                    
-                    ' Count up wavemarks
-                    tindex% := tlgTrialIndexHowManyCompleted%(begType%)-1;
-                    PrintLog("begInd %d tindex %d\n", begInd%, tindex%);
-                    spcTTSpikeCounts%[begType%][tindex%] := View(spcWindowData%).Count(spcChanTrode1%, begTime, endTime);   
-                    spcTTSpikeRate[begType%][tindex%] := spcTTSpikeCounts%[begType%][tindex%]/spcSampleLengthSec;
-                    if (tindex% >= 1) then
-                        ArrSum(spcTTSpikeRate[begType%][0:tindex%], spcTTSpikeRateMean[begType%], spcTTSpikeRateStd[begType%]);
-                        'PrintLog("ind, spk=" + str$(begInd%) + "," + str$(begSpk%) + " rate+-std " + 
-                        '        str$(spcTTSpikeRate[begInd%]) + "+-" + str$(spcTTSpikeRateStd[begInd%]) + "\n");
-                    endif
-                endif
-            else 
-                PrintLog("Error reading marker string at t=" + str$(t) + ": " + markerStr$ + "\n");
-            endif
-        endif
-        
-        if (InStr(markerStr$, "F")=1) then
-            ' F marker indicates end of the repeat/last trial of a trialList. We don't include
-            ' these spikes in the averages == space1g didn't, either. 
-        endif
-        
-        tLastTextMark := t;
-        t := NextTime(30, tLastTextMark, markers%[], markerStr$);
-    wend
-    
-    ' Update plots. WARNING: Assuming that there are 16 speakers, and there is just one background trial type -- 
-    ' and that the background is the last one. 
-    
-    ' rate. Get max rate while we're at it. 
-    ArrConst(arrx, 0);
-    ArrConst(arry, 0);
-    for i% := 0 to 15 do
-        arrx[i%] := spcTTSpikeRateMean[i%] * spcUnitX[i%];
-        arry[i%] := spcTTSpikeRateMean[i%] * spcUnitY[i%];
-        if abs(spcTTSpikeRateMean[i%]) > maxrate then
-            maxrate := abs(spcTTSpikeRateMean[i%]);
-        endif
-    next
-    View(spcWindowXY%).XYAddData(spcChanMean%, arrx, arry);
-    
-    ' rate+std
-    ArrConst(arrx, 0);
-    ArrConst(arry, 0);
-    for i% := 0 to 15 do
-        arrx[i%] := (spcTTSpikeRateMean[i%] + spcTTSpikeRateStd[i%]) * spcUnitX[i%];
-        arry[i%] := (spcTTSpikeRateMean[i%] + spcTTSpikeRateStd[i%]) * spcUnitY[i%];
-    next
-    View(spcWindowXY%).XYAddData(spcChanMeanPlus%, arrx, arry);
-
-    ' rate-std
-    ArrConst(arrx, 0);
-    ArrConst(arry, 0);
-    for i% := 0 to 15 do
-        arrx[i%] := (spcTTSpikeRateMean[i%] - spcTTSpikeRateStd[i%]) * spcUnitX[i%];
-        arry[i%] := (spcTTSpikeRateMean[i%] - spcTTSpikeRateStd[i%]) * spcUnitY[i%];
-    next
-    View(spcWindowXY%).XYAddData(spcChanMeanMinus%, arrx, arry);
-
-    ' bkgd
-    ArrConst(arrx, 0);
-    ArrConst(arry, 0);
-    for i% := 0 to 15 do
-        arrx[i%] := spcTTSpikeRateMean[16] * spcUnitX[i%];
-        arry[i%] := spcTTSpikeRateMean[16] * spcUnitY[i%];
-    next
-    View(spcWindowXY%).XYAddData(spcChanBkgd%, arrx, arry);
-
-    ' bkgd+std
-    ArrConst(arrx, 0);
-    ArrConst(arry, 0);
-    for i% := 0 to 15 do
-        arrx[i%] := (spcTTSpikeRateMean[16] + spcTTSpikeRateStd[16]) * spcUnitX[i%];
-        arry[i%] := (spcTTSpikeRateMean[16] + spcTTSpikeRateStd[16]) * spcUnitY[i%];
-    next
-    View(spcWindowXY%).XYAddData(spcChanBkgdPlus%, arrx, arry);
-
-    ' bkgd-std
-    ArrConst(arrx, 0);
-    ArrConst(arry, 0);
-    for i% := 0 to 15 do
-        arrx[i%] := (spcTTSpikeRateMean[16] - spcTTSpikeRateStd[16]) * spcUnitX[i%];
-        arry[i%] := (spcTTSpikeRateMean[16] - spcTTSpikeRateStd[16]) * spcUnitY[i%];
-    next
-    View(spcWindowXY%).XYAddData(spcChanBkgdMinus%, arrx, arry);
-
-    ' lines
-    ArrConst(arrxl, 0);
-    ArrConst(arryl, 0);
-    for i% := 0 to 15 do
-        arrxl[i%*2+1] := maxrate * 1.25 * spcUnitX[i%];
-        arryl[i%*2+1] := maxrate * 1.25 * spcUnitY[i%];
-    next
-    View(spcWindowXY%).XYAddData(spcChanLines%, arrxl, arryl);
-    
-end
