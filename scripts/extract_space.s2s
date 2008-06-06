@@ -56,6 +56,6 @@ hBak% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".bak", 8, 1);
 ' testing star plotupdate
 hXY% := FileNew(12);
 View(hXY%).WindowVisible(1);
-InitializeStarPlot(hXY%);
+ExtractSpaceInitialize(hXY%);
 
 ExtractSpace(-1, -1, hData%, hXY%, hEcode%, hBak%, chanWaveMark%, chanTextMark%, 2, 3);
