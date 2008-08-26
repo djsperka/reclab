@@ -1,0 +1,164 @@
+#include "recgen.s2s"
+
+
+var fraLowFreq := 100;
+var fraHighFreq := 40000;
+var fraLowAtten := 1;
+var fraHighAtten := 100;
+var fraOutputRoot$;
+var fraBestSelection% := 1;
+var fraAheadSelection% := 1;
+var fraIntensitySelection% := 1;
+var fraTxtFileList$[100];
+var fraTxtFileCount% := 0;
+var fraNTrialsPerIntensity% := 10;
+var fraDebug% := 0;
+
+const fradlgRoot% := 1;
+const fradlgFreqLow% := 2;
+const fradlgFreqHigh% := 3;
+const fradlgAttenLow% := 4;
+const fradlgAttenHigh% := 5;
+const fradlgNTrials% := 6;
+const fradlgBestSpk% := 7;
+const fradlgBestInput% := 8;
+const fradlgAheadInput% := 9;
+const fradlgIntensityInput% := 10;
+
+
+'------- InitializeExpt% --------------------------------------------------------
+'
+' Called after generic dialog. Open dialog, initialize stuff specific to this expt. 
+' Return 1 if all is well, 0 if user hit Cancel, or -1 to abort expt. 
+'
+'--------------------------------------------------------------------------------
+
+
+func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
+    var status% := 1;
+
+    status% := FraScriptDialog%();
+    PrintLog("FraScriptDialog returned %d\n", status%);
+
+
+
+    return status%;
+end
+
+func InitializeTrials%()
+    var status%;
+'    spcTrialListIndex% := 0;
+'    status% := PrepareTrials%();
+    return status%;
+end
+
+
+func ExptComplete%()
+
+'    FilePathSet(data$);
+'    View(spcWindowData%).FileSaveAs(spcOutputRoot$ + ".smr", -1);
+'    FileClose(spcHBak%);
+'    FileClose(spcHBeh%);
+    return 0;
+
+end
+
+'----------- Trial%(ttype%) ----------------------------------------------------------------
+'
+' Initiate a trial. When ttype% = 0 this trial is an S1 trial, when ttype% = 1  its an S2 trial. 
+' Return 0 if all is well, negative if not (script will exit immediately). 
+'
+'--------------------------------------------------------------------------------
+
+func Trial%(ttype%)
+    var status% := 0;
+    return status%;
+end
+
+'----------- Trial%Complete(ttype%, success%) -----------------------------------
+'
+' Trial has ended. ttype% same meaning as for Trial%. success% 1=good, 0=bad. 
+' Record text marker, analysis update. 
+' Return value of -1 means an error has occurred, abort. 
+' When ttype%=0, return value of 0 means continue with S1 trials, return value of 1
+' means move on to S2 trial. 
+' When ttype%=1 the return value (unless it is negative) is ignored. 
+' 
+'
+'--------------------------------------------------------------------------------
+
+func TrialComplete%(ttype%, success%)
+    var status% := 0;
+    return status%;
+end
+
+
+
+
+
+'-------- fra configuration dialog ---------------------------------------
+
+
+func FraScriptDialog%()
+    var i%;
+    var status% := 0;
+    var sFileCount% := 0;
+    var sFileMask$ := "*.txt";
+    var pathTemp$;
+    
+    ' Fetch parameters from registry
+    
+'    SpaceScriptDialogGetParams();
+
+    ' Get file list for trial types. If no files are found in stim$ matching the mask, 
+    ' show a message and quit. 
+    FilePathSet(stim$);
+    fraTxtFileCount% := FileList(fraTxtFileList$, -1, sFileMask$);
+    if sFileCount% = 0 then
+        Message("There are no files in dir %s matching the mask %s", stim$, sFileMask$);
+        return 0;   ' will look as if user hit Cancel
+    endif
+    
+    ' Generate the dialog
+    
+	DlgCreate("Fra Parameters", 25, 10);
+    DlgString(fradlgRoot%, "Output file root|Base name of output file, e.g. a022098a", 32, "a-zA-Z0-9_-");
+    DlgReal(fradlgFreqLow%, "Low frequency(hz)", 10, 50000);
+    DlgReal(fradlgFreqHigh%, "High frequency(hz)", 10, 50000);
+    DlgReal(fradlgAttenLow%, "Low attenuation", 1, 100);
+    DlgReal(fradlgAttenHigh%, "High attenuation", 1, 100);
+    DlgInteger(fradlgNTrials%, "# trials per intensity", 1, 20, 0, 0, 1);
+    DlgList(fradlgBestSpk%, "Best speaker", "1|2|3|4|5|6|7|8|9|10|11|13|14|15|16");
+    DlgList(fradlgBestInput%, "Best input", fraTxtFileList$, fraTxtFileCount%);
+    DlgList(fradlgAheadInput%, "Ahead input", fraTxtFileList$, fraTxtFileCount%);
+    DlgList(fradlgIntensityInput%, "Intensity input", fraTxtFileList$, fraTxtFileCount%);
+    
+    DlgButton(1, "OK"); ', FraCheckOK%);
+    DlgButton(0, "Cancel");
+    'DlgAllow(0, 0, FraDlgChanged%);
+
+    ' Show the dialog. 
+
+	i%:=DlgShow(fraOutputRoot$, fraLowFreq, fraHighFreq, fraLowAtten, fraHighAtten, 
+                fraNTrialsPerIntensity%, fraBestSelection%, fraAheadSelection%, fraIntensitySelection%);
+                
+
+    ' If user hit OK then save parameters (and return 1). 
+
+	if i% = 1 then
+        'FraScriptDialogSaveParams();
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+    ' If debug was set, then turn on debugging for supporting scripts
+'    if spcDebug% = 1 then
+'        gensoundSetDebug(spcDebug%);
+'    endif
+
+	return status%;
+end;
+
+
+
