@@ -66,12 +66,17 @@ var channels%[4];
 
 '==========================   Start script here ===========================================================
 
+
 '!!!!!!!!!!!!!!!!!!!!!!!!!!   INITIALIZATION PER-EXPT HERE
 
 ' Do TDT initializations
 
-if recInitTDT%() < 0 then
-    halt;
+if Testing%() = 0 then
+    if recInitTDT%() < 0 then
+        halt;
+    endif
+else
+    LogInfo("Client is in testing mode (see Testing%() in control script). Bypassing TDT initializations.\n");
 endif
 
 
@@ -271,10 +276,12 @@ proc InitializeWindows()
 	Window(0, 50, 50, 100); 
 	View(rgWindowXY%).WindowVisible(1);
     
-	'Open the data sampling window
-	rgWindowData% := FileNew(0,4);
-	Window(0, 0, 100, 50); 
-	View(rgWindowData%).WindowVisible(1);
+	'Open the data sampling window -- only if not in Testing mode!
+    if Testing%() = 0 then
+        rgWindowData% := FileNew(0,4);
+        Window(0, 0, 100, 50); 
+        View(rgWindowData%).WindowVisible(1);
+    endif
 
 end;
 
@@ -389,7 +396,25 @@ end
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc LogError(stateName$, msg$)
     PrintLog("ERROR===============================================\n");
-    PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
+    if stateName$ = "" then
+        PrintLog(msg$ + "\n");
+    else
+        PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
+    endif
+    PrintLog("====================================================\n");
+end
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' LogInfo
+' 
+' Like LogStatus, a utility to write msg to log window. 
+' Unlike LogStatus, LogError will write no matter what - regardless of rgDebug value.
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc LogInfo(msg$)
+    PrintLog("INFO===============================================\n");
+    PrintLog(msg$ + "\n");
     PrintLog("====================================================\n");
 end
 
@@ -404,7 +429,11 @@ end
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc ChangeStateTo(stateTo%)
 	iState% := stateTo%;
-    tStateStart := MaxTime();
+    if Testing%() = 0 then
+        tStateStart := MaxTime();
+    else
+        tStateStart := tNow;
+    endif
 end;
 
 
@@ -413,7 +442,11 @@ func IdleLoop%()
     var stmp%;
     var trtmp%;
     var strtmp$;
-	tNow := MaxTime();
+    if Testing%() = 0 then
+        tNow := MaxTime();
+    else
+        tNow += 1;
+    endif
 
 	' What state are we in? 
     docase
@@ -444,7 +477,12 @@ func IdleLoop%()
             
     case iState% = stateWaitLvrDown% then
         LogStatus("WaitLvrDown", "Blink/Wait.");
-        stmp% := recBlinkUntilLeverDown%(.5, rgMaxLvrDownTime);
+        
+        if Testing%() = 0 then
+            stmp% := recBlinkUntilLeverDown%(.5, rgMaxLvrDownTime);
+        else
+            stmp% := 1;
+        endif
 
         docase
         case stmp% = 1 then
@@ -498,7 +536,12 @@ func IdleLoop%()
     case iState% = stateWaitISI% then
  
         ' Check that lever is still down.
-        stmp% := recLeverDown%();
+        if Testing%() = 0 then
+            stmp% := recLeverDown%();
+        else
+            stmp% := 1;
+        endif
+        
         docase
         case stmp% < 0 then
             PrintLog("ERROR in recLeverDown()!!!\n");
@@ -549,7 +592,9 @@ func IdleLoop%()
         ' Are we giving free rewards? If we are, then do so, otherwise we just pass on through. 
         if rgTrainingRewardCheck% = 1 then
             LogStatus("TrainingReward", "Giving training reward size " + str$(rgTrainingRewardSize%));
-            tdtREWARD%(rgTrainingRewardSize%);
+            if Testing%() = 0 then
+                tdtREWARD%(rgTrainingRewardSize%);
+            endif
         else
             LogStatus("TrainingReward", "No free reward.");
         endif
@@ -557,7 +602,12 @@ func IdleLoop%()
             
     case iState% = stateWaitLvrUp% then
         
-        stmp% := recLeverDown%();
+        if Testing%() = 0 then
+            stmp% := recLeverDown%();
+        else
+            ' TODO: might want to simulate HIT and MISS here.....For now only HIT when testing. 
+            stmp% := 0;
+        endif
         docase
         case stmp% < 0 then
             LogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
@@ -593,7 +643,9 @@ func IdleLoop%()
         
         if rgLongRewardCheck% = 1 then
             LogStatus("LvrUpReward", "(long)) Reward size=" + str$(rgLongRewardSize%));
-            tdtREWARD%(rgLongRewardSize%);
+            if Testing%() = 0 then
+                tdtREWARD%(rgLongRewardSize%);
+            endif
         endif
         ChangeStateTo(stateInitializeTrials%);
             

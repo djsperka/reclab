@@ -1,18 +1,44 @@
 #include "recgen.s2s"
-
+#include "triallistgen.s2s"
 
 var fraLowFreq := 100;
 var fraHighFreq := 40000;
 var fraLowAtten := 1;
 var fraHighAtten := 100;
 var fraOutputRoot$;
+var fraBestSpk% := 1;
 var fraBestSelection% := 1;
 var fraAheadSelection% := 1;
 var fraIntensitySelection% := 1;
 var fraTxtFileList$[100];
 var fraTxtFileCount% := 0;
-var fraNTrialsPerIntensity% := 10;
+var fraNTrialsPerIntensity% := 12;
+var fraNTrialsPerBlock% := 4;
+var fraNBlocksRequired%;
 var fraDebug% := 0;
+const fraMinS1Trials% := 3;
+const fraMaxS1Trials% := 7;
+var fraS1TrialList%[fraMaxS1Trials%];
+var fraNS1Trials%;
+var fraCurrentS1Trial%;
+var fraS2TrialList%[1];
+var fraTrialTypes% := 0;
+const fraMaxTrialTypes% := 22;
+var fraS2Loc%[fraMaxTrialTypes%];
+var fraS2Atten[fraMaxTrialTypes%];
+var fraAttenSteps%;
+var fraFreqSteps%;
+const fraMaxPick% := 496;
+var fraNPicks%;
+var fraS1PickIndex% := 1;
+var fraS1FreqPick%[fraMaxPick%][2];
+var fraS1AttenPick%[fraMaxPick%][2];
+var fraNextPick%[2];
+var fraNFreqSteps%:= 0;
+var fraNAttenSteps% := 0;
+const fraMaxArray% := 50;
+var fraS1AttenArray[fraMaxArray%];
+var fraS1FreqArray[fraMaxArray%];
 
 const fradlgRoot% := 1;
 const fradlgFreqLow% := 2;
@@ -20,10 +46,16 @@ const fradlgFreqHigh% := 3;
 const fradlgAttenLow% := 4;
 const fradlgAttenHigh% := 5;
 const fradlgNTrials% := 6;
-const fradlgBestSpk% := 7;
-const fradlgBestInput% := 8;
-const fradlgAheadInput% := 9;
-const fradlgIntensityInput% := 10;
+const fradlgNTrialsPerBlock% := 7;
+const fradlgBestSpk% := 8;
+const fradlgBestInput% := 9;
+const fradlgAheadInput% := 10;
+const fradlgIntensityInput% := 11;
+
+
+func Testing%()
+    return 1;
+end
 
 
 '------- InitializeExpt% --------------------------------------------------------
@@ -36,19 +68,83 @@ const fradlgIntensityInput% := 10;
 
 func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
     var status% := 1;
-
+    var i%;
+    var n%;
+    var nf%, na%;
+    var totalOctaves;
+    var octaveStep;
+    
     status% := FraScriptDialog%();
     PrintLog("FraScriptDialog returned %d\n", status%);
 
+    ' Load intensity file
+    fraTrialTypes% := FraLoadIntensityFile%(fraTxtFileList$[fraIntensitySelection%], fraS2Loc%[], fraS2Atten[], fraMaxS1Trials%);
+    if fraTrialTypes% <= 0 then
+        status% := 0;
+    endif
 
+    LogInfo("Loaded " + str$(fraTrialTypes%) + " trial types from " + fraTxtFileList$[fraIntensitySelection%]);
 
+    fraNPicks% := FraLoadFRAFile(fraTxtFileList$[fraAheadSelection%], fraNFreqSteps%, fraNAttenSteps%, fraS1FreqPick%[][0], fraS1AttenPick%[][0], fraMaxPick%);
+    if fraNPicks% <= 0 then
+        LogError("", "Error loading ahead pick file.");
+        status% := 0;
+    else
+        LogInfo("Loaded " + str$(fraNPicks%) + " ahead picks from file " + fraTxtFileList$[fraAheadSelection%]);
+        n% := FraLoadFRAFile(fraTxtFileList$[fraBestSelection%], nf%, na%, fraS1FreqPick%[][1], fraS1AttenPick%[][1], fraMaxPick%);
+        if n% <= 0 then
+            LogError("", "Error loading best pick file.");
+        else
+            if n% <> fraNPicks% then
+                LogError("", "Loaded " + str$(n%) + " ahead picks from " + fraTxtFileList$[fraBestSelection%] + ", and " + str$(fraNPicks%) + " best picks from " + fraTxtFileList$[fraBestSelection%]);
+                status% := 0;
+            else
+                LogInfo("Loaded " + str$(n%) + " best picks from file " + fraTxtFileList$[fraBestSelection%]);
+            endif
+        endif
+    endif
+    fraNextPick%[0] := 0;
+    fraNextPick%[1] := 0;
+
+    ' Set up freq and atten arrays. Atten array is easy linear division:
+    fraS1AttenArray[0] := fraLowAtten;
+    for i% := 1 to fraNAttenSteps% do
+        fraS1AttenArray[i%] := fraS1AttenArray[i%-1] + (fraHighAtten-fraLowAtten)/fraNAttenSteps%;
+    next
+    
+    ' Freq array is a little harder.
+    totalOctaves := 3.322 * Log(fraHighFreq/fraLowFreq);
+    octaveStep := totalOctaves / fraNFreqSteps%;
+    fraS1FreqArray[0] := fraLowFreq;
+    for i% := 1 to fraNFreqSteps% do
+        fraS1FreqArray[i%] := fraS1FreqArray[i%-1] * Pow(2, octaveStep);
+    next
+
+    ' Initialize trial list generator. This will be used to generate S2 trials. There's only one
+    ' trial in the list, but the trial list generator takes care of the blocks, ensuring that 
+    ' S2 trials are run so that they are balanced in blocks.
+    fraNBlocksRequired% := fraNTrialsPerIntensity%/fraNTrialsPerBlock%;
+    tlgInit(fraTrialTypes%, fraNTrialsPerBlock%, fraNBlocksRequired%, 1, 1);
+            
     return status%;
 end
 
+
+'------- InitializeTrials% --------------------------------------------------------
+'
+' Called after generic dialog. Open dialog, initialize stuff specific to this expt. 
+' Return 1 if all is well, 0 if done, -1 for error (will exit also)
+'
+'--------------------------------------------------------------------------------
+
 func InitializeTrials%()
-    var status%;
-'    spcTrialListIndex% := 0;
-'    status% := PrepareTrials%();
+    var status% := 1;
+    fraS1PickIndex% := 1-fraS1PickIndex%;   ' toggles between 0 and 1
+    fraNS1Trials% := FraGetS1TrialList%(fraS1TrialList%[], fraS1PickIndex%, fraMinS1Trials%, fraMaxS1Trials%);
+    fraCurrentS1Trial% := 0;
+    if tlgGetTrialList%(fraS2TrialList%[]) = 0 then
+        status% := 0;
+    endif
     return status%;
 end
 
@@ -72,6 +168,25 @@ end
 
 func Trial%(ttype%)
     var status% := 0;
+
+    docase 
+    case ttype% = 0 then
+        ' S1 trial. We maintain the counter to tell us which trial in fraS1TrialList%[] is the one we want. 
+        LogInfo("Trial type 0, Pick index " + str$(fraS1PickIndex%) + " fraS1TrialList[" + str$(fraCurrentS1Trial%) + "] = " + str$(fraS1TrialList%[fraCurrentS1Trial%]) + "\n");
+        LogInfo("Freq (" + str$(fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
+            str$(fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]) + 
+            " Atten (" + str$(fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
+            str$(fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]) + 
+            "\n");
+'        PlaySound();
+    case ttype% = 1 then
+        LogInfo("Trial type 1, Pick index " + str$(fraS1PickIndex%) + " fraS2TrialList[0]= " + str$(fraS2TrialList%[0]) + "\n");
+'        PlaySound();
+    else
+        LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
+        status% := -1;
+    endcase
+
     return status%;
 end
 
@@ -89,6 +204,22 @@ end
 
 func TrialComplete%(ttype%, success%)
     var status% := 0;
+    docase 
+    case ttype% = 0 then
+        fraCurrentS1Trial% += 1;
+        LogInfo("Trial ttype=0 complete, success=" + str$(success%));
+        if fraCurrentS1Trial% = fraNS1Trials% then
+            status% := 1;
+        endif
+    case ttype% = 1 then
+        LogInfo("Trial ttype=0 complete, success=" + str$(success%));
+        if success% = 1 then
+            tlgTrialIndexCompleted(fraS2TrialList%[0]);
+        endif
+    else
+        LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
+        status% := -1;
+    endcase
     return status%;
 end
 
@@ -114,7 +245,7 @@ func FraScriptDialog%()
     ' show a message and quit. 
     FilePathSet(stim$);
     fraTxtFileCount% := FileList(fraTxtFileList$, -1, sFileMask$);
-    if sFileCount% = 0 then
+    if fraTxtFileCount% = 0 then
         Message("There are no files in dir %s matching the mask %s", stim$, sFileMask$);
         return 0;   ' will look as if user hit Cancel
     endif
@@ -128,19 +259,20 @@ func FraScriptDialog%()
     DlgReal(fradlgAttenLow%, "Low attenuation", 1, 100);
     DlgReal(fradlgAttenHigh%, "High attenuation", 1, 100);
     DlgInteger(fradlgNTrials%, "# trials per intensity", 1, 20, 0, 0, 1);
+    DlgInteger(fradlgNTrialsPerBlock%, "# trials per block", 1, 20, 0, 0, 1);
     DlgList(fradlgBestSpk%, "Best speaker", "1|2|3|4|5|6|7|8|9|10|11|13|14|15|16");
     DlgList(fradlgBestInput%, "Best input", fraTxtFileList$, fraTxtFileCount%);
     DlgList(fradlgAheadInput%, "Ahead input", fraTxtFileList$, fraTxtFileCount%);
     DlgList(fradlgIntensityInput%, "Intensity input", fraTxtFileList$, fraTxtFileCount%);
-    
-    DlgButton(1, "OK"); ', FraCheckOK%);
+
+    DlgButton(1, "OK", FraCheckOK%);
     DlgButton(0, "Cancel");
     'DlgAllow(0, 0, FraDlgChanged%);
 
     ' Show the dialog. 
 
 	i%:=DlgShow(fraOutputRoot$, fraLowFreq, fraHighFreq, fraLowAtten, fraHighAtten, 
-                fraNTrialsPerIntensity%, fraBestSelection%, fraAheadSelection%, fraIntensitySelection%);
+                fraNTrialsPerIntensity%, fraNTrialsPerBlock%, fraBestSpk%, fraBestSelection%, fraAheadSelection%, fraIntensitySelection%);
                 
 
     ' If user hit OK then save parameters (and return 1). 
@@ -162,3 +294,136 @@ end;
 
 
 
+func FraCheckOK%()
+    var status% := 0;
+    var o$;
+    var dummy$;
+    var i1%;
+    var i2%;
+
+    ' Verify that output root is not null
+    o$ := DlgValue$(fradlgRoot%);
+    if len(o$) = 0 then
+        Message("Please enter an output root.");
+        status% := 1;
+    endif
+
+    ' See if output file(s) already exist. 
+    
+    FilePathSet(data$);
+    if FileList(dummy$, -1, o$ + ".*")>0 then
+        Message("Data files with this name (" + o$ + ") already exist.\nTry another name.");
+        status% := 1;
+    endif
+
+    ' Open ecode and bak file
+'    dummy$ := data$ + "\\" + o$ + ".beh";
+'    PrintLog("Opening ecode file %s\n", dummy$);
+'    spcHBeh% := FileOpen(dummy$, 8, 1);
+'    Print("trial\tpos\tS1\tS2\tatten\tresp\trxtime\t freq is %d\n", spcFreq%);
+'    dummy$ := data$ + "\\" + o$ + ".bak";
+'    PrintLog("Opening bak file %s\n", dummy$);
+'    spcHBak% := FileOpen(dummy$, 8, 1);
+
+    
+    ' Check that fraNTrialsPerIntensity% is a multiple of spcNTrialsPerBlock%
+    i1% := DlgValue(fradlgNTrials%);
+    i2% := DlgValue(fradlgNTrialsPerBlock%);
+    if i1% mod i2% <> 0 then
+        Message("# of trials per intensity must be a multiple of block size!");
+        status% := 1;
+    endif
+
+    return status%;
+end
+
+
+
+' return number of trial types loaded
+
+func FraLoadIntensityFile%(intfile$, loc%[], atten[], maxttypes%)
+    var fh%;
+    var n% := 0;
+    var i%;
+    
+    ' Open file
+    fh% := FileOpen(intfile$, 8);
+    if fh% < 0 then
+        LogError("", "Cannot open intensity file " + intfile$ + "\n");
+        return -1;
+    endif
+
+    ' First line is number of types
+    if Read(n%) <> 1 then
+        LogError("", "Cannot read first line of intensity file " + intfile$ + "\n");
+    else
+        for i% := 0 to n%-1 do
+            if Read(loc%[i%], atten[i%]) <> 2 then
+                LogError("", "Cannot read ttype " + str$(i%) + " from intensity file " + intfile$ + "\n");
+                n% := 0;
+                i% := n%+1;
+            endif
+        next
+    endif
+    FileClose(fh%);
+    return n%;
+end
+                
+' Load the file frafile$.
+' First line is the # of freq steps
+' Second line is # of atten steps
+' subsequent lines have two ints each, first is speaker pick, second is atten pick. 
+
+func FraLoadFRAFile(frafile$, &nfreqsteps%, &nattensteps%, freqPick%[], attenPick%[], maxPick%)
+    var fh% := 0;
+    var n% := 0;
+    var i%;
+    
+    ' Open file
+    fh% := FileOpen(frafile$, 8);
+    if fh% < 0 then
+        LogError("", "Cannot open fra file " + frafile$ + "\n");
+        return -1;
+    endif
+
+    ' read freq steps, atten steps
+    if Read(nfreqsteps%) <> 1 then
+        LogError("", "Cannot read first line of fra file " + frafile$);
+        FileClose(fh%);
+        return -1;
+    endif
+
+    if Read(nattensteps%) <> 1 then
+        LogError("", "Cannot read second line of fra file " + frafile$);
+        FileClose(fh%);
+        return -1;
+    endif
+
+    ' The number of picks to read is (nfreqsteps+1) * (nattensteps + 1)
+    n% := (nfreqsteps%+1)*(nattensteps%+1);
+    for i% := 0 to n%-1 do
+        if Read(freqPick%[i%], attenPick%[i%]) <> 2 then
+            LogError("", "Cannot read line " + str$(2+i%) + " from fra file " + frafile$);
+            return -1;
+        endif
+    next
+    FileClose(fh%);
+            
+    return n%;
+end
+
+func FraGetS1TrialList%(list%[], pickIndex%, minTrials%, maxTrials%)
+    var i%;
+    var ntrials%;
+    
+    ' pick a random number between fraMinS1Trials% and fraMaxS1Trials%
+    ntrials% := Rand(maxTrials%-minTrials%, minTrials%);
+    for i% := 0 to ntrials%-1 do
+        if fraNextPick%[pickIndex%] = fraNPicks% then
+            fraNextPick%[pickIndex%] := 0;
+        endif
+        list%[i%] := fraNextPick%[pickIndex%];
+        fraNextPick%[pickIndex%] += 1;
+    next
+    return ntrials%;
+end
