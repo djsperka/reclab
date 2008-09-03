@@ -3,8 +3,8 @@
 var nTypes% := 4;
 var nTrialsPerBlock% := 2;
 var nBlocksRequired% := 2;
-var minListSize% := 2;
-var maxListSize% := 4;
+var minListSize% := 1;
+var maxListSize% := 1;
 var trialList%[7];
 var ntrials%;
 var i%;

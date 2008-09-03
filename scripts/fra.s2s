@@ -236,10 +236,12 @@ func FraScriptDialog%()
     var sFileCount% := 0;
     var sFileMask$ := "*.txt";
     var pathTemp$;
+    var ispk%;
     
     ' Fetch parameters from registry
     
 '    SpaceScriptDialogGetParams();
+    ispk% := fraBestSpk% -1;
 
     ' Get file list for trial types. If no files are found in stim$ matching the mask, 
     ' show a message and quit. 
@@ -260,7 +262,7 @@ func FraScriptDialog%()
     DlgReal(fradlgAttenHigh%, "High attenuation", 1, 100);
     DlgInteger(fradlgNTrials%, "# trials per intensity", 1, 20, 0, 0, 1);
     DlgInteger(fradlgNTrialsPerBlock%, "# trials per block", 1, 20, 0, 0, 1);
-    DlgList(fradlgBestSpk%, "Best speaker", "1|2|3|4|5|6|7|8|9|10|11|13|14|15|16");
+    DlgList(fradlgBestSpk%, "Best speaker(not 12)", "1|2|3|4|5|6|7|8|9|10|11|12|13|14|15|16");
     DlgList(fradlgBestInput%, "Best input", fraTxtFileList$, fraTxtFileCount%);
     DlgList(fradlgAheadInput%, "Ahead input", fraTxtFileList$, fraTxtFileCount%);
     DlgList(fradlgIntensityInput%, "Intensity input", fraTxtFileList$, fraTxtFileCount%);
@@ -272,13 +274,15 @@ func FraScriptDialog%()
     ' Show the dialog. 
 
 	i%:=DlgShow(fraOutputRoot$, fraLowFreq, fraHighFreq, fraLowAtten, fraHighAtten, 
-                fraNTrialsPerIntensity%, fraNTrialsPerBlock%, fraBestSpk%, fraBestSelection%, fraAheadSelection%, fraIntensitySelection%);
+                fraNTrialsPerIntensity%, fraNTrialsPerBlock%, ispk%, fraBestSelection%, fraAheadSelection%, fraIntensitySelection%);
                 
 
     ' If user hit OK then save parameters (and return 1). 
 
 	if i% = 1 then
         'FraScriptDialogSaveParams();
+        fraBestSpk% := ispk% + 1;
+        PrintLog("best speaker " + str$(fraBestSpk%) + "\n");
         status% := 1;
     else
         status% := 0;
@@ -325,6 +329,11 @@ func FraCheckOK%()
 '    PrintLog("Opening bak file %s\n", dummy$);
 '    spcHBak% := FileOpen(dummy$, 8, 1);
 
+    ' Check that the best speaker chosen is not speaker 12! Because the index starts at 0, we test that the value is not 11.
+    if DlgValue(fradlgBestSpk%) = 11 then
+        Message("Best speaker must NOT be speaker 12!");
+        status% := 1;
+    endif
     
     ' Check that fraNTrialsPerIntensity% is a multiple of spcNTrialsPerBlock%
     i1% := DlgValue(fradlgNTrials%);
