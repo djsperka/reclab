@@ -64,6 +64,19 @@ const spcdlgNTrials%    := 8;
 const spcdlgBlockSize%  := 9;
 
 
+'------- Testing% --------------------------------------------------------
+'
+' Called to see if we are just testing. Return 1 if testing (as if running on a machine
+' with no access to serial/tdt stuff), and all serial/tdt calls are bypassed. Mostly 
+' positive/success returns - useful for getting scripts to run, but should not be trusted
+' to fully exercise all code paths. 
+' Return 1 if want testing mode, return 0 otherwise. 
+'
+'--------------------------------------------------------------------------------
+
+func Testing%()
+    return 0;
+end
 
 
 
