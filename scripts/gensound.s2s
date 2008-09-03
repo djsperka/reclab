@@ -10,7 +10,10 @@
 ' DAC values in files should be 16 bit signed integers, values -32768<x<32767.  
 '
 ' $Log$
-' Revision 1.6  2008/05/06 18:21:40  devel
+' Revision 1.7  2008/09/03 23:23:37  devel
+' flesh out the gensoundGaussian func.
+'
+' Revision 1.6  2008-05-06 18:21:40  devel
 ' Fix bug in tone generation ramp. Was using integer division.... led to ramp values all being zero!
 '
 ' Revision 1.5  2008-04-16 18:24:31  devel
@@ -116,17 +119,40 @@ Proc gensoundTone(v%[], sz%, toneHz, sampleHz)
 end
 
 
-' Generate sz% voltage values in array v[] representing noise for space1g. 
-' The last value, v[sz%-1], is set to 0 
-' (since the 1401 DAC will be left at the last value after the waveform has been 
-' played). The DAC output sampling rate should be set in 'sampleHz'. 
+' Generate a windowed gaussian noise array. Values are meant to be signed ints for putting through the DAC. 
+' Window is a linear window of length gensoundRampLengthMS% (fixed at 5 ms) at front and back end. 
+' Gaussian noise generated with Spike2's RandNorm() func. 
+' Scale value is used to scale the gaussian noise (its values are 0<x<1). If this value is <0, full scale int max
+' is used. The DAC output sampling rate should be set in 'sampleHz'. 
 
-Proc gensoundNoise(v[], sz%, vmin, vmax, sampleHz)
-    var i%;
+Proc gensoundGaussian(v%[], sz%, scale, sampleHz)
+    var r;
+    var scalevalue := gensoundIntMax;
+    var rampValue;
+    var rampLength;
+
+    ' generate the noise
+    if scale > 0 then
+        scalevalue := scale;
+    endif
+    RandNorm(v%[], scalevalue);
     
-    ' dummy here just set 0's.
-    for i% := 0 to sz%-1 do
-        v[i%] := 0;
+    ' get ramp parameters
+    rampLength := round(gensoundRampLengthMS% * sampleHz / 1000);
+    if gensoundDebug% = 1 then
+        PrintLog("gensoundGaussian: ramp length is " + str$(gensoundRampLengthMS%) + " ms, sample freq is " + str$(sampleHz) + " Hz, so ramp is " + str$(rampLength) + " samples.\n");
+    endif
+
+    ' ramp front end
+    for r := 0 to rampLength-1 do
+        rampValue := r/rampLength;
+        v%[r] := v%[r] * rampValue;
+    next
+
+    ' ramp tail end
+    for r := sz%-rampLength to sz%-1 do
+        rampValue := (sz% - r - 1)/rampLength;
+        v%[r] := v%[r] * rampValue;
     next
 
 end
