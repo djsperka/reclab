@@ -1,5 +1,12 @@
 #include "recgen.s2s"
 #include "triallistgen.s2s"
+#include "gensound.s2s"
+
+const fraDAC0Rate      := 166666.6666667;      ' that's 1/6us in case you're interested.
+const fraDAC0%         := 0;
+const fraSoundSize%    := 8333;
+const fraDAC0Key$        := "A";
+var fraSoundDAC%[fraSoundSize%];          ' 16 bit ints; -32768 to 32767. Should start/stop at 0!!!
 
 var fraLowFreq := 100;
 var fraHighFreq := 40000;
@@ -7,6 +14,7 @@ var fraLowAtten := 1;
 var fraHighAtten := 100;
 var fraOutputRoot$;
 var fraBestSpk% := 1;
+const fraAheadSpk% := 12;
 var fraBestSelection% := 1;
 var fraAheadSelection% := 1;
 var fraIntensitySelection% := 1;
@@ -15,7 +23,6 @@ var fraTxtFileCount% := 0;
 var fraNTrialsPerIntensity% := 12;
 var fraNTrialsPerBlock% := 4;
 var fraNBlocksRequired%;
-var fraDebug% := 0;
 const fraMinS1Trials% := 3;
 const fraMaxS1Trials% := 7;
 var fraS1TrialList%[fraMaxS1Trials%];
@@ -40,6 +47,21 @@ const fraMaxArray% := 50;
 var fraS1AttenArray[fraMaxArray%];
 var fraS1FreqArray[fraMaxArray%];
 
+var fraCurrentFreq;     ' value for current trial. Valid from Trial%() to TrialComplete%()
+var fraCurrentAtten;    ' ditto
+var fraCurrentSpk%;     ' once again
+
+var fraDebug% := 0;
+var fraWindowData%;     ' data window handle
+var fraWindowXY%;       ' xy window handle
+var fraChanWM%;         ' wavemark channel
+var fraChanTrig%;       ' trigger channel
+var fraChanLever%;      ' channel that carries lever signal
+var fraChanTM%;         ' text mark channel
+
+
+
+
 const fradlgRoot% := 1;
 const fradlgFreqLow% := 2;
 const fradlgFreqHigh% := 3;
@@ -52,9 +74,18 @@ const fradlgBestInput% := 9;
 const fradlgAheadInput% := 10;
 const fradlgIntensityInput% := 11;
 
+'------- Testing% --------------------------------------------------------
+'
+' Called to see if we are just testing. Return 1 if testing (as if running on a machine
+' with no access to serial/tdt stuff), and all serial/tdt calls are bypassed. Mostly 
+' positive/success returns - useful for getting scripts to run, but should not be trusted
+' to fully exercise all code paths. 
+' Return 1 if want testing mode, return 0 otherwise. 
+'
+'--------------------------------------------------------------------------------
 
 func Testing%()
-    return 1;
+    return 0;
 end
 
 
@@ -74,24 +105,36 @@ func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
     var totalOctaves;
     var octaveStep;
     
+    fraDebug% := debug%;
+    fraWindowData% := wdata%;
+    fraWindowXY% := wxy%;
+    fraChanWM% := channels%[0];
+    fraChanTrig% := channels%[1];
+    fraChanLever% := channels%[2];
+    fraChanTM% := channels%[3];
+    if fraDebug% = 1 then
+        gensoundSetDebug(fraDebug%);
+    endif
+
+    
     status% := FraScriptDialog%();
     PrintLog("FraScriptDialog returned %d\n", status%);
 
     ' Load intensity file
-    fraTrialTypes% := FraLoadIntensityFile%(fraTxtFileList$[fraIntensitySelection%], fraS2Loc%[], fraS2Atten[], fraMaxS1Trials%);
+    fraTrialTypes% := FraLoadIntensityFile%(fraTxtFileList$[fraIntensitySelection%], stim$, fraS2Loc%[], fraS2Atten[], fraMaxTrialTypes%);
     if fraTrialTypes% <= 0 then
         status% := 0;
     endif
 
     LogInfo("Loaded " + str$(fraTrialTypes%) + " trial types from " + fraTxtFileList$[fraIntensitySelection%]);
 
-    fraNPicks% := FraLoadFRAFile(fraTxtFileList$[fraAheadSelection%], fraNFreqSteps%, fraNAttenSteps%, fraS1FreqPick%[][0], fraS1AttenPick%[][0], fraMaxPick%);
+    fraNPicks% := FraLoadFRAFile(fraTxtFileList$[fraAheadSelection%], stim$, fraNFreqSteps%, fraNAttenSteps%, fraS1FreqPick%[][0], fraS1AttenPick%[][0], fraMaxPick%);
     if fraNPicks% <= 0 then
         LogError("", "Error loading ahead pick file.");
         status% := 0;
     else
         LogInfo("Loaded " + str$(fraNPicks%) + " ahead picks from file " + fraTxtFileList$[fraAheadSelection%]);
-        n% := FraLoadFRAFile(fraTxtFileList$[fraBestSelection%], nf%, na%, fraS1FreqPick%[][1], fraS1AttenPick%[][1], fraMaxPick%);
+        n% := FraLoadFRAFile(fraTxtFileList$[fraBestSelection%], stim$, nf%, na%, fraS1FreqPick%[][1], fraS1AttenPick%[][1], fraMaxPick%);
         if n% <= 0 then
             LogError("", "Error loading best pick file.");
         else
@@ -125,6 +168,12 @@ func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
     ' S2 trials are run so that they are balanced in blocks.
     fraNBlocksRequired% := fraNTrialsPerIntensity%/fraNTrialsPerBlock%;
     tlgInit(fraTrialTypes%, fraNTrialsPerBlock%, fraNBlocksRequired%, 1, 1);
+
+    ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
+    ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
+    ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
+    InitializePlayWaveAreas();
+
             
     return status%;
 end
@@ -151,8 +200,8 @@ end
 
 func ExptComplete%()
 
-'    FilePathSet(data$);
-'    View(spcWindowData%).FileSaveAs(spcOutputRoot$ + ".smr", -1);
+    FilePathSet(data$);
+    View(fraWindowData%).FileSaveAs(fraOutputRoot$ + ".smr", -1);
 '    FileClose(spcHBak%);
 '    FileClose(spcHBeh%);
     return 0;
@@ -178,6 +227,13 @@ func Trial%(ttype%)
             " Atten (" + str$(fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
             str$(fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]) + 
             "\n");
+         fraCurrentFreq := fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
+         fraCurrentAtten := fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
+         fraCurrentSpk% := fraAheadSpk%;
+         if fraS1PickIndex% = 0 then
+            fraCurrentSpk% := fraBestSpk%;
+         endif
+         
 '        PlaySound();
     case ttype% = 1 then
         LogInfo("Trial type 1, Pick index " + str$(fraS1PickIndex%) + " fraS2TrialList[0]= " + str$(fraS2TrialList%[0]) + "\n");
@@ -240,7 +296,7 @@ func FraScriptDialog%()
     
     ' Fetch parameters from registry
     
-'    SpaceScriptDialogGetParams();
+    FraScriptDialogGetParams();
     ispk% := fraBestSpk% -1;
 
     ' Get file list for trial types. If no files are found in stim$ matching the mask, 
@@ -280,7 +336,7 @@ func FraScriptDialog%()
     ' If user hit OK then save parameters (and return 1). 
 
 	if i% = 1 then
-        'FraScriptDialogSaveParams();
+        FraScriptDialogSaveParams();
         fraBestSpk% := ispk% + 1;
         PrintLog("best speaker " + str$(fraBestSpk%) + "\n");
         status% := 1;
@@ -347,15 +403,72 @@ func FraCheckOK%()
 end
 
 
+'-------- fra configuration dialog ---------------------------------------
+
+
+proc FraScriptDialogSaveParams()
+	var stmp$;
+	var key$;
+
+    key$:="Reclab\\Fra";
+	Profile(key$, "OutputRoot", fraOutputRoot$);
+    stmp$ := str$(fraLowFreq);
+	Profile(key$, "LowFreq", stmp$);
+    stmp$ := str$(fraHighFreq);
+	Profile(key$, "HighFreq", stmp$);
+    stmp$ := str$(fraLowAtten);
+	Profile(key$, "LowAtten", stmp$);
+    stmp$ := str$(fraHighAtten);
+	Profile(key$, "HighAtten", "100", stmp$);
+	Profile(key$, "NTrialsPerIntensity", fraNTrialsPerIntensity%);
+	Profile(key$, "NTrialsPerBlock", fraNTrialsPerBlock%);
+	Profile(key$, "BestSpeaker", fraBestSpk%);
+	Profile(key$, "BestSelection", fraBestSelection%);
+	Profile(key$, "AheadSelection", fraAheadSelection%);
+	Profile(key$, "IntensitySelection", fraIntensitySelection%);
+
+	return;
+end
+
+proc FraScriptDialogGetParams()
+	var stmp$;
+	var key$;
+
+    key$:="Reclab\\Fra";
+	Profile(key$, "OutputRoot", fraOutputRoot$, fraOutputRoot$);
+	Profile(key$, "LowFreq", "1", stmp$);
+    fraLowFreq := val(stmp$);
+	Profile(key$, "HighFreq", "40000", stmp$);
+    fraHighFreq := val(stmp$);
+	Profile(key$, "LowAtten", "1", stmp$);
+    fraLowAtten := val(stmp$);
+	Profile(key$, "HighAtten", "100", stmp$);
+    fraHighAtten := val(stmp$);
+	Profile(key$, "NTrialsPerIntensity", fraNTrialsPerIntensity%, fraNTrialsPerIntensity%);
+	Profile(key$, "NTrialsPerBlock", fraNTrialsPerBlock%, fraNTrialsPerBlock%);
+	Profile(key$, "BestSpeaker", fraBestSpk%, fraBestSpk%);
+	Profile(key$, "BestSelection", fraBestSelection%, fraBestSelection%);
+	Profile(key$, "AheadSelection", fraAheadSelection%, fraAheadSelection%);
+	Profile(key$, "intensitySelection", fraIntensitySelection%, fraIntensitySelection%);
+
+	return;
+end
+
+
+
+
+
+
 
 ' return number of trial types loaded
 
-func FraLoadIntensityFile%(intfile$, loc%[], atten[], maxttypes%)
+func FraLoadIntensityFile%(intfile$, intdir$, loc%[], atten[], maxttypes%)
     var fh%;
     var n% := 0;
     var i%;
     
     ' Open file
+    FilePathSet(intdir$);
     fh% := FileOpen(intfile$, 8);
     if fh% < 0 then
         LogError("", "Cannot open intensity file " + intfile$ + "\n");
@@ -383,12 +496,13 @@ end
 ' Second line is # of atten steps
 ' subsequent lines have two ints each, first is speaker pick, second is atten pick. 
 
-func FraLoadFRAFile(frafile$, &nfreqsteps%, &nattensteps%, freqPick%[], attenPick%[], maxPick%)
+func FraLoadFRAFile(frafile$, fradir$, &nfreqsteps%, &nattensteps%, freqPick%[], attenPick%[], maxPick%)
     var fh% := 0;
     var n% := 0;
     var i%;
     
     ' Open file
+    FilePathSet(fradir$);
     fh% := FileOpen(frafile$, 8);
     if fh% < 0 then
         LogError("", "Cannot open fra file " + frafile$ + "\n");
@@ -435,4 +549,34 @@ func FraGetS1TrialList%(list%[], pickIndex%, minTrials%, maxTrials%)
         fraNextPick%[pickIndex%] += 1;
     next
     return ntrials%;
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitializePlayWaveAreas - add play wave areas for sounds, areas "A", "B", ... 
+' The last one is meant for the S2 noise stimulus. 
+
+Proc InitializePlayWaveAreas()
+    var st;
+    var i%;
+
+    for i% := 0 to fraMaxS1Trials% do
+        
+        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), fraDAC0%, fraDAC0Rate, fraSoundSize%);
+        if st < 0 then
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+            halt;
+        else
+            PlayWaveTrigger(GetPlayWaveKey$(i%), 1);
+        endif        
+    
+    next
+
+end
+
+func GetPlayWaveKey$(index%)
+
+    return Chr$(Asc(fraDAC0Key$)+index%);
+    
 end
