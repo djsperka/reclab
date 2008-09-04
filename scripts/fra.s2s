@@ -6,6 +6,7 @@ const fraDAC0Rate      := 166666.6666667;      ' that's 1/6us in case you're int
 const fraDAC0%         := 0;
 const fraSoundSize%    := 8333;
 const fraDAC0Key$        := "A";
+const fraNoiseScaleFactor   := 14000.0;
 var fraSoundDAC%[fraSoundSize%];          ' 16 bit ints; -32768 to 32767. Should start/stop at 0!!!
 
 var fraLowFreq := 100;
@@ -50,6 +51,7 @@ var fraS1FreqArray[fraMaxArray%];
 var fraCurrentFreq;     ' value for current trial. Valid from Trial%() to TrialComplete%()
 var fraCurrentAtten;    ' ditto
 var fraCurrentSpk%;     ' once again
+var fraTrialCount% := 0;    ' Overall trial counter
 
 var fraDebug% := 0;
 var fraWindowData%;     ' data window handle
@@ -85,7 +87,7 @@ const fradlgIntensityInput% := 11;
 '--------------------------------------------------------------------------------
 
 func Testing%()
-    return 0;
+    return 1;
 end
 
 
@@ -181,19 +183,37 @@ end
 
 '------- InitializeTrials% --------------------------------------------------------
 '
-' Called after generic dialog. Open dialog, initialize stuff specific to this expt. 
+' Called after generic dialog. Open dialog, initialize stuff specific to a single set of 
+' S1/S2 trials. 
 ' Return 1 if all is well, 0 if done, -1 for error (will exit also)
 '
 '--------------------------------------------------------------------------------
 
 func InitializeTrials%()
     var status% := 1;
+    var i%;
+
     fraS1PickIndex% := 1-fraS1PickIndex%;   ' toggles between 0 and 1
     fraNS1Trials% := FraGetS1TrialList%(fraS1TrialList%[], fraS1PickIndex%, fraMinS1Trials%, fraMaxS1Trials%);
     fraCurrentS1Trial% := 0;
     if tlgGetTrialList%(fraS2TrialList%[]) = 0 then
         status% := 0;
     endif
+
+'   Now generate tones copy to the play wave areas.
+    for i% := 0 to fraNS1Trials%-1 do
+        
+        ' get tone
+        gensoundTone(fraSoundDAC%[], fraSoundSize%, fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[i%]][fraS1PickIndex%]], fraDAC0Rate);
+            
+        ' copy tone to play wave area
+        PlayWaveCopy(GetPlayWaveKey$(i%), fraSoundDAC%[]);
+    next
+    
+    '   Generate noise and copy to play wave area
+    gensoundGaussian(fraSoundDAC%[], fraSoundSize%, fraNoiseScaleFactor, fraDAC0Rate);
+    PlayWaveCopy(GetPlayWaveKey$(fraMaxS1Trials%), fraSoundDAC%[]);
+    
     return status%;
 end
 
@@ -276,6 +296,10 @@ func TrialComplete%(ttype%, success%)
         LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
         status% := -1;
     endcase
+    
+    ' Increment trial counter
+    fraTrialCount% += 1;
+    
     return status%;
 end
 
@@ -580,3 +604,51 @@ func GetPlayWaveKey$(index%)
     return Chr$(Asc(fraDAC0Key$)+index%);
     
 end
+
+
+'----------------- PlaySound ---------------------------------------------------------------
+'
+' PlaySound plays the sound for the trial number in spcTrialListIndex.
+' If this is the repeated-last-index (if spcTrialListIndex% = spcNTrialList%)
+' then play spcNTrialList%-1 sound - that makes the repeat happen.
+
+Proc PlaySound()
+    var spk%[1];
+    var atten;
+    var s$;
+    var playInd%;
+    var playChar$ := "T";
+    
+    ' Determine sound index to play
+    playInd% := fraCurrentS1Trial%;
+    if fraCurrentS1Trial% = fraNS1Trials% then
+        playInd% := fraMaxS1Trials%;    ' Noise
+        playChar$ := "N";
+    endif
+    
+    ' Set speaker and atten
+    recSpeaker%(fraCurrentSpk%);
+    recAtten%(fraCurrentAtten);
+
+    LogStatus("PlaySound", 
+              "SPK " + str$(fraCurrentSpk%) + 
+              "ATT " + str$(fraCurrentAtten) + "\n");
+
+    ' Send sample key for the play wave area. The play wave areas are triggered, so this 
+    ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
+    ' The sample text string contains the following (comma-separated) fields:
+    ' 1. playChar: T for S1 trials (tone), N for S2 trial (noise)
+    ' 2. trial number: overall trial counter
+    ' 3. S1 trial index, starts at 0. S2 trial has same index as last S1 trial. 
+    ' 4. speaker number
+    ' 5. atten
+    ' 6. freq for tone, -1 for noise. 
+    
+    SampleKey(GetPlayWaveKey$(playInd%));
+    s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,%.2f", playChar$, fraTrialCount%, playInd%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
+    SampleText(s$, -1);
+    SampleKey("T");
+    
+end
+
+
