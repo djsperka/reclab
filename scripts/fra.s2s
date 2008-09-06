@@ -47,7 +47,7 @@ var fraNAttenSteps% := 0;
 const fraMaxArray% := 50;
 var fraS1AttenArray[fraMaxArray%];
 var fraS1FreqArray[fraMaxArray%];
-
+var fraS1Tones%[fraMaxArray%][fraSoundSize%];
 var fraCurrentFreq;     ' value for current trial. Valid from Trial%() to TrialComplete%()
 var fraCurrentAtten;    ' ditto
 var fraCurrentSpk%;     ' once again
@@ -87,7 +87,7 @@ const fradlgIntensityInput% := 11;
 '--------------------------------------------------------------------------------
 
 func Testing%()
-    return 1;
+    return 0;
 end
 
 
@@ -163,6 +163,7 @@ func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
     fraS1FreqArray[0] := fraLowFreq;
     for i% := 1 to fraNFreqSteps% do
         fraS1FreqArray[i%] := fraS1FreqArray[i%-1] * Pow(2, octaveStep);
+        gensoundTone(fraS1Tones%[i%][], fraSoundSize%, fraS1FreqArray[i%], fraDAC0Rate); 
     next
 
     ' Initialize trial list generator. This will be used to generate S2 trials. There's only one
@@ -200,19 +201,21 @@ func InitializeTrials%()
         status% := 0;
     endif
 
-'   Now generate tones copy to the play wave areas.
+'   Now copy tones to the play wave areas.
     for i% := 0 to fraNS1Trials%-1 do
         
         ' get tone
-        gensoundTone(fraSoundDAC%[], fraSoundSize%, fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[i%]][fraS1PickIndex%]], fraDAC0Rate);
+'        gensoundTone(fraSoundDAC%[], fraSoundSize%, fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[i%]][fraS1PickIndex%]], fraDAC0Rate);
             
         ' copy tone to play wave area
-        PlayWaveCopy(GetPlayWaveKey$(i%), fraSoundDAC%[]);
+        PlayWaveCopy(GetPlayWaveKey$(i%), fraS1Tones%[ fraS1FreqPick% [fraS1TrialList%[i%]] [fraS1PickIndex%] ][]);
     next
     
     '   Generate noise and copy to play wave area
+    LogInfo("Generate noise.");
     gensoundGaussian(fraSoundDAC%[], fraSoundSize%, fraNoiseScaleFactor, fraDAC0Rate);
     PlayWaveCopy(GetPlayWaveKey$(fraMaxS1Trials%), fraSoundDAC%[]);
+    LogInfo("Sounds ready.");
     
     return status%;
 end
@@ -241,23 +244,28 @@ func Trial%(ttype%)
     docase 
     case ttype% = 0 then
         ' S1 trial. We maintain the counter to tell us which trial in fraS1TrialList%[] is the one we want. 
-        LogInfo("Trial type 0, Pick index " + str$(fraS1PickIndex%) + " fraS1TrialList[" + str$(fraCurrentS1Trial%) + "] = " + str$(fraS1TrialList%[fraCurrentS1Trial%]) + "\n");
+        LogInfo("Trial type 0, Pick index " + str$(fraS1PickIndex%) + " fraS1TrialList[" + str$(fraCurrentS1Trial%) + "] = " + str$(fraS1TrialList%[fraCurrentS1Trial%]));
         LogInfo("Freq (" + str$(fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
             str$(fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]) + 
             " Atten (" + str$(fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
-            str$(fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]) + 
-            "\n");
+            str$(fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]));
          fraCurrentFreq := fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
          fraCurrentAtten := fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
-         fraCurrentSpk% := fraAheadSpk%;
+         fraCurrentSpk% := fraBestSpk%;
          if fraS1PickIndex% = 0 then
-            fraCurrentSpk% := fraBestSpk%;
+            fraCurrentSpk% := fraAheadSpk%;
          endif
          
-'        PlaySound();
+        PlaySound();
     case ttype% = 1 then
-        LogInfo("Trial type 1, Pick index " + str$(fraS1PickIndex%) + " fraS2TrialList[0]= " + str$(fraS2TrialList%[0]) + "\n");
-'        PlaySound();
+        LogInfo("Trial type 1, Pick index " + str$(fraS1PickIndex%) + " fraS2TrialList[0]= " + str$(fraS2TrialList%[0]));
+        fraCurrentAtten := fraS2Atten[fraS2TrialList%[0]];
+        fraCurrentFreq := -1;
+        fraCurrentSpk% := fraAheadSpk%;
+        if fraS1PickIndex% = 0 then
+        fraCurrentSpk% := fraBestSpk%;
+        endif
+        PlaySound();
     else
         LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
         status% := -1;
@@ -632,7 +640,7 @@ Proc PlaySound()
 
     LogStatus("PlaySound", 
               "SPK " + str$(fraCurrentSpk%) + 
-              "ATT " + str$(fraCurrentAtten) + "\n");
+              "ATT " + str$(fraCurrentAtten));
 
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
@@ -645,7 +653,7 @@ Proc PlaySound()
     ' 6. freq for tone, -1 for noise. 
     
     SampleKey(GetPlayWaveKey$(playInd%));
-    s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,%.2f", playChar$, fraTrialCount%, playInd%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
+    s$ := Print$("\"%s\",%d,%d,%d,%.1f,%.2f", playChar$, fraTrialCount%, playInd%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
     SampleText(s$, -1);
     SampleKey("T");
     
