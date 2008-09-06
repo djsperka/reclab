@@ -10,7 +10,10 @@
 ' DAC values in files should be 16 bit signed integers, values -32768<x<32767.  
 '
 ' $Log$
-' Revision 1.7  2008/09/03 23:23:37  devel
+' Revision 1.8  2008/09/06 00:02:42  devel
+' Remove debug stmts.
+'
+' Revision 1.7  2008-09-03 23:23:37  devel
 ' flesh out the gensoundGaussian func.
 '
 ' Revision 1.6  2008-05-06 18:21:40  devel
@@ -106,7 +109,6 @@ Proc gensoundTone(v%[], sz%, toneHz, sampleHz)
         docase 
         case r < rampLength then
             rampValue := r/rampLength;
-            printLog("Ramp value " + str$(rampValue) + "\n");
         case r > (sz% - rampLength - 1) then
             rampValue := (sz% - r - 1)/rampLength;
         else
