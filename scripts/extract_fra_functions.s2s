@@ -1,0 +1,447 @@
+' $Id$
+'
+'
+' Functions for extracting fra data. To use include this file in your source. Just two functions to call....
+'
+' First call (just once) the init func with arg of handle for xy window. If -1, no plotting is done. 
+' ExtractFraInitialize(xywindow%);
+' 
+' Call ExtractFra() as many times as needed. If processing an entire file, use tStart=tEnd=-1. 
+' If using during online processing, call with end-to-end time blocks. Call with tEnd=-1 at end of 
+' processing to make sure you get everything. 
+' 
+' Caller should open data files before calling ExtractFra the first time and close them after
+' all processing is complete. 
+
+
+
+var xfraInt%;
+var xfraFrq%;
+var xfraIsInitialized% := 0;
+var xfraWindowXY%;
+var xfraChanMean%;
+var xfraChanMeanPlus%;
+var xfraChanMeanMinus%;
+var xfraChanBkgd%;
+var xfraChanBkgdPlus%;
+var xfraChanBkgdMinus%;
+var xfraChanLines%;
+const xfraPI := 3.141592653589793;
+const xfraNSpeakers% := 16;      ' # speakers, not counting bkgd speaker. 
+const xfraMaxTrials% := 100;     ' max # trials allowed. Should be bigger than anyone would ever want. 
+var xfraTrialCounts%[xfraNSpeakers%+1];
+var xfraSpikeCounts%[xfraNSpeakers%+1][xfraMaxTrials%]; ' spike counts for completed trials on each trial type
+var xfraSpikeRate[xfraNSpeakers%+1][xfraMaxTrials%];    ' spike rates for completed trials on each trial type
+var xfraSpikeRateMean[xfraNSpeakers%+1];' mean spike rate for each trial type
+var xfraSpikeRateStd[xfraNSpeakers%+1]; ' std dev for above. 
+var xfraUnitX[xfraNSpeakers%+1];
+var xfraUnitY[xfraNSpeakers%+1];
+
+
+' Extract data from the data file currently open. Writes a "beh" and "bak" file on the (already-opened 
+' by the caller) file handles hE% and hB%, respectively. This will work after spike sorting - whatever spikes are 
+' "visible" will be written to the files. Thus, you can spike sort, then turn off some wavemarks and run this against
+' the file and only those wavemarks you HAVEN'T turned off will be processed. 
+' tStart and tEnd are start and end times to process. 
+'
+' tStart and tEnd = -1, -1 means process entire file. 
+' tEnd >0 means will process up to and including that time. 
+' tStart = -1 means process from beginning, including first time, otherwise it means process all samples after, not
+' including, tStart.
+    
+proc ExtractFra(tStart, tEnd, hData%, hXY%, chanWM%, chanTM%, chanTrig%, chanLever%)
+
+var tLast := -1;
+var t;
+var sText$, sChar$;
+var isStart%;
+var iTrialNum%, iS1Num%, iSpk%;
+var fAtten, fFreq;
+
+' State control
+const stateStart% := 1;
+const stateEnd% := 2;
+const stateNone% := 0;
+var iStateCurrent% := stateNone%;
+
+var tCurrentStartMarker := -1;
+var tCurrentStartTrigger := -1;     ' time of trigger that starts sound
+var tCurrentSpikeIntervalEndTime := -1;    ' end time of interval to record spikes for (write to bak file)
+var iCurrentReactionTime% := -1;
+var iCurrentTrialNum% := -1;
+var iCurrentS1Num% := -1;
+var iCurrentSpk% := -1;
+var iCurrentS1Flg% := -1;
+var fCurrentAtten := -1;
+var iCurrentResp% := -1;
+var fCurrentRxTime := -1;
+var nSpikes%;
+const maxSpikes% := 1000;       ' Make sure this is bigger than the max number of spikes you'll get from a spike measurement interval
+var tSpikes[maxSpikes%];
+var i%;
+
+
+if xfraIsInitialized% = 0 then
+    PrintLog("WARNING! You really ought to call ExtractFraInitialize()...\n");
+endif
+
+View(hData%);
+tLast := tStart;
+t := NextTextMarker(tLast, chanTM%, sText$, sChar$, isStart%, iTrialNum%, iS1Num%, iSpk%, fAtten, fFreq);
+
+while t > 0 and t >= tStart and (tEnd < 0 or (tEnd > 0 and t <= tEnd)) do
+
+    PrintLog("%f: %s\n", t, sText$);
+
+    docase
+    case iStateCurrent% = stateStart% then
+    
+        ' Expecting end state
+        if isStart% = 0 then
+            PrintLog("Found End, Char=%s\n", sChar$);
+            iStateCurrent% := stateEnd%;
+            
+            docase
+            case sChar$ = "E" then
+                iCurrentResp% := 0;
+                iCurrentReactionTime% := 0;
+                tCurrentSpikeIntervalEndTime := t;
+            case sChar$ = "F" then
+                iCurrentResp% := -1;
+                iCurrentReactionTime% := 0;
+                tCurrentSpikeIntervalEndTime := NextEvent(tCurrentStartTrigger, chanLever%, 1);
+            case sChar$ = "M" then
+                iCurrentResp% := 0;
+                iCurrentReactionTime% := 9999;
+                tCurrentSpikeIntervalEndTime := t;
+            case sChar$ = "H" then
+                var val;
+                var t1, t2;
+                iCurrentResp% := 1;
+                tCurrentSpikeIntervalEndTime := NextEvent(tCurrentStartTrigger, chanLever%, 0);
+                iCurrentReactionTime% := round((tCurrentSpikeIntervalEndTime - tCurrentStartTrigger)*1000);
+            else
+                iCurrentResp% := -99;   ' shouldn't happen!
+                iCurrentReactionTime% := -9999;
+                tCurrentSpikeIntervalEndTime := -1;
+                PrintLog("ERROR! Unknown end state char \"%s\"\n", sChar$);
+            endcase
+
+            ' Get spike times
+            nSpikes% := View(hData%).ChanData(chanWM%, tSpikes[], tCurrentStartTrigger, tCurrentSpikeIntervalEndTime);
+
+            ' For fra, we write to the int file (xfraInt%) when a HIT ("H") is recorded. 
+            ' We write to the frq file (xfraFrq%) when a successful S1 trial ("F") is recorded. 
+            docase
+            case sChar$ = "F" then
+                View(xfraFrq%).Print("3501\t%d\t%f\t%2.1f\t%d\t%d\n", iCurrentSpk%, fFreq, fAtten, nSpikes%, iCurrentResp%);
+                for i%:= 0 to nSpikes%-1 do
+                    View(xfraFrq%).Print("%d\t%4.0f\n", i%, (tSpikes[i%]-tCurrentStartTrigger)*1000);
+                next                
+            case sChar$ = "H" then
+                View(xfraInt%).Print("3501\t%d\t%2.1f\t%d\t%d\n", iCurrentSpk%, fAtten, nSpikes%, iCurrentReactionTime%, iCurrentResp%);
+                for i%:= 0 to nSpikes%-1 do
+                    View(xfraInt%).Print("%d\t%4.0f\n", i%, (tSpikes[i%]-tCurrentStartTrigger)*1000);
+                next                
+            endcase
+
+            if (sChar$ = "F") then
+                ExtractFraUpdate%(iCurrentSpk%, nSpikes%, tCurrentSpikeIntervalEndTime-tCurrentStartTrigger);
+            endif
+            
+        else
+            PrintLog("Unexpected text mark! Expect an end marker, but we got this: %s\n", sText$);
+        endif
+        
+    case iStateCurrent% = stateNone% or iStateCurrent% = stateEnd% then
+
+        ' Expecting start state
+        if isStart% = 1 then
+            PrintLog("Found Start, Char=%s\n", sChar$);
+            iStateCurrent% := stateStart%;
+            tCurrentStartMarker := t;
+            tCurrentStartTrigger := NextEvent(tCurrentStartMarker, chanTrig%, 1);
+            iCurrentTrialNum% := iTrialNum%;
+            iCurrentS1Num% := iS1Num%;
+            iCurrentSpk% := iSpk%;
+            fCurrentAtten := fAtten;
+            ' These are set at end state
+            iCurrentResp% := -2;
+            fCurrentRxTime := -2;
+
+        else
+            PrintLog("Unexpected text mark! Expect a start marker, but we got this: %s\n", sText$);
+        endif
+
+    else
+    
+        PrintLog("ERROR: Unknown state %d\n", iStateCurrent%);
+        halt;
+        
+    endcase
+    
+        
+    tLast := t;
+t := NextTextMarker(tLast, chanTM%, sText$, sChar$, isStart%, iTrialNum%, iS1Num%, iSpk%, fAtten, fFreq);
+
+wend
+
+
+end
+
+
+' search the channel chan% for an event of type eventtype (1 or 0), 
+' starting at time tstart. Return the time of the event found, or 
+' -1 if no such event found. 
+' The eventtype is the value of 'val' as described in Spike2's doc for 
+' NextTime on an event channel. The channel chan% should be an event 
+' channel with rising and falling transitions. When NextTime finds 
+' either type of event, the value of 'val' is set to the logical value 
+' (1 or 0) of the channel BEFORE the transition. Thus, a rising 
+' transition, which goes from 0 to 1, returns a 'val' value of 0. A 
+' falling transition, which goes from 1 to 0, returns a 'val' value 
+' of 1. 
+
+func NextEvent(tstart, chan%, eventtype)
+
+    var t:=-1, t1:=-1;
+    var val;
+
+    t := tstart;
+    t1 := NextTime(chan%, t, val);
+    while val <> eventtype and t1 >= 0 do
+        t := t1;
+        t1 := NextTime(chan%, t, val);
+    wend
+
+    return t1;
+
+end
+
+
+
+' Get reaction time in ms. A large negative value is returned if it is not found. 
+' The reaction time is defined as the time (in ms) between these two things.....
+' 1. The first falling event on chanTrig% that follows the time tstart
+' 2. The first falling event on chanLever% that follows the time from #1
+
+func GetReactionTime%(tstart, chanTrig%, chanLever%)
+
+    var t:=-1, t1:=-1, t2:=-1;
+    var val;
+    var tReaction% := -99999;
+    var isDone% := 0;
+
+    ' Find time from #1 above
+    t := tstart;
+    t1 := NextTime(chanTrig%, t, val);
+    while val <> 1 and t1 >= 0 do
+        t := t1;
+        t1 := NextTime(chanTrig%, t, val);
+    wend
+
+    if t1 > 0 then
+    
+        ' Now find time from #2 above
+        t := t1;
+        t2 := NextTime(chanLever%, t, val);
+        while val <> 1 and t2 >= 0 do
+            t := t2;
+            t2 := NextTime(chanLever%, t, val);            
+        wend
+
+        if t2 >= 0 then
+            tReaction% := round((t2-t1)*1000);
+        endif
+        
+    endif
+    
+    return tReaction%;
+end
+
+' Patterned after NextTime func. Finds next text marker in channel chan%. See fra.s2s for format of text markers written. 
+' Arguments are set depending on marker type. For start type markers, sChar$ will be "N" (noise) or "T" (tone). 
+' For end type markers, sChar$ will be "E", "F", "H" or "M" or "X". 
+'    s$ := Print$("\"%s\",%d,%d,%d,%.1f,%.2f", playChar$, fraTrialCount%, playInd%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
+'                                              T/N        trial#          0-n       speaker#        atten            freq
+'                                              sChar$     iTrialNum%      iS1Num%   iSpk%           fAtten           fFreq
+func NextTextMarker(tStart, chan%, &sText$, &sChar$, &isStart%, &iTrialNum%, &iS1Num%, &iSpk%, &fAtten, &fFreq)
+
+var isOK% := 0;
+var t := -1;
+var tfound := -1;
+var code%[4];
+
+t := tStart;
+tfound := NextTime(chan%, t, code%, sText$);
+while tfound >= 0 and isOK% = 0 do
+
+    ' Try reading a start marker for noise first, then start marker for tone. If both fail, try end marker. 
+    docase
+    case ReadStr(sText$, sChar$, iTrialNum%, iS1Num%, iSpk%, fAtten, fFreq) = 6 then
+
+        isStart% := 1;
+        isOK% := 1;
+    
+    case InStr(sText$, "E")=1 or InStr(sText$, "F")=1 or InStr(sText$, "H")=1 or InStr(sText$, "M")=1 or InStr(sText$, "X")=1 then
+    
+        sChar$ := Mid$(sText$, 1, 1);
+        ReadStr(Mid$(sText$, 3), iTrialNum%);
+        isStart% := 0;
+        isOK% := 1;
+    
+    else
+        
+        PrintLog("ERROR in NextTextMarker! Cannot grok marker text: %s\n", sText$);
+        t := tfound;
+        tfound := NextTime(chan%, t, code%, sText$);
+
+    endcase
+
+wend
+
+
+return tfound;
+
+end
+
+proc ExtractFraFinished()
+
+View(xfraInt%).Print("23508 23508 23508 23508 23508 23508 23508\n");
+View(xfraInt%).FileClose();
+View(xfraFrq%).Print("23508 23508 23508 23508 23508 23508 23508\n");
+View(xfraFrq%).FileClose();
+
+return;
+end;
+
+
+proc ExtractFraInitialize(windowXY%)
+
+var ang;
+var i%;
+var stmp$;
+
+
+' Open output text files. Assumes that the first three comments in the data files
+' are the appropriate lines for the frq file. 
+xfraInt% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".int", 8, 1);
+Print("start\tspkr\tatten\tspknum\trxtime\tresp\n");
+xfraFrq% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".frq", 8, 1);
+stmp$ := FileComment$(1);
+Print("%s\n", stmp$);
+stmp$ := FileComment$(2);
+Print("%s\n", stmp$);
+stmp$ := FileComment$(3);
+Print("%s\n", stmp$);
+Print("start\tspkr\tfreq\tatten\tspknum\tresp\n");
+
+xfraWindowXY% := windowXY%;
+xfraChanMean% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 8);
+xfraChanMeanPlus% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 7);
+xfraChanMeanMinus% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 7);
+xfraChanBkgd% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 0);
+xfraChanBkgdPlus% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 5);
+xfraChanBkgdMinus% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 5);
+xfraChanLines% := View(xfraWindowXY%).XYSetChan(0, -32, 0, 2, 20);
+
+ArrConst(xfraTrialCounts%, 0);
+
+for i%:=0 to xfraNSpeakers% do
+    ang := -xfraPI/8*(5+i%);
+    xfraUnitX[i%] := cos(ang);
+    xfraUnitY[i%] := sin(ang);
+next
+xfraIsInitialized% := 1;
+end
+
+
+
+func ExtractFraUpdate%(spk%, n%, sec)
+    var status% := 0;
+    var index%; ' index into arrays where current trial is placed. Prior to incrementing trial count for this speaker!
+    var arrx[xfraNSpeakers%];
+    var arry[xfraNSpeakers%];
+    var arrxl[32];
+    var arryl[32];
+    var i%;
+    var maxrate := 0;
+    
+    ' TODO check sec != 0
+    PrintLog("spk %d index %d n %d sec %f\n", spk%, index%, n%, sec);
+    index% := xfraTrialCounts%[spk%];
+    xfraSpikeCounts%[spk%][index%] += n%;
+    xfraSpikeRate[spk%][index%] := xfraSpikeCounts%[spk%][index%]/sec;  ' sec != 0
+    if index% >= 1 then
+        ArrSum(xfraSpikeRate[spk%][0:index%], xfraSpikeRateMean[spk%], xfraSpikeRateStd[spk%]); 
+    endif
+    xfraTrialCounts%[spk%] += 1;
+            
+    ' rate. Get max rate while we're at it. 
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrx[i%] := xfraSpikeRateMean[i%] * xfraUnitX[i%];
+        arry[i%] := xfraSpikeRateMean[i%] * xfraUnitY[i%];
+        if xfraSpikeRateMean[i%] > maxrate then
+            maxrate := xfraSpikeRateMean[i%];
+        endif
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanMean%, arrx, arry);
+    
+    ' rate+std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrx[i%] := (xfraSpikeRateMean[i%] + xfraSpikeRateStd[i%]) * xfraUnitX[i%];
+        arry[i%] := (xfraSpikeRateMean[i%] + xfraSpikeRateStd[i%]) * xfraUnitY[i%];
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanMeanPlus%, arrx, arry);
+
+    ' rate-std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrx[i%] := (xfraSpikeRateMean[i%] - xfraSpikeRateStd[i%]) * xfraUnitX[i%];
+        arry[i%] := (xfraSpikeRateMean[i%] - xfraSpikeRateStd[i%]) * xfraUnitY[i%];
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanMeanMinus%, arrx, arry);
+
+    ' bkgd
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrx[i%] := xfraSpikeRateMean[xfraNSpeakers%] * xfraUnitX[i%];
+        arry[i%] := xfraSpikeRateMean[xfraNSpeakers%] * xfraUnitY[i%];
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanBkgd%, arrx, arry);
+
+    ' bkgd+std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrx[i%] := (xfraSpikeRateMean[xfraNSpeakers%] + xfraSpikeRateStd[xfraNSpeakers%]) * xfraUnitX[i%];
+        arry[i%] := (xfraSpikeRateMean[xfraNSpeakers%] + xfraSpikeRateStd[xfraNSpeakers%]) * xfraUnitY[i%];
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanBkgdPlus%, arrx, arry);
+
+    ' bkgd-std
+    ArrConst(arrx, 0);
+    ArrConst(arry, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrx[i%] := (xfraSpikeRateMean[xfraNSpeakers%] - xfraSpikeRateStd[xfraNSpeakers%]) * xfraUnitX[i%];
+        arry[i%] := (xfraSpikeRateMean[xfraNSpeakers%] - xfraSpikeRateStd[xfraNSpeakers%]) * xfraUnitY[i%];
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanBkgdMinus%, arrx, arry);
+
+    ' lines
+    ArrConst(arrxl, 0);
+    ArrConst(arryl, 0);
+    for i% := 0 to xfraNSpeakers%-1 do
+        arrxl[i%*2+1] := maxrate * 1.25 * xfraUnitX[i%];
+        arryl[i%*2+1] := maxrate * 1.25 * xfraUnitY[i%];
+    next
+    View(xfraWindowXY%).XYAddData(xfraChanLines%, arrxl, arryl);
+    
+    return status%;
+end

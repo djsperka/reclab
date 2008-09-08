@@ -1,0 +1,58 @@
+' $Id$
+'
+'
+' extract_fra
+'
+' This script extracts data from the fra data file currently open. 
+
+
+#include "extract_fra_functions.s2s"
+
+var hData%;
+var hXY%;
+var hEcode%;
+var hBak%;
+var chs%[10];
+var nchs%;
+var chanTextMark%;
+var chanWaveMark%;
+    
+    
+' Get data file....
+hData% := View(0);
+if (ViewKind(hData%) <> 0) then
+    Message("Current view must be a time view.");
+'        return;
+endif
+
+nchs% := ChanList(chs%[], 32);		' the '32' tells spike2 we want just text mark channels.
+'    PrintLog("nchs=" + str$(nchs%) + "\n");
+if nchs% <> 1 then
+    Message("Hmmm. There seems to be " + str$(nchs%) + " textmark channels in this data file. Expecting just 1...");
+    halt;
+else
+    chanTextMark% := chs%[1];
+endif
+
+
+nchs% := ChanList(chs%[], 16);		' the '16' tells spike2 we want just wave mark channels.
+'    PrintLog("nchs=" + str$(nchs%) + "\n");
+
+if nchs% = 0 then
+    Message("No wavemark channels found!");
+    halt;
+endif
+
+if nchs% > 1 then
+    Message("Hmmm. There seems to be " + str$(nchs%) + " wavemark channels in this data file. Do the first - TODO the rest!");
+endif
+chanWaveMark% := chs%[1];
+
+
+' testing star plotupdate
+hXY% := FileNew(12);
+View(hXY%).WindowVisible(1);
+ExtractFraInitialize(hXY%);
+
+ExtractFra(-1, -1, hData%, hXY%, chanWaveMark%, chanTextMark%, 2, 3);
+ExtractFraFinished();
