@@ -106,6 +106,7 @@ func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
     var nf%, na%;
     var totalOctaves;
     var octaveStep;
+    var stmp$;
     
     fraDebug% := debug%;
     fraWindowData% := wdata%;
@@ -176,6 +177,14 @@ func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
     ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window. 
     InitializePlayWaveAreas();
+
+    ' Write file comments - used when extracting data.
+    stmp$ := Print$("%f\t%f\t%f\t%f", fraLowFreq, fraHighFreq, fraLowAtten, fraHighAtten);
+    FileComment$(1, stmp$);
+    stmp$ := Print$("%d\t%d", fraNFreqSteps%, fraNAttenSteps%);
+    FileComment$(2, stmp$);
+    stmp$ := Print$("%d", fraBestSpk%);
+    FileComment$(3, stmp$);
 
             
     return status%;
@@ -288,17 +297,31 @@ end
 
 func TrialComplete%(ttype%, success%)
     var status% := 0;
+    var stmp$;
+    
     docase 
     case ttype% = 0 then
+
         fraCurrentS1Trial% += 1;
-        LogInfo("Trial ttype=0 complete, success=" + str$(success%));
         if fraCurrentS1Trial% = fraNS1Trials% then
             status% := 1;
         endif
+        if success% = 1 then
+            stmp$ := Print$("F,%d", fraTrialCount%);
+            SampleText(strtmp$, -1);
+        else
+            stmp$ := Print$("E,%d", fraTrialCount%);
+            SampleText(strtmp$, -1);
+        endif        
+
     case ttype% = 1 then
-        LogInfo("Trial ttype=0 complete, success=" + str$(success%));
         if success% = 1 then
             tlgTrialIndexCompleted(fraS2TrialList%[0]);
+            stmp$ := Print$("H,%d", fraTrialCount%);
+            SampleText(stmp$, -1);
+        else
+            stmp$ := Print$("M,%d", fraTrialCount%);
+            SampleText(stmp$, -1);
         endif
     else
         LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
@@ -310,6 +333,46 @@ func TrialComplete%(ttype%, success%)
     
     return status%;
 end
+
+
+
+func TrialComplete%(ttype%, success%)
+    var status% := 0;
+    var strtmp$;
+    docase
+    case ttype% = 0 then
+        if success% = 1 then
+            ' Record completed trial here, and update online analysis. 
+            strtmp$ := Print$("E,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+            tlgTrialIndexCompleted(spcTrialList%[spcTrialListIndex%]);
+            ExtractSpace(spcTLastProcessed, MaxTime(), spcWindowData%, spcWindowXY%, spcHBeh%, spcHBak%, spcChanWM%, spcChanTM%, spcChanTrig%, spcChanLever%);
+            spcTLastProcessed := MaxTime();
+            'UpdateOnlineAnalysis();
+            spcTrialListIndex% += 1;
+            if spcTrialListIndex% = spcNTrialList% then
+                status% := 1;
+            endif
+        else
+            strtmp$ := Print$("F,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+        endif
+    case ttype% = 1 then
+        if success% = 1 then
+            strtmp$ := Print$("H,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+        else
+            strtmp$ := Print$("M,%d", spcTrialCount%);
+            SampleText(strtmp$, -1);
+        endif
+    else
+        LogError("TrialComplete", "Unknown ttype (" + str$(ttype%) + ")");
+        status% := -1;
+    endcase
+    return status%;
+end
+
+
 
 
 
