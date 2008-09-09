@@ -308,10 +308,10 @@ func TrialComplete%(ttype%, success%)
         endif
         if success% = 1 then
             stmp$ := Print$("F,%d", fraTrialCount%);
-            SampleText(strtmp$, -1);
+            SampleText(stmp$, -1);
         else
             stmp$ := Print$("E,%d", fraTrialCount%);
-            SampleText(strtmp$, -1);
+            SampleText(stmp$, -1);
         endif        
 
     case ttype% = 1 then
@@ -333,50 +333,6 @@ func TrialComplete%(ttype%, success%)
     
     return status%;
 end
-
-
-
-func TrialComplete%(ttype%, success%)
-    var status% := 0;
-    var strtmp$;
-    docase
-    case ttype% = 0 then
-        if success% = 1 then
-            ' Record completed trial here, and update online analysis. 
-            strtmp$ := Print$("E,%d", spcTrialCount%);
-            SampleText(strtmp$, -1);
-            tlgTrialIndexCompleted(spcTrialList%[spcTrialListIndex%]);
-            ExtractSpace(spcTLastProcessed, MaxTime(), spcWindowData%, spcWindowXY%, spcHBeh%, spcHBak%, spcChanWM%, spcChanTM%, spcChanTrig%, spcChanLever%);
-            spcTLastProcessed := MaxTime();
-            'UpdateOnlineAnalysis();
-            spcTrialListIndex% += 1;
-            if spcTrialListIndex% = spcNTrialList% then
-                status% := 1;
-            endif
-        else
-            strtmp$ := Print$("F,%d", spcTrialCount%);
-            SampleText(strtmp$, -1);
-        endif
-    case ttype% = 1 then
-        if success% = 1 then
-            strtmp$ := Print$("H,%d", spcTrialCount%);
-            SampleText(strtmp$, -1);
-        else
-            strtmp$ := Print$("M,%d", spcTrialCount%);
-            SampleText(strtmp$, -1);
-        endif
-    else
-        LogError("TrialComplete", "Unknown ttype (" + str$(ttype%) + ")");
-        status% := -1;
-    endcase
-    return status%;
-end
-
-
-
-
-
-
 
 '-------- fra configuration dialog ---------------------------------------
 

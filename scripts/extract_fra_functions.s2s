@@ -15,8 +15,6 @@
 
 
 
-var xfraInt%;
-var xfraFrq%;
 var xfraIsInitialized% := 0;
 var xfraWindowXY%;
 var xfraChanMean%;
@@ -49,7 +47,7 @@ var xfraUnitY[xfraNSpeakers%+1];
 ' tStart = -1 means process from beginning, including first time, otherwise it means process all samples after, not
 ' including, tStart.
     
-proc ExtractFra(tStart, tEnd, hData%, hXY%, chanWM%, chanTM%, chanTrig%, chanLever%)
+proc ExtractFra(tStart, tEnd, hData%, hXY%, hFra%, hInt%, chanWM%, chanTM%, chanTrig%, chanLever%)
 
 var tLast := -1;
 var t;
@@ -73,6 +71,7 @@ var iCurrentS1Num% := -1;
 var iCurrentSpk% := -1;
 var iCurrentS1Flg% := -1;
 var fCurrentAtten := -1;
+var fCurrentFreq := -1;
 var iCurrentResp% := -1;
 var fCurrentRxTime := -1;
 var nSpikes%;
@@ -130,18 +129,18 @@ while t > 0 and t >= tStart and (tEnd < 0 or (tEnd > 0 and t <= tEnd)) do
             ' Get spike times
             nSpikes% := View(hData%).ChanData(chanWM%, tSpikes[], tCurrentStartTrigger, tCurrentSpikeIntervalEndTime);
 
-            ' For fra, we write to the int file (xfraInt%) when a HIT ("H") is recorded. 
-            ' We write to the frq file (xfraFrq%) when a successful S1 trial ("F") is recorded. 
+            ' For fra, we write to the int file (hInt%) when a HIT ("H") is recorded. 
+            ' We write to the frq file (hFra%) when a successful S1 trial ("F") is recorded. 
             docase
             case sChar$ = "F" then
-                View(xfraFrq%).Print("3501\t%d\t%f\t%2.1f\t%d\t%d\n", iCurrentSpk%, fFreq, fAtten, nSpikes%, iCurrentResp%);
+                View(hFra%).Print("3501\t%d\t%f\t%2.1f\t%d\t%d\n", iCurrentSpk%, fCurrentFreq, fCurrentAtten, nSpikes%, iCurrentResp%);
                 for i%:= 0 to nSpikes%-1 do
-                    View(xfraFrq%).Print("%d\t%4.0f\n", i%, (tSpikes[i%]-tCurrentStartTrigger)*1000);
+                    View(hFra%).Print("%d\t%4.0f\n", i%, (tSpikes[i%]-tCurrentStartTrigger)*1000);
                 next                
             case sChar$ = "H" then
-                View(xfraInt%).Print("3501\t%d\t%2.1f\t%d\t%d\n", iCurrentSpk%, fAtten, nSpikes%, iCurrentReactionTime%, iCurrentResp%);
+                View(hInt%).Print("3501\t%d\t%2.1f\t%d\t%d\t%d\n", iCurrentSpk%, fCurrentAtten, nSpikes%, iCurrentReactionTime%, iCurrentResp%);
                 for i%:= 0 to nSpikes%-1 do
-                    View(xfraInt%).Print("%d\t%4.0f\n", i%, (tSpikes[i%]-tCurrentStartTrigger)*1000);
+                    View(hInt%).Print("%d\t%4.0f\n", i%, (tSpikes[i%]-tCurrentStartTrigger)*1000);
                 next                
             endcase
 
@@ -157,7 +156,7 @@ while t > 0 and t >= tStart and (tEnd < 0 or (tEnd > 0 and t <= tEnd)) do
 
         ' Expecting start state
         if isStart% = 1 then
-            PrintLog("Found Start, Char=%s\n", sChar$);
+            PrintLog("Found Start, Char=%s f=%f a=%f\n", sChar$, fFreq, fAtten);
             iStateCurrent% := stateStart%;
             tCurrentStartMarker := t;
             tCurrentStartTrigger := NextEvent(tCurrentStartMarker, chanTrig%, 1);
@@ -165,6 +164,7 @@ while t > 0 and t >= tStart and (tEnd < 0 or (tEnd > 0 and t <= tEnd)) do
             iCurrentS1Num% := iS1Num%;
             iCurrentSpk% := iSpk%;
             fCurrentAtten := fAtten;
+            fCurrentFreq := fFreq;
             ' These are set at end state
             iCurrentResp% := -2;
             fCurrentRxTime := -2;
@@ -182,7 +182,7 @@ while t > 0 and t >= tStart and (tEnd < 0 or (tEnd > 0 and t <= tEnd)) do
     
         
     tLast := t;
-t := NextTextMarker(tLast, chanTM%, sText$, sChar$, isStart%, iTrialNum%, iS1Num%, iSpk%, fAtten, fFreq);
+    t := NextTextMarker(tLast, chanTM%, sText$, sChar$, isStart%, iTrialNum%, iS1Num%, iSpk%, fAtten, fFreq);
 
 wend
 
@@ -305,12 +305,10 @@ return tfound;
 
 end
 
-proc ExtractFraFinished()
+proc ExtractFraFinished(hFra%, hInt%)
 
-View(xfraInt%).Print("23508 23508 23508 23508 23508 23508 23508\n");
-View(xfraInt%).FileClose();
-View(xfraFrq%).Print("23508 23508 23508 23508 23508 23508 23508\n");
-View(xfraFrq%).FileClose();
+View(hInt%).Print("23508 23508 23508 23508 23508 23508 23508\n");
+View(hFra%).Print("23508 23508 23508 23508 23508 23508 23508\n");
 
 return;
 end;
@@ -323,18 +321,6 @@ var i%;
 var stmp$;
 
 
-' Open output text files. Assumes that the first three comments in the data files
-' are the appropriate lines for the frq file. 
-xfraInt% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".int", 8, 1);
-Print("start\tspkr\tatten\tspknum\trxtime\tresp\n");
-xfraFrq% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+".frq", 8, 1);
-stmp$ := FileComment$(1);
-Print("%s\n", stmp$);
-stmp$ := FileComment$(2);
-Print("%s\n", stmp$);
-stmp$ := FileComment$(3);
-Print("%s\n", stmp$);
-Print("start\tspkr\tfreq\tatten\tspknum\tresp\n");
 
 xfraWindowXY% := windowXY%;
 xfraChanMean% := View(xfraWindowXY%).XYSetChan(0, -xfraNSpeakers%+1, 0, 2, 8);

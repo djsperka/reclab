@@ -10,13 +10,15 @@
 
 var hData%;
 var hXY%;
+var hFra%;
+var hInt%;
 var hEcode%;
 var hBak%;
 var chs%[10];
 var nchs%;
 var chanTextMark%;
 var chanWaveMark%;
-    
+var stmp$;
     
 ' Get data file....
 hData% := View(0);
@@ -52,7 +54,24 @@ chanWaveMark% := chs%[1];
 ' testing star plotupdate
 hXY% := FileNew(12);
 View(hXY%).WindowVisible(1);
-ExtractFraInitialize(hXY%);
 
-ExtractFra(-1, -1, hData%, hXY%, chanWaveMark%, chanTextMark%, 2, 3);
-ExtractFraFinished();
+' Open output text files. Assumes that the first three comments in the data files
+' are the appropriate lines for the frq file. 
+View(hData%);
+PrintLog("Opening file " + FileName$(1)+FileName$(2)+FileName$(3)+FileName$(4)+".int\n");
+hInt% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+FileName$(4)+".int", 8, 1);
+Print("start\tspkr\tatten\tspknum\trxtime\tresp\n");
+View(hData%);
+hFra% := FileOpen(FileName$(1)+FileName$(2)+FileName$(3)+FileName$(4)+".frq", 8, 1);
+stmp$ := View(hData%).FileComment$(1);
+Print("%s\n", stmp$);
+stmp$ := View(hData%).FileComment$(2);
+Print("%s\n", stmp$);
+stmp$ := View(hData%).FileComment$(3);
+Print("%s\n", stmp$);
+Print("start\tspkr\tfreq\tatten\tspknum\tresp\n");
+
+
+ExtractFraInitialize(hXY%);
+ExtractFra(-1, -1, hData%, hXY%, hFra%, hInt%, chanWaveMark%, chanTextMark%, 2, 3);
+ExtractFraFinished(hFra%, hInt%);
