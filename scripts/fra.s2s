@@ -245,36 +245,63 @@ end
 ' Initiate a trial. When ttype% = 0 this trial is an S1 trial, when ttype% = 1  its an S2 trial. 
 ' Return 0 if all is well, negative if not (script will exit immediately). 
 '
+' The sample text string contains the following (comma-separated) fields:
+' 1. playChar: T for S1 trials (tone), N for S2 trial (noise)
+' 2. trial number: overall trial counter
+' 3. S1 trial index, starts at 0. S2 trial has same index as last S1 trial. 
+' 4. speaker number
+' 5. atten
+' 6. freq for tone, -1 for noise. 
+'
 '--------------------------------------------------------------------------------
 
 func Trial%(ttype%)
     var status% := 0;
+    var s$;
+    var freqIndex%;
+    var attIndex%;
 
     docase 
     case ttype% = 0 then
-        ' S1 trial. We maintain the counter to tell us which trial in fraS1TrialList%[] is the one we want. 
+
+        ' S1 trial. We maintain the counter fraCurrentS1Trial% to tell us which trial in fraS1TrialList%[] is the one we want. 
+        ' The index fraS1PickIndex% is toggled between 0 and 1 to alternate speakers between best <--> ahead.
+        freqIndex% := fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%];
+        attIndex% := fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%];
         LogInfo("Trial type 0, Pick index " + str$(fraS1PickIndex%) + " fraS1TrialList[" + str$(fraCurrentS1Trial%) + "] = " + str$(fraS1TrialList%[fraCurrentS1Trial%]));
         LogInfo("Freq (" + str$(fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
             str$(fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]) + 
             " Atten (" + str$(fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]) + ") " + 
             str$(fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]]));
-         fraCurrentFreq := fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
-         fraCurrentAtten := fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
-         fraCurrentSpk% := fraBestSpk%;
-         if fraS1PickIndex% = 0 then
+        fraCurrentFreq := fraS1FreqArray[fraS1FreqPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
+        fraCurrentAtten := fraS1AttenArray[fraS1AttenPick%[fraS1TrialList%[fraCurrentS1Trial%]][fraS1PickIndex%]];
+        fraCurrentSpk% := fraBestSpk%;
+        if fraS1PickIndex% = 0 then
             fraCurrentSpk% := fraAheadSpk%;
-         endif
-         
-        PlaySound();
+        endif
+        
+        ' Sample text is for offline analysis - tells us what this trial was all about. 
+        s$ := Print$("\"T\",%d,%d,%d,%d,%d,%.1f,%.2f", fraTrialCount%, freqIndex%, attIndex%, fraS1PickIndex%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
+        SampleText(s$, -1);
+        PlaySound(GetPlayWaveKey$(fraCurrentS1Trial%), fraCurrentSpk%, fraCurrentAtten);
+
     case ttype% = 1 then
+
         LogInfo("Trial type 1, Pick index " + str$(fraS1PickIndex%) + " fraS2TrialList[0]= " + str$(fraS2TrialList%[0]));
-        fraCurrentAtten := fraS2Atten[fraS2TrialList%[0]];
+        freqIndex% := -1;
+        attIndex% := fraS2TrialList%[0];
+        fraCurrentAtten := fraS2Atten[attIndex%];
         fraCurrentFreq := -1;
         fraCurrentSpk% := fraAheadSpk%;
         if fraS1PickIndex% = 0 then
-        fraCurrentSpk% := fraBestSpk%;
+            fraCurrentSpk% := fraBestSpk%;
         endif
-        PlaySound();
+
+        ' Sample text is for offline analysis - tells us what this trial was all about. 
+        s$ := Print$("\"N\",%d,%d,%d,%d,%d,%.1f,%.2f", fraTrialCount%, freqIndex%, attIndex%, 1-fraS1PickIndex%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
+        SampleText(s$, -1);
+
+        PlaySound(GetPlayWaveKey$(fraMaxS1Trials%), fraCurrentSpk%, fraCurrentAtten);
     else
         LogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
         status% := -1;
@@ -639,41 +666,19 @@ end
 ' If this is the repeated-last-index (if spcTrialListIndex% = spcNTrialList%)
 ' then play spcNTrialList%-1 sound - that makes the repeat happen.
 
-Proc PlaySound()
-    var spk%[1];
-    var atten;
-    var s$;
-    var playInd%;
-    var playChar$ := "T";
-    
-    ' Determine sound index to play
-    playInd% := fraCurrentS1Trial%;
-    if fraCurrentS1Trial% = fraNS1Trials% then
-        playInd% := fraMaxS1Trials%;    ' Noise
-        playChar$ := "N";
-    endif
-    
-    ' Set speaker and atten
-    recSpeaker%(fraCurrentSpk%);
-    recAtten%(fraCurrentAtten);
+Proc PlaySound(key$, spk%, atten)
 
     LogStatus("PlaySound", 
               "SPK " + str$(fraCurrentSpk%) + 
               "ATT " + str$(fraCurrentAtten));
 
+    ' Set speaker and atten
+    recSpeaker%(fraCurrentSpk%);
+    recAtten%(fraCurrentAtten);
+
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
-    ' The sample text string contains the following (comma-separated) fields:
-    ' 1. playChar: T for S1 trials (tone), N for S2 trial (noise)
-    ' 2. trial number: overall trial counter
-    ' 3. S1 trial index, starts at 0. S2 trial has same index as last S1 trial. 
-    ' 4. speaker number
-    ' 5. atten
-    ' 6. freq for tone, -1 for noise. 
-    
-    SampleKey(GetPlayWaveKey$(playInd%));
-    s$ := Print$("\"%s\",%d,%d,%d,%.1f,%.2f", playChar$, fraTrialCount%, playInd%, fraCurrentSpk%, fraCurrentAtten, fraCurrentFreq);
-    SampleText(s$, -1);
+    SampleKey(key$);
     SampleKey("T");
     
 end
