@@ -1,0 +1,68 @@
+var freq[16];
+var atten[31];
+var nf% := 15;
+var na% := 30;
+var r[31][16];
+var minf:=7000;
+var maxf:=40000;
+var mina:=10;
+var maxa:=100;
+var i%;
+var totalOctaves, octaveStep;
+
+' fill r with random #'s
+rand(r[][], 100, -5);
+
+' assign values to freq and atten
+atten[0] := mina;
+for i% := 1 to na% do
+    atten[i%] := atten[i%-1] + (maxa-mina)/na%;
+next
+    
+' Freq array is a little harder.
+totalOctaves := 3.322 * Log(maxf/minf);
+octaveStep := totalOctaves / nf%;
+freq[0] := minf;
+for i% := 1 to nf% do
+    freq[i%] := freq[i%-1] * Pow(2, octaveStep);
+next
+
+MakeFraPlot("FRA Spike Rates for BEST Speaker", r[][], freq[], atten[], nf%, na%);
+
+' print numbers in arr array, x axis values in f[] (nf% values), y axis in a[] (na% values). 
+func MakeFraPlot(label$, arr[][], f[], a[], nf%, na%)
+
+    var logh%;
+    var i%, j%;
+    var stmp$;
+    
+    logh% := LogHandle();
+
+    PrintLog("\n\n\n%s\n\n", label$);
+
+    ' First line is freq values
+    PrintLog("a\\f");
+    for i% := 0 to nf% do
+        PrintLog("|%5.0f ", f[i%]);
+    next
+    PrintLog("\n---");
+    for i% := 0 to nf% do
+        PrintLog("|------");
+    next
+    PrintLog("\n");
+    
+    for i% := 0 to na% do
+        PrintLog("%3.0f", a[i%]);
+        for j% := 0 to nf% do
+            if arr[i%][j%] < 0 then             ' negative when there are no trials for this point
+                PrintLog("|   -- ");
+            else
+                PrintLog("|%5.0f ", arr[i%][j%]);
+            endif
+        next
+        PrintLog("\n");
+    next
+    
+    return 0;
+end
+
