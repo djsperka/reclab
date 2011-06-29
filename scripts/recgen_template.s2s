@@ -1,0 +1,107 @@
+#include "recgen.s2s"
+
+
+'------- Testing% --------------------------------------------------------
+'
+' Called to see if we are just testing. Return 1 if testing (as if running on a machine
+' with no access to serial/tdt stuff), and all serial/tdt calls are bypassed. Mostly 
+' positive/success returns - useful for getting scripts to run, but should not be trusted
+' to fully exercise all code paths. 
+' Return 1 if want testing mode, return 0 otherwise. 
+'
+'--------------------------------------------------------------------------------
+
+func Testing%()
+    return 0;
+end
+
+
+
+
+'------- InitializeExpt% --------------------------------------------------------
+'
+' Called after generic dialog. Open dialog, initialize stuff specific to this expt. 
+' Return 1 if all is well, 0 if user hit Cancel, or -1 to abort expt. 
+'
+' Inputs:
+' debug%: 1 if in debug mode, 0 otherwise. This can be ignored if you wish. 
+' wdata%: Handle for data window
+' wxy%: Handle for xy window
+' nch%: number of elements in next arg array
+' channels%[]: Array of channel numbers. The channels are as follows:
+'              [0] = Wavemark channel (yes, we assume there will only ever be 1 channel recorded. 
+'              TODO: Change recgen to use wavemark/waveform spec and allow any number of recorded channels. 
+'              [1] = Sound trigger channel
+'              [2] = Lever channel
+'              [3] = Text Mark channel. Don't really need to pass this, since its always channel 30. Whatever. 
+'--------------------------------------------------------------------------------
+
+
+func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
+    return 1;
+end
+
+
+
+
+'------- InitializeTrials% --------------------------------------------------------
+'
+' Called prior to initiating a set of S1/S2 trials. 
+' Return 1 if all is well, 0 if all trials are done, negative for error. 
+'
+' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
+' All stuff (like loading stimuli) which will be too costly time-wise to do while a 
+' trial is running should be done here. 
+'
+
+func InitializeTrials%()
+    var status% := 1;
+    return status%;
+end
+
+
+'------- ExptComplete% --------------------------------------------------------
+'
+' Called after toolbar() function exits - either because all trials have been completed
+' or user otherwise aborted. 
+' Close data file(s) if necessary here.
+'
+
+
+
+func ExptComplete%()
+    return 0;
+end
+
+
+
+'----------- Trial%(ttype%) ----------------------------------------------------------------
+'
+' Initiate sound stim for a trial. When ttype% = 0 this trial is an S1 trial, when ttype% = 1  
+' its an S2 trial. Return 0 if all is well, negative if not (script will exit immediately). 
+'
+'--------------------------------------------------------------------------------
+
+func Trial%(ttype%)
+    return 0;
+end
+
+
+
+
+'----------- TrialComplete%(ttype%, success%) -----------------------------------
+'
+' Trial has ended. ttype% same meaning as for Trial%. success% 1=good, 0=bad. 
+' Record text marker, analysis update. 
+' Return value of -1 means an error has occurred, abort. 
+' When ttype%=0, return value of 0 means continue with S1 trials, return value of 1
+' means move on to S2 trial. 
+' When ttype%=1 the return value (unless it is negative) is ignored. 
+' 
+'
+'--------------------------------------------------------------------------------
+
+func TrialComplete%(ttype%, success%)
+    var status% := 0;
+    return status%;
+end
