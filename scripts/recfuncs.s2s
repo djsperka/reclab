@@ -1,13 +1,7 @@
-' $Log$
-' Revision 1.4  2008/03/18 19:48:45  devel
-' Add recSpeaker and recAtten convenience funcs.
-'
-' Revision 1.3  2008-03-06 20:07:55  devel
-' Add recInit function. Initializes serial port and issues init funcs to tdt.
-'
-' Revision 1.2  2008-02-28 21:42:47  devel
-' recLeverDown and recBlinkUntilLeverDown funcs.
-'
+' $Id$
+
+' Recfuncs are convenience functions to hide the calls to the TDT server behind calls that 
+' are more practical for experimental needs. 
 
 
 #include "tdt.s2s"
