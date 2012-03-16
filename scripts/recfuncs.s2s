@@ -16,9 +16,9 @@
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recAtten%(atten)
-
+    
     return tdtPA4Atten%(1, atten);
-
+    
 end
 
 
@@ -32,7 +32,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recSpeaker%(spk%)
-
+    
     return tdtPM1Spkon%(1, spk%);
     
 end
@@ -52,7 +52,7 @@ func recLeverDown%()
     var pii% := 0;
     var status% := 0;
     var down% := 0;
-
+    
     ' read PI2
     status% := tdtPI2Read%(1, pii%);
     'PrintLog("pii = " + str$(pii%) + "\n");
@@ -72,7 +72,7 @@ end
 ' Yield() and Windows clock). Seems to work well with yieldTime=0.5, though I doubt that
 ' the blinking is very uniform. 
 ' 
-' if maxTime <= 0, this will go on forever until the lever is pressed. If maxTime is 
+' if maxBlinkTime <= 0, this will go on forever until the lever is pressed. If maxTime is 
 ' greater than 0, however, we quit if the lever has not been pressed in (approximately)
 ' that amount of time. The time is not measured, we merely increment a counter by 
 ' yieldTime every time there is a Yield(). Since Yield() is not that accurate, the actual
@@ -80,18 +80,19 @@ end
 ' 
 ' Returns 1 when lever is down. Returns -1 if an error occurred. Returns 0 if maxTime>0 
 ' and the lever is not pressed in that time. 
+'TODO: I think we can do this better.  Consult PresEngine for blinking stuff
 
-func recBlinkUntilLeverDown%(yieldTime, maxTime)
+func recBlinkUntilLeverDown%(yieldTime, maxBlinkTime)
     var status%:= 0;
     var s%;
     var idone% := 0;
     var t% := 1;
     var approxTime := 0;
-
+    
     if yieldTime < 0 then yieldTime := 0; endif
     
-    while idone% = 0 and (maxTime <= 0 or (maxTime > 0 and approxTime < maxTime)) do
-    
+    while idone% = 0 and (maxBlinkTime <= 0 or (maxBlinkTime > 0 and approxTime < maxBlinkTime)) do
+        
         if t% = 1 then
             s% := tdtPI2Setbit%(1, 2);
             if s% <> 0 then
@@ -121,7 +122,7 @@ func recBlinkUntilLeverDown%(yieldTime, maxTime)
         endif
         approxTime := approxTime + yieldTime;
     wend
-
+    
     if idone% = 1 then
         s% := tdtPI2Setbit%(1, 2);
         if s% <> 0 then
@@ -148,23 +149,23 @@ end
 func recInitTDT%()
     var status%:=0;
     var i%;
-
+    
     if tdtSerial(1, 0) < 0 then
         Message("Error in tdtSerial. Check serial line.");
         return -1;
     else
         printLog("Serial open OK\n");
     endif
-
+    
     status% := tdtPING%();
     printLog("ping status " + str$(status%) + "\n");
     if status% <> 0 then
         Message("Cannot ping TDT server. Check that TDTSERV is running.");
         return -1;
     endif
-
+    
     ' Initialize tdt stuff
-
+    
     tdtPI2Clear%(1);
     tdtPI2Outs%(1, 207);
     tdtPI2Logic%(1, 0x00, 0x20);
@@ -176,6 +177,6 @@ func recInitTDT%()
     tdtPM1Config%(1, 1);
     tdtPM1Mode%(1, 1);
     tdtPA4Atten%(1, 30);
-
+    
     return 0;
 end

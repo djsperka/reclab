@@ -1,4 +1,7 @@
 ' $Log$
+' Revision 1.5  2012/03/16 18:34:53  jeff
+' Commit
+'
 ' Revision 1.4  2008/06/06 23:20:36  devel
 ' Add comments indicating what funcs to NOT call from elsewhere.
 '
@@ -12,21 +15,59 @@
 ' Initial add.
 '
 '
-' Trial list generator
+'****h* Spike2Util/TrialListGen
+' FUNCTION
+'
+' Utility to generate lists of trials that follow a block format. A block of trials is 
+' defined here as a set of trial indices (numbered from 0...nTypes%) which are ordered so 
+' that all trial types occur a certain number of times (the block size) before any of the 
+' trial types has another occurrence. Thus, you can expect that trial types will complete
+' an entire block before more trial types are presented. This means that your trial types
+' will be randomized, but you can control the balance in their occurrence. If you choose a
+' block size of 4 and you require 10 blocks, you will get 40 trials of each type. But at any
+' point you are guaranteed that the number of occurrences of each trial type is within 4
+' of all other types. 
+' 
+' To use you must first 
+' call tlgInit with the following information:
+'
+' nTypes%       number of trial types. The trial list generator will only provide a list
+'               of indices, where each index is in [0, nTypes%-1]. The user must interpret
+'               the index appropriately -- the indices represent different trial types, but 
+'               the trial list generator doesn't know anything about them. 
+'
+' nTrialsPerBlock%      number of trials in a complete block. This many trials of each type 
+'                       must be completed before a new block is started.
+'                       Note: this might be better as nRepeatsPerBlock%, because it's less ambiguous.
+'
+' nBlocksRequired%      number of blocks that should be completed
+'
+' minListSize%      minimum size of trial list returned by each call to tlgGetTrialList%
+'
+' maxListSize%      maximum size of trial list returned by each call to tlgGetTrialList%
+'
+' This utility is designed to generate sets of trials -- called trial lists -- which will 
+' satisfy the requirements outlined in the parameters described above. The caller must provide
+' an array with at least maxListSize% elements when calling tlgGetTrialList%(). 
 '
 ' Usage:
 '
-' 1. include in another script: #include "trialistgen.s2s"
+' 1. include in another script: #include "TrialListGen.s2s"
 ' 2. initialize first - before calling any other routines here: tlgInit()
 ' 3. call tlgGetTrialList() to get a list. This function returns the number in the list
-'    returned. When it returns 0, it means all blocks/trials are completed.
+'    returned (which is at least minListSize% and no greater than maxListSize%). 
+'    When it returns 0, it means all blocks/trials are completed.
 ' 4. As trials are completed, call tlgTrialCompleted(trialIndex%), where trialIndex% is the 
 '    index of the completed trial (duh). This function increments counters, checks for 
-'    completed blocks and initializes new blocks as needed. 
+'    completed blocks and initializes new blocks as needed. You are not required to call 
+'    tlgTrialCompleted(trialIndex%) for each trial. For example, if you want complete blocks
+'    of trials where the subject gives a correct response you can call tlgTrialCompleted%()
+'    for just those trials. 
 '
 ' Remember - tlgGetTrialList() will return 0 when all blocks are complete. You MUST call 
-' tlgTrialCompleted as each trial is completed, however, otherwise tlgTrialList will return 
+' tlgTrialCompleted for SOME trials, however, otherwise tlgTrialList will return 
 ' trial lists FOREVER. 
+'****
 '
 
 const tlgMaxPossibleChoices% := 5000;    ' This should be more than NTrialTypes% * NTrialsPerBlock can ever be! 
@@ -42,6 +83,9 @@ var tlgMinListSize% := 0;
 var tlgMaxListSize% := 0;
 var tlgInitialized% := 0;
 
+
+
+
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListSize%)
@@ -54,7 +98,6 @@ var tlgInitialized% := 0;
 ' tlgGetTrialList%(). 
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
 proc tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListSize%)
     tlgNTrialTypes% := nTypes%;
     tlgNTrialsPerBlock% := nTrialsPerBlock%;
@@ -66,6 +109,8 @@ proc tlgInit(nTypes%, nTrialsPerBlock%, nBlocksRequired%, minListSize%, maxListS
 end
 
 
+
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' tlgInitBlock()
@@ -74,7 +119,6 @@ end
 ' counters for a block. 
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
 proc tlgInitBlock()
     var index%;
     for index% := 0 to tlgNTrialTypes%-1 do
@@ -83,10 +127,22 @@ proc tlgInitBlock()
 end    
 
 
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' tlgTrialIndexHowManyCompleted%(trialIndex%)
+' Note that this function is not terribly useful, as one could simply
+' get tlgTrialsCompleted%[trialIndex%] directly in the first place.
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func tlgTrialIndexHowManyCompleted%(trialIndex%)
     if tlgInitialized% = 0 then Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); endif
     return tlgTrialsCompleted%[trialIndex%];
 end
+
+
+
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -94,14 +150,19 @@ end
 ' 
 ' Call this function after a trial of trial index 'trialIndex%' has been 
 ' successfully completed. 
+' This function should be called whenever a trial is completed, or when you wish
+' a trial to be marked as complete for the purposes of the block/list generator. 
+' You may set any criteria to define a "complete" trial in this sense - the trial 
+' list generator does not care. 
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
 proc tlgTrialIndexCompleted(trialIndex%)
     var index%;
     var incomplete% := 0;
-
-    if tlgInitialized% = 0 then Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); endif
+    
+    if tlgInitialized% = 0 then 
+        Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); 
+    endif
     tlgTrialsCompleted%[trialIndex%] += 1;
     tlgTrialsCompletedThisBlock%[trialIndex%] += 1;
     
@@ -121,25 +182,59 @@ proc tlgTrialIndexCompleted(trialIndex%)
 end
 
 
+
+
+'****f* Spike2Util/TrialListGen/tlgGetCurrentBlock%
+' NAME
+' tlgGetCurrentBlock%(&block%)
+' SYNOPSIS
+' Gets current block number
+' INPUTS
+' block% : current block number (number of blocks completed; starts at 0)
+' RETURN VALUE
+' Returns 0.
+' NOTES
+'****
+
+func tlgGetCurrentBlock%(&block%)
+    block% := tlgNBlocksCompleted%;
+    return 0;
+end
+
+
+
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' tlgGetTrialList%(trialList%[])
+' SYNOPSIS
+' Gets a list of trial indices. 
+' INPUTS
+' trialList%[] : list of trial indices
+' RETURN VALUE
+' Returns 0 if all blocks are complete, otherwise returns the number of trial indices
+' in trialList%[].
+' NOTES
+' The return value may be any number between the min and max number of trials you 
+' specified when you called tlgInit. If there are trials left, but there are fewer
+' than the minimum value, then that number will be returned.
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
 func tlgGetTrialList%(trialList%[])
     var n%;
     var i%;
     var last% := -1;
-
+    
     ' check that tlg was initialized
-    if tlgInitialized% = 0 then Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); endif
+    if tlgInitialized% = 0 then 
+        Message("WARNING: Trial list generator is NOT initialized! Call tlgInit()."); 
+    endif
     
     ' Are we all done? 
     if tlgNBlocksCompleted% = tlgNBlocksRequired% then
         return 0;
     endif
-
+    
     ' Since the current block is not done, we will generate a trial list. First, decide
     ' how many trials will be in the list
     
@@ -147,9 +242,12 @@ func tlgGetTrialList%(trialList%[])
     for i% := 0 to n%-1 do
         trialList%[i%] := tlgGetNextTrial%(last%);
         last% := trialList%[i%];
-    next
+        next
     return n%;
 end
+
+
+
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -173,22 +271,21 @@ end
 ' tlgTrialsCompletedThisBlock%[]. That is done in tlgTrialCompleted. 
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
 func tlgGetNextTrial%(last%)
     var count% := 0;
     var i%, j%;
     var choice%;
-
+    
     ' Generate choice list. 
     for i% := 0 to tlgNTrialTypes%-1 do
         if i% <> last% then
             for j% := tlgTrialsCompletedThisBlock%[i%]+1 to tlgNTrialsPerBlock% do
                 tlgPossibleChoices%[count%] := i%;
                 count% += 1;
-            next
+                next
         endif
-    next
-
+        next
+    
     ' Are there any choices? If not, then generate a dummy list from all possibilities except
     ' for last% 
     
@@ -198,7 +295,7 @@ func tlgGetNextTrial%(last%)
                 tlgPossibleChoices%[count%] := i%;
                 count% += 1;
             endif
-        next
+            next
     endif
     
     ' Now choose one from the list. It doesn't matter here which method was used to generate

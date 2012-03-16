@@ -1,4 +1,75 @@
-#include "recgen.s2s"
+' stimulus variables
+const nMaxStimSamples%  := 100000;  'I don't know, but we're going to have to set something
+const nMaxStimPerTrial% := 20;      'Again, gotta put in a guess
+var thisHoldsStimuli%[nMaxStimSamples%][nMaxStimPerTrial%];  'This is big, but we've got to do it
+var tempStimTransfer%[nMaxStimSamples%];  'And let's maybe use this
+var matlabOpenSuccess%;             'Was Matlab opened successfully?
+var sessionNotDone% := 1;           'Is this session over?
+
+' Timing and reward variables
+var rgMinDelay              := 0.5;
+var rgVarDelay              := 0.5;
+var rgMaxLvrDownTime        := 10.0;
+var rgLvrDownTimeout        := 2.0;
+var rgFalsePositiveTimeout  := 2.0;
+var rgInterStimInterval     := 1.0;
+var rgMaxLvrUpTime          := 2.0;  'this is the duration of the response window, rename
+var rgLvrUpTimeout          := 2.0;
+var rgTrainingRewardCheck%  := 0;
+var rgTrainingRewardSize%   := 50;
+var rgLongRewardCheck%      := 0;
+var rgLongRewardSize%       := 100;
+var rgDebug%                := 1;
+var is1401present%          := 1;
+
+
+'File variables
+var rgFileID$;   'set this thing in the experiment selection dialog box, grab a default letter/string from registry, for instance monkey name
+var rgFileExpID$;  'autoset based on experiment type selected, character or string
+var rgFileNum$;  'set this thing in the experiment selection dialog box, grab a default number from registry and increment
+var rgFileNum%;
+var NewExp% := 1;  'This allows auto-increment of rgFileNum% only when we have a new "experiment"
+
+'Trial variables
+var rgAMFreq := 2;
+var rgAMDepth := 100;
+var rgNTrialTypes%:=3;
+var rgBlockSize%:=3;
+var rgNTrialsPerStim%:=9;
+var rgTrialListMin%:=1;
+const rgTrialListMax%:=10;  'Maximum number of PlayWave areas that can be allotted.  DO NOT MAKE LARGER THAN 10 WITHOUT UPDATING .PLS FILE.  DO NOT.
+var rgAMFreqVec[rgTrialListMax%];
+var rgAMDepthVec[rgTrialListMax%];
+var rgTrialList%[rgTrialListMax%];       ' The trial list is a list of speakers to use in a series
+var rgTrialListFilenames$[rgTrialListMax%];   ' When noise chosen, these are filenames of noise files used
+var rgNTrialList%;
+var rgTrialListIndex%;
+var rgTrialSourceIndex%;
+
+
+'Error catching
+var TDTError%;                     'will be one if there has been a TDT Error
+
+'Constants brought over from SPACE, categorize later
+const rgDAC0%         := 0;
+const rgSoundSize%    := 33333;
+
+'Variables brought over from SPACE, categorize later
+var rgDAC0Rate        := 166666.6666667;
+
+
+
+
+'Include files
+#include "LogUtilities.s2s"  'for non-time-specific logging, time-specific logging included in RECGEN
+#include "matlab.s2s"
+#include "gensound.s2s"
+#include "triallistgen.s2s"
+#include "tdt.s2s"
+#include "extract_space_functions.s2s"
+#include "filesystemvars.s2s"  'Put this before REC*ENGINE
+#include "recfuncs.s2s"
+#include "RecGoNoGoEngine.s2s"  'RECGONOGOENGINE is the engine that actually runs the code (here, go/no-go)
 
 
 '------- Testing% --------------------------------------------------------
@@ -7,13 +78,86 @@
 ' with no access to serial/tdt stuff), and all serial/tdt calls are bypassed. Mostly 
 ' positive/success returns - useful for getting scripts to run, but should not be trusted
 ' to fully exercise all code paths. 
-' Return 1 if want testing mode, return 0 otherwise. 
+' Return 1 if you want testing mode, return 0 otherwise. 
 '
 '--------------------------------------------------------------------------------
 
 func Testing%()
-    return 0;
+    return 1;  'testing mode, dude
+    'return 0;  'not testing mode, dude
 end
+
+
+
+
+
+'==========================   Script starts here ===============================
+
+
+' Open a Matlab instantiation
+matlabOpenSuccess% := OpenMatlab%();
+if matlabOpenSuccess% < 0 then
+    LogInfo("Open Matlab FAILED!");
+    halt;
+endif;
+
+    
+' Initalize TDT
+if Testing%() = 0 then 
+    if recInitTDT%() < 0 then  'recInitTDT%() is in recfuncs
+        LogInfo("Init TDT FAILED!");
+        CloseMatlab(matlabOpenSuccess%);
+        halt;
+    endif
+else
+    LogInfo("Client is in testing mode (see Testing%() in control script). Bypassing TDT initializations.\n");
+endif
+
+
+
+
+'TODO: Combine with experiment selection dialogue?  I think so - that way we can do this for every experiment if need be
+' Open dialog to get experimental timing and reward parameters. 
+if RecGenTimingRewardDialog%() <> 1 then   'RecGenTimingRewardDialog%() is above
+    LogError("NoState", "RecgenTimingRewardDialog returned something other than 1.");
+    CloseMatlab(matlabOpenSuccess%);
+    halt;
+endif;
+
+
+
+while sessionNotDone% = 1 do
+    
+    'TODO: Write this procedure, make sure it gets everything reset, including RecGen stuff.
+    ClearGlobals();  'Procedure to clear global variables that may have been set last time through
+                     'But don't reset anything from the timing and reward dialogue, obviously.
+    
+    'TODO: Make actual dialog box.  Allow return to timing/reward dialog, allow quit button (just don't 
+    'LogError before quitting if quitting is expected)
+    'Allow RecGenExperimentSelectionDialog to call RecGenTimingRewardDialog via button
+    'The subdialogs here need to generate the trial lists
+    if RecGenExperimentSelectionDialog%() <> 1 then  'RecGenExperimentSelectionDialog%() is above
+        LogError("NoState", "RecgenTimingRewardDialog returned something other than 1.");
+        sessionNotDone% := 0;  'if no experiment is selected, quit out
+        'may want to have multiple options in this if to log different results
+        'TODO: Obviously the QUIT button on RecGenExperimentSelectionDialog needs to change sessionNotDone% to 0
+    endif;
+    
+    if sessionNotDone% = 1 then
+        RunGoNoGoEngine%();  'This is the "meat" function in recgen.s2s
+    endif; 
+    
+    if TDTError% = 1 then
+        sessionNotDone% := 0;  'on TDT error, it's over
+    endif;
+    
+wend;
+
+'And close it all out
+ExptComplete%();
+
+
+'==========================   Script ends here ===============================
 
 
 
@@ -35,29 +179,83 @@ end
 '              [2] = Lever channel
 '              [3] = Text Mark channel. Don't really need to pass this, since its always channel 30. Whatever. 
 '--------------------------------------------------------------------------------
+'This function will likely be deprecated, farmed out, etc.
 
-
-func InitializeExpt%(debug%, wdata%, wxy%, nch%, channels%[])
-    return 1;
-end
-
-
-
-
-'------- InitializeTrials% --------------------------------------------------------
-'
-' Called prior to initiating a set of S1/S2 trials. 
-' Return 1 if all is well, 0 if all trials are done, negative for error. 
-'
-' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
-' All stuff (like loading stimuli) which will be too costly time-wise to do while a 
-' trial is running should be done here. 
-'
-
-func InitializeTrials%()
+func InitializeExpt%(debug%)
     var status% := 1;
+    var i%;
+    var ang;
+    
+    if debug% = 1 then
+        gensoundSetDebug(debug%);  'gensoundSetDebug() is in gensound, all this does is set the value of gensoundDebug% to debug%
+    endif
+    
+    'TODO: we need to make a current dialog here - not sure what parameters need to be set
+    'This is probably one point where severe departure from the SPACE script is necessary.
+    'At the very least we will need to do the following:
+    '1) determine whether to load stimuli from disk or create them on the fly
+    '1a) if loading stimuli, get directory to load from and "load mask"
+    '1b) if creating tone stimuli, be prepared to generate tones within Spike2
+    '1c) if creating AM stimuli, be prepared to generate AM with a Matlab call
+    '    Note that opening of the Matlab window should happen sometime during the
+    '    initialization phase
+    '2) determine how many trials
+    '3) determine how many S1 stimuli per trial
+    '4) define stimuli, including S1/S2 locations and stim params
+    '5) more, daunting stuff!
+    '
+    'The InitializeExpt%() dialog will need to fully specify the trial structure of the experiment in one way
+    'or another, and I'm not sure I understand how to get that done properly.  Jackie's not around, so let me
+    'imagine stuff up. 
+    '
+    'Questions:
+    'Obviously the S1 stimulus is always the same on a given trial - is it always the same on every trial
+    'or does it differ through the experiment?
+    '
+    'Do all the S1 stimuli come out of the same speaker?  Actually, what are the speaker contingencies
+    'for the experiment, period?  How do we control which speaker it comes out of? Is that even in the
+    'RECGEN script or is it expected to be a part of InitializeTrial?  There appears to be a variable
+    'called spcTTSpeakers that is somehow responsible for this.  Have to figure out where it's constructed.
+    'OK, well there's a LoadTrialTypes%() function that loads this info out of a file.  (Is all of this
+    'going to come out of a file?  Didn't seem that way.)  LoadTrialTypes%() is called from SpaceCheckOK%()
+    'which is the function that is called by the dialog I'm working to replace when OK is pressed.
+    'Anyway, so spcTTSpeakers is read from a file.  It is used by recSpeaker% which simply calls tdtPM1Spkon%
+    'which in turn calls sendTDTCommand% which in turn calls SerialWrite.  There are about three layers of
+    'unnecessary here.  But whatever.  It's a command to the PM1 that selects the speaker.
+    'recSpeaker% is called by PlaySound which is called by Trial% which is called in the idle loop for
+    'stateTrialSoundA% and statsTrialSoundB%.  So, you know, nothing too hard to follow there.  It's only
+    '13 lines of comments to just kind of figure out how we determine which speaker to play out of.
+    
+    
+    
+    
+    'InitializeTrial should only need to look up and load/create the stimuli and put them in PlayWave areas.
+    
+    
+    status% := RecGenTrialsDialog%();  'All this is doing right now is assigning rgAMFreq
+    'TODO: Wow, make a real dialog box once we know what to do!
+    PrintLog("RecGenTrialsDialog returned %d\n", status%);
+    if status% > 0 then
+        ' initialize trial list generator and block counter - does not actually create trial lists 
+        tlgInit(rgNTrialTypes%, rgBlockSize%, rgNTrialsPerStim%/rgBlockSize%, rgTrialListMin%, rgTrialListMax%);  'tlgInit() is in triallistgen
+        
+        ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
+        ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
+        ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
+        if is1401present% = 1  then 'don't try to initialize a PlayWaveArea if there's no 1401
+            InitializePlayWaveAreas();  'InitializePlayWaveAreas() is in RECGEN
+        endif
+        
+        
+    endif
     return status%;
+    'return 1;
 end
+
+
+
+
+
 
 
 '------- ExptComplete% --------------------------------------------------------
@@ -66,42 +264,534 @@ end
 ' or user otherwise aborted. 
 ' Close data file(s) if necessary here.
 '
-
-
-
 func ExptComplete%()
+    'TODO: update, simply copied over from SPACE
+    'Not sure exactly what needs to be done here
+'    FilePathSet(data$);
+'    View(rgWindowData%).FileSaveAs(rgOutputRoot$ + ".smr", -1);
+'    FileClose(rgHBak%);
+'    FileClose(rgHBeh%);        
+    
+    'Close Matlab if it has been opened
+    CloseMatlab(matlabOpenSuccess%);
+    
     return 0;
+    
 end
 
 
 
-'----------- Trial%(ttype%) ----------------------------------------------------------------
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' Initiate sound stim for a trial. When ttype% = 0 this trial is an S1 trial, when ttype% = 1  
-' its an S2 trial. Return 0 if all is well, negative if not (script will exit immediately). 
+' RecGenTimingRewardDialog%()
 '
-'--------------------------------------------------------------------------------
-
-func Trial%(ttype%)
-    return 0;
-end
-
-
-
-
-'----------- TrialComplete%(ttype%, success%) -----------------------------------
-'
-' Trial has ended. ttype% same meaning as for Trial%. success% 1=good, 0=bad. 
-' Record text marker, analysis update. 
-' Return value of -1 means an error has occurred, abort. 
-' When ttype%=0, return value of 0 means continue with S1 trials, return value of 1
-' means move on to S2 trial. 
-' When ttype%=1 the return value (unless it is negative) is ignored. 
-' 
-'
-'--------------------------------------------------------------------------------
-
-func TrialComplete%(ttype%, success%)
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func RecGenTimingRewardDialog%()
+    var i%;
     var status% := 0;
+    
+    ' Fetch parameters from registry
+    
+    RecGenTimingRewardDialogGetParams();   'RecGenTimingRewardDialogGetParams() is below
+    
+    ' Generate the dialog
+    
+	DlgCreate("Reclab Timing/Reward Parameters", 25, 10);
+    DlgReal(1, "Min onset delay(s)", 0.0, 5.0);
+    DlgReal(2, "Var onset delay(s)", 0.0, 5.0);
+    DlgReal(3, "Max lvr down time(s)", 0.0, 120.0);
+    DlgReal(4, "Lvr down timeout(s)", 0.0, 120.0);
+    DlgReal(5, "ISI(s)", 0.0, 5.0);
+    DlgReal(6, "Max lvr up time(s)", 0.0, 120.0);
+    DlgReal(7, "Lvr up timeout(s)", 0.0, 120.0);
+    DlgReal(8, "False positive timeout(s)", 0.0, 5.0);
+    DlgCheck(9, "Training reward?");
+    DlgInteger(10, "Training reward size", 5, 500, 0, 0, 10);
+    DlgCheck(11, "Long reward?");
+    DlgInteger(12, "Long reward size", 5, 500, 0, 0, 10);
+    DlgCheck(13, "Debug?");
+    DlgCheck(14, "Check if 1401 is present");
+    
+    ' Show the dialog. 
+    
+	i%:=DlgShow(rgMinDelay, rgVarDelay, rgMaxLvrDownTime, rgLvrDownTimeout, 
+    rgInterStimInterval, rgMaxLvrUpTime, rgLvrUpTimeout, rgFalsePositiveTimeout, 
+    rgTrainingRewardCheck%, rgTrainingRewardSize%, rgLongRewardCheck%, rgLongRewardSize%, 
+    rgDebug%,is1401present%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecGenTimingRewardDialogSaveParams();   'RecGenScriptDialogSaveParams() is below
+        if is1401present% = 0 then
+            LogInfo("User reports no 1401 present.  Running in super-secret testing mode.  Bypassing all 1401 calls.\n");
+        endif
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+	return status%;
+end;
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenTimingRewardDialogSaveParams()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecGenTimingRewardDialogSaveParams()
+	var stmp$;
+	var key$;
+    
+    key$:="Reclab\\Recgen";
+    'These writes are done via a string because floats can't be written to the registry
+    Profile(key$, "MinDelay", str$(rgMinDelay));
+    Profile(key$, "VarDelay", str$(rgVarDelay));
+    Profile(key$, "MaxLvrDownTime", str$(rgMaxLvrDownTime));
+    Profile(key$, "LvrDownTimeout", str$(rgLvrDownTimeout));
+    Profile(key$, "InterStimInterval", str$(rgInterStimInterval));
+    Profile(key$, "MaxLvrUpTime", str$(rgMaxLvrUpTime));
+    Profile(key$, "LvrUpTimeout", str$(rgLvrUpTimeout));
+    Profile(key$, "FalsePositiveTimeout", str$(rgFalsePositiveTimeout));
+    'These writes are done directly because integer write to registry is OK.
+    Profile(key$, "TrainingRewardCheck", rgTrainingRewardCheck%);
+	Profile(key$, "TrainingRewardSize", rgTrainingRewardSize%);
+	Profile(key$, "LongRewardCheck", rgLongRewardCheck%);
+	Profile(key$, "LongRewardSize", rgLongRewardSize%);
+	Profile(key$, "DebugCheck", rgDebug%);
+    
+	return;
+end
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenTimingRewardDialogGetParams()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecGenTimingRewardDialogGetParams()
+	var stmp$;
+	var key$;
+    
+    key$:="Reclab\\Recgen";
+    'These reads are done via a string because the registry cannot hold a float
+    Profile(key$, "MinDelay", str$(rgMinDelay), stmp$);
+    rgMinDelay := val(stmp$);
+    Profile(key$, "VarDelay", str$(rgVarDelay), stmp$);
+    rgVarDelay := val(stmp$);
+    Profile(key$, "MaxLvrDownTime", str$(rgMaxLvrDownTime), stmp$);
+    rgMaxLvrDownTime := val(stmp$);
+    Profile(key$, "LvrDownTimeout", str$(rgLvrDownTimeout), stmp$);
+    rgLvrDownTimeout := val(stmp$);
+    Profile(key$, "InterStimInterval", str$(rgInterStimInterval), stmp$);
+    rgInterStimInterval := val(stmp$);
+    Profile(key$, "MaxLvrUpTime", str$(rgMaxLvrUpTime), stmp$);
+    rgMaxLvrUpTime := val(stmp$);
+    Profile(key$, "LvrUpTimeout", str$(rgLvrUpTimeout), stmp$);
+    rgLvrUpTimeout := val(stmp$);
+    Profile(key$, "FalsePositiveTimeout", str$(rgFalsePositiveTimeout), stmp$);
+    rgFalsePositiveTimeout := val(stmp$);
+    'These reads are done directly because the registry CAN hold an integer
+	Profile(key$, "TrainingRewardCheck", rgTrainingRewardCheck%, rgTrainingRewardCheck%);
+	Profile(key$, "TrainingRewardSize", rgTrainingRewardSize%, rgTrainingRewardSize%);
+	Profile(key$, "LongRewardCheck", rgLongRewardCheck%, rgLongRewardCheck%);
+	Profile(key$, "LongRewardSize", rgLongRewardSize%, rgLongRewardSize%);
+	Profile(key$, "DebugCheck", rgDebug%, rgDebug%);
+	return;
+end
+
+
+
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenTrialsDialog%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func RecGenTrialsDialog%()
+    var i%;
+    var status% := 0;
+    var sFileCount% := 0;
+    var sFileMask$ := "spc*.txt";
+    var pathTemp$;
+    var rgTrialSourceList$[3];
+    rgTrialSourceList$[0] := "AM Noise (Matlab)";
+    rgTrialSourceList$[1] := "N/A Load stimuli from disk";
+    rgTrialSourceList$[2] := "N/A Tone (CED)";
+    
+    ' Fetch parameters from registry
+    
+    RecGenTrialsDialogGetParams();
+    
+    ' Get file list for trial types. If no files are found in stim$ matching the mask, 
+    ' show a message and quit. 
+    'commented out until we know if we're going to read anything here    
+    'FilePathSet(stim$);
+    'sFileCount% := FileList(spcTrialTypesFileList$, -1, sFileMask$);
+    'if sFileCount% = 0 then
+    '    Message("There are no files in dir %s matching the mask %s", stim$, sFileMask$);
+    '    return 0;   ' will look as if user hit Cancel
+    'endif
+    
+    ' Generate the dialog
+    
+    DlgCreate("Skeleton Trials Dialog", 25, 10);
+    DlgReal(1,"AM Frequency of S2 for test (Hz)",0.5,1000);
+    DlgInteger(2,"Number of trial types",1,10);
+    DlgInteger(3,"Block Size",1,10);
+    DlgInteger(4,"Number of trials per stim",1,10);
+    DlgInteger(5,"Trial list min",1,10);
+    DlgList(6,"Trial source",rgTrialSourceList$);
+    'DlgInteger(6,"Trial list max",2,11);  curious, this is a constant
+    
+    'DlgString(spcdlgRoot%, "Output file root|Base name of output file, e.g. a022098a", 32, "a-zA-Z0-9_-");
+    'DlgCheck(spcdlgNoise%, "Noise");
+    'DlgString(spcdlgNoiseDir%, "Noise file dir:", 255, "a-zA-Z0-9_-:/\\.");
+    'DlgString(spcdlgNoiseMask%, "Noise file mask:", 255, "a-zA-Z0-9_-*?.");
+    'DlgCheck(spcdlgTone%, "Tone");
+    'DlgInteger(spcdlgFreq%, "Frequency(Hz)", 1, 100000);
+    'DlgList(spcdlgTTSelection%, "Stim set:", spcTrialTypesFileList$, sFileCount%);
+    'DlgInteger(spcdlgNTrials%, "# trials per stim", 1, 20, 0, 0, 1);
+    'DlgInteger(spcdlgBlockSize%, "block size", 1, 5, 0, 0, 1);
+    
+    
+    
+    DlgButton(1, "OK", RecGenTrialsCheckOK%);  'For skeleton, this really only check to make sure that trialsperstim is a multiple of blocks
+    DlgButton(0, "Cancel");
+    'Currently not using the dialog changed function because it doesn't appear useful
+    'DlgAllow(0, 0, RecGenTrialsDlgChanged%);
+    
+    ' Show the dialog. 
+    
+    i%:=DlgShow(rgAMFreq,rgNTrialTypes%,rgBlockSize%,rgNTrialsPerStim%,rgTrialListMin%,rgTrialSourceIndex%);',rgTrialListMax%);  'just putting up a single variable for now, skeleton version to test Matlab calls
+    
+	'i%:=DlgShow(spcOutputRoot$, spcNoise%, spcNoiseDir$, spcNoiseMask$, spcTone%, 
+    '            spcFreq%, spcTrialTypesFileSelection%, spcNTrialsPerStim%, spcBlocksize%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+    
+	if i% = 1 then
+        RecGenTrialsDialogSaveParams();
+        if rgTrialSourceIndex% = 0 then
+            status% := 1;
+            'Before opening a Matlab instantiation, put up a text file indicating expected delay
+            var textView%;
+            textView% := FileNew(1,1);  'open a text file
+            view(textView%).Print("Opening a Matlab instantiation\nThis may take up to 30 seconds\nThis box will close when complete");
+            view(textView%).Window(35,40,65,60);  'resize the window
+            view(textView%).WindowTitle$("Please Wait"); 
+            yield(0.05);  'if we don't yield, there's no screen refresh and only the window title is visible (non-resized window is also visible behind resized one!) 
+            
+            'And the close the text file automatically
+            view(textView%);
+            FileClose(0,-1);
+
+        else
+            LogError("","The selected option - " + rgTrialSourceList$[rgTrialSourceIndex%] + " - is not implemented!");
+            status% := 0;
+        endif
+    else
+        status% := 0;
+    endif
+    
+    ' If debug was set, then turn on debugging for supporting scripts
+    '    if spcDebug% = 1 then
+    '        gensoundSetDebug(spcDebug%);
+    '    endif
+    
+	return status%;
+end;
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RenGenTrialsDlgChanged%(item%)
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'func RenGenTrialsDlgChanged%(item%)
+'    var status% := 1;
+'    var value%;
+'
+'    docase 
+'    case item% = spcdlgNoise% then
+'    
+'        ' Get value, toggle it, and set the toggled value in Tone checkbox. 
+'    
+'        value% := DlgValue(spcdlgNoise%);
+'        DlgValue(spcdlgTone%, 1-value%);
+'        
+'    case item% = spcdlgTone% then
+'
+'        ' Get value, toggle it, and set the toggled value in Noise checkbox. 
+'    
+'        value% := DlgValue(spcdlgTone%);
+'        DlgValue(spcdlgNoise%, 1-value%);
+'    
+'    endcase
+'
+'    ' enable or disable frequency box as needed
+'    DlgEnable(DlgValue(spcdlgTone%), spcdlgFreq%);
+'    DlgEnable(DlgValue(spcdlgNoise%), spcdlgNoiseDir%);
+'    DlgEnable(DlgValue(spcdlgNoise%), spcdlgNoiseMask%);
+'
+'    return status%
+'end
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenTrialsDialogSaveParams()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecGenTrialsDialogSaveParams()
+	var stmp$;
+	var key$;
+    
+    key$:="Reclab\\TrialParam";
+    Profile(key$, "TempAMFreq", str$(rgAMFreq));  'string because the registry can't hold a float
+	'Profile(key$, "OutputRoot", spcOutputRoot$);
+	'Profile(key$, "NoiseCheck", spcNoise%);
+	'Profile(key$, "NoiseDir", spcNoiseDir$);
+	'Profile(key$, "NoiseMask", spcNoiseMask$);
+	'Profile(key$, "ToneCheck", spcTone%);
+	'Profile(key$, "ToneFreq", spcFreq%);
+    'Profile(key$, "TrialTypesFileSelection", spcTrialTypesFileSelection%);
+	'Profile(key$, "NTrialsPerStim", spcNTrialsPerStim%);
+	'Profile(key$, "StimBlockSize", spcBlockSize%);
+	return;
+end
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenTrialsDialogGetParams()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecGenTrialsDialogGetParams()
+	var stmp$;
+	var key$;
+    
+    key$:="Reclab\\TrialParam";
+    Profile(key$, "TempAMFreq", str$(rgAMFreq), stmp$);  'Again, hoops because registry can't hold a float
+    rgAMFreq := val(stmp$);
+	'Profile(key$, "OutputRoot", spcOutputRoot$, spcOutputRoot$);
+	'Profile(key$, "NoiseCheck", spcNoise%, spcNoise%);
+	'Profile(key$, "NoiseDir", spcNoiseDir$, spcNoiseDir$);
+	'Profile(key$, "NoiseMask", spcNoiseMask$, spcNoiseMask$);
+	'Profile(key$, "ToneCheck", spcTone%, spcTone%);
+	'Profile(key$, "ToneFreq", spcFreq%, spcFreq%);
+    'Profile(key$, "TrialTypesFileSelection", spcTrialTypesFileSelection%, spcTrialTypesFileSelection%);
+	'Profile(key$, "NTrialsPerStim", spcNTrialsPerStim%, spcNTrialsPerStim%);
+	'Profile(key$, "StimBlockSize", spcBlockSize%, spcBlockSize%);
+	return;
+end
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenTrialsCheckOK%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func RecGenTrialsCheckOK%()
+    var status% := 0;
+    var o$;
+    var dummy$;
+    var i1%;
+    var i2%;
+    
+    ' Verify that output root is not null
+    ' Remove for skeleton
+    'o$ := DlgValue$(spcdlgRoot%);
+    'if len(o$) = 0 then
+    '    Message("Please enter an output root.");
+    '    status% := 1;
+    'endif
+    
+    ' See if output file(s) already exist. 
+    ' No output file for skeleton
+    'FilePathSet(data$);
+    'if FileList(dummy$, -1, o$ + ".*")>0 then
+    '    Message("Data files with this name (" + o$ + ") already exist.\nTry another name.");
+    '    status% := 1;
+    'endif
+    
+    ' Open ecode and bak file
+    ' Don't do this for the skeleton either, may not do it ever
+    'dummy$ := data$ + "\\" + o$ + ".beh";
+    'PrintLog("Opening ecode file %s\n", dummy$);
+    'spcHBeh% := FileOpen(dummy$, 8, 1);
+    'Print("trial\tpos\tS1\tS2\tatten\tresp\trxtime\t freq is %d\n", spcFreq%);
+    'dummy$ := data$ + "\\" + o$ + ".bak";
+    'PrintLog("Opening bak file %s\n", dummy$);
+    'spcHBak% := FileOpen(dummy$, 8, 1);
+    
+    
+    ' Check that rgNTrialsPerStim% is a multiple of rgBlockSize%
+    i1% := DlgValue(rgNTrialsPerStim%);
+    i2% := DlgValue(rgBlockSize%);
+    if i1% mod i2% <> 0 then
+        Message("Number of trials per stimulus must be a multiple of block size!");
+        status% := 1;
+    endif
+    
+    ' Now open and load trial types file.
+    ' No trial types file to load, for skeleton - will we even do this?
+    'i1% := DlgValue(spcdlgTTSelection%);
+    'spcTrialTypesFile$ := spcTrialTypesFileList$[i1%];
+    'FilePathSet(stim$);    
+    'if LoadTrialTypes%(spcTrialTypesFile$) <= 0 then
+    '    Message("Cannot load trial types file " + spcTrialTypesFile$);
+    '    status% := 1;
+    'endif
+    'PrintLog("Loaded %d trial types from %s\n", spcNTrialTypes%, spcTrialTypesFile$);
+    
+    
+    ' If noise is selected, init the random noise selection and ensure there are enough files
+    ' For skeleton, we're definitely going to be using noise, and we're going to generate it via 
+    ' Matlab so no worries there.
+    'if DlgValue(spcdlgNoise%) = 1 then
+    '    var ntemp%;
+    '    spcNoiseDir$ := DlgValue$(spcdlgNoiseDir%);
+    '    spcNoiseMask$ := DlgValue$(spcdlgNoiseMask%);
+    '    gensoundSetDebug(1);
+    '    ntemp% := gensoundInitRandomList%(spcNoiseDir$, spcNoiseMask$);
+    '    if ntemp% = 0 then
+    '        Message("No noise files found in dir " + spcNoiseDir$ + " using mask " + spcNoiseMask$);
+    '        status% := 1;
+    '    else
+    '        if ntemp% < (spcNTrialsPerStim%*spcNTrialTypes%) then
+    '            if Query("Found just " + str$(ntemp%) + " noise files in dir " + spcNoiseDir$ + " using mask " + 
+    '                    spcNoiseMask$ + ". With " + str$(spcNTrialsPerStim%) + " trials per stim, and with " + 
+    '                    str$(spcNTrialTypes%) + " trial types loaded from " + spcTrialTypesFile$ + " there will be repeats. Continue?") = 0 then
+    '                status% := 1;
+    '            endif
+    '        endif
+    '    endif
+    'endif
+    
     return status%;
 end
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' ClearGlobals()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'Used to reset global variables when returning from PresentStimuli%()
+proc ClearGlobals()
+    
+'TODO: Figure out which variables to reset, reset them    
+    
+end;
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenExperimentSelectionDialog%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func RecGenExperimentSelectionDialog%()
+    
+    'TODO: write it, plus sub-dialogs  
+    
+    var i%;
+    var status% := 0;
+    
+    ' Fetch parameters from registry    
+    RecGenExpSelecDialogGetParams();   'RecExpSelecDialogGetParams() is below
+    
+    'FileNumber is saved as a string because it's usually used that way, but dialogboxed as an integer to prevent non-numeric characters 
+    rgFileNum% := val(rgFileNum$);  'Convert saved string to integer
+    if NewExp% = 1 then
+        rgFileNum% += 1;  'And increment it, because it's the next file!
+        NewExp% := 0;
+    endif;
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Reclab Experiment Selection Dialog", 25, 10);
+    DlgInteger(1, "File Number", 0, 100000);
+    DlgString(2, "File ID String", 10);
+    
+    'And more!  Obviously buttons for each exp. type
+    
+    ' Show the dialog. 
+    i%:=DlgShow(rgFileNum%, rgFileID$);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        rgFileNum$ := str$(rgFileNum%);  'Stringify it!
+        RecGenExpSelecDialogSaveParams();   'RecExpSelecDialogSaveParams() is below
+        if is1401present% = 0 then
+            LogInfo("User reports no 1401 present.  Running in super-secret testing mode.  Bypassing all 1401 calls.\n");
+        endif
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+	return status%;
+   
+end;
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenExpSelecDialogGetParams()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecGenExpSelecDialogGetParams()
+	var stmp$;
+	var key$;
+    
+    key$:="Reclab\\ExpSelecParam";
+    Profile(key$, "rgFileID", rgFileID$, rgFileID$);
+    Profile(key$, "rgFileNum", rgFileNum$, rgFileNum$);
+    'there ought to be more eventually
+    
+	return;
+end
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' RecGenExpSelecDialogSaveParams()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecGenExpSelecDialogSaveParams()
+	var stmp$;
+	var key$;
+    
+    key$:="Reclab\\ExpSelecParam";
+    Profile(key$, "rgFileID", rgFileID$);
+    Profile(key$, "rgFileNum", rgFileNum$);
+    'there ought to be more eventually
+    
+	return;
+end
+
+
