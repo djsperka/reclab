@@ -1,0 +1,304 @@
+
+'---------- OpenMatlab%() ---------------------------------------------------------------------
+'
+'Opens an invisible Matlab window that can only be used by Spike2.  Checks on the success
+'of opening a Matlab window, returns 0 if successful, -1 for failure, other values unexpected.
+'
+'----------------------------------------------------------------------------------------------
+
+func OpenMatlab%()
+    var openOK% := -1;  'assume failure (but not because of pessimism!)
+    
+    'Open an invisible Matlab window, and make it a Spike2-only window
+    openOK% := MatLabOpen(1);  
+    
+    'Report results to log window
+    if openOK% = 0 then
+        printlog("Success in opening Matlab!\n");
+    else
+        printlog("Failure in opening Matlab!\n");
+    endif;
+    
+    'Return results
+    return openOK%
+    
+end
+
+
+'---------- CloseMatlab() -------------------------------------------------------------------------
+'
+'Closes an open Matlab window.  Requires argument returned from OpenMatlab%() indicating success/
+'failure of opening.  Will not attempt to close a Matlab window if there was no success in opening
+'one.  Documentation on MatLabClose is essentially non-existent, but the function does not return
+'any value.  There seems to be no way of verifying that it closed the Matlab or of knowing what
+'will happen if you attempt to close a Matlab window that is not open.
+'
+'--------------------------------------------------------------------------------------------------
+
+func CloseMatlab(openOK%)
+    if openOK% = 0 then
+        MatLabClose();
+        printlog("Sent command to close Spike2's Matlab instantiation!\n");
+    endif;
+end
+
+
+'---------- EvalMatlabStatement%(statement$) ------------------------------------------------------
+'
+'Evaluates a string statement in the workspace of the open Matlab window.  You can build any legal
+'Matlab statement into a string, including creation and assignment of variables.  For instance, if
+'statement$ is "myvar = 7*2;" then a variable called "myvar" will be created in the Matlab workspace
+'with a value of 14.  Prints to the log file on success or failure.  Prints Matlab's error output
+'to the log file on failure.  Returns the value of evalOK%.
+
+func EvalMatlabStatement%(statement$)
+    
+    var evalOK% := -1;
+    var err$;
+    
+    evalOK% := MatLabEval(statement$,err$);
+    
+    if evalOK% = 0 then
+        printlog("Success in passing command to Matlab!\n");
+    else
+        printlog("Failure in passing command to Matlab!\n");
+        printlog("Matlab response is '" + err$ + "'\n");
+    endif
+    
+    return evalOK%;    
+    
+end
+
+
+
+'---------- PutMatlabValueFloat%(matVarName$,floatToPut) --------------------------------------
+'
+'Puts a floating point variable into Matlab.  Places the value in floatToPut into matVarName$
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func PutMatlabValueFloat%(matVarName$,floatToPut)
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabPut(matVarName$,floatToPut); 
+    if getOK% = -1 then
+        printlog("Failure in placing variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- PutMatlabValueFloatArray%(matVarName$,floatToPut) ---------------------------------
+'
+'Puts a floating point array variable into Matlab.  Places the values in floatToPut[] into 
+'matVarName$
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func PutMatlabValueFloatArray%(matVarName$,floatToPut[])
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabPut(matVarName$,floatToPut[]); 
+    if getOK% = -1 then
+        printlog("Failure in placing variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- PutMatlabValueInt%(matVarName$,intToPut%) -----------------------------------------
+'
+'Puts an int variable into Matlab.  Places the value in intToPut% into matVarName$
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func PutMatlabValueInt%(matVarName$,intToPut%)
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabPut(matVarName$,intToPut%); 
+    if getOK% = -1 then
+        printlog("Failure in placing variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- PutMatlabValueIntArray%(matVarName$,intToPut%[]) ----------------------------------
+'
+'Puts an int variable array into Matlab.  Places the values in intToPut%[] into matVarName$
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func PutMatlabValueIntArray%(matVarName$,intToPut%[])
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabPut(matVarName$,intToPut%[]); 
+    if getOK% = -1 then
+        printlog("Failure in placing variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- PutMatlabValueStr%(matVarName$,strToPut) ------------------------------------------
+'
+'Puts a string variable into Matlab.  Places the value(s) in strToPut$ into matVarName$
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func PutMatlabValueStr%(matVarName$,strToPut$)
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabPut(matVarName$,strToPut$); 
+    if getOK% = -1 then
+        printlog("Failure in placing variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- GetMatlabValueFloat%(matVarName$,holdResult) --------------------------------------
+'
+'Retrieves a floating point variable from Matlab.  holdResult must be the same size as the
+'variable in matVarName$ or there will be an error.  Places the result in holdResult and
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func GetMatlabValueFloat%(matVarName$,holdResult)
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabGet(matVarName$,holdResult); 
+    if getOK% = -1 then
+        printlog("Failure in retreiving variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- GetMatlabValueFloatArray%(matVarName$,holdResult[]) -------------------------------
+'
+'Retrieves a floating point variable from Matlab.  holdResult[] must be the same size as the
+'variable in matVarName$ or there will be an error.  Places the result in holdResult[] and
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func GetMatlabValueFloatArray%(matVarName$,holdResult[])
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabGet(matVarName$,holdResult[]); 
+    if getOK% = -1 then
+        printlog("Failure in retreiving variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+
+'---------- GetMatlabValueInt%(matVarName$,holdResult%) ---------------------------------------
+'
+'Retrieves an int variable from Matlab.  holdResult% must be the same size as the
+'variable in matVarName$ or there will be an error.  Places the result in holdResult% and
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func GetMatlabValueInt%(matVarName$,holdResult%)
+    
+    var getOK% := -1;
+    var bruteForce$ := "23816asjkbc37389f";  'Nobody named a variable this, I promise
+    
+    'use brute force method to ensure INT64 data type, there's not much point to checking, just do it
+    EvalMatlabStatement%(matVarName$ + bruteForce$ + " = int64(" + matVarName$ + ");");
+    
+    getOK% := MatLabGet(matVarName$+bruteForce$,holdResult%); 
+    if getOK% = -1 then
+        printlog("Failure in retreiving variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- GetMatlabValueIntArray%(matVarName$,holdResult%[]) --------------------------------
+'
+'Retrieves an int variable array from Matlab.  holdResult%[] must be the same size as the
+'variable in matVarName$ or there will be an error.  Places the result in holdResult%[] and
+'returns 0 if success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func GetMatlabValueIntArray%(matVarName$,holdResult%[])
+    
+    var getOK% := -1;
+    var bruteForce$ := "23816asjkbc98373f";  'Nobody named a variable this, I promise
+    
+    'use brute force method to ensure INT64 data type, there's not much point to checking, just do it
+    EvalMatlabStatement%(matVarName$ + bruteForce$ + " = int64(" + matVarName$ + ");");
+    
+    getOK% := MatLabGet(matVarName$+bruteForce$,holdResult%[]); 
+    if getOK% = -1 then
+        printlog("Failure in retreiving variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end
+
+
+
+'---------- GetMatlabValueString%(matVarName$,holdResult$) ------------------------------------
+'
+'Retrieves a string variable from Matlab. Places the result in holdResult$ and returns 0 if 
+'success, -1 if failure.
+'
+'----------------------------------------------------------------------------------------------
+
+func GetMatlabValueString%(matVarName$,holdResult$)
+    
+    var getOK% := -1;
+    
+    getOK% := MatLabGet(matVarName$,holdResult$); 
+    if getOK% = -1 then
+        printlog("Failure in retreiving variable " + matVarName$ + "!\n");
+    endif
+    
+    return getOK%;
+    
+end

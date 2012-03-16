@@ -1,0 +1,120 @@
+' $Id$
+
+'**** Spike2Util/LogUtilities
+' FUNCTION
+' Logging functions for Spike2 scripts. 
+'****
+
+
+'var logLevel% := 0;         ' run level. Only error, warn messages are written. 
+var logLevel% := 1;         ' debug level. All messages are written. 
+
+
+'****f* Spike2Util/LogUtilities/LogInit
+' NAME
+' LogInit(ilevel%)
+' SYNOPSIS
+' Set the debug level. The debug level controls what type of messages are written
+' to the log window. 
+' INPUTS
+' ilevel% : If level is 0, then LogInfo and LogStatus messages are not written. 
+'           If level is greater than 0 then all messages are written. 
+'           If level is set to a negative value, then no log messages are written. 
+' NOTES
+' The log level controls the verbosity of the log messages - the higher the log level the more verbose. 
+' When writing scripts and using the logging functions, think of status and info messages as verbose -- 
+' you can prevent them from being written to the log by setting the log level to 0. Prevent ALL log messages,
+' including warning and error messages, by setting the log level to -1.
+'****
+
+proc LogInit(ilevel%)
+    logLevel% := ilevel%;
+    return;
+end
+
+
+'****f* Spike2Util/LogUtilities/LogStatus
+' NAME
+' LogStatus(label$, msg$)
+' SYNOPSIS
+' Writes a status message to the log. The label is prefixed to the line written, 
+' and the message follows it. 
+' INPUTS
+' label$ : label for the line in the log file. If omitted this proc behaves like LogInfo.
+' msg$ : message to be written
+'****
+
+proc LogStatus(stateName$, msg$)
+    if logLevel% > 0 then
+        if stateName$ = "" then
+            LogInfo(msg$);
+        else
+            PrintLog(stateName$ + "  " + msg$ + "\n");
+        endif
+    endif
+end
+
+'****f* Spike2Util/LogUtilities/LogError
+' NAME
+' LogError(label$, msg$)
+' SYNOPSIS
+' Writes an error message to the log. The label is prefixed to the line written, 
+' and the message follows it. 
+' INPUTS
+' label$ : label for the line in the log file. If omitted this proc behaves like LogInfo.
+' msg$ : message to be written
+'****
+
+proc LogError(stateName$, msg$)
+    if logLevel% > -1 then 
+        PrintLog("ERROR===============================================\n");
+        if stateName$ = "" then
+            PrintLog(msg$ + "\n");
+        else
+            PrintLog(stateName$ + " " + msg$ + "\n");
+        endif
+        PrintLog("====================================================\n");
+    endif
+end
+
+
+'****f* Spike2Util/LogUtilities/LogWarn
+' NAME
+' LogWarn(label$, msg$)
+' SYNOPSIS
+' Writes a warning message to the log. The label is prefixed to the line written, 
+' and the message follows it. 
+' INPUTS
+' label$ : label for the line in the log file. If omitted this proc behaves like LogInfo.
+' msg$ : message to be written
+'****
+
+proc LogWarn(stateName$, msg$)
+	if logLevel% > -1 then
+		if stateName$ = "" then
+			PrintLog("WARN " + msg$ + "\n");
+		else
+			PrintLog("WARN S:    " + stateName$ + " " + msg$ + "\n");
+		endif
+	endif
+    return;
+end
+
+
+'****f* Spike2Util/LogUtilities/LogInfo
+' NAME
+' LogInfo(msg$)
+' SYNOPSIS
+' Writes an informational message to the log.
+' INPUTS
+' msg$ : the message to be written
+'****
+
+proc LogInfo(msg$)
+    if logLevel% > 1 then 
+        return;
+    else 
+        PrintLog("INFO " + msg$ + "\n");
+    endif
+    return;
+end

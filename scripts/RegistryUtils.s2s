@@ -1,0 +1,66 @@
+'
+'
+'===== Set(Float, Int, String)RegistryValue =====
+
+' Sets values in registry for given key/name pairs. These functions are just
+' simple wrappers around calls to Spike2's Profile function, and as such don't 
+' make things much simpler. Made as companions to the corresponding 
+' Get(Float, Int, String)RegistryValue functions. 
+
+
+proc SetFloatRegistryValue(key$, name$, value)
+    Profile(key$, name$, str$(value));
+    return;
+end;
+
+proc SetIntRegistryValue(key$, name$, value%)
+    Profile(key$, name$, value%);
+    return;
+end
+
+proc SetStringRegistryValue(key$, name$, value$)
+    Profile(key$, name$, value$);
+    return;
+end
+
+'===== End Get(Float, Int, String)RegistryValue =====
+'
+'
+
+
+
+
+'
+'
+'===== Get(Float, Int, String)RegistryValue =====
+
+' Gets registry values for the key/name pairs. If the key/name pair do not 
+' exist, an error message is printed to the log window and a dummy value is 
+' returned. 
+
+func GetFloatRegistryValue(key$, name$, defaultValue)
+    var stmp$;
+    var f;
+    var dummy$;
+    dummy$ := str$(defaultValue);
+    Profile(key$, name$, dummy$, stmp$);
+    f := val(stmp$);
+    return f;
+end
+
+func GetIntRegistryValue%(key$, name$, defaultValue%)
+    var i%;
+    Profile(key$, name$, defaultValue%, i%);
+    return i%;
+end
+
+func GetStringRegistryValue$(key$, name$, defaultValue$)
+    var stmp$;
+    Profile(key$, name$, defaultValue$, stmp$);
+    return stmp$;
+end
+
+
+'===== End Get(Float, Int, String)RegistryValue =====
+'
+'

@@ -1,0 +1,1903 @@
+'RecRoom - the outer shell script which allows you to run the entire gambit of Recanzone lab CED experiments
+'Barring a fatal error, once this script is started the user will be redirected to the experiment selection dialog
+'after every experiment is complete; spike shapes definitions will carry across experiments; ultimate closure of
+'this script will be done from the experiment selection dialog
+
+
+
+'
+'
+'Begin #include Files
+'================================================================================================
+
+' Unless noted #include files do not execute code and are not order-dependent
+#include "LogUtilities.s2s"  'for non-time-specific logging, time-specific logging included in RECGEN
+#include "matlab.s2s"
+#include "recfuncs.s2s"
+#include "RegistryUtils.s2s"
+
+'================================================================================================
+'End #include Files
+'
+'
+
+
+'
+'
+'Begin Global Variables
+'================================================================================================
+
+'Variables which will be used throughout the RecRoom Suite
+
+
+'Debugging variables
+var recMatlabIsPresent%:=1;         'Is Matlab present? Default to 1 (yes), default will apply after debug period
+var recTDTIsPresent%:=1;            'Is TDT present? Default to 1 (yes), default will apply after debug period
+var recCEDIsPresent%:=1;            'Is CED 1401 present? Default to 1 (yes), default will apply after debug period
+var matlabOpenSuccess%;             'Was Matlab opened successfully?
+var dummyVar%;                      'For placeholder GUIs, just lets me have a checkbox setting SOMETHING
+
+
+'Dialog button variables and other dialog variables
+var recExpSearchButton%:=2;         'Arbitrary button value for the Search experiment
+var recExpFRAButton%:=3;            'Etc.
+var recExpAMDiscButton%:=4;
+var recExpCueingButton%:=5;
+var recExpTimingRewardButton%:=6;
+var recAMDiscAddExpButton%:=7;
+var recAMDiscDeleteExpButton%:=8;
+var recSelectStimFileButton%:=9;
+var recSelectTrialsFileButton%:=10;
+
+'Selection Dialog variables
+var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
+
+
+'Search Dialog variables
+var recSearchStimType%;             'Integer index to experiment selection list
+var recSearchToneFreq;              'Frequency of tone
+var recSearchBPLowerLim;            'Lower frequency limit of bandpass noise
+var recSearcBPUpperLim;             'Upper frequency limit of bandpass noise
+var recSearchToneSweepRepeats%;     'Number of repeats of tone sweeps
+var recSearchToneSweepLowLim;       'Lower frequency limit of tone sweeps
+var recSearchToneSweepUpperLim;     'Upper frequency limit of tone sweeps
+var recSearchToneSweepOctaveStep;   'Octave step of tone sweep
+var recSearchS1Speaker%;            'Speaker on which S1 plays, transferred to recS1Speaker% if Search is selected
+var recSearchS2Speaker%;            'Speaker on which S2 plays, transferred to recS2Speaker% if Search is selected
+var recSearchMinS1%;                'Minimum number of S1s, transferred to recMinS1% if Search is selected
+var recSearchVarS1%;                'Variable number of S2s, transferred to recVarS1% if Search is selected
+var recSearchPropCatch;             'Proportion of catch trials, transferred to recPropCatch if Search is selected
+var recSearchdBLevel;               'Set dB level, transferred to recdBLevel if Search is selected
+var recSearchActive%;               'Is experiment active or passive, transferred to recActive% if Search is selected
+var recSearchFixLED%;               'Use fixation LED, transferred to recFixLED% if Search is selected
+
+
+'FRA/Rate-Level/Space Dialog variables
+var recFRAS1Speaker%;               'Preferred speaker (S1 stimulus location)
+var recRateLeveldBLow;              'Lower bound of rate-level curve
+var recRateLeveldBHigh;             'Higher bound of rate-level curve
+var recFRATonedBLow;                'Lower dB bound of FRA
+var recFRATonedBHigh;               'Higher dB bound of FRA
+var recFRAToneFreqLow;              'Lower frequency bound of FRA
+var recFRAToneFreqHigh;             'Higher frequency bound of FRA
+var recFRAS2dBLevel;                'dB level of S2 stimuli (space curve), should match a level in the Rate-Level Curve
+const recRateLeveldBNSteps%:=10;    'Number of dB steps in rate-level curve
+const recFRAdBNSteps%:=10;          'Number of dB steps in FRA curve
+const recFRAFreqNSteps%:=45;        'Number of frequency steps in FRA curve
+var recRateLeveldBList[recRateLeveldBNSteps%];       'List of dB steps in rate-level curve
+var recFRAdBList[recFRAdBNSteps%];                   'List of dB steps in FRA curve
+var recFRAFreqList[recFRAFreqNSteps%];               'List of frequency steps in FRA curve
+var recRLList1$;                    'Text string, displays selected values
+var recRLList2$;                    'Etc.
+var recFRAdBList1$;
+var recFRAdBList2$;
+var recFRAFreqList1$;
+var recFRAFreqList2$;
+var recFRAFreqList3$;
+var recFRAFreqList4$;
+var recFRAFreqList5$;
+var recFRAFreqList6$;
+var recRLList1%;                    'Dialog item #, allows update of text
+var recRLList2%;                    'Etc.
+var recFRAdBList1%;
+var recFRAdBList2%;
+var recFRAFreqList1%;
+var recFRAFreqList2%;
+var recFRAFreqList3%;
+var recFRAFreqList4%;
+var recFRAFreqList5%;
+var recFRAFreqList6%;
+
+
+'AM Discrimination Dialog variables
+var recAMDiscS1Speaker%;            'Speaker on which S1 plays, transferred to recS1Speaker% if Search is selected
+var recAMDiscMinS1%;                'Minimum number of S1s, transferred to recMinS1% if Search is selected
+var recAMDiscVarS1%;                'Variable number of S2s, transferred to recVarS1% if Search is selected
+var recAMDiscPropCatch;             'Proportion of catch trials, transferred to recPropCatch if Search is selected
+var recAMDiscdBLevel;               'Set dB level, transferred to recdBLevel if Search is selected
+var recAMDiscRepeatsPerStim%;       'Number of repeats for each stimulus defined in the trials file
+var recAMDiscMatGenStim%;           'If 1, generate stimuli with matlab, if 0 read from disk
+var recAMDiscText1%;                'Allows enable/disable (= black/grey) of text item 1
+var recAMDiscText2%;                'Allows enable/disable (= black/grey) of text item 2
+var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
+var recSelectedTrialsFile$;         'Trials file selected in add/delete
+const recAMDiscNumExps% := 20;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
+var recAMDiscExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
+var recAMDiscStimcalNameLoad$[recAMDiscNumExps%];   'Stim/Cal file names, loading files
+var recAMDiscTrialsNameLoad$[recAMDiscNumExps%];    'Trials file names, loading files
+var recAMDiscExpNameGen$[recAMDiscNumExps%];       'Experiment names, generating stims
+var recAMDiscStimcalNameGen$[recAMDiscNumExps%];   'Stim file names, generating stims
+var recAMDiscTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generating stims
+
+
+'Experiment variables
+var recMonkPrefix$;                 'String to hold monkey prefix, used in naming files 
+var recNElectrodes%;                'Number of electrodes in use, determines number of channels recorded
+var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
+var recReadyToQuit%;                'Set this variable to 1 to escape the experiment loop
+var recdBLevel;                     'Set dB level
+var recActive%;                     'Is experiment active or passive
+var recFixLED%;                     'Use fixation LED?
+
+'Trial list variables
+var recMinS1%;                      'Minimum number of S1s
+var recVarS1%;                      'Variable number of S1s
+var recPropCatch;                   'Proportion of catch trials
+
+'Speaker variables
+var recS1Speaker%;                  'Speaker on which S1 plays
+var recS2Speaker%;                  'Speaker on which S2 plays
+
+'Timing Parameters
+var recMinOnsetDelay;               'Minimum time between monkey's lever press and stimulus onset, seconds
+var recVarOnsetDelay;               'Variable time added to recMinOnsetDelay, seconds
+var recISI;                         'Interstimulus interval, seconds
+var recTrialInitWindow;             'Allowable time for monkey to initiate trial before TO, seconds
+var recResponseWindow;              'Allowable time for monkey to respond to target, seconds
+
+'Time-Outs
+var recLazyMonkeyTO;                'Duration of time-out for not working, seconds
+var recMissTO;                      'Duration of time-out for miss, seconds
+var recFalseAlarmTO;                'Duration of time-out for fale alarms, seconds
+
+'Reward durations
+var recTrainingRewardDur;           'Duration of training reward, seconds
+var recHitRewardDur;                'Duration of hit reward, seconds
+var recCRRewardDur;                 'Duration of correct rejection reward, seconds
+var recMaxHitRewardDur;             'Max duration of hit reward, seconds
+var recMaxCRRewardDur;              'Max duration of CR reward, seconds
+var recHitRewardInc;                'Reward increment per hit, seconds (both hit and CR rewards, will stop at max, will reset on miss/FA)
+var recS1RewardInc;                 'Reward increment per S1 stimulus, seconds (additional reward on each trial per S1)
+
+'================================================================================================
+'End Global Variables
+'
+'
+
+
+
+
+
+'
+'
+'Begin Code Execution
+'================================================================================================
+
+
+'Run initial dialog to determine presence of Matlab/TDT/1401
+'This dialog will be disabled once testing is complete
+if RecDebugDialog%() <> 1 then   
+    LogError("NoState", "RecDebugDialog% was cancelled!");
+    halt;
+endif;
+
+
+'Open a Matlab instantiation
+if recMatlabIsPresent% = 1 then 
+    matlabOpenSuccess% := OpenMatlab%();
+    if matlabOpenSuccess% < 0 then
+        LogInfo("Open Matlab FAILED!");
+        halt;
+    endif;
+else
+    LogInfo("Client is in testing mode. Bypassing Matlab initialization.");
+endif
+
+
+'Initialize TDT
+if recTDTIsPresent% = 1 then 
+    if RecInitTDT%() < 0 then  'RecInitTDT%() is in recfuncs
+        LogInfo("Init TDT FAILED!");
+        CloseMatlab(matlabOpenSuccess%);  'close Matlab if it is open and we are quitting
+        halt;
+    endif
+else
+    LogInfo("Client is in testing mode. Bypassing TDT initialization.");
+endif
+
+
+'Note absence of CED 1401 if necessary
+if recCEDIsPresent% = 0 then
+    LogInfo("Client is in testing mode. CED 1401 is not present.");
+endif
+
+
+'Open experiment selection dialog, and run the experiment
+while recReadyToQuit% = 0 do   
+    if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
+        message("Nothing happens yet!|I GUESS YOU WERE FOOLED!");  'placeholder
+        'Run experiment-specific trial list generation
+            'Not yet implemented
+        
+        'Run presentation engine if CED is present
+            'Not yet implemented
+        
+        'Upon completion of engine, re-open experiment selection dialog (unless TDT error has occurred)
+        'but on TDT error set recReadyToQuit% to 1
+        'I don't think there's a lot of clean-up for the TDT.  Matlab clean-up is below, before the Halt
+        
+    else
+        recReadyToQuit% := 1;  'If "Quit" is pressed on Experiment Selection dialog, then quit! 
+    endif;
+wend;
+
+'Now quit
+CloseMatlab(matlabOpenSuccess%);  'close Matlab if it is open and we are quitting
+halt;
+
+'================================================================================================
+'End Code Execution
+'
+'
+
+
+
+
+
+
+
+'
+'
+'Local subfunctions
+'================================================================================================
+
+
+
+
+'
+'
+'===== RecDebugDialog =====
+
+'A dialog used during debugging which allows use to variously "shut off" Matlab/TDT/CED capabilities
+
+func RecDebugDialog%()
+    
+    var i%;
+    var status% := 0;
+    
+    ' Fetch parameters from registry    
+    RecDebugGetParams();   'RecDebugGetParams() is below    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Debug Dialog",0,0,25,5);
+    DlgCheck(1, "Matlab is present");
+    DlgCheck(2, "TDT is present");
+    DlgCheck(3, "CED 1401 is present");
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecDebugSaveParams();   'ReDebugSaveParams() is below
+        if recMatlabIsPresent% = 0 then
+            LogInfo("User reports no Matlab present.  Running in testing mode.  Bypassing all Matlab calls.");
+        endif
+        if recTDTIsPresent% = 0 then
+            LogInfo("User reports no TDT present.  Running in testing mode.  Bypassing all TDT calls.");
+        endif
+        if recCEDIsPresent% = 0 then
+            LogInfo("User reports no 1401 present.  Running in testing mode.  Bypassing all 1401 calls.");
+        endif
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecDebugDialog =====
+'
+'
+
+
+
+'
+'
+'===== RecDebugGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecDebugGetParams()
+	var key$;
+    key$:="Reclab\\DebugParam";
+    
+    recMatlabIsPresent% := GetIntRegistryValue%(key$, "MatlabIsPresent", recMatlabIsPresent%);
+    recTDTIsPresent% := GetIntRegistryValue%(key$, "TDTIsPresent", recTDTIsPresent%);
+    recCEDIsPresent% := GetIntRegistryValue%(key$, "CEDIsPresent", recCEDIsPresent%);
+    
+	return;
+end
+
+'===== End RecDebugGetParams =====
+'
+'
+
+
+
+'
+'
+'===== RecDebugSaveParams =====
+
+'Save Debugging parameters to the registry
+proc RecDebugSaveParams()
+
+	var key$;
+    key$:="Reclab\\DebugParam";
+
+    SetIntRegistryValue(key$, "MatlabIsPresent", recMatlabIsPresent%);   
+    SetIntRegistryValue(key$, "TDTIsPresent", recTDTIsPresent%); 
+    SetIntRegistryValue(key$, "CEDIsPresent", recCEDIsPresent%); 
+ 
+    
+	return;
+end
+
+'===== End RecDebugSaveParams =====
+'
+'
+
+
+
+
+'
+'
+'===== RecSearchGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecSearchGetParams()
+	var key$;
+    key$:="Reclab\\SearchParam";
+    
+    recSearchStimType% := GetIntRegistryValue%(key$, "SearchStimType", recSearchStimType%);
+    recSearchToneFreq := GetFloatRegistryValue(key$, "SearchToneFreq", recSearchToneFreq);
+    recSearchBPLowerLim := GetFloatRegistryValue(key$, "SearchBPLowerLim", recSearchBPLowerLim);
+    recSearcBPUpperLim := GetFloatRegistryValue(key$, "SearcBPUpperLim", recSearcBPUpperLim);
+    recSearchToneSweepRepeats% := GetIntRegistryValue%(key$, "SearchToneSweepRepeats", recSearchToneSweepRepeats%);
+    recSearchToneSweepLowLim := GetFloatRegistryValue(key$, "SearchToneSweepLowLim", recSearchToneSweepLowLim);
+    recSearchToneSweepUpperLim := GetFloatRegistryValue(key$, "SearchToneSweepUpperLim", recSearchToneSweepUpperLim);
+    recSearchToneSweepOctaveStep := GetFloatRegistryValue(key$, "SearchToneSweepOctaveStep", recSearchToneSweepOctaveStep);
+    recSearchS1Speaker% := GetIntRegistryValue%(key$, "SearchS1Speaker", recSearchS1Speaker%);
+    recSearchS2Speaker% := GetIntRegistryValue%(key$, "SearchS2Speaker", recSearchS2Speaker%);
+    recSearchMinS1% := GetIntRegistryValue%(key$, "SearchMinS1", recSearchMinS1%);
+    recSearchVarS1% := GetIntRegistryValue%(key$, "SearchVarS1", recSearchVarS1%);
+    recSearchPropCatch := GetFloatRegistryValue(key$, "SearchPropCatch", recSearchPropCatch);
+    recSearchdBLevel := GetFloatRegistryValue(key$, "SearchdBLevel", recSearchdBLevel);
+    recSearchActive% := GetIntRegistryValue%(key$, "SearchActive", recSearchActive%);
+    recSearchFixLED% := GetIntRegistryValue%(key$, "SearchFixLED", recSearchFixLED%);
+    
+	return;
+end
+
+'===== End RecSearchGetParams =====
+'
+'
+
+
+
+
+'
+'
+'===== RecSearchSaveParams =====
+
+'Save Debugging parameters to the registry
+proc RecSearchSaveParams()
+
+	var key$;
+    key$:="Reclab\\SearchParam";
+
+    SetIntRegistryValue(key$, "SearchStimType", recSearchStimType%);
+    SetFloatRegistryValue(key$, "SearchToneFreq", recSearchToneFreq);
+    SetFloatRegistryValue(key$, "SearchBPLowerLim", recSearchBPLowerLim);
+    SetFloatRegistryValue(key$, "SearcBPUpperLim", recSearcBPUpperLim);
+    SetIntRegistryValue(key$, "SearchToneSweepRepeats", recSearchToneSweepRepeats%);
+    SetFloatRegistryValue(key$, "SearchToneSweepLowLim", recSearchToneSweepLowLim);
+    SetFloatRegistryValue(key$, "SearchToneSweepUpperLim", recSearchToneSweepUpperLim);
+    SetFloatRegistryValue(key$, "SearchToneSweepOctaveStep", recSearchToneSweepOctaveStep); 
+    SetIntRegistryValue(key$, "SearchS1Speaker", recSearchS1Speaker%);
+    SetIntRegistryValue(key$, "SearchS2Speaker", recSearchS2Speaker%);
+    SetIntRegistryValue(key$, "SearchMinS1", recSearchMinS1%);
+    SetIntRegistryValue(key$, "SearchVarS1", recSearchVarS1%);
+    SetFloatRegistryValue(key$, "SearchPropCatch", recSearchPropCatch);
+    SetFloatRegistryValue(key$, "SearchdBLevel", recSearchdBLevel);
+    SetIntRegistryValue(key$, "SearchActive", recSearchActive%);
+    SetIntRegistryValue(key$, "SearchFixLED", recSearchFixLED%);
+
+	return;
+end
+
+'===== End RecSearchSaveParams =====
+'
+'
+
+
+
+
+'
+'
+'===== RecFRAGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecFRAGetParams()
+	var key$;
+    key$:="Reclab\\FRAParam";
+    
+    recFRAS1Speaker% := GetIntRegistryValue%(key$, "FRAS1Speaker", recFRAS1Speaker%);
+    recRateLeveldBLow := GetFloatRegistryValue(key$, "RateLeveldBLow", recRateLeveldBLow);
+    recRateLeveldBHigh := GetFloatRegistryValue(key$, "RateLeveldBHigh", recRateLeveldBHigh);
+    recFRATonedBLow := GetFloatRegistryValue(key$, "FRATonedBLow", recFRATonedBLow);
+    recFRATonedBHigh := GetFloatRegistryValue(key$, "FRATonedBHigh", recFRATonedBHigh);
+    recFRAToneFreqLow := GetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
+    recFRAToneFreqHigh := GetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
+    recFRAS2dBLevel := GetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);   
+    
+	return;
+end
+
+'===== End RecFRAGetParams =====
+'
+'
+
+
+
+'
+'
+'===== RecFRASaveParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecFRASaveParams()
+	var key$;
+    key$:="Reclab\\FRAParam";
+    
+    SetIntRegistryValue(key$, "FRAS1Speaker", recFRAS1Speaker%);
+    SetFloatRegistryValue(key$, "RateLeveldBLow", recRateLeveldBLow);
+    SetFloatRegistryValue(key$, "RateLeveldBHigh", recRateLeveldBHigh);
+    SetFloatRegistryValue(key$, "FRATonedBLow", recFRATonedBLow);
+    SetFloatRegistryValue(key$, "FRATonedBHigh", recFRATonedBHigh);
+    SetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
+    SetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
+    SetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);   
+    
+	return;
+end
+
+'===== End RecFRASaveParams =====
+'
+'
+
+
+
+
+
+'
+'
+'===== RecAMDiscGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecAMDiscGetParams()
+	var key$;
+    key$:="Reclab\\AMDiscParam";
+    
+    recAMDiscS1Speaker% := GetIntRegistryValue%(key$, "AMDiscS1Speaker", recAMDiscS1Speaker%);
+    recAMDiscMinS1% := GetIntRegistryValue%(key$, "AMDiscMinS1", recAMDiscMinS1%);
+    recAMDiscVarS1% := GetIntRegistryValue%(key$, "AMDiscVarS1", recAMDiscVarS1%);
+    recAMDiscPropCatch := GetFloatRegistryValue(key$, "AMDiscPropCatch", recAMDiscPropCatch);
+    recAMDiscdBLevel := GetFloatRegistryValue(key$, "AMDiscdBLevel", recAMDiscdBLevel);
+    recAMDiscRepeatsPerStim% := GetIntRegistryValue%(key$, "AMDiscRepeatsPerStim", recAMDiscRepeatsPerStim%);
+    recAMDiscMatGenStim% := GetIntRegistryValue%(key$, "AMDiscMatGenStim", recAMDiscMatGenStim%);
+    
+	return;
+end
+
+'===== End RecAMDiscGetParams =====
+'
+'
+
+
+
+'
+'
+'===== RecAMDiscSaveParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecAMDiscSaveParams()
+	var key$;
+    key$:="Reclab\\AMDiscParam";
+    
+    SetIntRegistryValue(key$, "AMDiscS1Speaker", recAMDiscS1Speaker%);
+    SetIntRegistryValue(key$, "AMDiscMinS1", recAMDiscMinS1%);
+    SetIntRegistryValue(key$, "AMDiscVarS1", recAMDiscVarS1%);
+    SetFloatRegistryValue(key$, "AMDiscPropCatch", recAMDiscPropCatch);
+    SetFloatRegistryValue(key$, "AMDiscdBLevel", recAMDiscdBLevel);
+    SetIntRegistryValue(key$, "AMDiscRepeatsPerStim", recAMDiscRepeatsPerStim%);
+    SetIntRegistryValue(key$, "AMDiscMatGenStim", recAMDiscMatGenStim%);
+    
+	return;
+end
+
+'===== End RecAMDiscSaveParams =====
+'
+'
+
+
+
+
+
+'
+'
+'===== RecExpSelectDialog =====
+
+'A dialog which allows the selection of experiments
+
+func RecExpSelectDialog%()
+    
+    var i%;
+    var j%;
+    var status% := 0;   
+    
+    recExpSelectDialogAllowOK% := 0;  'Disable OK button to start, force selectio of experiment
+    
+    recNElectrodes% := -1;            'Begin with invalid value, forces entry of value
+    
+    ' Generate the dialog
+    
+    DlgCreate("Experiment Selection Dialog",0,0,52,15);
+    
+    DlgGroup("Experimental Details", 1,1,50,3);
+    DlgString(1,"Monkey Prefix",30,"",0,2);  'currently no "legal" specified, meaning all characters OK
+    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,50,0,3);    
+    
+    DlgGroup("Experiments", 1,5,50,6);
+    DlgButton(0,"         Quit         ");
+    DlgButton(1,"          OK          ");
+    DlgButton(recExpSearchButton%, "             Search             ", RecExpSearchDialog%, 2, 6);
+    DlgButton(recExpFRAButton%,    "FRA/Rate-level/Space", RecExpFRADialog%, 2, 7);
+    DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 6);
+    DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 7);
+    
+    
+    DlgGroup("Change Timing/Reward Parameters", 1,12,50,2);
+    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 13);
+     
+    
+    DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recMonkPrefix$,recNElectrodes%);  'no items
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        status% := 1;
+    else
+        status% := 0;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecExpSelectDialog =====
+'
+'
+
+
+
+
+'
+'
+'===== RecExpSelectDialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpSelectDialogChanged%(item%) 
+    'This disables the "OK" button (though it will have different labels) until an experiment is selected
+    'AND a file name is chosen AND a number of electrodes is entered
+    if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 then
+        DlgEnable(1,-1);  'enable "OK" 
+    else
+        DlgEnable(0,-1);  'Otherwise disable "OK"
+    endif;
+    
+    return 1;
+end
+
+'===== End RecExpSelectDialogChanged =====
+'
+'
+
+
+
+'
+'
+'===== RecExpSearchDialog =====
+
+'A dialog for the Search experiment
+
+func RecExpSearchDialog%()
+    
+    var i%;
+    var status% := 0;
+    
+    const searchListLen% := 5;
+    var searchList$[searchListLen%];
+    searchList$[0] := "Tones";
+    searchList$[1] := "Broadband Noise";
+    searchList$[2] := "Bandpass Noise";
+    searchList$[3] := "Clicks";
+    searchList$[4] := "Tone Sweeps";
+    
+    ' Fetch parameters from registry    
+     RecSearchGetParams();
+    
+    ' Generate the dialog    
+    DlgCreate("Search Dialog",0,0,92,15);
+    
+    DlgGroup("Stimulus Selection",1,1,90,7);
+    DlgList(1,"Select Experiment",searchList$[],searchListLen%,19,2);  '19 is min width for this dialog
+    
+    DlgGroup("Tones",40,2,22,2);
+    DlgReal(2,6,0.001,50000,55,3);  'Frequency
+    DlgText("Frequency, Hz",41,3);
+    
+    DlgGroup("Band Pass Noise",40,4,22,3);
+    DlgReal(3,6,0.001,50000,55,5);  'BP lower limit
+    DlgText("Lower Limit, Hz",41,5);
+    DlgReal(4,6,0.001,50000,55,6);  'BP upper limit
+    DlgText("Upper Limit, Hz",41,6);
+    
+    DlgGroup("Tone Sweep",63,2,27,5);
+    DlgInteger(5,6,1,100,83,3);  'Tone sweep repeats
+    DlgText("Repeats of each tone",64,3);
+    DlgReal(6,6,0.001,50000,83,4);  'Tone sweep low freq
+    DlgText("Low Frequency, Hz",64,4);
+    DlgReal(7,6,0.001,50000,83,5);  'Tone sweep high freq
+    DlgText("High Frequency, Hz",64,5);
+    DlgReal(8,6,0.001,10,83,6);  'Tone sweep octave step
+    DlgText("Step, Octaves",64,6);
+    
+    DlgGroup("Variables",1,8,90,6);
+    DlgInteger(9,6,0,20,55,9);  'S1 speaker
+    DlgText("S1 Speaker",41,9);
+    DlgInteger(10,6,0,20,83,9);  'S2 speaker
+    DlgText("S2 Speaker",64,9);
+    DlgInteger(11,6,0,20,55,10);  'Min S1
+    DlgText("Minimum S1 Presentations",30,10);
+    DlgInteger(12,6,0,20,55,11);  'Var S1
+    DlgText("Variable S1 Presentations",30,11);
+    DlgReal(13,6,0,1,55,12);  'Proportion of catch trials
+    DlgText("Proportion of Catch Trials",30,12);
+    DlgReal(14,6,0,100,83,11);  'dB level
+    DlgText("dB Level",64,11);
+    DlgCheck(15,"",54,13);  'Monkey does lever task
+    DlgText("Monkey Does Lever Task",30,13);
+    DlgCheck(16,"",82,13);  'Use Fixation LED
+    DlgText("Use Fixation LED",64,13);
+    
+    
+    DlgAllow(0xffff, 0, RecExpSearchDialogChanged%);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recSearchStimType%,recSearchToneFreq,recSearchBPLowerLim,recSearcBPUpperLim,recSearchToneSweepRepeats%,
+                recSearchToneSweepLowLim,recSearchToneSweepUpperLim,recSearchToneSweepOctaveStep,recSearchS1Speaker%,
+                recSearchS2Speaker%,recSearchMinS1%,recSearchVarS1%,recSearchPropCatch,recSearchdBLevel,
+                recSearchActive%,recSearchFixLED%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecSearchSaveParams();
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgValue$(-1,"Run Search");
+        recExpToRun% := recExpSearchButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        'assign Search-specific variables to experiment-wide variables (so we can keep separate defaults but only code once)
+        recS1Speaker% := recSearchS1Speaker%;
+        recS2Speaker% := recSearchS2Speaker%;
+        recMinS1% := recSearchMinS1%;
+        recVarS1% := recSearchVarS1%;
+        recPropCatch := recSearchPropCatch;
+        recdBLevel := recSearchdBLevel;
+        recActive% := recSearchActive%;
+        recFixLED% := recSearchFixLED%;
+        
+        'We might need to specify a number of trials here...I'm assuming yes.  Note that SEARCH runs until the
+        'user stops it, but this may be difficult to implement in practice - it would require fresh round(s) of
+        'trial list generation that don't happen for other experiment types.  Most likely the easiest way to do
+        'this is just to make a huge number of trials that the user won't exhaust, like 10,000 or something.
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecExpSearchDialog =====
+'
+'
+
+
+
+
+'
+'
+'===== RecExpSearchDialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpSearchDialogChanged%(item%) 
+    docase
+    case DlgValue(1) = 0 then  'Tones
+        DlgEnable(1,2);  'Enable frequency
+        DlgEnable(0,3);  'Disable others
+        DlgEnable(0,4);
+        DlgEnable(0,5); 
+        DlgEnable(0,6); 
+        DlgEnable(0,7);
+        DlgEnable(0,8); 
+        DlgEnable(1,14); 'Enable dB level
+    case DlgValue(1) = 1 then  'Broadband noise
+        DlgEnable(0,2);  'Disable all
+        DlgEnable(0,3);  
+        DlgEnable(0,4);
+        DlgEnable(0,5); 
+        DlgEnable(0,6); 
+        DlgEnable(0,7);
+        DlgEnable(0,8);
+        DlgEnable(1,14); 'Enable dB level
+    case DlgValue(1) = 2 then  'Band pass noise
+        DlgEnable(0,2);  
+        DlgEnable(1,3);  'Enable
+        DlgEnable(1,4);  'BP limits
+        DlgEnable(0,5); 
+        DlgEnable(0,6); 
+        DlgEnable(0,7);
+        DlgEnable(0,8);
+        DlgEnable(1,14); 'Enable dB level
+    case DlgValue(1) = 3 then  'Clicks
+        DlgEnable(0,2);  'Disable all
+        DlgEnable(0,3);   
+        DlgEnable(0,4);   
+        DlgEnable(0,5); 
+        DlgEnable(0,6); 
+        DlgEnable(0,7);
+        DlgEnable(0,8);
+        DlgEnable(0,14); 'Disable dB level
+    case DlgValue(1) = 4 then  'Tone Sweep
+        DlgEnable(0,2);  
+        DlgEnable(0,3);   
+        DlgEnable(0,4);   
+        DlgEnable(1,5);  'Enable Tone Sweep stuff
+        DlgEnable(1,6); 
+        DlgEnable(1,7);
+        DlgEnable(1,8);
+        DlgEnable(1,14); 'Enable dB level
+    endcase;
+    
+    return 1;
+end
+
+'===== End RecExpSearchDialogChanged =====
+'
+'
+
+
+
+
+'
+'
+'===== RecExpFRADialog =====
+
+'A dialog for the FRA experiment
+
+func RecExpFRADialog%()
+    
+    var i%;
+    var status% := 0;  
+    var inds%[8];
+    var j%;
+    for j% := 0 to 7 do
+        inds%[j%] := j%;
+    next;
+    
+    
+    ' Fetch parameters from registry    
+    RecFRAGetParams();
+    
+    ' Initial calculation of dB steps, Freq. steps
+    GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
+    GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
+    GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);   
+    ' Followed by initial stringification
+    recRLList1$ := StringifyProgression2$(5, recRateLeveldBList[0:5], inds%[],1);
+    recRLList2$ := StringifyProgression2$(5, recRateLeveldBList[5:5], inds%[],1);
+    recFRAdBList1$ := StringifyProgression2$(5, recFRAdBList[0:5], inds%[],1);
+    recFRAdBList2$ := StringifyProgression2$(5, recFRAdBList[5:5], inds%[],1);
+    recFRAFreqList1$ := StringifyProgression2$(8, recFRAFreqList[0:8], inds%[],0);
+    recFRAFreqList2$ := StringifyProgression2$(8, recFRAFreqList[8:8], inds%[],0);
+    recFRAFreqList3$ := StringifyProgression2$(8, recFRAFreqList[16:8], inds%[],0);
+    recFRAFreqList4$ := StringifyProgression2$(7, recFRAFreqList[24:7], inds%[],0);
+    recFRAFreqList5$ := StringifyProgression2$(7, recFRAFreqList[31:7], inds%[],0);
+    recFRAFreqList6$ := StringifyProgression2$(7, recFRAFreqList[38:7], inds%[],0);
+    
+    
+    ' Generate the dialog    
+    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,111,14);
+    
+    DlgGroup("S1 Stimuli",1,1,109,10);
+    DlgInteger(1,6,1,16,22,2);
+    DlgText("S1 (preferred) Speaker",2,2);    
+    
+    DlgGroup("Noise (Rate-Level)",2,3,27,7);
+    DlgReal(2,6,0.001,100,22,4);  'Rate-Level, low dB
+    DlgText("dB Level, Low",3,4);
+    DlgReal(3,6,0.001,100,22,5);  'Rate-Level, high dB
+    DlgText("dB Level, High",3,5);
+    DlgText("List of Selected dB Levels:",3,7);
+    recRLList1% := DlgText(recRLList1$,3,8,25);
+    recRLList2% := DlgText(recRLList2$,3,9,25);
+    
+    DlgGroup("Tone Pips (FRA)",30,2,79,8);
+    DlgReal(4,6,0.001,100,47,3);  'FRA low dB
+    DlgText("Lower Level, dB",31,3);
+    DlgReal(5,6,0.001,50000,47,4);  'FRA high dB
+    DlgText("Upper Level, dB",31,4);
+    DlgText("List of Selected dB Levels:",31,7);
+    recFRAdBList1% := DlgText(recFRAdBList1$,31,8,25);
+    recFRAdBList2% := DlgText(recFRAdBList2$,31,9,25);
+    DlgReal(6,6,0.001,50000,47,5);  'FRA low frequency
+    DlgText("Lower Limit, Hz",31,5);
+    DlgReal(7,6,0.001,50000,47,6);  'FRA high frequency
+    DlgText("Upper Limit, Hz",31,6);
+    DlgText("List of Selected Freqs (rounded to nearest Hz):",59,3);
+    recFRAFreqList1% := DlgText(recFRAFreqList1$,59,4,49);  'must set width of text boxes or it is based on
+    recFRAFreqList2% := DlgText(recFRAFreqList2$,59,5,49);  'original text and updates can cause some
+    recFRAFreqList3% := DlgText(recFRAFreqList3$,59,6,49);  'values to be "invisible" - also done for dB
+    recFRAFreqList4% := DlgText(recFRAFreqList4$,59,7,49);  'values above (tone and rate-level) but probably
+    recFRAFreqList5% := DlgText(recFRAFreqList5$,59,8,49);  'not crucial there.
+    recFRAFreqList6% := DlgText(recFRAFreqList6$,59,9,49);
+    
+    DlgGroup("S2 Stimuli",1,11,109,2);
+    DlgReal(8,6,0.001,100,22,12);  'S2 speaker dB level
+    DlgText("S2 dB level",3,12);
+    
+    DlgAllow(0xffff, 0, RecExpFRADialogChanged%);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recFRAS1Speaker%,recRateLeveldBLow,recRateLeveldBHigh,recFRATonedBLow,recFRATonedBHigh,recFRAToneFreqLow,recFRAToneFreqHigh,recFRAS2dBLevel);
+
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        ' Recalculate dB steps, Freq. steps based on dialog values
+        GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
+        GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
+        GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]); 
+        
+        'Save parameters
+        RecFRASaveParams();
+        
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgValue$(-1,"Run FRA");
+        recExpToRun% := recExpFRAButton%; 
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        'assign Search-specific variables to experiment-wide variables (so we can keep separate defaults but only code once)
+        recS1Speaker% := recFRAS1Speaker%;
+        
+        recActive% := 1;
+        recFixLED% := 1;
+        
+        'We might need to specify a number of trials here...I'm assuming yes, just as for Search.  However
+        'for the FRA, there may be a specific number of trials - it appears that the number of stimuli is
+        'fixed, with 45x10=450 tone pips at S1 speaker, 10x12=120 noise bursts at S1 speaker and 15x12=180
+        'noise bursts at S2 speakers.  It is these S2 noise bursts that defines the number of trials: 180.
+        'The trick will then be to get the 570 S1 stimuli spread out over the 180 S2 stimuli in a reasonable
+        'fashion.  We'll probably have to hardcode the distributions of S1 length per trial and go from there.
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecExpFRADialog =====
+'
+'
+
+
+
+'
+'
+'===== RecExpFRADialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpFRADialogChanged%(item%) 
+    'Quickly build a list of indices that we need
+    var inds%[8];
+    var j%;
+    for j% := 0 to 7 do
+        inds%[j%] := j%;
+    next;
+    
+    docase
+    case item% = 2 or item% = 3 then  'Rate-level dB changed, update values
+        'Update values in variables
+        recRateLeveldBLow := DlgValue(2);
+        recRateLeveldBHigh := DlgValue(3);
+        'Recalculate linear progression
+        GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
+        'Update strings
+        recRLList1$ := StringifyProgression2$(5, recRateLeveldBList[0:5], inds%[],1);
+        recRLList2$ := StringifyProgression2$(5, recRateLeveldBList[5:5], inds%[],1);
+        'Update GUI
+        DlgValue$(recRLList1%,recRLList1$);
+        DlgValue$(recRLList2%,recRLList2$);
+    case item% = 4 or item% = 5 then  'FRA tone dB changed, update values
+        'Update values in variables
+        recFRATonedBLow := DlgValue(4);
+        recFRATonedBHigh := DlgValue(5);
+        'Recalculate linear progression
+        GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
+        'Update strings
+        recFRAdBList1$ := StringifyProgression2$(5, recFRAdBList[0:5], inds%[],1);
+        recFRAdBList2$ := StringifyProgression2$(5, recFRAdBList[5:5], inds%[],1);
+        'Update GUI
+        DlgValue$(recFRAdBList1%,recFRAdBList1$);
+        DlgValue$(recFRAdBList2%,recFRAdBList2$);
+    case item% = 6 or item% = 7 then  'FRA tone frequency changed, update values
+        'Update values in variables
+        recFRAToneFreqLow := DlgValue(6);
+        recFRAToneFreqHigh := DlgValue(7);
+        'Recalculate log progression
+        GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);
+        'Update strings
+        recFRAFreqList1$ := StringifyProgression2$(8, recFRAFreqList[0:8], inds%[],0);
+        recFRAFreqList2$ := StringifyProgression2$(8, recFRAFreqList[8:8], inds%[],0);
+        recFRAFreqList3$ := StringifyProgression2$(8, recFRAFreqList[16:8], inds%[],0);
+        recFRAFreqList4$ := StringifyProgression2$(7, recFRAFreqList[24:7], inds%[],0);
+        recFRAFreqList5$ := StringifyProgression2$(7, recFRAFreqList[31:7], inds%[],0);
+        recFRAFreqList6$ := StringifyProgression2$(7, recFRAFreqList[38:7], inds%[],0);
+        'Update GUI
+        DlgValue$(recFRAFreqList1%,recFRAFreqList1$);
+        DlgValue$(recFRAFreqList2%,recFRAFreqList2$);
+        DlgValue$(recFRAFreqList3%,recFRAFreqList3$);
+        DlgValue$(recFRAFreqList4%,recFRAFreqList4$);
+        DlgValue$(recFRAFreqList5%,recFRAFreqList5$);
+        DlgValue$(recFRAFreqList6%,recFRAFreqList6$);
+    endcase;
+    
+    return 1;
+end
+
+'===== End RecExpFRADialogChanged =====
+'
+'
+
+
+
+'
+'
+'===== RecExpAMDiscDialog =====
+
+'A dialog for the AMDisc experiment
+
+func RecExpAMDiscDialog%()
+    
+    var i%;
+    var status% := 0;
+    
+    const AMDiscListLen% := 20;
+    var searchList$[AMDiscListLen%];
+    searchList$[0] := "";
+    searchList$[1] := "1.2.3.4.5.6.7.8.9.1.2.3.4.5.6.7.8.9.";  'So it WILL display more than 20 characters, if thin
+    searchList$[2] := "2";
+    searchList$[3] := "3";
+    searchList$[4] := "4";
+    
+    var sli%;  'temporary while creating
+    var sli2%;
+    
+    ' Fetch parameters from registry    
+     RecAMDiscGetParams();
+    
+    ' Generate the dialog    
+    DlgCreate("Search Dialog",0,0,74,11);
+    
+    DlgGroup("Stimulus Selection",1,1,72,4);
+    DlgCheck(1,"Create Stimuli?",2,2);
+    DlgList(2,27,searchList$[],AMDiscListLen%,24,3); 'For list box, set width and put in a DlgText
+    recAMDiscText1% := DlgText("Select Exp't (Create Stim)",2,3);
+    DlgList(3,27,searchList$[],AMDiscListLen%,24,4);
+    recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,4);
+    DlgButton(recAMDiscAddExpButton%, "  Add Experiment  ", RecAMDiscAddExp%,53,3);
+    DlgButton(recAMDiscDeleteExpButton%, "Delete Experiment ", RecAMDiscDeleteExp%,53,4);
+    
+    DlgGroup("Variables",1,5,72,5);
+    DlgInteger(4,6,1,20,27,6);  'S1 speaker
+    DlgText("S1 Speaker",13,6);
+    DlgInteger(5,6,1,20,27,7);  'Min S1
+    DlgText("Minimum S1 Presentations",2,7);
+    DlgInteger(6,6,0,20,27,8);  'Var S1
+    DlgText("Variable S1 Presentations",2,8);
+    DlgReal(7,6,0,1,27,9);  'Proportion of catch trials
+    DlgText("Proportion of Catch Trials",2,9);
+    DlgReal(8,6,0,100,65,8);  'dB level
+    DlgText("dB Level",46,8);
+    DlgInteger(9,6,1,100,65,9);  'Repeats
+    DlgText("Repeats per stimulus",46,9);
+
+    
+    
+    DlgAllow(0xffff, 0, RecExpAMDiscDialogChanged%);
+    
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recAMDiscMatGenStim%,sli%,sli2%,recAMDiscS1Speaker%,recAMDiscMinS1%,recAMDiscVarS1%,
+                recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecAMDiscSaveParams();
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgValue$(-1,"Run AM Disc");
+        recExpToRun% := recExpAMDiscButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        'assign AM-Disc-specific variables to experiment-wide variables (so we can keep separate defaults but only code once)
+        recS1Speaker% := recAMDiscS1Speaker%;
+        recS2Speaker% := recAMDiscS1Speaker%;  'S2 is same as S1
+        recMinS1% := recAMDiscMinS1%;
+        recVarS1% := recAMDiscVarS1%;
+        recPropCatch := recAMDiscPropCatch;  'Make sure we need this
+        recdBLevel := recAMDiscdBLevel;
+        recActive% := 1;   'Don't give an option, must be active
+        recFixLED% := 1;
+'        
+'        'We might need to specify a number of trials here...I'm assuming yes.  Note that SEARCH runs until the
+'        'user stops it, but this may be difficult to implement in practice - it would require fresh round(s) of
+'        'trial list generation that don't happen for other experiment types.  Most likely the easiest way to do
+'        'this is just to make a huge number of trials that the user won't exhaust, like 10,000 or something.
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecExpAMDiscDialog =====
+'
+'
+
+
+
+
+'
+'
+'===== RecExpAMDiscDialogChanged =====
+
+func RecExpAMDiscDialogChanged%(item%) 
+ 
+    docase
+    case DlgValue(1) = 1 then
+        DlgEnable(1,2);  'Enable use of generate list box
+        DlgEnable(0,3);  'Disenable use of load list box
+        DlgEnable(1,recAMDiscText1%);  'Enable use of generate list box
+        DlgEnable(0,recAMDiscText2%);  'Disenable use of load list box
+    case DlgValue(1) = 0 then
+        DlgEnable(0,2);  'Disenable use of generate list box
+        DlgEnable(1,3);  'Enable use of load list box  
+        DlgEnable(0,recAMDiscText1%);  'Enable use of generate list box
+        DlgEnable(1,recAMDiscText2%);  'Disenable use of load list box        
+    endcase;
+    
+    return 1;
+end
+
+'===== End RecExpAMDiscDialogChanged =====
+'
+'
+
+
+
+
+'
+'
+'===== RecExpCueingDialog =====
+
+'A dialog for the Cueing experiment
+
+func RecExpCueingDialog%()
+    
+    var i%;
+    var status% := 0;
+    
+    ' Fetch parameters from registry    
+   
+    
+    ' Generate the dialog
+    
+    DlgCreate("Cueing Experiment Dialog", 25, 10);
+    DlgCheck(1, "Is this a dummy dialog?");
+    
+    ' Show the dialog. 
+    i%:=DlgShow(dummyVar%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgValue$(-1,"Run Cueing");
+        recExpToRun% := recExpCueingButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecExpCueingDialog =====
+'
+'
+
+
+
+'
+'
+'===== RecExpTimingRewardDialog =====
+
+'A dialog for the TimingReward experiment
+
+func RecExpTimingRewardDialog%()
+    
+    var i%;
+    var status% := 0;
+    var trwid% := 42;
+    
+    ' Fetch parameters from registry    
+    RecTimingRewardGetParams();   'RecTimingRewardGetParams() is below    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Timing and Reward Dialog", trwid%, 10);
+    DlgGroup("Timing Parameters",1,1,trwid%-2,6);
+    DlgReal(1, "Minimum Onset Delay, s",0,10,trwid%-14,2);
+    DlgReal(2, "Variable Onset Delay, s",0,10,trwid%-14,3);
+    DlgReal(3, "ISI, s",0,10,trwid%-14,4);
+    DlgReal(4, "Trial Initiation Window, s",0,100,trwid%-14,5);
+    DlgReal(5, "Response Window, s",0,100,trwid%-14,6);
+    
+    DlgGroup("Time Outs",1,8,trwid%-2,4);
+    DlgReal(6, "Lazy Monkey TO, s",0,300,trwid%-14,9);
+    DlgReal(7, "Miss TO, s",0,300,trwid%-14,10);
+    DlgReal(8, "False Alarm TO, s",0,300,trwid%-14,11);
+    
+    DlgGroup("Rewards",1,13,trwid%-2,8);
+    DlgReal(9,"Training Reward Duration, s",0,3,trwid%-14,14);
+    DlgReal(10,"Hit Reward Duration, s",0,3,trwid%-14,15);
+    DlgReal(11,"CR Reward Duration, s",0,3,trwid%-14,16);
+    DlgReal(12,"Max Hit Duration, s",0,3,trwid%-14,17);
+    DlgReal(13,"Max CR Duration, s",0,3,trwid%-14,18);
+    DlgReal(14,"Reward Increment on hits, s",0,1,trwid%-14,19);
+    DlgReal(15,"Reward Increment Per S1, s",0,1,trwid%-14,20);
+    
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
+                recTrainingRewardDur,recHitRewardDur,recCRRewardDur,recMaxHitRewardDur,recMaxCRRewardDur,recHitRewardInc,recS1RewardInc);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecTimingRewardSaveParams();   'RecTimingRewardSaveParams() is below 
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+   
+end;
+
+'===== End RecExpTimingRewardDialog =====
+'
+'
+
+
+
+
+'
+'
+'===== RecTimingRewardGetParams =====
+
+'Fetch Timing/Reward parameters from the registry
+proc RecTimingRewardGetParams()
+	var key$;
+    key$:="Reclab\\TimingRewardParam";
+
+    recMinOnsetDelay := GetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
+    recVarOnsetDelay := GetFloatRegistryValue(key$, "VarOnsetDelay", recVarOnsetDelay);
+    recISI := GetFloatRegistryValue(key$, "ISI", recISI);
+    recTrialInitWindow := GetFloatRegistryValue(key$, "TrialInitWindow", recTrialInitWindow);
+    recResponseWindow := GetFloatRegistryValue(key$, "ResponseWindow", recResponseWindow);
+    recLazyMonkeyTO := GetFloatRegistryValue(key$, "LazyMonkeyTO", recLazyMonkeyTO);
+    recMissTO := GetFloatRegistryValue(key$, "MissTO", recMissTO);
+    recFalseAlarmTO := GetFloatRegistryValue(key$, "FalseAlarmTO", recFalseAlarmTO);
+    recTrainingRewardDur := GetFloatRegistryValue(key$, "TrainingRewardDur", recTrainingRewardDur);
+    recHitRewardDur := GetFloatRegistryValue(key$, "HitRewardDur", recHitRewardDur);
+    recCRRewardDur := GetFloatRegistryValue(key$, "CRRewardDur", recCRRewardDur);
+    recMaxHitRewardDur := GetFloatRegistryValue(key$, "MaxHitRewardDur", recMaxHitRewardDur);
+    recMaxCRRewardDur := GetFloatRegistryValue(key$, "MaxCRRewardDur", recMaxCRRewardDur);
+    recMaxCRRewardDur := GetFloatRegistryValue(key$, "MaxCRRewardDur", recMaxCRRewardDur);
+    recHitRewardInc := GetFloatRegistryValue(key$, "HitRewardInc", recHitRewardInc);
+    recS1RewardInc := GetFloatRegistryValue(key$, "S1RewardInc", recS1RewardInc);
+    
+	return;
+end
+
+'===== End RecTimingRewardGetParams =====
+'
+'
+
+
+
+'
+'
+'===== RecTimingRewardSaveParams =====
+
+'Save Timing/Reward parameters to the registry
+proc RecTimingRewardSaveParams()
+
+	var key$;
+    key$:="Reclab\\TimingRewardParam";
+
+    SetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
+    SetFloatRegistryValue(key$, "VarOnsetDelay", recVarOnsetDelay);
+    SetFloatRegistryValue(key$, "ISI", recISI);
+    SetFloatRegistryValue(key$, "TrialInitWindow", recTrialInitWindow);
+    SetFloatRegistryValue(key$, "ResponseWindow", recResponseWindow);
+    SetFloatRegistryValue(key$, "LazyMonkeyTO", recLazyMonkeyTO);
+    SetFloatRegistryValue(key$, "MissTO", recMissTO);
+    SetFloatRegistryValue(key$, "FalseAlarmTO", recFalseAlarmTO);
+    SetFloatRegistryValue(key$, "TrainingRewardDur", recTrainingRewardDur);
+    SetFloatRegistryValue(key$, "HitRewardDur", recHitRewardDur);
+    SetFloatRegistryValue(key$, "CRRewardDur", recCRRewardDur);
+    SetFloatRegistryValue(key$, "MaxHitRewardDur", recMaxHitRewardDur);
+    SetFloatRegistryValue(key$, "MaxCRRewardDur", recMaxCRRewardDur);
+    SetFloatRegistryValue(key$, "MaxCRRewardDur", recMaxCRRewardDur);
+    SetFloatRegistryValue(key$, "HitRewardInc", recHitRewardInc);
+    SetFloatRegistryValue(key$, "S1RewardInc", recS1RewardInc); 
+    
+	return;
+end
+
+'===== End RecDebugSaveParams =====
+'
+'
+
+
+
+
+'
+'
+'===== GetLinearProgression =====
+
+' Get a linear progression from xmin to xmax, through nsteps%. Assumed that vec[] has enough room!
+Proc GetLinearProgression(xmin, xmax, nsteps%, vec[])
+	var stepsize;
+	var v;
+	var i%:= 0;
+	stepsize := (xmax -xmin)/nsteps%;
+	for v := xmin to xmax+stepsize/2 step stepsize do
+	'	PrintLog("Value=" + str$(v) + "\n");
+		vec[i%] := v;
+		i% := i% + 1;
+	next;
+end;
+
+'===== End GetLinearProgression =====
+'
+'
+
+
+
+
+'
+'
+'===== GetLogProgression =====
+
+' Get a log progression from xmin to xmax, through nsteps%. Assumed that vec[] has enough room!
+Proc GetLogProgression(xmin, xmax, nsteps%, vec[])
+	var stepsize;
+	var v;
+	var i%:= 0;
+	stepsize := (Ln(xmax) - Ln(xmin))/nsteps%;
+	for v := Ln(xmin) to Ln(xmax)+stepsize/2 step stepsize do
+		'PrintLog("Value[" + str$(i%) + "]=" + str$(Exp(v)) + "\n");
+		vec[i%] := Exp(v);
+		i% := i% + 1;
+	next;
+end;
+
+'===== End GetLogProgression =====
+'
+'
+
+
+
+
+'
+'
+'===== StringifyProgression2 =====
+
+' Put a vector of numbers into a comma separated string
+' Note that this version produces numbers rounded to nearest tenth, has space instead of comma separator
+Func StringifyProgression2$(n%, vec[], ind%[], rnd%)
+	var s$;
+	var i%;
+	for i% := 0 to n%-1 do
+		if i% > 0 then 
+			s$ += " ";
+		endif
+        if rnd% = 0 then
+            s$ += str$(round(vec[ind%[i%]]));   'Cannot use below method to round to whole number, alternate method is obvious
+        else
+            s$ += str$(vec[ind%[i%]],0,-rnd%);  'will round with rnd% digits after the decimal
+        endif;
+    next
+	return s$;
+end;
+
+'===== End StringifyProgression2 =====
+'
+'
+
+
+
+'
+'
+'===== RecAMDiscAddExp =====
+
+'This is a dialog that comes up to allow adding "experiments" to the AMDisc dialog
+Func RecAMDiscAddExp%()
+    
+    var i%;
+    var status% := 0;
+    var createMode%;
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+    
+    if DlgValue(1) = 1 then
+        createMode% := 1;
+    else
+        createMode% := 0;
+    endif;
+    
+    
+    ' Fetch parameters from registry    
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Cueing Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,20,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    if createMode% = 0 then
+        DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
+    else
+        DlgButton(recSelectStimFileButton%,   "  Select Stim File  ", RecSelectStimFile%,2,2);
+    endif;
+    DlgButton(recSelectTrialsFileButton%, " Select Trials File ", RecSelectTrialsFile%,2,3);
+    DlgString(2,40,20,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,20,"",26,3);  'for visual confirmation of selected trials file
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        'DlgValue$(-1,"Run Cueing");
+        'recExpToRun% := recExpCueingButton%;
+        'recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        'recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecAMDiscAddExp =====
+'
+'
+
+
+
+
+'
+'
+'===== RecAMDiscDeleteExp =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the AMDisc dialog
+Func RecAMDiscDeleteExp%()
+
+    var i%;
+    var status% := 0;
+    var createMode%;
+    var mystr$;
+    
+    if DlgValue(1) = 1 then
+        createMode% := 1;
+    else
+        createMode% := 0;
+    endif;
+    
+    
+    ' Fetch parameters from registry    
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Cueing Experiment DELETE Dialog", 62, 10);
+    DlgString(1,40,20,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    if createMode% = 0 then
+        DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
+    else
+        DlgButton(recSelectStimFileButton%,   "  Select Stim File  ", RecSelectStimFile%,2,2);
+    endif;
+    DlgButton(recSelectTrialsFileButton%, " Select Trials File ", RecSelectTrialsFile%,2,3);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        'DlgValue$(-1,"Run Cueing");
+        'recExpToRun% := recExpCueingButton%;
+        'recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        'recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecAMDiscDeleteExp =====
+'
+'
+
+
+
+
+'
+'
+'===== RecSelectStimFile =====
+
+Func RecSelectStimFile%()
+
+    var status% := 1;
+    var direc$;
+    var fh0%;
+    
+    direc$ := FilePath$();  'get current directory
+    fh0%:=FileOpen(direc$+"*.txt",1,0,"Please select a stimulus file");  'Find a stim file
+    direc$ := FileName$(0);  'Get full path of selected file
+    FileClose(fh0%);  'Just close the file, we're not using it
+    DlgValue$(2,direc$);  'Place filename into dialog item 2 of calling dialog
+
+	return status%;  'return 1 so calling dialog doesn't close
+    
+end;
+
+'===== End RecSelectStimFile =====
+'
+'
+
+
+
+
+'
+'
+'===== RecSelectTrialsFile =====
+
+Func RecSelectTrialsFile%()
+
+    var status% := 1;
+    var direc$;
+    var fh0%;
+    
+    direc$ := FilePath$();  'get current directory
+    fh0%:=FileOpen(direc$+"*.txt",1,0,"Please select a trials file");  'Find a trials file
+    direc$ := FileName$(0);  'Get full path of selected file
+    FileClose(fh0%);  'Just close the file, we're not using it
+    DlgValue$(3,direc$);  'Place filename into dialog item 3 of calling dialog
+
+	return status%;  'return 1 so calling dialog doesn't close
+    
+end;
+
+'===== End RecSelectSTrialsFile =====
+'
+'
+
+
+
+
+'
+'
+'===== RecAMDiscExpListLoadGetParams =====
+
+'Fetch experiment lists from the registry for AMDisc, loading stim, experiments
+'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
+'without a ton of manual work
+proc RecAMDiscExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
+	var key$;
+    key$:="Reclab\\AMDiscExpListLoadParam";
+    
+    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
+    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
+    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
+    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
+    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
+    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
+    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
+    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
+    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
+    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
+    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
+    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
+    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
+    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
+    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
+    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
+    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
+    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
+    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
+    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
+    
+    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
+    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
+    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
+    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
+    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
+    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
+    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
+    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
+    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
+    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
+    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
+    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
+    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
+    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
+    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
+    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
+    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
+    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
+    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
+    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    
+    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
+    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
+    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
+    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
+    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
+    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
+    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
+    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
+    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
+    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
+    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
+    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
+    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
+    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
+    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
+    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
+    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
+    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
+    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
+    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
+     
+	return;
+end
+
+'===== End RecAMDiscExpListLoadGetParams =====
+'
+'
+
+
+
+
+'
+'
+'===== RecAMDiscExpListGenGetParams =====
+
+'Fetch experiment lists from the registry for AMDisc, generating stim, experiments
+'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
+'without a ton of manual work
+proc RecAMDiscExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
+	var key$;
+    key$:="Reclab\\AMDiscExpListGenParam";
+    
+    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
+    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
+    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
+    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
+    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
+    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
+    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
+    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
+    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
+    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
+    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
+    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
+    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
+    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
+    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
+    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
+    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
+    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
+    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
+    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
+    
+    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
+    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
+    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
+    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
+    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
+    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
+    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
+    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
+    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
+    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
+    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
+    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
+    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
+    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
+    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
+    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
+    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
+    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
+    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
+    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    
+    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
+    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
+    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
+    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
+    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
+    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
+    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
+    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
+    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
+    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
+    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
+    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
+    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
+    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
+    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
+    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
+    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
+    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
+    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
+    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
+     
+	return;
+end
+
+'===== End RecAMDiscExpListGenGetParams =====
+'
+'
+
+
+
+
+
+'
+'
+'===== RecAMDiscExpListLoadSaveParams =====
+
+'Save experiment lists to the registry for AMDisc, loading stim, experiments
+'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
+'without a ton of manual work
+proc RecAMDiscExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
+	var key$;
+    key$:="Reclab\\AMDiscExpListLoadParam";
+    
+    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
+    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
+    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
+    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
+    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
+    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
+    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
+    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
+    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
+    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
+    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
+    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
+    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
+    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
+    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
+    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
+    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
+    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
+    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
+    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
+    
+    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
+    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
+    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
+    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
+    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
+    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
+    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
+    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
+    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
+    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
+    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
+    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
+    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
+    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
+    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
+    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
+    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
+    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
+    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
+    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
+    
+    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
+    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
+    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
+    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
+    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
+    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
+    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
+    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
+    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
+    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
+    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
+    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
+    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
+    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
+    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
+    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
+    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
+    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
+    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
+    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
+     
+	return;
+end
+
+'===== End RecAMDiscExpListLoadSaveParams =====
+'
+'
+
+
+
+
+'
+'
+'===== RecAMDiscExpListGenSaveParams =====
+
+'Save experiment lists to the registry for AMDisc, loading stim, experiments
+'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
+'without a ton of manual work
+proc RecAMDiscExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
+	var key$;
+    key$:="Reclab\\AMDiscExpListGenParam";
+    
+    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
+    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
+    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
+    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
+    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
+    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
+    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
+    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
+    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
+    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
+    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
+    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
+    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
+    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
+    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
+    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
+    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
+    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
+    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
+    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
+    
+    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
+    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
+    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
+    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
+    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
+    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
+    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
+    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
+    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
+    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
+    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
+    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
+    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
+    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
+    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
+    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
+    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
+    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
+    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
+    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
+    
+    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
+    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
+    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
+    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
+    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
+    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
+    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
+    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
+    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
+    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
+    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
+    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
+    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
+    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
+    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
+    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
+    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
+    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
+    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
+    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
+     
+	return;
+end
+
+'===== End RecAMDiscExpListGenSaveParams =====
+'
+'
