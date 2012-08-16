@@ -7,56 +7,75 @@
 
 
 ' channel numbers and window handles
-var rgDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
-var rgTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
-var rgLeverChannel% := 3;
-var rgTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
+var recDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
+var recTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
+var recLeverChannel% := 3;         ' Channel for behavioral lever recording
+var recTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
+var recTrode2Channel% := 12;       ' I'm breaking the above rule (don't use channel numbers above this)
+var recTrode3Channel% := 13;       '   because it makes no sense to me.  If it turns out to matter
+var recTrode4Channel% := 14;       '   then I suppose we'll figure that out!
+var recTrode5Channel% := 15;
+var recTrode6Channel% := 16;
+var recTrode7Channel% := 17;
+var recTrode8Channel% := 18;
+var recTrode9Channel% := 19;
+var recTrode10Channel% := 20;
+
 
 ' for anything other than electrodes!
-var rgXYWindowView%;              ' View variable for XY window
-var rgDataWindowView%;            ' View variable for data window
+var recXYWindowView%;              ' View variable for XY window
+var recDataWindowView%;            ' View variable for data window
 
 
-'stuff 
-const rgTTMaxSpeakers% := 100;
-const rgMaxTrials%        := 100;         ' Maximum number of trials per speaker.
-const rgDAC0Key$        := "A";
-var rgHBeh%;       ' ecode file
-var rgHBak%;       ' spikes
-var rgTLastProcessed := -1;
-var rgWindowData%;
-var rgWindowXY%;
-var rgChanTrig%;
-var rgChanWM%;
-var rgChanTM%;
-var rgChanLever%;
-var rgOutputRoot$          := "output";        ' root filename for output file
-var rgTrialCount% := 0;                   ' overall trial counter - each trial gets a number!
-var rgTTSpeakers%[rgTTMaxSpeakers%];    ' speaker numbers - each is considered a trial type. Can have duplicates. 
-var rgTTSpikeCounts%[rgTTMaxSpeakers%][rgMaxTrials%]; ' spike counts for completed trials on each trial type
-var rgTTSpikeRate[rgTTMaxSpeakers%][rgMaxTrials%];    ' spike rates for completed trials on each trial type
-var rgTTSpikeRateMean[rgTTMaxSpeakers%];' mean spike rate for each trial type
-var rgTTSpikeRateStd[rgTTMaxSpeakers%]; ' std dev for above. 
-var rgTTAtten[rgTTMaxSpeakers%];        ' atten to use for each speaker number in g_spcTTSpeakers%[]
-var rgTTIndexBackground%;                 ' index into TT arrays which is the background speaker/atten pair. 
-var rgTone%                := 0;
-var rgFreq%                := 20000;
+'This is all for ExtractSpaceInitialize
+var recHBeh%;       ' ecode file
+var recHBak%;       ' spikes
+var recTLastProcessed := -1;
+var recWindowData%;
+var recWindowXY%;
+var recChanTrig%;
+var recChanWM%;
+var recChanTM%;
+var recChanLever%;
+
+
+'Variables for PlaySound 
+const recTTMaxSpeakers% := 100;
+const recMaxTrials%        := 100;         ' Maximum number of trials per speaker.
+const recDAC0Key$        := "A";
+var recStimCount% := 0;                   ' overall trial counter - each trial gets a number!
+var recTTSpeakers%[recTTMaxSpeakers%];    ' speaker numbers - each is considered a trial type. Can have duplicates. 
+var recTTAtten[recTTMaxSpeakers%];        ' atten to use for each speaker number in g_spcTTSpeakers%[]
+var recTone%                := 0;
+var recFreq%                := 20000;
+
+
+'These variables are unused - not sure if I will need them
+'var recTTSpikeCounts%[recTTMaxSpeakers%][recMaxTrials%]; ' spike counts for completed trials on each trial type
+'var recTTSpikeRate[recTTMaxSpeakers%][recMaxTrials%];    ' spike rates for completed trials on each trial type
+'var recTTSpikeRateMean[recTTMaxSpeakers%];' mean spike rate for each trial type
+'var recTTSpikeRateStd[recTTMaxSpeakers%]; ' std dev for above. 
+'var recTTIndexBackground%;                 ' index into TT arrays which is the background speaker/atten pair. 
 
 
 ' toolbar button numbers
-const rgStartButton%  := 1;
-const rgStopButton%   := 2;
-const rgPauseButton%  := 3;
-const rgResumeButton% := 4;
-const rgRewardButton% := 5;
+const recStartButton%  := 1;
+const recPauseButton%  := 2;
+const recResumeButton% := 3;
+const recSelectNewExptButton% := 4;
+const recRewardButton% := 5;
+const recStopButton%   := 6;
+
 
 ' States and state control vars
-var rgIsPaused%                               := 0;
-var rgIsStarted%                              := 0;
+var isInterrupt%;
+var isEarlyHit%;
+var isEarlyFA%;
+var recIsPaused%;
 const stateStart%                             := 0;
 const stateInitializeTrials%                  := 1;
 const stateWaitForInitiationMovement%         := 2;
-const stateInitiationTimeout%                 := 3;
+const stateLazyMonkeyTimeout%                 := 3;
 const statePreTrialDelay%                     := 4;
 const stateStartSoundA%                       := 5;
 const stateSoundAPlaying%                     := 6;
@@ -65,18 +84,24 @@ const stateStartSoundB%                       := 8;
 const stateSoundBPlaying%                     := 9;
 const stateTrainingReward%                    := 10;
 const stateInResponseWindow%                  := 11;
-const stateResponseReward%                    := 12;
+const stateHitReward%                         := 12;
 const stateFalsePositive%                     := 13;
-const stateResponseWindowTimeout%             := 14;
+const stateMissTimeout%                       := 14;
 const stateDone%                              := 20;
 const stateTDTError%                          := 21;
 const stateCodingError%                       := 22;
+const stateFAInterrupt%                       := 23;
+const stateStartSoundC%                       := 24;
+const stateSoundCPlaying%                     := 25;
+const stateCRReward%                          := 26;
 
-var rgDelayIntervalTime         := 0;
+var recDelayIntervalTime         := 0;
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
 var tLast:=-1;		' last time we checked for a trigger. 
 var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
+var TDTError%;
+var isTerminalS1%:=0;    'if trial has terminal S1, logic of state loop must change, so we need to keep track
 
 'var channels%[4];
 
@@ -92,16 +117,16 @@ var tStateStart:=-1;	' time that present state started. Used to measure wait tim
 func RunGoNoGoEngine%()
 
     'This variable appears to be completely unused at this time
-'    channels%[0] := rgTrode1Channel%;
-'    channels%[1] := rgTrigChannel%;
-'    channels%[2] := rgLeverChannel%;
+'    channels%[0] := recTrode1Channel%;
+'    channels%[1] := recTrigChannel%;
+'    channels%[2] := recLeverChannel%;
 '    channels%[3] := 30;
     
     'We do want to start from the start state!
     iState% := stateStart%;
     
     'Set up sampling configuration
-    if is1401present% = 1 then
+    if recCEDIsPresent% = 1 then
         CreateSampleConfiguration();   'CreateSampleConfiguration() is below     TODO: make sure it is OK, fix up .pls file
     endif
     
@@ -109,18 +134,19 @@ func RunGoNoGoEngine%()
     ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
     ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
-    if is1401present% = 1  then 'don't try to initialize a PlayWaveArea if there's no 1401
-        InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below         TODO: Seems OK, but once we've got rest of logic worked out, check
+    if recCEDIsPresent% = 1  then 'don't try to initialize a PlayWaveArea if there's no 1401
+        InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
     endif
     
     
     'Open XY and data windows
     'Positioned after InitializePlayWaveAreas() because PlayWaveAdd() must be called before FileNew()
-    if is1401present% = 1 then
+    if recCEDIsPresent% = 1 then
         InitializeWindows();           'InitializeWindows() is below, opens one XYwindow and one data sampling window
         
-        'This function creates a bunch of XY channels
-        ExtractSpaceInitialize(rgXYWindowView%);  'TODO: ExtractSpaceInitialize() is in extract_space_functions, may need to be adapted        
+        'This function creates a bunch of XY channels in the XY window
+        ExtractSpaceInitialize(recXYWindowView%);  'TODO: ExtractSpaceInitialize() is in extract_space_functions, may need to be adapted
+        'It's still not super clear to me what we're doing here with the data...I'll deal with that later...
     endif
     
     
@@ -128,10 +154,14 @@ func RunGoNoGoEngine%()
     ' buttons. Toolbar() does not return until one of the toolbar functions returns 0 - Stop%()
     ' does that if pressed, IdleLoop%() returns an iStatus% of 0 when it reaches the end of all trials. 
     
-    InitializeToolbar();   'InitializeToolbar() is below
-    Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);
+    InitializeToolbar();
+    Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar
     
-    return 1;
+    if TDTError% = 1 then
+        return 1;  'quit if fatal error (1 is just easier to quit based on logic from calling function)
+    else
+        return 0;  'don't quit
+    endif;
 
 end
 
@@ -153,36 +183,68 @@ proc CreateSampleConfiguration()
     
 	var index;
     var r;
+    var i%;
     
     ' Initialize sampling settings
-    
 	SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
 	SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
     SampleAutoFile(0);     'set auto-filing state to "off"
     SampleAutoName$("reclab000");  'set file name template
     
     ' Event channel 0 is for sound triggers
-    SampleEvent(rgTrigChannel%, 0, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
-    SampleTitle$(rgTrigChannel%, "Trigger");
+    SampleEvent(recTrigChannel%, 0, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
+    SampleTitle$(recTrigChannel%, "Trigger");
     
     ' Event channel 1 is for the lever
-    SampleEvent(rgLeverChannel%, 1, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
-    SampleTitle$(rgLeverChannel%, "Lever");
+    SampleEvent(recLeverChannel%, 1, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
+    SampleTitle$(recLeverChannel%, "Lever");
     
     ' Text marks
     SampleTextMark(64);  'set channel 30 as TextMark channel, maximum of 64 characters
     
     ' Record DAC0 (sound output) only on debug, it will inflate the file sizes...
-    if rgDebug% = 1 then
-        SampleWaveform(rgDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
-        SampleTitle$(rgDAC0Channel%, "DAC0");
+    if recDebug% = 1 then
+        SampleWaveform(recDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
+        SampleTitle$(recDAC0Channel%, "DAC0");
     endif
     
     
-	' Record one electrode, one electrode only
-	SampleWaveMark(rgTrode1Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
-	SampleTitle$(rgTrode1Channel%, "Trode 1"); 
-    'Note that the sample rate is strange (28 kHz) and 34 samples covers about 1.25 ms.  Might want to get these numbers verified.
+	' Record as many electrodes as specified in Experiment Selection Dialog
+    for i% := 1 to recNElectrodes% do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
+        docase
+        case i% = 1 then
+            SampleWaveMark(recTrode1Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode1Channel%, "Trode 1"); 
+        case i% = 2 then
+            SampleWaveMark(recTrode2Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode2Channel%, "Trode 2");
+        case i% = 3 then
+            SampleWaveMark(recTrode3Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode3Channel%, "Trode 3");    
+        case i% = 4 then
+            SampleWaveMark(recTrode4Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode4Channel%, "Trode 4");    
+        case i% = 5 then
+            SampleWaveMark(recTrode5Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode5Channel%, "Trode 5");    
+        case i% = 6 then
+            SampleWaveMark(recTrode6Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode6Channel%, "Trode 6");    
+        case i% = 7 then
+            SampleWaveMark(recTrode7Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode7Channel%, "Trode 7");    
+        case i% = 8 then
+            SampleWaveMark(recTrode8Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode8Channel%, "Trode 8");    
+        case i% = 9 then
+            SampleWaveMark(recTrode9Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode9Channel%, "Trode 9");    
+        case i% = 10 then
+            SampleWaveMark(recTrode10Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleTitle$(recTrode10Channel%, "Trode 10");    
+        endcase;        
+    next;
+    'TODO: Note that the sample rate is strange (28 kHz) and 34 samples covers about 1.25 ms.  Might want to get these numbers verified.
     
     
     ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
@@ -190,7 +252,8 @@ proc CreateSampleConfiguration()
     ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
     ' assuming you use same ideal rate (in SampleWavemark()). 
     
-    SampleSequencer(script$ + "recgen.pls"); 'TODO: this thing needs to be updated/replaced for reward, playwave, lights?
+    'SampleSequencer(script$ + "recgen.pls"); 'TODO: this thing needs to be updated/replaced for reward, playwave, lights?
+                                              'TODO: not sure where the script$ variable is supposed to be from...
 	SampleOptimise(2, 1, 5, 2, 50);  'Optimization settings, don't change unless there's an issue
     SampleMode(1);  'Continuous recording
 end
@@ -211,15 +274,15 @@ proc InitializeWindows()
     FilePathSet(data$, 1, 1);  'Sets path for new data files
     
     ' Open xy window for use by expt.
-    rgXYWindowView% := FileNew(12);
+    recXYWindowView% := FileNew(12);
 	Window(0, 50, 50, 100); 
-	View(rgXYWindowView%).WindowVisible(1);
+	View(recXYWindowView%).WindowVisible(1);
     
-	'Open the data sampling window -- only if not in Testing mode!
-    if Testing%() = 0 then
-        rgDataWindowView% := FileNew(0,4);
+	'Open the data sampling window -- only if CED is present!
+    if recCEDIsPresent% = 1 then
+        recDataWindowView% := FileNew(0,4);
         Window(0, 0, 100, 50); 
-        View(rgDataWindowView%).WindowVisible(1);
+        View(recDataWindowView%).WindowVisible(1);
     endif
     
 end;
@@ -238,18 +301,20 @@ proc InitializeToolbar()
     
 	View(App(8)).WindowVisible(0);	'Hide the standard sample bar
 	ToolbarVisible(1);
-	ToolbarSet(rgStartButton%, "Start", Start%);
-	ToolbarSet(rgStopButton%, "Stop", Stop%);
-	ToolbarSet(rgPauseButton%, "Pause", Pause%);
-	ToolbarSet(rgResumeButton%, "Resume", Resume%);
-	ToolbarSet(rgRewardButton%, "Reward", Reward%);
+	ToolbarSet(recStartButton%, "Start", Start%);
+	ToolbarSet(recPauseButton%, "Pause", Pause%);
+	ToolbarSet(recResumeButton%, "Resume", Resume%);
+    ToolbarSet(recSelectNewExptButton%, "New Expt.", ReturnToExptSelectDialog%);
+	ToolbarSet(recRewardButton%, "Reward", Reward%);
+    ToolbarSet(recStopButton%, "Stop Sampling", Stop%);
     
     ' Explicitly set enabled state of things...
-    ToolbarEnable(rgStartButton%, 1);
-    ToolbarEnable(rgStopButton%, 0);
-    ToolbarEnable(rgPauseButton%, 0);
-    ToolbarEnable(rgResumeButton%, 0);
-    ToolbarEnable(rgRewardButton%, 1);
+    ToolbarEnable(recStartButton%, 1);
+    ToolbarEnable(recPauseButton%, 0);
+    ToolbarEnable(recResumeButton%, 0);
+    ToolbarEnable(recSelectNewExptButton%, 1);
+    ToolbarEnable(recRewardButton%, 1);
+    ToolbarEnable(recStopButton%, 0);
     
 end;
 
@@ -263,7 +328,7 @@ end;
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func GetPlayWaveKey$(index%)
     
-    return Chr$(Asc(rgDAC0Key$)+index%);
+    return Chr$(Asc(recDAC0Key$)+index%);
     
 end
 
@@ -273,71 +338,31 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' InitializePlayWaveAreas - add play wave areas for sounds. 
-' If TONE was chosen (spcTone% = 1) then we need just one area = "A".
-' If NOISE was chosen (spcNoise% = 1) then we need to allocate gtriallistMax%
-' areas "A", "B", ....
+' Areas will be allocated in order: "A", "B", .... up to the
+' max number of stimuli per trial.  We will reload each
+' PlayWaveArea on a trial-by-trial basis, if necessary.
+' Currently, the max number of stimuli per trial is hardcoded at 10
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Proc InitializePlayWaveAreas()
     var st;
     var i%;
-    if rgTone% = 1 then
+
         
-        st := PlayWaveAdd(GetPlayWaveKey$(0), GetPlayWaveKey$(0), rgDAC0%, rgDAC0Rate, rgSoundSize%);
+    for i% := 0 to recMaxStimPerTrial% do
+        
+        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, recMaxPoints%);
         if st < 0 then
-            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
             halt;
         else
-            PlayWaveTrigger(GetPlayWaveKey$(0), 1);  'set playwave area to triggered mode
-        endif
+            PlayWaveTrigger(GetPlayWaveKey$(i%), 1);  'set playwave area to triggered mode
+        endif        
         
-    else
-        
-        for i% := 0 to rgTrialListMax% do
-            
-            st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), rgDAC0%, rgDAC0Rate, rgSoundSize%);
-            if st < 0 then
-                Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
-                halt;
-            else
-                PlayWaveTrigger(GetPlayWaveKey$(i%), 1);  'set playwave area to triggered mode
-            endif        
-            
-            next
-        
-    endif
-    
+    next
+          
 end
 
-
-
-
-
-
-'----------- Trial%(ttype%) ----------------------------------------------------------------
-'
-' Initiate sound stim for a trial. When ttype% = 0 this trial is an S1 trial, when ttype% = 1  
-' its an S2 trial. Return 0 if all is well, negative if not (script will exit immediately). 
-'
-'--------------------------------------------------------------------------------
-
-'TODO - everything, just copied over from SPACE
-'This only plays one sound.  In fact, this literally does NOTHING but call PlaySound% and return an error if you
-'input the wrong number (a number IT DOES NOT ACTUALLY USE).  I say scrap the whole damn thing.
-'func Trial%(ttype%)
-'    var status% := 0;
-'    docase 
-'    case ttype% = 0 then
-'        PlaySound%();
-'    case ttype% = 1 then
-'        PlaySound%();
-'    else
-'        rgLogError("Trial", "Unknown ttype (" + str$(ttype%) + ")");
-'        status% := -1;
-'    endcase
-'    return status%;
-'end
-'
 
 
 
@@ -368,28 +393,27 @@ Func PlaySound%()
     
     ' Increment trial counter (why is this separate from rgTrialListIndex%???)
     ' moreover, why is playInd% separate from rgTrialListIndex%???
-    rgTrialCount% := rgTrialCount% + 1;
+    'recStimCount% := recStimCount% + 1;  'Gotta do something different here as recTrialCount% has been co-opted
     
     ' Set speaker and atten
-    if Testing%() = 0 then
-        status% := recSpeaker%(rgTTSpeakers%[rgTrialList%[playInd%]]);
+    if recCEDIsPresent% = 1 then
+        status% := recSpeaker%(recTTSpeakers%[rgTrialList%[playInd%]]);
         if status% <> 0 then
             return status%;
         endif;
         
-        'atten := rgTTAtten[rgTrialList%[playInd%]] + 0.5*Floor(Rand(3, 0)); 'this roves 0, .5, or 1 dB down (not up)  WHY?
-        atten := rgTTAtten[rgTrialList%[playInd%]];  'No-rove version    
+        'atten := recTTAtten[rgTrialList%[playInd%]] + 0.5*Floor(Rand(3, 0)); 'this roves 0, .5, or 1 dB down (not up)  WHY?
+        atten := recTTAtten[rgTrialList%[playInd%]];  'No-rove version    
         status% := recAtten%(atten);
         if status% <> 0 then
             return status%;
         endif;
         
-        'spk%[0] := rgTrialList%[playInd%];  'this does nothing!
     endif
     
-    rgLogStatus("PlaySound", 
-    "SPK " + str$(rgTTSpeakers%[rgTrialList%[playInd%]]) + 
-    " ATT " + str$(rgTTAtten[rgTrialList%[playInd%]]) + "\n");
+    RecLogStatus("PlaySound", 
+    "SPK " + str$(recTTSpeakers%[rgTrialList%[playInd%]]) + 
+    " ATT " + str$(recTTAtten[rgTrialList%[playInd%]]) + "\n");
     
     ' Send sample key for the play wave area. The play wave areas are triggered, so this 
     ' command alone will NOT play the sound - the SampleKey("T") triggers it. 
@@ -402,20 +426,26 @@ Func PlaySound%()
     ' 6. atten
     ' 7. freq for tone, filename for noise. 
     
-    if is1401present% = 1 then
-        if rgTone% then
+    if recCEDIsPresent% = 1 then
+        if recTone% then
             SafeSampleKey(GetPlayWaveKey$(0));  'for now, SampleKey forces the issue, so no return
             ' saved string format speaker%,atten,frequency%
-            s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,%d", playChar$, rgTrialCount%, playInd%, rgTrialList%[playInd%], rgTTSpeakers%[rgTrialList%[playInd%]], atten, rgFreq%);
+            'The SampleText format needs to be worked out here
+            s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,%d", playChar$, recCurrentTrial%, playInd%, rgTrialList%[playInd%], recTTSpeakers%[rgTrialList%[playInd%]], atten, recFreq%);
             SampleText(s$, -1);
         else
             SafeSampleKey(GetPlayWaveKey$(playInd%));
             ' saved string format speaker%,atten,soundfilename
-            s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,\"%s\"", playChar$, rgTrialCount%, playInd%, rgTrialList%[playInd%], rgTTSpeakers%[rgTrialList%[playInd%]], atten, rgTrialListFilenames$[playInd%]);
+            'The SampleText format needs to be worked out here
+            s$ := Print$("\"%s\",%d,%d,%d,%d,%.1f,\"%s\"", playChar$, recCurrentTrial%, playInd%, rgTrialList%[playInd%], recTTSpeakers%[rgTrialList%[playInd%]], atten, rgTrialListFilenames$[playInd%]);
             SampleText(s$, -1);
         endif
         SafeSampleKey("T");  'This is a trigger for the playwave area, presumably the output is teed back to the trigger channel?
     endif
+    
+    'Calculate the duration in points of the stimulus
+    recPlayPoints% := recPlayRateHz*recTrialDur[((((index))))]/1000;  'fix once we've figured out how we're indexing this
+    
     return status%;
 end
 
@@ -423,52 +453,82 @@ end
 
 
 
-'----------- TrialComplete%(ttype%, success%) -----------------------------------
+'----------- StimComplete%(isS2%, isTerminal%, success%) -----------------------------------
 '
-' Trial has ended. ttype% same meaning as for Trial%. success% 1=good, 0=bad. 
+' Stim has ended. isS2% states whether the stimulus is an s2. 
+' isTerminal% notes whether the stimulus is the final stimulus in the list
+' success% 1=good, 0=bad. 
 ' Record text marker, analysis update. 
 ' Return value of -1 means an error has occurred, abort. 
-' When ttype%=0, return value of 0 means continue with S1 trials, return value of 1
-' means move on to S2 trial. 
-' When ttype%=1 the return value (unless it is negative) is ignored. 
+' When isTerminal%=0, return value of 0 means continue with S1 stims, return value of 1
+' means move on to terminal S2 stim, return value of 2 means move on to terminal S1 stim.
+' When isTerminal%=1 the return value (unless it is negative) is ignored. 
 ' 
 '
 '--------------------------------------------------------------------------------
 
+'Still not clear on some of the TLG and ExtractSpace logic.  Why ExtractSpace for Early CRs but not final stimulus?
+'All the triallistindex stuff etc. will need updating once the logic is solid - return of 2 is not yet implemented
+'Note that on 0,0,0 input, the current trial counter will be decremented and the interrupted trial will be shuffled in later.
 
-func TrialComplete%(ttype%, success%)
+'Just looking at tlgTrialIndexCompleted from the outside (i.e. here)
+'at some point this function (or something) has to update rgNTrialList%
+'Oh hell, keep in mind that there are circumstances where the S1 could be different stimuli so this whole thing needs to be
+'examined (in the head)
+func StimComplete%(isS2%, isTerminal%, success%)
     var status% := 0;
     var strtmp$;
     docase
-    case ttype% = 0 then  'if stimulus is S1
+    case isTerminal% = 0 then  'if stimulus is not terminal, do not need to look at isS2% because isS2% must be 0 - there are never multiple targets
         if success% = 1 then
-            ' Record completed trial here, and update online analysis. 
-            strtmp$ := Print$("E,%d", rgTrialCount%);
+            ' Record completed stim here, and update online analysis. 
+            ' This will print the same output, e.g. "E,234" for each non-terminal S1 in trial 234, so there may be multiple sampletexts with the same entry
+            strtmp$ := Print$("E,%d", recCurrentTrial%);  'E is for, I dunno, Early Correct Rejection?  (Keeping 'E' from original code)
             SampleText(strtmp$, -1);
+            'TODO - figure out this bit
             tlgTrialIndexCompleted(rgTrialList%[rgTrialListIndex%]);  'this is a block counter, still need to look into in more depth
-            if is1401present% = 1 then
-                ExtractSpace(rgTLastProcessed, MaxTime(), rgWindowData%, rgWindowXY%, rgHBeh%, rgHBak%, rgChanWM%, rgChanTM%, rgChanTrig%, rgChanLever%);
-                rgTLastProcessed := MaxTime();
+            if recCEDIsPresent% = 1 then
+                ExtractSpace(recTLastProcessed, MaxTime(), recWindowData%, recWindowXY%, recHBeh%, recHBak%, recChanWM%, recChanTM%, recChanTrig%, recChanLever%);
+                recTLastProcessed := MaxTime();
             endif
+            
             'UpdateOnlineAnalysis();  'It was commented out when I found it.
+            
+            'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
+            'Note that the code as currently constructed relies on the value of 2 to come from here in order to indicate a terminal S1
+            'so we either have to get the code here to figure that out, or remove it to somewhere else
             rgTrialListIndex% += 1;
-            if rgTrialListIndex% = rgNTrialList% then  'if we're played all the S1s, return 1 to play the S2
+            if rgTrialListIndex% = rgNTrialList% then
                 status% := 1;
             endif
         else
-            strtmp$ := Print$("F,%d", rgTrialCount%);
+            strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
             SampleText(strtmp$, -1);
+            status% := 0;  'After FA, we will indicate the next stimulus is an S1, as it will be.
         endif
-    case ttype% = 1 then  'if stimulus is an S2
-        if success% = 1 then
-            strtmp$ := Print$("H,%d", rgTrialCount%);
-            SampleText(strtmp$, -1);
-        else
-            strtmp$ := Print$("M,%d", rgTrialCount%);
-            SampleText(strtmp$, -1);
-        endif
+    case isTerminal% = 1 then  'if stimulus is terminal
+        
+        'Here, the value of 
+        if isS2% = 1 then  'If it's a target
+            if success% = 1 then
+                strtmp$ := Print$("H,%d", recCurrentTrial%);  'H is for Hit
+                SampleText(strtmp$, -1);
+            else
+                strtmp$ := Print$("M,%d", recCurrentTrial%);  'M is for Miss
+                SampleText(strtmp$, -1);
+            endif;
+        else  'If it's a terminal S1 (intended no-response)
+            if success% = 1 then
+                strtmp$ := Print$("C,%d", recCurrentTrial%);  'C is for Correct Rejection, trial is over (This code is new, all other codes are old)
+                SampleText(strtmp$, -1);
+            else
+                strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
+                SampleText(strtmp$, -1);
+            endif;
+        endif;
+
     else
-        rgLogError("TrialComplete", "Unknown ttype (" + str$(ttype%) + ")");
+        RecLogError("StimComplete", "Unknown ttype (" + str$(isS2%) + ")");
         status% := -1;
     endcase
     return status%;
@@ -484,24 +544,23 @@ end
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Start%()
-    rgIsStarted% := 1;  'Is this ever used again?
     
     ' Disable start button, enable stop and pause
     
-    ToolbarEnable(rgStartButton%, 0);
-    ToolbarEnable(rgStopButton%, 1);
-    ToolbarEnable(rgPauseButton%, 1);
+    ToolbarEnable(recStartButton%, 0);
+    ToolbarEnable(recStopButton%, 1);
+    ToolbarEnable(recPauseButton%, 1);
     
-    ' Oh yeah, start the sampling.   
-    if is1401present% = 1 then
+    ' Start the sampling.   
+    if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         SampleStart();
+        ToolbarText("Sampling started.");  ' Tell the world about it. 
+        recCurrentlySampling% := 1;  'don't start sampling again
     endif
     
     ' Set idle function
     ToolbarSet(0, "", IdleLoop%);
     
-    ' Tell the world about it. 
-    ToolbarText("Sampling started.");
     return 1;
 end
 
@@ -511,26 +570,44 @@ end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' Stop%()
+' Stop%() - stops sampling
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Stop%()
     PrintLog("Stop called\n");
     
+    recCurrentlySampling% := 0;    
+    
     ' Stop sampling....
     if SampleStatus() <> -1 then
         SampleStop();
-        'FilePathSet(data$);  'appears to be redundant as this is done earlier
-        FileSaveAs(rgFileID$ + rgFileNum$ + rgFileExpID$ + ".smr", -1); 'Save data file automagically
+        FileSaveAs(recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
     endif
-    
+
     ' Returning zero from here any ToolbarSet() functions causes the 
     ' Toolbar() function to return.
     return 0;
+    
 end
 
 
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' ReturnToExptSelectDialog%() - continues sampling, but opens expt. selection dialog
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func ReturnToExptSelectDialog%()
+    PrintLog("Return to Expt. Selection Dialog called\n"); 
+    
+    'Reset appropriate variables
+    recCurrentTrial% := 0;
+    
+    ' Returning zero from here any ToolbarSet() functions causes the 
+    ' Toolbar() function to return.
+    return 0;
+
+end
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -540,9 +617,9 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Pause%()
     PrintLog("Pause called\n");
-    rgIsPaused% := 1;
-    ToolbarEnable(rgResumeButton%, 1);
-    ToolbarEnable(rgPauseButton%, 0);
+    recIsPaused% := 1;
+    ToolbarEnable(recResumeButton%, 1);
+    ToolbarEnable(recPauseButton%, 0);
     return 1;
 end
 
@@ -557,9 +634,9 @@ end
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Resume%()
-    rgIsPaused% := 0;
-    ToolbarEnable(rgResumeButton%, 0);
-    ToolbarEnable(rgPauseButton%, 1);
+    recIsPaused% := 0;
+    ToolbarEnable(recResumeButton%, 0);
+    ToolbarEnable(recPauseButton%, 1);
     return 1;
 end
 
@@ -591,7 +668,7 @@ end
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc ChangeStateTo(stateTo%)
 	iState% := stateTo%;
-    if Testing%() = 0 then
+    if recCEDIsPresent% = 1 then
         tStateStart := MaxTime();
     else
         tStateStart := tNow;
@@ -604,14 +681,14 @@ end;
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' 
-' rgLogStatus
+' RecLogStatus
 ' 
 ' Utility to write msg to log window. Will not write if rgDebug is not set. 
 ' Like 
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-proc rgLogStatus(stateName$, msg$)
-    if rgDebug% = 1 then
+proc RecLogStatus(stateName$, msg$)
+    if recDebug% = 1 then
         PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
     endif
 end
@@ -622,13 +699,13 @@ end
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' 
-' rgLogError
+' RecLogError
 ' 
-' Like rgLogStatus, a utility to write msg to log window. 
-' Unlike rgLogStatus, rgLogError will write no matter what - regardless of rgDebug value.
+' Like RecLogStatus, a utility to write msg to log window. 
+' Unlike RecLogStatus, RecLogError will write no matter what - regardless of rgDebug value.
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-proc rgLogError(stateName$, msg$)
+proc RecLogError(stateName$, msg$)
     PrintLog("ERROR===============================================\n");
     if stateName$ = "" then
         PrintLog(msg$ + "\n");
@@ -644,13 +721,14 @@ end
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' 
-' rgLogInfo
+' RecLogInfo
 ' 
-' Like rgLogStatus, a utility to write msg to log window. 
-' Unlike rgLogStatus, rgLogInfo will write no matter what - regardless of rgDebug value.
+' Like RecLogStatus, a utility to write msg to log window. 
+' Unlike RecLogStatus, RecLogInfo will write no matter what - regardless of rgDebug value.
+' Although as of 5/24/2012 it's not ever used.  Oh well.
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-proc rgLogInfo(msg$)
+proc RecLogInfo(msg$)
     PrintLog("INFO " + msg$ + "\n");
 end
 
@@ -691,8 +769,21 @@ end
 '
 ' TODO: everything - just copied over from SPACE, this is NOT in a working format
 
+'These variables are the ones that we're going to be dealing with from here
+'var recTrialList%[recMaxStimPerTrial%][recMaxTrial%];   'Will hold indices to stimuli for S1 and S2 stimuli together; S1/S2 order within trial in rows, trial number in columns
+'var recTrialTerminalIndex%[recMaxTrial%];               'For each trial, holds indices to which row of recTrialList%[][] holds the final stimulus
+'var recTrialTerminalIsS2%[recMaxTrial%];                'For each trial, if 1 trial is target (Hit/miss), if 0 trial is catch (CR/FA)
+'var recNTrials%;                                        'Holds the total number of trials
+'var recSpeakerList%[recMaxStimPerTrial%][recMaxTrial%]; 'Same as recTrialList%[][], but holds speaker number
+'var recAttenList%[recMaxStimPerTrial%][recMaxTrial%];   'Same as recTrialList%[][], but holds CALIBRATING attenuation
+'var recDeltadBList%[recMaxStimPerTrial%][recMaxTrial%]; 'Same as recTrialList%[][], but holds TRIAL-BASED attenuation (experimentally relevant)  
+'var recTrialOrder%[recMaxTrial%];                       'Holds order in which trials should be presented
+'var recCurrentTrial%; 
+'
+
 func PrepareNextTrial%()
     var i%;
+    var thisTrial%;
     var nread%:= 0;
     var file$;
     var reloadCount% := 0;
@@ -701,70 +792,105 @@ func PrepareNextTrial%()
     var retSize%[2];
     var notSureOfLogicHere := 2351;  'just something so I can test if it works
     
+    'Fair Warning - gutting this thing (but hey, keeping all the old stuff for now) and starting over
+    
     'set trial index to 0
-    rgTrialListIndex% := 0;    
+    'rgTrialListIndex% := 0;    
     
     ' Get the trial list, then check if we're done. If so, return now, don't do the 
     ' rest of the stuff here since there's nothing to do. 
-    rgNTrialList% := tlgGetTrialList%(rgTrialList%[]);  'To be perfectly honest, going through this trial list generator makes me cry.  I understand what it's doing, but why in the world you would want to do that is beyond me.
-    if rgNTrialList% = 0 then  'Hmm.  I don't see how tlgGetTrialList%() can EVER return 0.
-        return 0;
-    endif
+    'rgNTrialList% := tlgGetTrialList%(rgTrialList%[]);  'To be perfectly honest, going through this trial list generator makes me cry.  I understand what it's doing, but why in the world you would want to do that is beyond me.
+    'if rgNTrialList% = 0 then  'Hmm.  I don't see how tlgGetTrialList%() can EVER return 0.
+    '    return 0;
+    'endif
     'I'm sure this stuff will change.  I hope so.  I like sensible stuff.
     
     ' Check that the last trial in the list is NOT the background trial index. If it is, then
     ' get another trial list and check again. Repeat.
-    while rgTrialList%[rgNTrialList%-1] = rgNTrialTypes%-1 do
-        reloadCount% += 1;
-        PrintLog("Trial list has background as last trial. Bad list:\n");
-        PrintLog("TrialList ");
-        for i% := 0 to rgNTrialList%-1 do
-            PrintLog(str$(rgTrialList%[i%]) + " ");
-            next
-        PrintLog("\n");
-        PrintLog("Get another list. Attempt # %d\n", reloadCount%);
-        rgNTrialList% := tlgGetTrialList%(rgTrialList%[]);
-        if rgNTrialList% = 0 then
-            return 0;
-        endif
-        if reloadCount% > 9 then
-            Message("Error fetching trial list! See log window.");
-            PrintLog("Cannot get a trial list without background as last trial! This should not happen! Contact dan.\n");
-            return 0;
-        endif
-    wend
+    'while rgTrialList%[rgNTrialList%-1] = rgNTrialTypes%-1 do
+    '    reloadCount% += 1;
+    '    PrintLog("Trial list has background as last trial. Bad list:\n");
+    '    PrintLog("TrialList ");
+    '    for i% := 0 to rgNTrialList%-1 do
+    '        PrintLog(str$(rgTrialList%[i%]) + " ");
+    '        next
+    '    PrintLog("\n");
+    '    PrintLog("Get another list. Attempt # %d\n", reloadCount%);
+    '    rgNTrialList% := tlgGetTrialList%(rgTrialList%[]);
+    '    if rgNTrialList% = 0 then
+    '        return 0;
+    '    endif
+    '    if reloadCount% > 9 then
+    '        Message("Error fetching trial list! See log window.");
+    '        PrintLog("Cannot get a trial list without background as last trial! This should not happen! Contact dan.\n");
+    '        return 0;
+    '    endif
+    'wend
     
     
-    if rgDebug% = 1 then
+    'if recDebug% = 1 then
+    '    PrintLog("TrialList ");
+    '    for i% := 0 to rgNTrialList%-1 do
+    '        PrintLog(str$(rgTrialList%[i%]) + " ");
+    '        next
+    '    PrintLog("\n");
+    'endif
+    
+    ' Get index of current trial
+    thisTrial% :=  recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
+    
+    ' Put current trial sequence into log file
+    if recDebug% = 1 then
         PrintLog("TrialList ");
-        for i% := 0 to rgNTrialList%-1 do
-            PrintLog(str$(rgTrialList%[i%]) + " ");
+        for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
+            PrintLog(str$(recTrialList%[i%][thisTrial%]) + " ");
             next
         PrintLog("\n");
     endif
     
-    ' Load noise for each of the trials
-    for i% := 0 to rgNTrialList%-1 do
-        'note that some of these variables should actually be vectors
-        'TODO: build these vectors, and move it outside of the for loop, since it all happens at once
-        retSize%[1] := rgSoundSize%;
-        retSize%[2] := rgNTrialList%;  'might want to change this name.  rgNTrials
+    ' Generate/Load stimuli and put them into PlayWaveAreas
+    ' for a first attempt, I'd say not to bother with trying to be too clever - just make/load each stimulus
+    ' and put it in the appropriate PWA until we've gone through each stimulus
+    ' Aw geez, one more big question...if these stimuli are not the came duration, then the PWA might be too long, and
+    ' since we are relying on the length of the PWA when looking at the end of the stimulus, that's a major pain...
+    ' looks like PlayWaveStatus may be able to save me, because it will update the position in the PWA that is playing
+    ' in a variable, and we can check THAT against the number of points in the stimulus.
+    if recMatGenStim% = 1 then  'Generate stimuli using Matlab
+        'opening a figure is slow, but everything else looks fast.  I can't quite ID exactly how long these things take
+        'because things look like they happen in about 15-ms increments as far as CED's "Seconds()" command is concerned.
+        'Needless to say, you can operate several commands (put, get, eval) without any time elapsing, then 15 ms for a
+        'similar command.  Whether that's OS time or just clock precision I don't know.  What I do know is that under optimal
+        'conditions you can put and get a 100000-element float in essentially 0 time, and maximally 15 ms.  So in principle as
+        'long as the Matlab commands to eval are quick, we shouldn't worry about the time to do up to 10 "gets".  If we can
+        'cleverly have all of them come simultaneously (i.e. a 2-d array of stimuli), that's cool too.  May not be necessary.
         
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",rgDAC0Rate);  'on any fail, matPutOK% will increment
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",rgSoundSize%);  'for now I think rgSoundSize is the way to go - we can't have multiple durations without multiple PlayWaveAreas
-        matPutOK% := matPutOK% + PutMatlabValueFloatArray%("am_freq",rgAMFreqVec[]);  'this might need to change trial-to-trial
-        matPutOK% := matPutOK% + PutMatlabValueFloatArray%("am_depth",rgAMDepthVec[]);
-        matPutOK% := matPutOK% + PutMatlabValueIntArray%("ret_size",retSize%[]);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp_dur",5);  'This is in ms, assume 5 is perfect for now, could make it a variable
-        matPutOK% := matPutOK% + PutMatlabValueStr%("type","G");  'This is "G" for Gaussian or "U" for uniform noise
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("am_phase",3.1415926);  'Start AM at 0 (program works in cosine phase)
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("seed",notSureOfLogicHere);  'random seed for the 
-        'etc.
+    else  'Load stimuli from file
         
-        statement$ := "noise = create_AM_noise_matrix(fs,dur,am_freq,am_depth,ret_size,ramp_dur,type,am_phase,seed);";
-        EvalMatlabStatement%(statement$);
-        GetMatlabValueIntArray%("noise",tempStimTransfer%[]);
-    next;
+    endif;
+    
+    
+    ' Load stimulus for each of the trials
+'    for i% := 0 to rgNTrialList%-1 do
+'        'note that some of these variables should actually be vectors
+'        'TODO: build these vectors, and move it outside of the for loop, since it all happens at once
+'        retSize%[1] := recMaxPoints%;
+'        retSize%[2] := rgNTrialList%;  'might want to change this name.  rgNTrials
+'        
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recMaxPoints%);  'for now I think rgSoundSize is the way to go - we can't have multiple durations without multiple PlayWaveAreas
+'        matPutOK% := matPutOK% + PutMatlabValueFloatArray%("am_freq",rgAMFreqVec[]);  'this might need to change trial-to-trial
+'        matPutOK% := matPutOK% + PutMatlabValueFloatArray%("am_depth",rgAMDepthVec[]);
+'        matPutOK% := matPutOK% + PutMatlabValueIntArray%("ret_size",retSize%[]);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp_dur",5);  'This is in ms, assume 5 is perfect for now, could make it a variable
+'        matPutOK% := matPutOK% + PutMatlabValueStr%("type","G");  'This is "G" for Gaussian or "U" for uniform noise
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("am_phase",3.1415926);  'Start AM at 0 (program works in cosine phase)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("seed",notSureOfLogicHere);  'random seed for the 
+'        'etc.
+'        
+'        statement$ := "noise = create_AM_noise_matrix(fs,dur,am_freq,am_depth,ret_size,ramp_dur,type,am_phase,seed);";
+'        EvalMatlabStatement%(statement$);
+'        GetMatlabValueIntArray%("noise",tempStimTransfer%[]);
+'    next;
     
     'For now the PlayWaveCopy has been commented out but it has to be replaced at some point and
     'this is the place to do it.  However it can probably wait until some of the other logic is worked out.    
@@ -803,7 +929,7 @@ func PrepareNextTrial%()
     '    endcase
     
     
-    return rgNTrialList%;
+    'return rgNTrialList%;
     
 end
 
@@ -821,118 +947,144 @@ func IdleLoop%()
     var stmp%;
     var trtmp%;
     var strtmp$;
-    var iLoop% := 1;  'Wrapping the case statement to allow multiple runs in one idle loop, when timing is critical
-    var trialCount%;
+    var nextStateImmed% := 1;  'Wrapping the case statement to allow multiple runs in one idle loop, when timing is critical
+    var isPlaying%;
+    var PWA$;
     
-    if Testing%() = 0 then
-        tNow := MaxTime();
-    else
-        tNow += .05;  'simulate 50 ms between loops
-    endif
-    
-    while iLoop% = 1 do
+    while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
         
-        iLoop% := 0;  'Don't repeat this loop unless specifically asked to below
+        'Get the current time
+        if recCEDIsPresent% = 1 then
+            tNow := MaxTime();
+        else
+            tNow += .05;  'simulate 50 ms between loops
+        endif
+        
+        nextStateImmed% := 0;  'Don't repeat this (internal) loop unless specifically asked to below for timing purposes
     
         ' State Logic - determine which state we are in 
         docase
         case iState% = stateStart% then
-            'This state is only entered once per "experiment" - once per each time the template file passes control to the 
-            rgLogStatus("Start", "Starting expt state loop.");
+            'This state is only entered once per "experiment" - once per each time the template file passes control
+            RecLogStatus("Start", "Starting expt state loop.");
             ChangeStateTo(stateInitializeTrials%);
-            iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             
         case iState% = stateInitializeTrials% then
             
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
             ' button anytime, but the actual pause will happen here. 
-            if rgIsPaused% = 0 then
+            if recIsPaused% = 0 then
                 stmp% := PrepareNextTrial%();  
                 docase
                 case stmp% = 0 then
-                    rgLogStatus("InitializeTrials", "All trials are done!");
+                    RecLogStatus("PrepareNextTrial", "All trials are done!");
                     ChangeStateTo(stateDone%);
                 case stmp% < 0 then
-                    rgLogStatus("InitializeTrials", "Error return value from InitializeTrials%");
+                    RecLogStatus("PrepareNextTrial", "Error return value from PrepareNextTrial%");
                     ChangeStateTo(stateCodingError%);
                 else
-                    trialCount% += 1;  'trialCount% only incremented here, upon successful load of new trial.
-                    rgLogStatus("InitializeTrials", "Trial #" + str$(trialCount%) + " ready.");
+                    recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful load of new trial.
+                    RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
                     ChangeStateTo(stateWaitForInitiationMovement%);
                 endcase
             endif
             
         case iState% = stateWaitForInitiationMovement% then
-            rgLogStatus("WaitLvrDown", "Blink/Wait.");
+            RecLogStatus("WaitLvrDown", "Blink/Wait.");
             
-            if Testing%() = 0 then
-                stmp% := recBlinkUntilLeverDown%(.5, rgMaxLvrDownTime);
+            if recCEDIsPresent% = 1 then
+                stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
+                'Will leave LED on once lever is down
             else
                 stmp% := 1;  'simulate success in lever press
             endif
             
             docase
             case stmp% = 1 then
-                rgDelayIntervalTime := rgMinDelay + Rand(rgVarDelay, 0);
+                recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
                 'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
-                rgLogStatus("WaitLvrDown", "Delay interval=" + str$(rgDelayIntervalTime) + " s.");
+                RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                 ChangeStateTo(statePreTrialDelay%);
             case stmp% = 0 then
-                rgLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
-                ChangeStateTo(stateInitiationTimeout%);
+                RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
+                ChangeStateTo(stateLazyMonkeyTimeout%);
             else
                 PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
                 Message("Error in recBlinkUntilLeverDown!");
                 ChangeStateTo(stateTDTError%);
             endcase
             
-        case iState% = stateInitiationTimeout% then
+        case iState% = stateLazyMonkeyTimeout% then
             
-            if tNow - tStateStart > rgLvrDownTimeout then
-                rgLogStatus("LvrDownTimeout", "Timeout period done. Trial #" + str$(trialCount%) + " ready.");
-                ChangeStateTo(stateWaitForInitiationMovement%);  'was stateInitializeTrials% but we don't need to reload everything, just start as if we had just finished loading
-                iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            if tNow - tStateStart > recLazyMonkeyTO then
+                RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
+                ChangeStateTo(stateWaitForInitiationMovement%);  'restart as if we had just finished loading
+                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
             
         case iState% = statePreTrialDelay% then
             
-            if tNow - tStateStart >= rgDelayIntervalTime then
-                rgLogStatus("DelayInterval", "Delay done.");
+            if tNow - tStateStart >= recDelayIntervalTime then
+                RecLogStatus("DelayInterval", "Delay done.");
                 ChangeStateTo(stateStartSoundA%);
-                iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
             
         case iState% = stateStartSoundA% then
             
-            rgLogStatus("TrialSoundA", "Call expt function");
-            'stmp% := Trial%(0);  'Trial%() is a function in local file, calls PlaySound...
-            stmp% := PlaySound%();  'Cut out the middle man and deal directly with us!  Factory pricing!
+            RecLogStatus("TrialSoundA", "Call expt function");
+            stmp% := PlaySound%();  
             docase
             case stmp% = 0 then
+                isPlaying% := 1;
                 ChangeStateTo(stateSoundAPlaying%);
             case stmp% < 0 then
-                rgLogStatus("TrialSoundA", "PlaySound returned negative value.");
+                RecLogStatus("TrialSoundA", "PlaySound returned negative value.");
                 ChangeStateTo(stateTDTError%);
             else
-                rgLogStatus("TrialSoundA", "PlaySound returned unknown value (>0).");
+                RecLogStatus("TrialSoundA", "PlaySound returned unknown value (>0).");
                 ChangeStateTo(stateTDTError%);
             endcase
             
         case iState% = stateSoundAPlaying% then
             
-            if PlayWaveStatus$() = "" then
-                ChangeStateTo(stateISIDelay%);
-                iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
-            endif
+            PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            if recPointsPlayed% >= recPlayPoints% or PWA$ = "" then
+                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped OR if it's in blank space following stimulus
+            endif;
             
+            'if PlayWaveStatus$() = "" then  'if the sound has stopped, go to ISI delay
+            if isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+                if isInterrupt% = 1 then
+                    isInterrupt% := 0;  'reset variable
+                    StimComplete%(0, 0, 0);
+                    recTDTLEDOff%();
+                    ChangeStateTo(stateFAInterrupt%);  'on FA interrupt, reshuffle entire stim sequence in later
+                else
+                    ChangeStateTo(stateISIDelay%);
+                endif
+                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            else 'if the sound is still playing, check for interrupt
+                if recLeverDown%() = 0 then
+                    'institute interrupt procedure either way
+                    isInterrupt% := 1;
+                    RecLogStatus("TrialSoundA", "False Positive Interrupt! Lever is up");
+                    if recContinueSoundOnS1Interrupt% = 0 then
+                        PlayWaveStop();  'stop playing stimulus
+                        isPlaying% := 0;
+                    endif
+                endif
+            endif
+  
             
         case iState% = stateISIDelay% then
             
             ' Check that lever is still down.
-            if Testing%() = 0 then
+            if recCEDIsPresent% = 1 then
                 stmp% := recLeverDown%();
             else
                 stmp% := 1;
@@ -940,62 +1092,136 @@ func IdleLoop%()
             
             docase
             case stmp% < 0 then
-                rgLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
+                RecLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
                 Message("Error in recLeverDown()!!!");
                 ChangeStateTo(stateTDTError%);
             case stmp% = 0 then
                 'SafeSampleKey("R");  'not in Recgen.pls!
-                rgLogStatus("WaitISI", "FAIL! Lever is up");
-                TrialComplete%(0, 0);
-                ChangeStateTo(stateFalsePositive%);
+                RecLogStatus("WaitISI", "False Positive! Lever is up");
+                StimComplete%(0, 0, 0);
+                recTDTLEDOff%();
+                ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
-                if tNow - tStateStart > rgInterStimInterval then
-                    rgLogStatus("WaitISI", "ISI done.");
-                    trtmp% := TrialComplete%(0, 1);
+                if tNow - tStateStart > recISI then
+                    RecLogStatus("WaitISI", "ISI done.");
+                    trtmp% := StimComplete%(0, 0, 1);
                     docase 
                     case trtmp% = 0 then
                         ChangeStateTo(stateStartSoundA%);
                     case trtmp% = 1 then
+                        isTerminalS1% := 0;
                         ChangeStateTo(stateStartSoundB%);
+                    case trtmp% = 2 then
+                        isTerminalS1% := 1;
+                        ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go
                     else
-                        rgLogStatus("WaitISI", "Unknown return value from TrialComplete");
-                        Message("Error in TrialComplete%()!!!");
+                        RecLogStatus("WaitISI", "Unknown return value from StimComplete");
+                        Message("Error in StimComplete%()!!!");
                         ChangeStateTo(stateCodingError%);
                     endcase
                 endif
             endcase
             
+            
+            
         case iState% = stateStartSoundB% then
-            rgLogStatus("TrialSoundB", "Call expt function");
-            'stmp% := Trial%(1);
-            stmp% := PlaySound%();  'Again, cutting out the middle man
+            RecLogStatus("TrialSoundB", "Call expt function");
+            stmp% := PlaySound%();  
             docase
             case stmp% = 0 then
+                isPlaying% := 1;
                 ChangeStateTo(stateSoundBPlaying%);
             case stmp% < 0 then
-                rgLogStatus("TrialSoundB", "PlaySound returned negative value.");
+                RecLogStatus("TrialSoundB", "PlaySound returned negative value.");
                 ChangeStateTo(stateTDTError%);
             else
-                ' This is probably where Trial can say to skip second sound
-                rgLogStatus("TrialSoundB", "PlaySound returned unknown value (>0).");
+                RecLogStatus("TrialSoundB", "PlaySound returned unknown value (>0).");
                 ChangeStateTo(stateTDTerror%);
             endcase
             
+            
         case iState% = stateSoundBPlaying% then
             
-            if PlayWaveStatus$() = "" then
-                rgLogStatus("WaitTrialSoundB", "Sound done playing.");
-                ChangeStateTo(stateTrainingReward%);
-                iLoop% := 1;  'Deliver reward immediately
+            PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            if recPointsPlayed% >= recPlayPoints% or PWA$ = "" then
+                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped OR if it's in blank space following stimulus
+            endif;
+            
+            'if PlayWaveStatus$() = "" then  'if the sound has stopped, go to training reward and then response window
+            if isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+                RecLogStatus("WaitTrialSoundB", "Sound done playing.");
+                ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
+                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            else 'if the sound is still playing, check for early hit
+                if recLeverDown%() = 0 then
+                    'accept response whether sound should be stopped or not
+                    isEarlyHit% := 1;  'this is a hit before the sound has stopped playing
+                    RecLogStatus("WaitTrialSoundB", "Lever is up - HIT interrupting S2");
+                    if recContinueSoundOnS2Interrupt% = 0 then
+                        PlayWaveStop();  'stop playing stimulus
+                        isPlaying% := 0;
+                    endif
+                endif
             endif
+            
+            
+        case iState% = stateStartSoundC% then
+            'Logic here is actually the same as for sound B
+            RecLogStatus("TrialSoundC", "Call expt function");
+            stmp% := PlaySound%();  
+            docase
+            case stmp% = 0 then
+                isPlaying% := 1;
+                ChangeStateTo(stateSoundCPlaying%);
+            case stmp% < 0 then
+                RecLogStatus("TrialSoundC", "PlaySound returned negative value.");
+                ChangeStateTo(stateTDTError%);
+            else
+                RecLogStatus("TrialSoundC", "PlaySound returned unknown value (>0).");
+                ChangeStateTo(stateTDTerror%);
+            endcase            
+            
+            
+        case iState% = stateSoundCPlaying% then
+            'here there really is no difference between terminal S1 ("nontarget") and target trials, we deal with the difference
+            'in stateInResponseWindow% (at least if there's no interrupt of the stimulus
+        
+            PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            if recPointsPlayed% >= recPlayPoints% or PWA$ = "" then
+                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped OR if it's in blank space following stimulus
+            endif;
+        
+            'if PlayWaveStatus$() = "" then
+            if isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+                RecLogStatus("WaitTrialSoundC", "Sound done playing.");
+                if isEarlyFA% = 1 then
+                    ChangeStateTo(stateInResponseWindow%);  'this will just shunt to the FA penalty, but it keeps the logic consistent
+                else
+                    ChangeStateTo(stateTrainingReward%);
+                endif;
+                nextStateImmed% := 1;  'Change state immediately
+            else 'if the sound is still playing, check for early FA
+                if recLeverDown%() = 0 then
+                    'accept response whether sound should be stopped or not
+                    isEarlyFA% := 1;  'this is a hit before the sound has stopped playing
+                    RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
+                    if recContinueSoundOnS1Interrupt% = 0 then
+                        PlayWaveStop();  'stop playing stimulus
+                        isPlaying% := 0;
+                    endif
+                endif
+            endif            
+            
+            
             
         case iState% = stateTrainingReward% then
             
             ' Are we giving free (training) rewards? If we are, then do so, otherwise we just pass on through. 
-            if rgTrainingRewardCheck% = 1 then
-                rgLogStatus("TrainingReward", "Giving training reward size " + str$(rgTrainingRewardSize%));
-                if Testing%() = 0 then
-                    stmp% := tdtREWARD%(rgTrainingRewardSize%);
+            if recTrainingRewardDur > 0 then
+                RecLogStatus("TrainingReward", "Giving training reward size " + str$(recTrainingRewardDur) + "seconds");
+                if recCEDIsPresent% = 1 then
+                    recRewardMs% := recTrainingRewardDur*1000;
+                    stmp% := tdtREWARD%(recRewardMs%);  'Assuming milliseconds for now
                     if stmp% <> 0 then
                         PrintLog("ERROR in tdtREWARD%()!!!\n");
                         Message("Error in tdtREWARD%()!!!");
@@ -1003,63 +1229,121 @@ func IdleLoop%()
                     endif;
                 endif
             else
-                rgLogStatus("TrainingReward", "No free reward.");
+                RecLogStatus("TrainingReward", "No training reward.");
             endif
             ChangeStateTo(stateInResponseWindow%);
             
+            
         case iState% = stateInResponseWindow% then
             
-            if Testing%() = 0 then
-                stmp% := recLeverDown%();
+            if recCEDIsPresent% = 1 then
+                stmp% := recLeverDown%();  'check lever status
             else
                 ' TODO: might want to simulate HIT and MISS here.....For now only HIT when testing. 
                 stmp% := 0;
             endif
             
             docase
+            'Early hit, interrupted final stimulus    
+            case isEarlyHit% = 1 then  'we don't care about the state of the lever; it was already released early
+                isEarlyHit% := 0;  'reset variable
+                StimComplete%(1, 1, 1);
+                recTDTLEDOff%();
+                ChangeStateTo(stateHitReward%);
+                nextStateImmed% := 1;  'Deliver reward immediately
+            'Early FA, interrupted final stimulus before actual response window
+            case isEarlyFA% = 1 then  'we don't care about the state of the lever; it was already released early
+                isEarlyFA% := 0;  'reset variable
+                StimComplete%(0, 1, 0);
+                recTDTLEDOff%();
+                ChangeStateTo(stateFalsePositive%);
+                nextStateImmed% := 1;  'Begin penalty immediately
+            'Error in RecLeverDown%()
             case stmp% < 0 then
-                rgLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
+                RecLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
                 Message("Error in recLeverDown()!!!");
                 ChangeStateTo(stateTDTError%);
-            case stmp% = 0 then
+            'Hit in response window    
+            case stmp% = 0 and isTerminalS1% = 0 then
                 'SafeSampleKey("R");  'not in Recgen.pls!
-                rgLogStatus("WaitLvrUp", "Lever is up - HIT");
-                TrialComplete%(1, 1);
-                ChangeStateTo(stateResponseReward%);
-                iLoop% := 1;  'Deliver reward immediately
+                RecLogStatus("WaitLvrUp", "Lever is up - HIT");
+                StimComplete%(1, 1, 1);
+                recTDTLEDOff%();
+                ChangeStateTo(stateHitReward%);
+                nextStateImmed% := 1;  'Deliver reward immediately
+            'False alarm in response window    
+            case stmp% = 0 and isTerminalS1% = 1 then
+                RecLogStatus("WaitLvrUp", "Lever is up - False Alarm on terminal S1");
+                StimComplete%(0, 1, 0);
+                recTDTLEDOff%();
+                ChangeStateTo(stateFalsePositive%);
+                nextStateImmed% := 1;  'Begin penalty immediately
+            'Response window is closed, miss    
+            case tNow - tStateStart > recResponseWindow and isTerminalS1% = 0 then
+                RecLogStatus("WaitLvrUp", "Lever not up - timed out - MISS");
+                StimComplete%(1, 1, 0);
+                recTDTLEDOff%();
+                ChangeStateTo(stateMissTimeout%);
+            'Response window is closed, correct rejection    
+            case tNow - tStateStart > recResponseWindow and isTerminalS1% = 1 then 
+                RecLogStatus("WaitLvrUp", "Lever not up - Correct Rejection on terminal S1");
+                StimComplete%(0, 1, 1);
+                recTDTLEDOff%();
+                ChangeStateTo(stateCRReward%);  
+            'Otherwise, the response window is still open and the lever is still down    
             else
-                if tNow - tStateStart > rgMaxLvrUpTime then
-                    rgLogStatus("WaitLvrUp", "Lever not up - timed out - MISS");
-                    TrialComplete%(1, 0);
-                    ChangeStateTo(stateResponseWindowTimeout%);
-                endif
+                'Nothing, just a comment                
             endcase
             'We can aggressively wait for the response if the RT is important, just uncomment below (is RT even recorded?)
-            'iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            'nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             
-        case iState% = stateResponseWindowTimeout% then
             
-            if tNow - tStateStart > rgLvrUpTimeout then
-                rgLogStatus("LvrUpTimeout", "Timeout period done.");
+        case iState% = stateMissTimeout% then
+            
+            if tNow - tStateStart > recMissTO then
+                RecLogStatus("MissTimeout", "Timeout period done.");
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
-                iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
-            endif
-            
-        case iState% = stateFalsePositive% then
-            
-            if tNow - tStateStart > rgFalsePositiveTimeout then
-                rgLogStatus("FalsePositiveTimeout", "Timeout period done.");
-                ChangeStateTo(stateWaitForInitiationMovement%);  'was stateInitializeTrials% but we want to repeat the stimulus
-                iLoop% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
             
-        case iState% = stateResponseReward% then
             
-            if rgLongRewardCheck% = 1 then
-                rgLogStatus("LvrUpReward", "(long)) Reward size=" + str$(rgLongRewardSize%));
-                if Testing%() = 0 then
-                    stmp% := tdtREWARD%(rgLongRewardSize%);
+        case iState% = stateFalsePositive% then 
+            'this state is used to give a FA timeout for an incorrect response to a terminal S1 (nontarget) stim 
+            'no real need to repeat entire stim sequence as the whole sequence was presented
+            if tNow - tStateStart > recFalseAlarmTO then
+                RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
+                'ChangeStateTo(stateWaitForInitiationMovement%);  'was stateInitializeTrials% but we want to repeat the stimulus
+                ChangeStateTo(stateInitializeTrials%);  'No, actually, I don't think we do want to repeat the stimulus
+                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            endif
+            
+            
+            
+        case iState% = stateFAInterrupt% then
+            'this state is used to repeat a FA interrupted stimulus, so that the S2 gets played
+            if tNow - tStateStart > recFalseAlarmTO then
+                RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
+                
+                'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                recCurrentTrial% := recCurrentTrial% - 1;
+                
+                'Send current trial to "middle" of remaining trials
+                SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
+                
+                ChangeStateTo(stateInitializeTrials%); 
+                nextStateImmed% := 1;  'Go load a new trial now
+            endif            
+            
+            
+               
+        case iState% = stateHitReward% then
+            
+            if recHitRewardDur > 0 then
+                RecLogStatus("HitReward", "(long)) Reward size=" + str$(recHitRewardDur) + "seconds");
+                if recCEDIsPresent% = 1 then
+                    recRewardMs% := recHitRewardDur*1000;
+                    stmp% := tdtREWARD(recRewardMs%);
                     if stmp% <> 0 then
                         PrintLog("ERROR in tdtREWARD%()!!!\n");
                         Message("Error in tdtREWARD%()!!!");
@@ -1069,10 +1353,31 @@ func IdleLoop%()
             endif
             ChangeStateTo(stateInitializeTrials%);  'move to next trial
             
+            
+        case iState% = stateCRReward% then
+            
+            if recHitRewardDur > 0 then
+                RecLogStatus("CRReward", "(long)) Reward size=" + str$(recCRRewardDur) + "seconds");
+                if recCEDIsPresent% = 1 then
+                    recRewardMs% := recCRRewardDur*1000;
+                    stmp% := tdtREWARD(recRewardMs%);
+                    if stmp% <> 0 then
+                        PrintLog("ERROR in tdtREWARD%()!!!\n");
+                        Message("Error in tdtREWARD%()!!!");
+                        ChangeStateTo(stateTDTError%);
+                    endif;
+                endif
+            endif
+            ChangeStateTo(stateInitializeTrials%);  'move to next trial            
+            
+            
+            
         case iState% = stateDone% then
             
-            rgLogStatus("Done", "");
-            Stop%();
+            recTDTLEDOff%();
+            RecLogStatus("Done", "");
+            ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
+            'Stop%();
             iStatus% := 0;
             
         case iState% = stateTDTError% then
@@ -1080,10 +1385,11 @@ func IdleLoop%()
             'find a way to break all the way out
             
             'This is temporary so it does something logical but should be updated eventually
-            rgLogStatus("A TDT Error has occurred!", "");
-            Stop%();
-            iStatus% := 0;
+            RecLogStatus("A TDT Error has occurred!", "");
             TDTError% := 1;  'This will allow the entire thing to quit
+            recTDTLEDOff%();
+            iStatus% := 0;
+            Stop%();
             
             
         case iState% = stateCodingError% then
@@ -1091,22 +1397,24 @@ func IdleLoop%()
             'find a way to break all the way out
             
             'This is temporary so it does something logical but should be updated eventually
-            rgLogStatus("A coding Error has occurred!", "");
-            Stop%();
+            RecLogStatus("A coding Error has occurred!", "");
             iStatus% := 0;
             TDTError% := 1;  'This will allow the entire thing to quit (even if it isn't technically a TDT error)
+            recTDTLEDOff%();
+            Stop%();
             
         else
             
-            rgLogStatus("UNKNOWN STATE", "iState%=" + str$(iState%));
+            RecLogStatus("UNKNOWN STATE", "iState%=" + str$(iState%));
             Message("Unknown state (%d)!", iState%);
-            Stop%();
             iStatus% := 0;
             TDTError% := 1;  'This will allow the entire thing to quit (even if it isn't technically a TDT error)
+            recTDTLEDOff%();
+            Stop%();
             
         endcase
         
-    wend  'close the iLoop% while
+    wend  'close the nextStateImmed% while
     
     
     return iStatus%;

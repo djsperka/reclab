@@ -1,4 +1,7 @@
 ' $Log$
+' Revision 1.6  2012/08/16 20:39:36  jeff
+' *** empty log message ***
+'
 ' Revision 1.5  2012/03/16 18:34:53  jeff
 ' Commit
 '
@@ -303,4 +306,128 @@ func tlgGetNextTrial%(last%)
     
     choice% := Rand(count%, 0);
     return tlgPossibleChoices%[choice%];
+end
+
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' DealNumberOfS1s(nS1%,nS2%,nMinS1%,nMaxS1%,&numS1perTrial%[])
+'
+' This function is used in the case where the total number of S1s and S2s is predicated
+' from the start of the experiment (e.g., combined FRA/Rate-level/Space)
+' 
+' Such a scenario does not allow for random selection of the number of S1s on each trial.
+' Here we return a list in numS1perTrial%[] of the number of S1s for each S2. The total
+' number of S1s will add to nS1%, and no S2 will be assigned fewer than nMinS1% S1s or
+' more than nMaxS1% S1s.
+'
+' For example, nS1% = 20; nS2% = 6; nMinS1% = 2; nMaxS1% = 6 could return a list of:
+' [2 3 4 3 2 6] in numS1perTrial%[] (with any extra indices blank)
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func DealNumberOfS1s%(nS1%,nS2%,nMinS1%,nMaxS1%,&numS1perTrial%[])
+    var i%;
+    var ok%;
+    var temp%;
+    
+    'Check for math impossibility
+    if nMaxS1%*nS2% < nS1% then  'if there are more S1 stimuli than allowed by "max"
+        message("Too many S1 stimuli ("+Str$(nS1%)+") to have a maximum of "+Str$(nMaxS1%)+" S1s per S2 ("+Str$(nS2%)+" S2s)");
+        return 0;  'return failure
+    endif;
+    
+    if nMinS1%*nS2% > nS1% then  'if there are not enough S1 stimuli to reach "min"
+        message("Not enough S1 stimuli ("+Str$(nS1%)+") to have a minimum of "+Str$(nMinS1%)+" S1s per S2 ("+Str$(nS2%)+" S2s)");
+        return 0;  'return failure
+    endif;
+    
+    'Blank out numS1perTrial%[] in case it was already filled
+    ArrConst(numS1perTrial%[],0);
+    
+    'Deal out minimum S1 trials
+    ArrAdd(numS1perTrial%[0:nS2%],nMinS1%);
+    
+    'Update number of S1s left to assign
+    nS1% := nS1%-(nMinS1%*nS2%);
+    
+    'Loop through the remaining S1s
+    for i% := 1 to nS1% do
+        ok% := 0;
+        while ok% = 0 do 'find incrementable index
+            temp% := Floor(Rand(nS2%,0));
+            if numS1perTrial%[temp%] < nMaxS1% then 'if there are fewer than the maximum, incrementing is OK
+                ok% := 1;
+            endif;
+        wend
+        'Now that we've found an incrementable index, increment it
+        numS1perTrial%[temp%]+=1;
+    next;
+    
+    return 1;  'return success
+end
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' SendTrialToMiddle%(nTrials%,unfinishedTrial%,minToSkip%,&trialOrder%[])
+'
+' This function is used after an interrupt or otherwise rejected/unfinished trial.  
+' The default behavior will be to send the unfinished trial to a random middle 
+' position in the remainder of the trials.  For instance, if the 34th of 200 
+' defined trials is unfinished, it will be placed in a random position between
+' #34 and #199.  If it were to be placed at trial #42, then trials #35-42 would
+' be bumped forward one position to #34-41, the old #34 is placed at #42, and 
+' #43-199 are unchanged.  The trial counter is not advanced, so old trial #35
+' (now trial #34) will be the next stimulus.
+'
+' nTrials% is the total number of trials
+' unfinishedTrial% is the trial to reorder
+' minToSkip% is the minimum number of trials to elapse before reinsertion
+' trialOrder%[] is the current trial order, which will be updated
+'
+' If minToSkip% is set, the unfinished trial will not be inserted until at least
+' that many trials have elapsed, if possible.  If there are not enough trials remaining
+' to obey minToSkip%, the unfinished trial will be placed at the end.
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func SendTrialToMiddle%(nTrials%,unfinishedTrial%,minToSkip%,&trialOrder%[])
+    
+    var status% := -1;  '-1 is failure status
+    var minpos%;
+    var maxpos%;
+    var newpos%;
+    
+    if unfinishedTrial% < nTrials%-1 then  'unfinishedTrial% is an index, but nTrials% is a count
+        minpos% := unfinishedTrial% + minToSkip%;  'in index units
+        maxpos% := nTrials%-1;  'now also in index units
+        'determine new position in which to put unfinishedTrial%
+        if minpos% < maxpos% then
+            newpos% := floor(rand(maxpos%-minpos%+1,minpos%));  'this works, in index units
+            status% := 1;  'status indicates full success
+        else
+            newpos% := maxpos%;  'if minimum position is beyond the end of trials, just put at the end
+            status% := 0;  'status indicates success in returning a legal value, but failure to randomize due to being at end of trials
+        endif;
+        'now insert trial, shifting as required
+        docase
+        case newpos% = unfinishedTrial% then
+            'do nothing, trial will repeat
+        case newpos% = maxpos% then
+            arrconst(trialOrder%[unfinishedTrial%:maxpos%-unfinishedTrial%+1],trialOrder%[unfinishedTrial%+1:maxpos%-unfinishedTrial%]);
+            trialOrder%[newpos%] := unfinishedTrial%;
+        else
+            arrconst(trialOrder%[unfinishedTrial%:newpos%-unfinishedTrial%+1],trialOrder%[unfinishedTrial%+1:newpos%-unfinishedTrial%+1]);
+            trialOrder%[newpos%] := unfinishedTrial%;
+        endcase        
+    else
+        'Don't do anything here - if it is the last trial it will automatically repeat, that's the only option
+        status% := 0;  'status indicates success in returning a legal value, but failure to randomize due to being at end of trials
+    endif;
+      
+    return status%;
 end
