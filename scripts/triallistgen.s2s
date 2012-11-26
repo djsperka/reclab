@@ -1,4 +1,7 @@
 ' $Log$
+' Revision 1.7  2012/11/26 19:38:21  jeff
+' *** empty log message ***
+'
 ' Revision 1.6  2012/08/16 20:39:36  jeff
 ' *** empty log message ***
 '
@@ -325,7 +328,16 @@ end
 ' more than nMaxS1% S1s.
 '
 ' For example, nS1% = 20; nS2% = 6; nMinS1% = 2; nMaxS1% = 6 could return a list of:
-' [2 3 4 3 2 6] in numS1perTrial%[] (with any extra indices blank)
+' [2 3 4 3 2 6] in numS1perTrial%[] (with any extra indices blank), this corresponds to a structure of:
+' S1, S1, S2
+' S1, S1, S1, S2
+' S1, S1, S1, S1, S2
+' S1, S1, S1, S2
+' S1, S1, S2
+' S1, S1, S1, S1, S1, S1, S2
+'
+' The exact identity of S1/S2 stimuli is determined elsewhere, this just returns the trial order
+' for this constrained case
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func DealNumberOfS1s%(nS1%,nS2%,nMinS1%,nMaxS1%,&numS1perTrial%[])
@@ -430,4 +442,46 @@ func SendTrialToMiddle%(nTrials%,unfinishedTrial%,minToSkip%,&trialOrder%[])
     endif;
       
     return status%;
+end
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' ShuffleList%(list%[])
+'
+' Shuffles a list (vector of integers).  Conceptually, this
+' steps through each position in the vector (from left to right),
+' swapping the current position with a randomly chosen element
+' from that element rightward (inclusive, so "no swap" is a
+' possibility).  If you think about it, it works.
+'
+' In other words, it puts a randomly-chosen element into
+' position 0.  Then it puts a randomly-chosen element from the
+' set of elements not at position 0 into position 1.  Then it
+' puts a randomly-chosen element from the set of elements not
+' at positions 0-1 into position 2, etc.
+'
+' Note that the result is placed into the variable used as an
+' argument.  If a portion of a variable is fed in (e.g. list%[0:5])
+' this will work as expected, only elements 0 - 4 will be shuffled.
+'
+' Rock on.
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func ShuffleList%(&list%[])
+    var status% := 0;
+    var i%, si%, tmp%;
+
+    ' Step thru the indices from 0 to n%-2. At each index, we consider the array starting at the 
+    ' current index and ending at the end of the array. If there are M elements in that array, 
+    ' draw a random number between 0 and M-1. Swap the index at that position with the index at 
+    ' position 0. Step to the next index and repeat. 
+    for i% := 0 to Len(list%[])-2 do
+        si% := Rand(Len(list%[])-i%, i%);
+        tmp% := list%[i%];
+        list%[i%] := list%[si%];
+        list%[si%] := tmp%;
+    next;
+    return status%;  'this does nothing right now, because it can't really break.
 end

@@ -38,6 +38,66 @@ func recSpeaker%(spk%)
 end
 
 
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' recReward
+'
+' Gives reward using Crist juicer 
+' Can be changed to use either a TDT (PI2) or CED output
+' Returns 1 on success, -1 otherwise
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func recReward%(ms%,useTDT%)
+    
+    if useTDT% = 1 then
+        return tdtREWARD%(ms%);
+    else
+        DeliverRewardCED(ms%);
+        return 1;  'there's not really a success check here
+    endif;
+    
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' DeliverRewardCED
+'
+' Sends TTL pulse of desired duration to Crist juider from CED 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc DeliverRewardCED(iMS%)
+    PrintLog("Reward %d\n", iMS%);
+    SampleSeqVar(1, iMS%);
+    SafeSampleKey("R");
+    Yield(); YieldSystem(iMS%/1000.0);
+    return;
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' SafeSampleKey
+' 
+' Calls SampleKey, but makes sure that there is no current action occurring on the sequencer
+' Waits up to 5 seconds before giving up and forcing the issue
+' Requires sequencer file to set and unset sequencer variable V2
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc SafeSampleKey(s$)
+    var count% := 0;
+    yield(.001);  'It takes the sequencer up to a full step to change the value of variable V2, this step is obligatory
+    while SampleSeqVar(2) <> 0 and count% < 5000 do
+        count% += 1;
+        Yield();
+    wend
+    SampleKey(s$);    
+    return;
+end
+
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' recLeverDown%()

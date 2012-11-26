@@ -25,15 +25,15 @@ var xspcChanBkgdPlus%;
 var xspcChanBkgdMinus%;
 var xspcChanLines%;
 const xspcPI := 3.141592653589793;
-const xspcNSpeakers% := 16;      ' # speakers, not counting bkgd speaker. 
+const xspcMaxSpeakers% := 32;      'max # speakers, not counting bkgd speaker. 
 const xspcMaxTrials% := 100;     ' max # trials allowed. Should be bigger than anyone would ever want. 
-var xspcTrialCounts%[xspcNSpeakers%+1];
-var xspcSpikeCounts%[xspcNSpeakers%+1][xspcMaxTrials%]; ' spike counts for completed trials on each trial type
-var xspcSpikeRate[xspcNSpeakers%+1][xspcMaxTrials%];    ' spike rates for completed trials on each trial type
-var xspcSpikeRateMean[xspcNSpeakers%+1];' mean spike rate for each trial type
-var xspcSpikeRateStd[xspcNSpeakers%+1]; ' std dev for above. 
-var xspcUnitX[xspcNSpeakers%+1];
-var xspcUnitY[xspcNSpeakers%+1];
+var xspcTrialCounts%[xspcMaxSpeakers%+1];
+var xspcSpikeCounts%[xspcMaxSpeakers%+1][xspcMaxTrials%]; ' spike counts for completed trials on each trial type
+var xspcSpikeRate[xspcMaxSpeakers%+1][xspcMaxTrials%];    ' spike rates for completed trials on each trial type
+var xspcSpikeRateMean[xspcMaxSpeakers%+1];' mean spike rate for each trial type
+var xspcSpikeRateStd[xspcMaxSpeakers%+1]; ' std dev for above. 
+var xspcUnitX[xspcMaxSpeakers%+1];
+var xspcUnitY[xspcMaxSpeakers%+1];
 
 
 ' Extract data from the space1g data file currently open. Writes a "beh" and "bak" file on the (already-opened 
@@ -47,9 +47,9 @@ var xspcUnitY[xspcNSpeakers%+1];
 ' tStart = -1 means process from beginning, including first time, otherwise it means process all samples after, not
 ' including, tStart.
     
-proc ExtractSpace(tStart, tEnd, hData%, hXY%, hE%, hB%, chanWM%, chanTM%, chanTrig%, chanLever%)
+proc ExtractSpace(tStart, tEnd, hData%, hXY%, hE%, hB%, chanWM%, chanTM%, chanTrig%, chanLever%, NSpeakers%)
 
-var tLast := -1;
+var tLast;
 var t;
 var sText$, sChar$, sNoiseFile$;
 var isStart%, isNoise%;
@@ -130,7 +130,7 @@ while t > 0 and t >= tStart and (tEnd < 0 or (tEnd > 0 and t <= tEnd)) do
             ' Get spike times and write them (actually the time in ms relative to the trigger time) to the bak file. 
             nSpikes% := View(hData%).ChanData(chanWM%, tSpikes[], tCurrentStartTrigger, tCurrentSpikeIntervalEndTime);
             if (sChar$ = "E") then
-                ExtractSpaceUpdate%(iCurrentSpk%, nSpikes%, tCurrentSpikeIntervalEndTime-tCurrentStartTrigger);
+                ExtractSpaceUpdate%(iCurrentSpk%, nSpikes%, tCurrentSpikeIntervalEndTime-tCurrentStartTrigger, NSpeakers%);
             endif
             View(hB%).Print("3501\t%d\t%d\t%d\t%2.1f\t%d\t%d\t%d\n", iCurrentS1Num%, 1-isNoise%, iCurrentSpk%, fCurrentAtten, iCurrentS1Flg%, nSpikes%, iCurrentResp%);
             for i%:= 0 to nSpikes%-1 do
@@ -253,12 +253,12 @@ end
 
 ' Patterned after NextTime func. Finds next text marker in channel chan%. See Space.s2s for format of text markers written. 
 ' Arguments are set depending on marker type. For start type markers, sChar$ will be "S" or "T". For end type markers, sChar$
-' will be "E", "F", "H" or "M" or "X". 
+' will be "E", "F", "H" or "M" or "X".  JJ says, "don't know what 'X' is but correct rejections are 'C'"
 func NextTextMarker(tStart, chan%, &sText$, &sChar$, &isStart%, &iTrialNum%, &iS1Num%, &iTrialType%, &iSpk%, &fAtten, &isNoise%, &sNoiseFile$, &fFreq)
 
 var isOK% := 0;
-var t := -1;
-var tfound := -1;
+var t;
+var tfound;
 var code%[4];
 
 t := tStart;
@@ -305,40 +305,56 @@ return tfound;
 end
 
 
-proc ExtractSpaceInitialize(windowXY%)
+proc ExtractSpaceInitialize(windowXY%,NSpeakers%)
 
 var ang;
 var i%;
-
+var NSpkFloat;  'local float so mathy numbers can be not integers!
 
 xspcWindowXY% := windowXY%;
-xspcChanMean% := View(xspcWindowXY%).XYSetChan(0, -xspcNSpeakers%+1, 0, 2, 8);
-xspcChanMeanPlus% := View(xspcWindowXY%).XYSetChan(0, -xspcNSpeakers%+1, 0, 2, 7);
-xspcChanMeanMinus% := View(xspcWindowXY%).XYSetChan(0, -xspcNSpeakers%+1, 0, 2, 7);
-xspcChanBkgd% := View(xspcWindowXY%).XYSetChan(0, -xspcNSpeakers%+1, 0, 2, 0);
-xspcChanBkgdPlus% := View(xspcWindowXY%).XYSetChan(0, -xspcNSpeakers%+1, 0, 2, 5);
-xspcChanBkgdMinus% := View(xspcWindowXY%).XYSetChan(0, -xspcNSpeakers%+1, 0, 2, 5);
-xspcChanLines% := View(xspcWindowXY%).XYSetChan(0, -32, 0, 2, 20);
-
+xspcChanMean% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%, 0, 2, 8);  'allows NSpeakers% data points, oldest points are deleted
+xspcChanMeanPlus% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%, 0, 2, 7);  'unsorted, joined and looped, 
+xspcChanMeanMinus% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%, 0, 2, 7);  'final value is color
+xspcChanBkgd% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%, 0, 2, 0);
+xspcChanBkgdPlus% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%, 0, 2, 5);
+xspcChanBkgdMinus% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%, 0, 2, 5);
+xspcChanLines% := View(xspcWindowXY%).XYSetChan(0, -NSpeakers%*2, 0, 2, 20);  ' "Lines" are different than data - they plot a
+                                                                              ' series of ref. lines on the radii of the points    
+                                                                              ' so they alternate point, 0, point, 0, etc.    
+    
 ArrConst(xspcTrialCounts%, 0);
-
-for i%:=0 to xspcNSpeakers% do
-    ang := -xspcPI/8*(5+i%);
-    xspcUnitX[i%] := cos(ang);
-    xspcUnitY[i%] := sin(ang);
+        
+'This ain't perfect, and it relies on a constant number of speakers
+'for i%:=0 to NSpeakers% do
+'    ang := -xspcPI/8*(5+i%);
+'    xspcUnitX[i%] := cos(ang);
+'    xspcUnitY[i%] := sin(ang);
+'next
+    
+'Try this!  Will work for any number of speakers!
+'Basically, this assumes a full circular array of speakers, the first speaker will be located dead ahead (top of XY plot)
+'and subsequent speakers will be placed clockwise on plot
+'The concept here: this is used for making polar plots.  We get the X and Y coordinates of N points on a circle
+'with a radius of 1.  Then, we just multiply the coords by the desired radius and, voila!, a polar plot!    
+NSpkFloat := NSpeakers%;
+for i%:=0 to NSpeakers%-1 do
+    ang := (xspcPI/2)-((2*xspcPI/NSpkFloat)*i%); 'logic here is: take pi/2 (that's "up" in trig-speak) and subtract
+    xspcUnitX[i%] := cos(ang);                   'the angle per speaker (2*pi divided by n speakers) times the speaker number
+    xspcUnitY[i%] := sin(ang);                   'speaker "zero" is at the top, and things go clockwise from there.
 next
+    
 xspcIsInitialized% := 1;
 end
 
 
 
-func ExtractSpaceUpdate%(spk%, n%, sec)
+func ExtractSpaceUpdate%(spk%, n%, sec, NSpeakers%)
     var status% := 0;
     var index%; ' index into arrays where current trial is placed. Prior to incrementing trial count for this speaker!
-    var arrx[xspcNSpeakers%];
-    var arry[xspcNSpeakers%];
-    var arrxl[32];
-    var arryl[32];
+    var arrx[xspcMaxSpeakers%];
+    var arry[xspcMaxSpeakers%];
+    var arrxl[xspcMaxSpeakers%*2];
+    var arryl[xspcMaxSpeakers%*2];
     var i%;
     var maxrate := 0;
     
@@ -355,7 +371,7 @@ func ExtractSpaceUpdate%(spk%, n%, sec)
     ' rate. Get max rate while we're at it. 
     ArrConst(arrx, 0);
     ArrConst(arry, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
+    for i% := 0 to NSpeakers%-1 do
         arrx[i%] := xspcSpikeRateMean[i%] * xspcUnitX[i%];
         arry[i%] := xspcSpikeRateMean[i%] * xspcUnitY[i%];
         if xspcSpikeRateMean[i%] > maxrate then
@@ -367,7 +383,7 @@ func ExtractSpaceUpdate%(spk%, n%, sec)
     ' rate+std
     ArrConst(arrx, 0);
     ArrConst(arry, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
+    for i% := 0 to NSpeakers%-1 do
         arrx[i%] := (xspcSpikeRateMean[i%] + xspcSpikeRateStd[i%]) * xspcUnitX[i%];
         arry[i%] := (xspcSpikeRateMean[i%] + xspcSpikeRateStd[i%]) * xspcUnitY[i%];
     next
@@ -376,7 +392,7 @@ func ExtractSpaceUpdate%(spk%, n%, sec)
     ' rate-std
     ArrConst(arrx, 0);
     ArrConst(arry, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
+    for i% := 0 to NSpeakers%-1 do
         arrx[i%] := (xspcSpikeRateMean[i%] - xspcSpikeRateStd[i%]) * xspcUnitX[i%];
         arry[i%] := (xspcSpikeRateMean[i%] - xspcSpikeRateStd[i%]) * xspcUnitY[i%];
     next
@@ -385,34 +401,34 @@ func ExtractSpaceUpdate%(spk%, n%, sec)
     ' bkgd
     ArrConst(arrx, 0);
     ArrConst(arry, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
-        arrx[i%] := xspcSpikeRateMean[xspcNSpeakers%] * xspcUnitX[i%];
-        arry[i%] := xspcSpikeRateMean[xspcNSpeakers%] * xspcUnitY[i%];
+    for i% := 0 to NSpeakers%-1 do
+        arrx[i%] := xspcSpikeRateMean[NSpeakers%] * xspcUnitX[i%];
+        arry[i%] := xspcSpikeRateMean[NSpeakers%] * xspcUnitY[i%];
     next
     View(xspcWindowXY%).XYAddData(xspcChanBkgd%, arrx, arry);
 
     ' bkgd+std
     ArrConst(arrx, 0);
     ArrConst(arry, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
-        arrx[i%] := (xspcSpikeRateMean[xspcNSpeakers%] + xspcSpikeRateStd[xspcNSpeakers%]) * xspcUnitX[i%];
-        arry[i%] := (xspcSpikeRateMean[xspcNSpeakers%] + xspcSpikeRateStd[xspcNSpeakers%]) * xspcUnitY[i%];
+    for i% := 0 to NSpeakers%-1 do
+        arrx[i%] := (xspcSpikeRateMean[NSpeakers%] + xspcSpikeRateStd[NSpeakers%]) * xspcUnitX[i%];
+        arry[i%] := (xspcSpikeRateMean[NSpeakers%] + xspcSpikeRateStd[NSpeakers%]) * xspcUnitY[i%];
     next
     View(xspcWindowXY%).XYAddData(xspcChanBkgdPlus%, arrx, arry);
 
     ' bkgd-std
     ArrConst(arrx, 0);
     ArrConst(arry, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
-        arrx[i%] := (xspcSpikeRateMean[xspcNSpeakers%] - xspcSpikeRateStd[xspcNSpeakers%]) * xspcUnitX[i%];
-        arry[i%] := (xspcSpikeRateMean[xspcNSpeakers%] - xspcSpikeRateStd[xspcNSpeakers%]) * xspcUnitY[i%];
+    for i% := 0 to NSpeakers%-1 do
+        arrx[i%] := (xspcSpikeRateMean[NSpeakers%] - xspcSpikeRateStd[NSpeakers%]) * xspcUnitX[i%];
+        arry[i%] := (xspcSpikeRateMean[NSpeakers%] - xspcSpikeRateStd[NSpeakers%]) * xspcUnitY[i%];
     next
     View(xspcWindowXY%).XYAddData(xspcChanBkgdMinus%, arrx, arry);
 
     ' lines
     ArrConst(arrxl, 0);
     ArrConst(arryl, 0);
-    for i% := 0 to xspcNSpeakers%-1 do
+    for i% := 0 to NSpeakers%-1 do
         arrxl[i%*2+1] := maxrate * 1.25 * xspcUnitX[i%];
         arryl[i%*2+1] := maxrate * 1.25 * xspcUnitY[i%];
     next
