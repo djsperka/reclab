@@ -230,34 +230,34 @@ proc CreateSampleConfiguration()
     for i% := 1 to recNElectrodes% do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
         docase
         case i% = 1 then
-            SampleWaveMark(recTrode1Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode1Channel%, 0, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode1Channel%, "Trode 1"); 
         case i% = 2 then
-            SampleWaveMark(recTrode2Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode2Channel%, 1, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode2Channel%, "Trode 2");
         case i% = 3 then
-            SampleWaveMark(recTrode3Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode3Channel%, 2, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode3Channel%, "Trode 3");    
         case i% = 4 then
-            SampleWaveMark(recTrode4Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode4Channel%, 3, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode4Channel%, "Trode 4");    
         case i% = 5 then
-            SampleWaveMark(recTrode5Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode5Channel%, 4, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode5Channel%, "Trode 5");    
         case i% = 6 then
-            SampleWaveMark(recTrode6Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode6Channel%, 5, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode6Channel%, "Trode 6");    
         case i% = 7 then
-            SampleWaveMark(recTrode7Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode7Channel%, 6, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode7Channel%, "Trode 7");    
         case i% = 8 then
-            SampleWaveMark(recTrode8Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode8Channel%, 7, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode8Channel%, "Trode 8");    
         case i% = 9 then
-            SampleWaveMark(recTrode9Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode9Channel%, 8, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode9Channel%, "Trode 9");    
         case i% = 10 then
-            SampleWaveMark(recTrode10Channel%, 0, 100, 34, 15, 28000); ' chan, port, sustained spike rate, points, pre-trigger, rate
+            SampleWaveMark(recTrode10Channel%, 9, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode10Channel%, "Trode 10");    
         endcase;        
     next;
@@ -752,6 +752,7 @@ end
 func Reward%()
     ' This function is only used for the toolbar-based reward button, all other reward directly calls recReward%()
     ' use recRewardMs%, it's global!
+    ' This function isn't really being used - we're just calling recReward% directly, which is fine
     recReward%(recRewardMs%,useTDTforJuicer%);
     return 1;
 end
