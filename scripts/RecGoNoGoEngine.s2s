@@ -67,7 +67,7 @@ const recRewardButton% := 5;
 const recStopButton%   := 6;
 
 
-' States and state control vars
+' States and state control vars 
 var isInterrupt%;
 var isEarlyHit%;
 var isEarlyFA%;
@@ -102,11 +102,12 @@ var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
 var TDTError%;
 var isTerminalS1%:=0;    'if trial has terminal S1, logic of state loop must change, so we need to keep track
+var RTESDIsPressed%;  'has ReturnToExperimentSelectionDialog button been pressed?
 
 'var channels%[4];
 
 
-#include "reccreate.s2s"  'functions for creation of stimuli
+'#include "reccreate.s2s"  'functions for creation of stimuli, superceded by reclab_panstim.m
 
 
 'This is the overarching function which is called by the main (template) file
@@ -126,7 +127,7 @@ func RunGoNoGoEngine%()
     iState% := stateStart%;
     
     'Set up sampling configuration
-    if recCEDIsPresent% = 1 then
+    if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         CreateSampleConfiguration();   'CreateSampleConfiguration() is below     TODO: make sure it is OK, fix up .pls file
     endif
     
@@ -134,14 +135,14 @@ func RunGoNoGoEngine%()
     ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
     ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
-    if recCEDIsPresent% = 1  then 'don't try to initialize a PlayWaveArea if there's no 1401
+    if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then 'don't try to initialize a PlayWaveArea if there's no 1401
         InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
     endif
     
     
     'Open XY and data windows
     'Positioned after InitializePlayWaveAreas() because PlayWaveAdd() must be called before FileNew()
-    if recCEDIsPresent% = 1 then
+    if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         InitializeWindows();           'InitializeWindows() is below, opens one XYwindow and one data sampling window
         
         'For now, cutting out ExtractSpaceInitialize as ExtractSpace is being shelved at least temporarily.
@@ -152,13 +153,24 @@ func RunGoNoGoEngine%()
         'array, evenly spaced, speaker 0 at top and subsequent speakers clockwise.  Could be adapted for more variable arrays.
     endif
     
-    
-    ' Initialize toolbar. Once Toolbar is called the expt is controlled by the toolbar
+
+    ' Initialize toolbar. Once Toolbar is called the experiment is controlled by the toolbar
     ' buttons. Toolbar() does not return until one of the toolbar functions returns 0 - Stop%()
     ' does that if pressed, IdleLoop%() returns an iStatus% of 0 when it reaches the end of all trials. 
+    ' What is confusing is that although the Toolbar returns, it's not quite dead.  It's still there in
+    ' the background (even visible, but grayed out).  I suppose that's the way it is, an exited,
+    ' not-running Toolbar can still be seen because at an early step we made it visible.  OK.
+    ' However, a crucial step is that when returning to the experiment selection dialog, the Toolbar's 
+    ' idle function must be "turned off", or more technically, directed to no function: ( ToolbarSet(0, ""); )
+    ' rather than our state-logic idle loop.  That's because the Toolbar remembers things, and when we
+    ' start it up again, if it still thinks the idle function is our state-logic loop, it jumps right into 
+    ' it.  If we clear that idle function, then only the Start%() function sets the Toolbar idle function 
+    ' to our state-logic loop and gets things going.
     
     InitializeToolbar();
-    Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar
+    printlog("Toolbar initialized\n");
+    Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar; the experiment will be here most of the time
+    
     
     'once we leave the toolbar, return to calling function
     if TDTError% = 1 then
@@ -309,7 +321,7 @@ proc InitializeToolbar()
 	ToolbarSet(recStartButton%, "Start", Start%);
 	ToolbarSet(recPauseButton%, "Pause", Pause%);
 	ToolbarSet(recResumeButton%, "Resume", Resume%);
-    ToolbarSet(recSelectNewExptButton%, "New Expt.", ReturnToExptSelectDialog%);
+    ToolbarSet(recSelectNewExptButton%, "New Expt.", PrepToReturnToExptSelectDialog%);
 	ToolbarSet(recRewardButton%, "Reward", Reward%);
     ToolbarSet(recStopButton%, "Stop Sampling", Stop%);
     
@@ -323,7 +335,7 @@ proc InitializeToolbar()
     
 end;
 
-
+    
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -411,7 +423,7 @@ Func PlaySound%(isS2%)
     'Get speaker for current stimulus
     spkr% := recSpeakerList%[thisPWAIndex%][playInd%];
     
-    'Get calibrating attenuation for current stimulus
+    'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
     if recMatGenStim% = 0 then
         calatten := recTrialStimCal[thisStim%][spkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
         'calatten := recAttenList%[recStimCount%][playInd%];  'value originally read from file
@@ -422,7 +434,7 @@ Func PlaySound%(isS2%)
     endif;
     
     'Get trial-based attenuation for current stimulus
-    trlatten := recDeltadBList%[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
+    trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
     
     'Get total attenuation
     atten := calatten + trlatten;
@@ -615,13 +627,19 @@ func Start%()
     ToolbarEnable(recStopButton%, 1);
     ToolbarEnable(recPauseButton%, 1);
     
-    ' Start the sampling.   
-    if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
+    ' Start the sampling.
+    docase    
+    case recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         SampleStart();
         ToolbarText("Sampling started.");  ' Tell the world about it. 
+        printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         recCurrentlySampling% := 1;  'don't start sampling again
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
-    endif
+    case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
+        'virtually start sampling
+        recCurrentlySampling% := 1;
+        printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
+    endcase
     
     ' Set idle function
     ToolbarSet(0, "", IdleLoop%);
@@ -660,6 +678,17 @@ end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
+' PrepToReturnToExptSelectDialog%() - sets idle loop to return
+' to experiment selection dialog when the current trial is complete
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func PrepToReturnToExptSelectDialog%()
+    RTESDIsPressed% := 1;
+end;
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
 ' ReturnToExptSelectDialog%() - continues sampling, but opens expt. selection dialog
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -667,10 +696,14 @@ func ReturnToExptSelectDialog%()
     PrintLog("Return to Expt. Selection Dialog called\n"); 
     
     'Reset appropriate variables
-    recCurrentTrial% := 0;
+    recCurrentTrial% := 0;  'start with trial #1
+    recSearchLoaded% := 0;  'Need to reset recSearchLoaded, or load will be skipped even for non-search scenarios
+    RTESDIsPressed% := 0;
     
-    ' Returning zero from here any ToolbarSet() functions causes the 
-    ' Toolbar() function to return.
+    'Unset the idle function, so things don't start moving immediately when the Toolbar is next called
+    ToolbarSet(0, "");
+    
+    ' This causes the Toolbar() to return
     return 0;
 
 end
@@ -850,17 +883,18 @@ func PrepareNextTrial%(dontLoadPWAs%)
         printlog("thisTrial is %d\n",thisTrial%);
         PrintLog("Trial #%d, TrialList ",recCurrentTrial%+1);
         printlog("Terminal index is %d\n",recTrialTerminalIndex%[thisTrial%]);
+        PrintLog("Stims: ");
         for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
             ' Get current PWA
             thisPWA% := recPWAList%[i%][thisTrial%];
             ' Print stmulus number
             PrintLog(str$(recStimList%[thisPWA%][thisTrial%]) + " ");
             next
-        PrintLog("\n");
+        PrintLog("\nPWAs: ");
         for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
             ' Get current PWA
             thisPWA% := recPWAList%[i%][thisTrial%];
-            ' Print stmulus number
+            ' Print PWA number
             PrintLog(str$(thisPWA%) + " ");
             next
         PrintLog("\n");
@@ -905,6 +939,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[ind%]);
@@ -924,7 +959,10 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 endif;
                 
                 'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
-                statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,calib{spk});";
+                'NOTE THAT WITHOUT THE CALIB VARIABLE, THE FULL STATEMENT DOES NOT WORK PROPERLY
+                'USE THE TRUNCATED STATEMENT WITH NO CALIB UNTIL CALIBRATION IS IMPLEMENTED
+                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,calib{spk});";
+                statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 EvalMatlabStatement%(statement$);
                 'Get the stimulus and the seed back from Matlab
                 GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
@@ -1020,6 +1058,12 @@ func IdleLoop%()
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
             ' button anytime, but the actual pause will happen here. 
+            
+            if RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return
+                ReturnToExptSelectDialog%();
+            endif;
+            
+            
             if recIsPaused% = 0 then
                 
                 if recExpToRun% <> recExpSearchButton% or recSearchLoaded% = 0 then
@@ -1100,6 +1144,7 @@ func IdleLoop%()
                 stmp% := PlaySound%(isS2%);  
             else
                 stmp% := 0;  'simulate playing sound if no CED
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
             endif;
             
             docase
@@ -1212,6 +1257,7 @@ func IdleLoop%()
                 stmp% := PlaySound%(isS2%);
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
             endif;
             docase
             case stmp% = 0 then
@@ -1269,6 +1315,7 @@ func IdleLoop%()
                 stmp% := PlaySound%(isS2%);
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
             endif;  
             docase
             case stmp% = 0 then
@@ -1542,7 +1589,7 @@ func IdleLoop%()
             ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
             'Stop%();
             iStatus% := 0;
-            
+            recReadyToQuit% := 0;
             
             
         case iState% = stateTDTError% then
@@ -1584,12 +1631,12 @@ func IdleLoop%()
             if recTDTIsPresent% = 1 then
                 recTDTLEDOff%();
             endif;
-            Stop%();    
+            Stop%();          
         endcase
         
     wend  'close the nextStateImmed% while
     
     
-    return iStatus%;
+    return iStatus%;  'if iStatus% is 0, the Toolbar() will return
 end
 

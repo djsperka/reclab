@@ -84,7 +84,8 @@ func EvalMatlabStatement%(statement$)
     evalOK% := MatLabEval(statement$,err$);
     
     if evalOK% = 0 then
-        printlog("Success in passing command to Matlab!\n");
+        'Yeah, this gets called WAY too often to see every successful call
+        'printlog("Success in passing command to Matlab!\n");
     else
         printlog("Failure in passing command to Matlab!\n");
         printlog("Matlab response is '" + err$ + "'\n");

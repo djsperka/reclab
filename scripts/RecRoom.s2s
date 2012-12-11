@@ -68,6 +68,7 @@ var recSearchToneSweepLowLim;       'Lower frequency limit of tone sweeps
 var recSearchToneSweepUpperLim;     'Upper frequency limit of tone sweeps
 'var recSearchToneSweepOctaveStep;   'Octave step of tone sweep
 var recSearchToneSweepNSteps%;      'Number of steps in the tone sweep
+const recSearchToneSweepMaxSteps%:=10;        'Max number of frequency steps in search tone sweep curve
 var recSearchS1Speaker%;            'Speaker on which S1 plays, transferred to recS1Speaker% if Search is selected
 var recSearchS2Speaker%;            'Speaker on which S2 plays, transferred to recS2Speaker% if Search is selected
 var recSearchMinS1%;                'Minimum number of S1s, transferred to recMinS1% if Search is selected
@@ -80,17 +81,20 @@ var recSearchFixLED%;               'Use fixation LED, transferred to recFixLED%
 
 'FRA/Rate-Level/Space Dialog variables
 var recFRAS1Speaker%;               'Preferred speaker (S1 stimulus location)
+var recFRAMinS1%;
+var recFRAVarS1%;    
 var recRateLeveldBLow:=30;          'Lower bound of rate-level curve - must give a default value or program will crash with nothing in the registry
 var recRateLeveldBHigh:=80;         'Higher bound of rate-level curve - must give a default value or program will crash with nothing in the registry
+var recRateLevelNRepeats%:=12;      'number of repeats for rate-level experiment    
 var recFRATonedBLow:=30;            'Lower dB bound of FRA - must give a default value or program will crash with nothing in the registry
 var recFRATonedBHigh:=80;           'Higher dB bound of FRA - must give a default value or program will crash with nothing in the registry
 var recFRAToneFreqLow:=1000;        'Lower frequency bound of FRA - must give a default value or program will crash with nothing in the registry
 var recFRAToneFreqHigh:=20000;      'Higher frequency bound of FRA - must give a default value or program will crash with nothing in the registry
+var recFRANRepeats%:=1;             'number of repeats for FRA    
 var recFRAS2dBLevel;                'dB level of S2 stimuli (space curve), should match a level in the Rate-Level Curve
 const recRateLeveldBNSteps%:=10;    'Number of dB steps in rate-level curve
 const recFRAdBNSteps%:=10;          'Number of dB steps in FRA curve
-const recFRAFreqNSteps%:=45;        'Number of frequency steps in FRA curve
-const recSearchToneSweepMaxSteps%:=10;        'Max number of frequency steps in search tone sweep curve    
+const recFRAFreqNSteps%:=45;        'Number of frequency steps in FRA curve    
 var recRateLeveldBList[recRateLeveldBNSteps%];       'List of dB steps in rate-level curve
 var recFRAdBList[recFRAdBNSteps%];                   'List of dB steps in FRA curve
 var recFRAFreqList[recFRAFreqNSteps%];               'List of frequency steps in FRA curve
@@ -104,7 +108,6 @@ var recFRAFreqList2$;
 var recFRAFreqList3$;
 var recFRAFreqList4$;
 var recFRAFreqList5$;
-var recFRAFreqList6$;
 var recSearchToneSweepFreqList$;
 var recRLList1%;                    'Dialog item #, allows update of text
 var recRLList2%;                    'Etc.
@@ -115,8 +118,17 @@ var recFRAFreqList2%;
 var recFRAFreqList3%;
 var recFRAFreqList4%;
 var recFRAFreqList5%;
-var recFRAFreqList6%;
 var recSearchToneSweepFreqList%;
+var recFRAFMSweepRepeats%;
+var recFRAFMSweepStart%;
+var recFRAFMSweepEnd%;
+var recFRAFMSweep%[2];
+var recFRAFMSweepDur1%;
+var recFRAFMSweepDur2%;
+var recFRAFMSweepDur3%;
+var recFRAFMSweepDur4%;
+var recFRAFMSweepDur5%;
+var recFRAFMSweepDur%[5];
 
 
 'AM Discrimination Dialog variables
@@ -180,6 +192,7 @@ var recTrialDur[recMaxStim%];       'Duration of each stimulus, in ms, stim/cal 
 var recTrialStimCal[recMaxStim%][recMaxSpeaker%];    'A calibration matrix, used for stim/cal when loading
 var recTrialGenLowpassHz[recMaxStim%];               'A list of lowpass values - if -1, no lowpass, same as highpass means tone
 var recTrialGenHighpassHz[recMaxStim%];              'Same as above, highpass
+var recTrialGenIsSweep%[recMaxStim%];                'If 1, Lo/Hi Hz values will correspond to FM sweep instead of BP noise limits
 var recTrialGenAMFreqHz[recMaxStim%];                'A list of AM frequency values, if 0 no AM
 var recTrialGenAMDepthPct[recMaxStim%];              'A list of AM depth values in percent, if 0 no depth
 var recTrialGenAMPhaseDeg[recMaxStim%];              'A list of AM phases, 0 = AM starts low, 90 = AM starts middle and rising, 180 = AM starts high, 270 = AM starts middle, falling
@@ -210,9 +223,9 @@ var recTrialTerminalIsS2%[recMaxTrial%];                'For each trial, if 1 tr
 var recTotalTrials%;                                    'Holds the number of trials in the trials file, will not necessarily be the same as recNTrials% due to repeats    
 var recNTrials%;                                        'Holds the total number of trials
 var recNUniqueStims%[recMaxTrial%];                     'Holds the number of unique stims on each trial, for loading PWAs
-var recSpeakerList%[recMaxPWA%][recMaxTrial%];          'Same as recPWAList%[][], but holds speaker number
+var recSpeakerList%[recMaxPWA%][recMaxTrial%];          'Same as recStimList%[][], but holds speaker number
 'var recAttenList%[recMaxStimPerTrial%][recMaxTrial%];   'Same as recStimList%[][], but holds CALIBRATING attenuation
-var recDeltadBList%[recMaxStimPerTrial%][recMaxTrial%]; 'Same as recStimList%[][], but holds TRIAL-BASED attenuation (experimentally relevant)  
+var recDeltadBList[recMaxStimPerTrial%][recMaxTrial%];  'Same as recPWAList%[][], but holds TRIAL-BASED attenuation (experimentally relevant)  
 var recTrialOrder%[recMaxTrial%];                       'Holds order in which trials should be presented
 var recCurrentTrial%;                                   'Holds current trial in ordinal sequence, will be used to index recTrialOrder%[]    
 var recCurrRandomSeed%[recMaxPWA%];                     'Holds the random seeds used to generate each trial, only done on a trial-by-trial basis    
@@ -283,11 +296,13 @@ endif;
 
 'Open a Matlab instantiation, if present
 if recMatlabIsPresent% = 1 then 
+    ToolbarText("Opening Matlab, this could take up to 30 seconds");
     matlabOpenSuccess% := OpenMatlab%();
     if matlabOpenSuccess% < 0 then
         LogInfo("Open Matlab FAILED!");
         halt;
     endif;
+    ToolbarText("");
 else
     LogInfo("Client is in testing mode. Bypassing Matlab initialization.");
 endif
@@ -351,6 +366,9 @@ while recReadyToQuit% = 0 do
                 calibOK% := EvalMatlabStatement%(statement$);
             else
                 message("Matlab is not open, but you have selected a scenario that requires Matlab!");
+                if recCEDIsPresent% = 0 then  'if both are not present, this must be a testing scenario - let it go forward
+                    calibOK% := 0; 
+                endif;
             endif;
             
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 0 then  'Loading stims
@@ -469,7 +487,9 @@ while recReadyToQuit% = 0 do
                 'do Trial List Generation stuff!
                 recSearchLoaded% := 0;  'reset variable to allow PWAs to be loaded only once for SEARCH
                 recNTrials% := recMaxTrial%;  'Allow Search to run until experimenter stops it or the variable runs out
-                recNTrials% := 10; 'testing
+                if recDebug% = 1 then
+                    recNTrials% := 10; 'testing
+                endif;
                 result% := GenTrialsSearch%();  'Generate trials for search.  Return result of 1 if OK, 0 if not.
                 'recTrialOrder is set in GenTrialsSearch% because it should not be random for tone sweeps
                 'note that recTrialOrder will then have to be set for EACH GenTrialsX%() call
@@ -478,7 +498,8 @@ while recReadyToQuit% = 0 do
                 
             case recExpToRun% = recExpFRAButton% then
                 'do Trial List Generation stuff!
-                message("FRA is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
+                result% := GenTrialsFRA%();  'Generate trials for FRA.  Return result of 1 if OK, 0 if not.
+                'message("FRA is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 
             case recExpToRun% = recExpAMDiscButton% then
                 'do Trial List Generation stuff!
@@ -509,7 +530,8 @@ wend;
 
 'If quit has been pressed on the experiment selection dialog, make sure sampling is stopped
 ' Stop sampling....
-if recCurrentlySampling% = 1 then
+if recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
+    SafeSampleKey("K");  'Kill reward, just in case
     SampleStop();
     FileSaveAs(recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
 endif;
@@ -728,8 +750,20 @@ proc RecFRAGetParams()
     recFRATonedBHigh := GetFloatRegistryValue(key$, "FRATonedBHigh", recFRATonedBHigh);
     recFRAToneFreqLow := GetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
     recFRAToneFreqHigh := GetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
-    recFRAS2dBLevel := GetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);      
-    
+    recFRAS2dBLevel := GetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);  
+    recFRAMinS1% := GetIntRegistryValue%(key$, "FRAMinS1", recFRAMinS1%);
+    recFRAVarS1% := GetIntRegistryValue%(key$, "FRAVarS1", recFRAVarS1%);   
+    recRateLevelNRepeats% := GetIntRegistryValue%(key$, "RateLevelNRepeats", recRateLevelNRepeats%);
+    recFRANRepeats% := GetIntRegistryValue%(key$, "FRANRepeats", recFRANRepeats%);
+    recFRAFMSweepRepeats% := GetIntRegistryValue%(key$, "FRAFMSweepRepeats", recFRAFMSweepRepeats%);
+    recFRAFMSweepStart% := GetIntRegistryValue%(key$, "FRAFMSweepStart", recFRAFMSweepStart%);
+    recFRAFMSweepEnd% := GetIntRegistryValue%(key$, "FRAFMSweepEnd", recFRAFMSweepEnd%);
+    recFRAFMSweepDur1% := GetIntRegistryValue%(key$, "FRAFMSweepDur1", recFRAFMSweepDur1%);
+    recFRAFMSweepDur2% := GetIntRegistryValue%(key$, "FRAFMSweepDur2", recFRAFMSweepDur2%);
+    recFRAFMSweepDur3% := GetIntRegistryValue%(key$, "FRAFMSweepDur3", recFRAFMSweepDur3%);
+    recFRAFMSweepDur4% := GetIntRegistryValue%(key$, "FRAFMSweepDur4", recFRAFMSweepDur4%);
+    recFRAFMSweepDur5% := GetIntRegistryValue%(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
+
 	return;
 end
 
@@ -756,6 +790,18 @@ proc RecFRASaveParams()
     SetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
     SetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
     SetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);   
+    SetIntRegistryValue(key$, "FRAMinS1", recFRAMinS1%);
+    SetIntRegistryValue(key$, "FRAVarS1", recFRAVarS1%); 
+    SetIntRegistryValue(key$, "RateLevelNRepeats", recRateLevelNRepeats%);
+    SetIntRegistryValue(key$, "FRANRepeats", recFRANRepeats%);
+    SetIntRegistryValue(key$, "FRAFMSweepRepeats", recFRAFMSweepRepeats%);
+    SetIntRegistryValue(key$, "FRAFMSweepStart", recFRAFMSweepStart%);
+    SetIntRegistryValue(key$, "FRAFMSweepEnd", recFRAFMSweepEnd%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur1", recFRAFMSweepDur1%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur2", recFRAFMSweepDur2%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur3", recFRAFMSweepDur3%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur4", recFRAFMSweepDur4%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
     
 	return;
 end
@@ -1017,11 +1063,12 @@ func RecExpSearchDialog%()
                 recSearchActive%,recSearchFixLED%);
     
     ' If user hit OK then save parameters (and return 1). 
-	if i% = 1 then
+	if i% = 1 then 
         RecSearchSaveParams();
         if recSearchMinS1% + recSearchVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run Search");
+            DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
             recExpToRun% := recExpSearchButton%;
             recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
             recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
@@ -1049,8 +1096,9 @@ func RecExpSearchDialog%()
             'fill stimulus creation variables as if we had loaded a stimfile
             'do indices 0 and 1 because if the S2 is on a different speaker, it has to have a different calibration value, index 1 is the S2
             arrconst(recTrialDur[0:2],200);              'Trial duration, hard code to 200 for all except 50 for tone sweeps
-            arrconst(recTrialGenRampMS[0:2],5);          'Duration in ms of front/back ramp, ramp is 1-Cos^2
-                'A bunch of stuff we're just not using in Search
+            arrconst(recTrialGenRampMS[0:2],2);          'Duration in ms of front/back ramp, ramp is 1-Cos^2
+            'A bunch of stuff we're just not using in Search
+            arrconst(recTrialGenIsSweep%[0:2],0);        'A list of whether each element is an FM sweep, if 0 no sweep
             arrconst(recTrialGenAMFreqHz[0:2],0);        'A list of AM frequency values, if 0 no AM
             arrconst(recTrialGenAMDepthPct[0:2],0);      'A list of AM depth values in percent, if 0 no depth
             arrconst(recTrialGenAMPhaseDeg[0:2],0);      'A list of AM phases, 0 = AM starts low, 90 = AM starts middle and rising, 180 = AM starts high, 270 = AM starts middle, falling
@@ -1239,9 +1287,9 @@ func RecExpFRADialog%()
     
     var i%;
     var status% := 0;  
-    var inds%[8];
+    var inds%[10];
     var j%;
-    for j% := 0 to 7 do
+    for j% := 0 to 9 do
         inds%[j%] := j%;
     next;
     
@@ -1258,59 +1306,88 @@ func RecExpFRADialog%()
     recRLList2$ := StringifyProgression2$(5, recRateLeveldBList[5:5], inds%[],1);
     recFRAdBList1$ := StringifyProgression2$(5, recFRAdBList[0:5], inds%[],1);
     recFRAdBList2$ := StringifyProgression2$(5, recFRAdBList[5:5], inds%[],1);
-    recFRAFreqList1$ := StringifyProgression2$(8, recFRAFreqList[0:8], inds%[],0);
-    recFRAFreqList2$ := StringifyProgression2$(8, recFRAFreqList[8:8], inds%[],0);
-    recFRAFreqList3$ := StringifyProgression2$(8, recFRAFreqList[16:8], inds%[],0);
-    recFRAFreqList4$ := StringifyProgression2$(7, recFRAFreqList[24:7], inds%[],0);
-    recFRAFreqList5$ := StringifyProgression2$(7, recFRAFreqList[31:7], inds%[],0);
-    recFRAFreqList6$ := StringifyProgression2$(7, recFRAFreqList[38:7], inds%[],0);
+    recFRAFreqList1$ := StringifyProgression2$(10, recFRAFreqList[0:10], inds%[],0);
+    recFRAFreqList2$ := StringifyProgression2$(10, recFRAFreqList[10:10], inds%[],0);
+    recFRAFreqList3$ := StringifyProgression2$(9, recFRAFreqList[20:9], inds%[],0);
+    recFRAFreqList4$ := StringifyProgression2$(8, recFRAFreqList[29:8], inds%[],0);
+    recFRAFreqList5$ := StringifyProgression2$(8, recFRAFreqList[37:8], inds%[],0);
     
     
     ' Generate the dialog    
-    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,111,14);
+    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,120,18);
     
-    DlgGroup("S1 Stimuli",1,1,109,10);
+    DlgGroup("S1 Stimuli",1,1,118,14);
     DlgInteger(1,6,1,16,22,2);
-    DlgText("S1 (preferred) Speaker",2,2);    
+    DlgText("S1 (preferred) Speaker",2,2);
+    DlgInteger(9,6,2,3,44,2);
+    DlgText("Min S1 Stimuli",31,2);
+    DlgInteger(10,6,0,5,66,2);
+    DlgText("Var S1 Stimuli",53,2);
     
-    DlgGroup("Noise (Rate-Level)",2,3,27,7);
-    DlgReal(2,6,0.001,100,22,4);  'Rate-Level, low dB
-    DlgText("dB Level, Low",3,4);
-    DlgReal(3,6,0.001,100,22,5);  'Rate-Level, high dB
-    DlgText("dB Level, High",3,5);
-    DlgText("List of Selected dB Levels:",3,7);
-    recRLList1% := DlgText(recRLList1$,3,8,25);
-    recRLList2% := DlgText(recRLList2$,3,9,25);
     
-    DlgGroup("Tone Pips (FRA)",30,2,79,8);
-    DlgReal(4,6,0.001,100,47,3);  'FRA low dB
-    DlgText("Lower Level, dB",31,3);
-    DlgReal(5,6,0.001,50000,47,4);  'FRA high dB
-    DlgText("Upper Level, dB",31,4);
-    DlgText("List of Selected dB Levels:",31,7);
-    recFRAdBList1% := DlgText(recFRAdBList1$,31,8,25);
-    recFRAdBList2% := DlgText(recFRAdBList2$,31,9,25);
-    DlgReal(6,6,0.001,50000,47,5);  'FRA low frequency
-    DlgText("Lower Limit, Hz",31,5);
-    DlgReal(7,6,0.001,50000,47,6);  'FRA high frequency
-    DlgText("Upper Limit, Hz",31,6);
-    DlgText("List of Selected Freqs (rounded to nearest Hz):",59,3);
-    recFRAFreqList1% := DlgText(recFRAFreqList1$,59,4,49);  'must set width of text boxes or it is based on
-    recFRAFreqList2% := DlgText(recFRAFreqList2$,59,5,49);  'original text and updates can cause some
-    recFRAFreqList3% := DlgText(recFRAFreqList3$,59,6,49);  'values to be "invisible" - also done for dB
-    recFRAFreqList4% := DlgText(recFRAFreqList4$,59,7,49);  'values above (tone and rate-level) but probably
-    recFRAFreqList5% := DlgText(recFRAFreqList5$,59,8,49);  'not crucial there.
-    recFRAFreqList6% := DlgText(recFRAFreqList6$,59,9,49);
+    DlgGroup("Noise (Rate-Level)",2,3,27,8);
+    DlgInteger(11,6,1,50,22,4);  'Rate-Level, n repeats
+    DlgText("# Noise repeats",3,4);
+    DlgReal(2,6,0.001,100,22,6);  'Rate-Level, low dB
+    DlgText("dB Level, Low",3,6);
+    DlgReal(3,6,0.001,100,22,7);  'Rate-Level, high dB
+    DlgText("dB Level, High",3,7);
+    DlgText("List of Selected dB Levels:",3,8);
+    recRLList1% := DlgText(recRLList1$,3,9,25);
+    recRLList2% := DlgText(recRLList2$,3,10,25);
     
-    DlgGroup("S2 Stimuli",1,11,109,2);
-    DlgReal(8,6,0.001,100,22,12);  'S2 speaker dB level
-    DlgText("S2 dB level",3,12);
+    DlgGroup("Tone Pips (FRA)",30,3,88,8);
+    DlgInteger(12,6,1,5,47,4);  'Rate-Level, n repeats
+    DlgText("# Tone repeats",31,4);
+    DlgReal(4,6,0.001,100,47,6);  'FRA low dB
+    DlgText("Lower Level, dB",31,6);
+    DlgReal(5,6,0.001,50000,47,7);  'FRA high dB
+    DlgText("Upper Level, dB",31,7);
+    DlgText("List of Selected dB Levels:",31,8);
+    recFRAdBList1% := DlgText(recFRAdBList1$,31,9,25);
+    recFRAdBList2% := DlgText(recFRAdBList2$,31,10,25);
+    DlgReal(6,6,0.001,50000,73,4);  'FRA low frequency
+    DlgText("Lower Limit, Hz",59,4);
+    DlgReal(7,6,0.001,50000,103,4);  'FRA high frequency
+    DlgText("Upper Limit, Hz",89,4);
+    DlgText("List of Selected Freqs (rounded to nearest Hz):",59,5);
+    recFRAFreqList1% := DlgText(recFRAFreqList1$,59,6,58);  'must set width of text boxes or it is based on
+    recFRAFreqList2% := DlgText(recFRAFreqList2$,59,7,58);  'original text and updates can cause some
+    recFRAFreqList3% := DlgText(recFRAFreqList3$,59,8,58);  'values to be "invisible" - also done for dB
+    recFRAFreqList4% := DlgText(recFRAFreqList4$,59,9,58);  'values above (tone and rate-level) but probably
+    recFRAFreqList5% := DlgText(recFRAFreqList5$,59,10,58);  'not crucial there.
+    
+    DlgGroup("S1 FM Tones",2,11,116,3);
+    DlgInteger(13,6,1,50,22,12);  'FM Tones, n repeats
+    DlgText("# FM Tone repeats",3,12);
+    DlgInteger(14,6,20,10000,47,12);  'FM Tone start
+    DlgText("FM Tone Start Hz",31,12);
+    DlgInteger(15,6,40,50000,72,12);  'FM Tone end
+    DlgText("FM Tone End Hz",56,12);
+    DlgText("FM Tone Durs ms",3,13);  'FM Tone durations - only one label
+    DlgInteger(16,6,10,1000,22,13); 
+    DlgInteger(17,6,10,1000,32,13);
+    DlgInteger(18,6,10,1000,42,13);
+    DlgInteger(19,6,10,1000,52,13);
+    DlgInteger(20,6,10,1000,62,13);    
+    
+    
+    DlgGroup("S2 Stimuli",1,15,118,2);
+    DlgReal(8,6,0.001,100,22,16);  'S2 speaker dB level
+    DlgText("S2 (also FM) dB level",3,16);
     
     DlgAllow(0xffff, 0, RecExpFRADialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recFRAS1Speaker%,recRateLeveldBLow,recRateLeveldBHigh,recFRATonedBLow,recFRATonedBHigh,recFRAToneFreqLow,recFRAToneFreqHigh,recFRAS2dBLevel);
+    i%:=DlgShow(recFRAS1Speaker%,recRateLeveldBLow,recRateLeveldBHigh,recFRATonedBLow,recFRATonedBHigh,
+                recFRAToneFreqLow,recFRAToneFreqHigh,recFRAS2dBLevel,recFRAMinS1%,recFRAVarS1%,
+                recRateLevelNRepeats%,recFRANRepeats%,recFRAFMSweepRepeats%,recFRAFMSweepStart%,
+                recFRAFMSweepEnd%,recFRAFMSweepDur1%,recFRAFMSweepDur2%,recFRAFMSweepDur3%,recFRAFMSweepDur4%,
+                recFRAFMSweepDur5%);
 
+    
+    
+    
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         ' Recalculate dB steps, Freq. steps based on dialog values
@@ -1323,16 +1400,19 @@ func RecExpFRADialog%()
         
         'Reset dialog OK button text on Select dialog, and note which experiment to run
         DlgValue$(-1,"Run FRA");
+        DlgValue(3,2);  'force NSpeakers to the 16-speaker array on the main dialog
+        DlgEnable(0,3); 'and don't let this value be changed
         recExpToRun% := recExpFRAButton%; 
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
         
         'assign Search-specific variables to experiment-wide variables (so we can keep separate defaults but only code once)
+        recMinS1% := recFRAMinS1%;
+        recVarS1% := recFRAVarS1%;
         recS1Speaker% := recFRAS1Speaker%;
         recActive% := 1;
         recFixLED% := 1;
         recMatGenStim% := 1;  'Always generate stimuli for FRA
-               
         
         'We might need to specify a number of trials here...I'm assuming yes, just as for Search.  However
         'for the FRA, there may be a specific number of trials - it appears that the number of stimuli is
@@ -1363,9 +1443,9 @@ end;
 ' This function is initially called with a "0" input
 func RecExpFRADialogChanged%(item%) 
     'Quickly build a list of indices that we need
-    var inds%[8];
+    var inds%[10];
     var j%;
-    for j% := 0 to 7 do
+    for j% := 0 to 9 do
         inds%[j%] := j%;
     next;
     
@@ -1401,19 +1481,17 @@ func RecExpFRADialogChanged%(item%)
         'Recalculate log progression
         GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);
         'Update strings
-        recFRAFreqList1$ := StringifyProgression2$(8, recFRAFreqList[0:8], inds%[],0);
-        recFRAFreqList2$ := StringifyProgression2$(8, recFRAFreqList[8:8], inds%[],0);
-        recFRAFreqList3$ := StringifyProgression2$(8, recFRAFreqList[16:8], inds%[],0);
-        recFRAFreqList4$ := StringifyProgression2$(7, recFRAFreqList[24:7], inds%[],0);
-        recFRAFreqList5$ := StringifyProgression2$(7, recFRAFreqList[31:7], inds%[],0);
-        recFRAFreqList6$ := StringifyProgression2$(7, recFRAFreqList[38:7], inds%[],0);
+        recFRAFreqList1$ := StringifyProgression2$(10, recFRAFreqList[0:10], inds%[],0);
+        recFRAFreqList2$ := StringifyProgression2$(10, recFRAFreqList[10:10], inds%[],0);
+        recFRAFreqList3$ := StringifyProgression2$(9, recFRAFreqList[20:9], inds%[],0);
+        recFRAFreqList4$ := StringifyProgression2$(8, recFRAFreqList[29:8], inds%[],0);
+        recFRAFreqList5$ := StringifyProgression2$(8, recFRAFreqList[37:8], inds%[],0);
         'Update GUI
         DlgValue$(recFRAFreqList1%,recFRAFreqList1$);
         DlgValue$(recFRAFreqList2%,recFRAFreqList2$);
         DlgValue$(recFRAFreqList3%,recFRAFreqList3$);
         DlgValue$(recFRAFreqList4%,recFRAFreqList4$);
         DlgValue$(recFRAFreqList5%,recFRAFreqList5$);
-        DlgValue$(recFRAFreqList6%,recFRAFreqList6$);
     endcase;
     
     return 1;
@@ -1487,6 +1565,7 @@ func RecExpAMDiscDialog%()
         if recAMDiscMinS1% + recAMDiscVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run AM Disc");
+            DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
             recExpToRun% := recExpAMDiscButton%;
             recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
             recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
@@ -1584,6 +1663,7 @@ func RecExpCueingDialog%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
         DlgValue$(-1,"Run Cueing");
         recExpToRun% := recExpCueingButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
@@ -2710,7 +2790,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
     var lineCount%;
     var keepGoing% := 1;
     var numRead%;
-    var readLine$[11];
+    var readLine$[12];
     var fh0%;
     
     status% := 0;  'begin with "failure", change to success if success
@@ -2719,7 +2799,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
 
     'First, make sure the file won't barf on us
     numRead% := RecVerifyInputFile%(fileLoc$);
-    if numRead% <> 10 then
+    if numRead% <> 11 then
         if numRead% = -1 then
             message("Starting over!|Failure to read Tone/Noise/AM generation file!");
         else
@@ -2735,26 +2815,27 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
     readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
     
     'Skip past the header line
-    numRead% := read(readLine$[0:11]);
+    numRead% := read(readLine$[0:12]);
     
     while keepGoing% do
         'Read the next line in the file, return line and number of fields read
-        numRead% := read(readLine$[0:11]);  'reading as many as 11 lines as a check - if 11 successfully read, something is wrong with the file
+        numRead% := read(readLine$[0:12]);  'reading as many as 12 lines as a check - if 12 successfully read, something is wrong with the file
         lineCount% += 1;
         
         'Place values into global variables
         docase
-        case numRead% = 10 then
+        case numRead% = 11 then
             recTrialDur[lineCount%-1] := val(readLine$[0]);                'Trial duration
             recTrialGenLowpassHz[lineCount%-1] := val(readLine$[1]);       'A list of lowpass values - if -1, no lowpass, same as highpass means tone
             recTrialGenHighpassHz[lineCount%-1] := val(readLine$[2]);      'Same as above, highpass
-            recTrialGenAMFreqHz[lineCount%-1] := val(readLine$[3]);        'A list of AM frequency values, if 0 no AM
-            recTrialGenAMDepthPct[lineCount%-1] := val(readLine$[4]);      'A list of AM depth values in percent, if 0 no depth
-            recTrialGenAMPhaseDeg[lineCount%-1] := val(readLine$[5]);      'A list of AM phases, 0 = AM starts low, 90 = AM starts middle and rising, 180 = AM starts high, 270 = AM starts middle, falling
-            recTrialGenTonePhaseDeg[lineCount%-1] := val(readLine$[6]);    'A list of tone phases, 0 = tone starts middle, rising (sine phase), 90 = tone starts high (cosine phase), note different than AM phase, only used for tone, not noise
-            recTrialGenGauss%[lineCount%-1] := val(readLine$[7]);          'If 1 create Gaussian noise, if 0 create uniform noise
-            recTrialGenRampMS[lineCount%-1] := val(readLine$[8]);          'Duration in ms of front/back ramp, ramp is 1-Cos^2
-            recTrialGenSeed%[lineCount%-1] := val(readLine$[9]);           'Seed for random number generator, 0 = unspecified, will make own random number
+            recTrialGenIsSweep%[linecount%-1] := val(readLine$[3]);        'Determines if FM sweep is present
+            recTrialGenAMFreqHz[lineCount%-1] := val(readLine$[4]);        'A list of AM frequency values, if 0 no AM
+            recTrialGenAMDepthPct[lineCount%-1] := val(readLine$[5]);      'A list of AM depth values in percent, if 0 no depth
+            recTrialGenAMPhaseDeg[lineCount%-1] := val(readLine$[6]);      'A list of AM phases, 0 = AM starts low, 90 = AM starts middle and rising, 180 = AM starts high, 270 = AM starts middle, falling
+            recTrialGenTonePhaseDeg[lineCount%-1] := val(readLine$[7]);    'A list of tone phases, 0 = tone starts middle, rising (sine phase), 90 = tone starts high (cosine phase), note different than AM phase, only used for tone, not noise
+            recTrialGenGauss%[lineCount%-1] := val(readLine$[8]);          'If 1 create Gaussian noise, if 0 create uniform noise
+            recTrialGenRampMS[lineCount%-1] := val(readLine$[9]);          'Duration in ms of front/back ramp, ramp is 1-Cos^2
+            recTrialGenSeed%[lineCount%-1] := val(readLine$[10]);          'Seed for random number generator, 0 = unspecified, will make own random number
         case numRead%<0 then  'quit on end of file
             keepGoing% := 0;
             lineCount% -= 1;  'Decrement to get correct count on EOF
@@ -2773,13 +2854,14 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
 '    printlog("Column 1 was %f\n",recTrialDur[]);
 '    printlog("Column 2 was %f\n",recTrialGenLowpassHz[]);
 '    printlog("Column 3 was %f\n",recTrialGenHighpassHz[]);
-'    printlog("Column 4 was %f\n",recTrialGenAMFreqHz[]);
-'    printlog("Column 5 was %f\n",recTrialGenAMDepthPct[]);
-'    printlog("Column 6 was %f\n",recTrialGenAMPhaseDeg[]);
-'    printlog("Column 7 was %f\n",recTrialGenTonePhaseDeg[]);
-'    printlog("Column 8 was %d\n",recTrialGenGauss%[]);
-'    printlog("Column 9 was %f\n",recTrialGenRampMS[]);
-'    printlog("Column 10 was %d\n",recTrialGenSeed%[]);
+'    printlog("Column 4 was %f\n",recTrialGenIsSweep%[]);
+'    printlog("Column 5 was %f\n",recTrialGenAMFreqHz[]);
+'    printlog("Column 6 was %f\n",recTrialGenAMDepthPct[]);
+'    printlog("Column 7 was %f\n",recTrialGenAMPhaseDeg[]);
+'    printlog("Column 8 was %f\n",recTrialGenTonePhaseDeg[]);
+'    printlog("Column 9 was %d\n",recTrialGenGauss%[]);
+'    printlog("Column 10 was %f\n",recTrialGenRampMS[]);
+'    printlog("Column 11 was %d\n",recTrialGenSeed%[]);
     
     return status%;
     
@@ -2818,7 +2900,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%]);
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenLowpassHz[n%] = recTrialGenHighpassHz[n%] then 'tone
         if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
             freq$ := "_" + str$(recTrialGenLowpassHz[n%]) + "Hz";
@@ -2831,21 +2913,27 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%]);
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenHighpassHz[n%] < 0 then 'highpass
         if recTrialGenGauss%[n%] = 1 then 'Gaussian noise
             freq$ := "_GaussNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo";
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%]);
-    else 'bandpass
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+    case recTrialGenIsSweep%[n%] = 0 then 'bandpass
         if recTrialGenGauss%[n%] = 1 then 'Gaussian noise
             freq$ := "_GaussNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%]);
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+    else 'FM sweep
+        if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
+            freq$ := "_FMSweep_start" + str$(recTrialGenLowpassHz[n%]) + "Hz_end" +  str$(recTrialGenHighpassHz[n%]) + "Hz";
+        else 'note non-standard phase
+            freq$ := "_FMSweep_start" + str$(recTrialGenLowpassHz[n%]) + "Hz_end" +  str$(recTrialGenHighpassHz[n%]) + "Hz_" + str$(recTrialGenTonePhaseDeg[n%]) + "DegTonePhase";
+        endif;
     endcase;
             
     'AM is pretty easy  
@@ -2879,7 +2967,7 @@ func GenTrialsSearch%()
     'won't break triallistgen.s2s for other experiments
     var i%;
     var j%;
-    var status% := 0;
+    var status% := 1;
     var nS%;  'number of S1 stimuli
     var nR%;  'number of repeats, for tone sweep
     var nT%;  'number of tones, for tone sweep
@@ -2892,7 +2980,7 @@ func GenTrialsSearch%()
     
     'Tone sweeps have to be different!  No S2 for those.
     for i% := 0 to recNTrials%-1 do
-        nS% := recMinS1% + Floor(Rand(recVarS1%,1));  'using Floor with an offset of 1 because the range of Rand is 0 -> .999... 
+        nS% := recMinS1% + Floor(Rand(recVarS1%+1,0));  'using Floor with an offset of 1 because the range of Rand is 0 -> .999... 
         recTrialOrder%[i%] := i%;  'set initial trial order
         docase
         case recSearchStimType% = 4 and (nT%*nR% <= recMaxStimPerTrial%) then 'for tone sweeps, simple version where all trials are identical
@@ -2902,7 +2990,7 @@ func GenTrialsSearch%()
             next;
             arrconst(recSpeakerList%[0:nT%][i%],recS1Speaker%);  'only one speaker
             recNUniqueStims%[i%] := nT%;
-            arrconst(recDeltadBList%[0:nT%*nR%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
+            arrconst(recDeltadBList[0:nT%*nR%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
             recTrialTerminalIndex%[i%] := (nT%*nR%)-1;  'it's an index, subtract 1
             recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
                         
@@ -2921,7 +3009,7 @@ func GenTrialsSearch%()
                     currTone% := 0;
                 endif;
             next;
-            arrconst(recDeltadBList%[0:nCyc%*nR%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
+            arrconst(recDeltadBList[0:nCyc%*nR%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
             recTrialTerminalIndex%[i%] := (nCyc%*nR%)-1;  'it's an index, subtract 1
             recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
                         
@@ -2930,10 +3018,10 @@ func GenTrialsSearch%()
             recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the only stimulus
             recNUniqueStims%[i%] := 1;  'only one unique stimulus
             arrconst(recPWAList%[0:nS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
-            arrconst(recDeltadBList%[0:nS%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
+            arrconst(recDeltadBList[0:nS%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
             recTrialTerminalIndex%[i%] := nS%-1;  'it's an index, subtract 1
             recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
-            printlog("Nontarget/Catch trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
+            'printlog("Nontarget/Catch trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
             
         else 'put in an S2
             recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus
@@ -2943,9 +3031,9 @@ func GenTrialsSearch%()
             recNUniqueStims%[i%] := 2;  'two unique stimuli (due to calib on different speaker), fill two PWAs
             arrconst(recPWAList%[0:nS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
             recPWAList%[nS%][i%] := 1;  'And fill the final slot in the PWA list with 1, the S2 stimulus
-            arrconst(recDeltadBList%[0:nS%+1][i%],0);  'do not set any delta dB, may change if Gregg wants roving
+            arrconst(recDeltadBList[0:nS%+1][i%],0);  'do not set any delta dB, may change if Gregg wants roving
             recTrialTerminalIndex%[i%] := nS%;  'it's an index, subtract 1 ( = nS%+1-1)
-            printlog("Target trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
+            'printlog("Target trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
             recTrialTerminalIsS2%[i%] := 1;  'last stimulus is an S2
             
         endcase;        
@@ -2953,7 +3041,194 @@ func GenTrialsSearch%()
     if recSearchStimType% <> 4 then
         ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep
     endif;
+    return status%;  'right now, it "can't" fail
 end
 '===== End GenTrialsSearch =====
+'
+'
+
+
+
+
+'
+'
+'===== GenTrialsFRA =====
+func GenTrialsFRA%()
+    var status% := 1;
+    var nTonePips%;
+    const nFMSweeps%:=10;  'this really can't change
+    var i%;
+    var j%;
+    var k%;
+    var numS1perTrial%[recMaxTrial%];
+    var nS1%;
+    var nS2%;
+    var temp;            'Stuff for mod function...sure wish CED had one
+    var t;               '(and the floating point crapola...ugh)
+    var i;               'Also for mod
+    var ind%;            'this too
+    var whichS1StimInd%[recMaxStimPerTrial%*recMaxTrial%];  'S1 stimuli only vary in stimulus ID
+    var whichS1DeltadB[recMaxStimPerTrial%*recMaxTrial%];        'and dB level
+    var S1Shuffle%[recMaxStimPerTrial%*recMaxTrial%];       'for shuffling S1s
+    var whichS2Speaker%[recMaxTrial%];  'only one S2 per trial, so this is big enough
+    var count%;
+    
+    
+    '===== Create Stimuli =====
+    
+    'For creating stimuli, there will be only one noise stimulus and a ton of tone pips/FM, so we'll
+    'put the noise stimulus in position 0 of the stimuli variables
+    nTonePips% := recFRAFreqNSteps%;
+    
+    'Set trial generation variables for the noise burst, both S2 and rate-level will use this stimulus, but at different speakers
+    recTrialDur[0] := 200;
+    recTrialGenRampMS[0] := 2;  'short ramp
+    recTrialGenAMFreqHz[0] := 0;
+    recTrialGenAMDepthPct[0] := 0;
+    recTrialGenAMPhaseDeg[0] := 0;
+    recTrialGenTonePhaseDeg[0] := 0;
+    recTrialGenGauss%[0] := 1;  'use gaussian noise
+    recTrialGenSeed%[0] := 0;  'This makes it unfrozen, need to make sure we're recording the seed
+    recTrialGenLowpassHz[0] := -1;
+    recTrialGenHighpassHz[0] := -1;
+    recTrialGenIsSweep%[0] := 0;
+    
+    'Fill whichS1StimInd%[] and whichS1DeltadB[] for the rate-level noises
+    count% := 0;  'reset, though it's the first time used
+    for i% := 0 to recRateLeveldBNSteps%-1 do
+        for j% := 0 to recRateLevelNRepeats%-1 do
+            whichS1StimInd%[count%] := 0;  'always is stimulus 0
+            whichS1DeltadB[count%] := 65-recRateLeveldBList[i%];  'delta dB is additional atten, default stims will play at 65
+            count% += 1;
+        next;
+    next;
+    
+    
+    'Set trial generation variables for the tone pips
+    'Also fill whichS1StimInd%[] and whichS1DeltadB[] for the tone pips
+    'A lot of this COULD be "ArrConst"ed, but since we have to loop anyway, why clutter the code?
+    for i% := 1 to nTonePips% do
+        recTrialDur[i%] := 50;
+        recTrialGenRampMS[i%] := 2;  'short ramp
+        recTrialGenAMFreqHz[i%] := 0;
+        recTrialGenAMDepthPct[i%] := 0;
+        recTrialGenAMPhaseDeg[i%] := 0;
+        recTrialGenTonePhaseDeg[i%] := 0;
+        recTrialGenGauss%[i%] := 0;  
+        recTrialGenSeed%[i%] := 0; 
+        recTrialGenLowpassHz[i%] := recFRAFreqList[i%-1];
+        recTrialGenHighpassHz[i%] := recFRAFreqList[i%-1];
+        recTrialGenIsSweep%[i%] := 0;
+        for j% := 0 to recFRAdBNSteps%-1 do
+            for k% := 0 to recFRANRepeats%-1 do  'recFRANRepeats% will probably be 1, that's OK as for i% := 0 to 0 executes once as expected
+                whichS1StimInd%[count%] := i%;  'i% holds the stim index of the current tone
+                whichS1DeltadB[count%] := 65-recFRAdBList[j%];  'recFRAdBList[j%] holds the dB of the current tone, delta dB is additional atten, default stims will play at 65
+                count% += 1;
+            next;
+        next;
+    next;
+
+    
+    'Set trial generation variables for the FM sweeps...
+    'Also fill whichS1StimInd%[] and whichS1DeltadB[] for the FM sweeps
+    'Fill FMSweepDur%[]
+    recFRAFMSweepDur%[0] := recFRAFMSweepDur1%;
+    recFRAFMSweepDur%[1] := recFRAFMSweepDur2%;
+    recFRAFMSweepDur%[2] := recFRAFMSweepDur3%;
+    recFRAFMSweepDur%[3] := recFRAFMSweepDur4%;
+    recFRAFMSweepDur%[4] := recFRAFMSweepDur5%;
+    recFRAFMSweep%[0] := recFRAFMSweepStart%;  'low end of sweep, will reverse as well
+    recFRAFMSweep%[1] := recFRAFMSweepEnd%; 'high end of sweep, will reverse as well
+    for i% := 1 to nFMSweeps% do
+        'Set values that are constant
+        recTrialGenRampMS[i%+nTonePips%] := 2;  'short ramp
+        recTrialGenAMFreqHz[i%+nTonePips%] := 0;
+        recTrialGenAMDepthPct[i%+nTonePips%] := 0;
+        recTrialGenAMPhaseDeg[i%+nTonePips%] := 0;
+        recTrialGenTonePhaseDeg[i%+nTonePips%] := 0;
+        recTrialGenGauss%[i%+nTonePips%] := 0;  
+        recTrialGenSeed%[i%+nTonePips%] := 0;
+        'Set duration, different for different sweeps
+        i := i%-1;
+        t := frac(i/(nFMSweeps%/2));
+        temp := (nFMSweeps%/2)*t;
+        ind% := round(temp);  'gets mod of i%,5...stupid, stupid floating point stuff kills it without these steps
+        recTrialDur[i%+nTonePips%] := recFRAFMSweepDur%[ind%];  'gets duration based on mod result
+        'Set direction of sweep
+        ind% := floor(i/(nFMSweeps%/2));
+        recTrialGenLowpassHz[i%+nTonePips%] := recFRAFMSweep%[ind%];  'if mod is 0, goes 500-20000...
+        recTrialGenHighpassHz[i%+nTonePips%] := recFRAFMSweep%[1-ind%];  '...if mod is 1, goes 20000-500
+        recTrialGenIsSweep%[i%+nTonePips%] := 1;
+        for j% := 0 to recFRAFMSweepRepeats%-1 do
+            whichS1StimInd%[count%] := i%+nTonePips%;  'i%+nTonePips% holds the stim index of the current FM sweep
+            whichS1DeltadB[count%] := 65-recFRAS2dBLevel;  'recFRAS2dBLevel holds the dB of the tone sweeps as well as the S2s, delta dB is additional atten, default stims will play at 65
+            count% += 1;
+        next;
+    next;
+    
+    'Fill an S1Shuffle variable with the indices of S1 trials
+    for i% := 0 to count%-2 do  'count-2 because it is incremented one last time above and not decremented
+        S1Shuffle%[i%] := i%;
+    next;
+    'And shuffle it
+    ShuffleList%(S1Shuffle%[0:count%]);  'create a randpermed version (only valid indices)
+    
+    
+    
+    ' ===== Create Trials =====
+    
+    nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%);  'that's number of tone pips in FRA plus number of noise bursts in rate-level function
+    nS2% := (recNSpeakers%-1)*recRateLevelNRepeats%;  'that's number of noises at speakers not in the S1 position
+    recNTrials% := nS2%;  'Set global Ntrials
+    'Average is (now) 3.833 S1 per S2
+    DealNumberOfS1s%(nS1%,nS2%,recMinS1%,recMinS1%+recFRAVarS1%-1,numS1perTrial%[]);  'this is OK
+    
+    
+    'Fill whichS2Speaker%[] with the speaker indices we will be using
+    'At this point I realize there's no indication whether speaker number is expected to start at 0 or 1.  Guessing 1.
+    count% := 0;  'reset
+    for i% := 1 to recNSpeakers% do  'this is right, we go through all speakers
+        if i% <> recS1Speaker% then  'don't use the S1 speaker of course
+            for j% := 1 to recRateLevelNRepeats% do
+                whichS2Speaker%[count%] := i%;
+                count% += 1;
+            next;
+        endif;
+    next;
+    'And shuffle it (actually, I believe this is be unnecessary because the S1s ARE shuffled and the trial order is later shuffled)
+    ShuffleList%(whichS2Speaker%[0:count%]);  'create a randpermed version (only valid indices)
+    
+    
+    'Fill recStimList[][] etc. for each trial, end at an S2 every time
+    count% := 0;
+    for i% := 0 to nS2%-1 do  'for each trial
+        recTrialOrder%[i%] := i%;  'Just randomize this after the loop
+        recTrialTerminalIndex%[i%]  := numS1perTrial%[i%];  'not "+1" due to 0-based indexing
+        recTrialTerminalIsS2%[i%] := 1;  'all trials have a terminal S2 
+        'fill the S1 information
+        for j% := 0 to numS1perTrial%[i%]-1 do
+            recStimList%[j%][i%] := whichS1StimInd%[S1Shuffle%[count%]]; 'this is stimulus index, all stims considered "unique" 
+            recDeltadBList[j%][i%] := whichS1DeltadB[S1Shuffle%[count%]];  'And dB
+            recPWAList%[j%][i%] := j%;  'this is PWA to play, just PWA in order
+            recSpeakerList%[j%][i%] := recS1Speaker%;  'This is the "main" speaker
+            count% += 1;
+        next;
+        'and now we're ready for the S2
+        'Note that j% gets incremented one last time to trigger the "exit" of the loop, and thus is now
+        'the correct index to use.  However, since this bothers the crap out of me, I'm explicitly setting it.
+        j% := numS1perTrial%[i%];  'because of zero-based indexing, the number of S1s is the index of the S2
+        recStimList%[j%][i%] := 0;  'this is stimulus index, S2 stimulus is noise, which is 0 
+        recDeltadBList[j%][i%] := 65-recFRAS2dBLevel;  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
+        recPWAList%[j%][i%] := j%;  'this is PWA to play, just play in order
+        recSpeakerList%[j%][i%] := whichS2Speaker%[i%];
+        'And finally the number of unique stims - all stims are treated as unique (i.e. loaded into their own PWA) even if they're technically "not"
+        recNUniqueStims%[i%] := j%+1;  'j% is index of final stimulus, so number of stims (all unique) is +1
+    next;
+    'Randomize the list order
+    ShuffleList%(recTrialOrder%[0:nS2%]);
+    
+    return status%;
+end
+'===== End GenTrialsFRA =====
 '
 '
