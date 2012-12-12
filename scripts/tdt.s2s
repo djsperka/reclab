@@ -56,7 +56,7 @@ func sendTDTCommand%(cmd%[])
     var status;
     var len%;
     len% := len(cmd%[]);
-'    PrintLog("Sending command, length " + str$(len%) + ")\n");
+    PrintLog("sendTDTCommand, command %x length %d\n", cmd%[0], cmd%[1]);
     status := SerialWrite(port%, cmd%[]);
     return status;
 end
@@ -123,12 +123,13 @@ func tdtPING%()
 end
 
 func tdtREWARD%(rewardLength%)
-    var cmd%[3];
+    var cmd%[4];
     var reply%[2];
     var status%:=0;
     cmd%[0] := cmdREWARD%;
-    cmd%[1] := 1;
-    cmd%[2] := rewardLength%;
+    cmd%[1] := 2;
+    cmd%[2] := rewardLength% mod 256;
+    cmd%[3] := rewardLength% / 256;
     sendTDTCommand%(cmd%[]);
     Yield();
     if (readTDTReply%(reply%[]) < 0) then
