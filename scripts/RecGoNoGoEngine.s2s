@@ -202,6 +202,7 @@ proc CreateSampleConfiguration()
     var i%;
     
     ' Initialize sampling settings
+    SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
 	SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
 	SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
     SampleAutoFile(0);     'set auto-filing state to "off"
@@ -1567,10 +1568,10 @@ func IdleLoop%()
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
                         stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                     else
-                        stmp% := 1;  'simulate success in reward if debugging
+                        stmp% := 0;  'simulate success in reward if debugging
                     endif;
                    
-                    if stmp% <> 1 then
+                    if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!!\n");
                         Message("Error in recREWARD%()!!!");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now

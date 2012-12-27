@@ -132,14 +132,14 @@ func tdtREWARD%(rewardLength%)
     cmd%[3] := rewardLength% / 256;
     sendTDTCommand%(cmd%[]);
     Yield();
-    if (readTDTReply%(reply%[]) < 0) then
+    if (readTDTReply%(reply%[]) < 0) then  'communication error
         status% := -1;
     else
-        if reply%[0] <> replyOK% then
+        if reply%[0] <> replyOK% then  'return other failure
             status% := 1;
         endif
     endif
-    return status%;
+    return status%;  'return 0 on success
 end
 
 

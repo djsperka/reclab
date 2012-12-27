@@ -45,17 +45,18 @@ end
 '
 ' Gives reward using Crist juicer 
 ' Can be changed to use either a TDT (PI2) or CED output
-' Returns 1 on success, -1 otherwise
+' Returns 0 on success, 1 or -1 otherwise, -1 means failure to communicate, 1 means unexpected value
+' returned from TDT server.
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recReward%(ms%,useTDT%)
     
     if useTDT% = 1 then
-        return tdtREWARD%(ms%);
+        return tdtREWARD%(ms%); 'return 0 on success
     else
         DeliverRewardCED(ms%);
-        return 1;  'there's not really a success check here
+        return 0;  'there's not really a success check here, so return success
     endif;
     
 end
