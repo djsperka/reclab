@@ -116,12 +116,12 @@ func recLeverDown%()
     
     ' read PI2
     status% := tdtPI2Read%(1, pii%);
-    PrintLog("recLeverDown: tdtPI2Read status %d pii %d\n", status%, pii%);
     if status% = 0 then
         if pii% = 48 then status% := 1; endif;
     else
         status% := -1;
     endif
+    PrintLog("recLeverDown: tdtPI2Read status %d pii %d\n", status%, pii%);
     return status%;
 end
 

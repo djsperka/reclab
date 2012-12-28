@@ -1399,8 +1399,8 @@ func IdleLoop%()
                     endif;
                    
                     if stmp% <> 0 then
-                        PrintLog("ERROR in recREWARD%()!!!\n");
-                        Message("Error in recREWARD%()!!!");
+                        PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
+                        Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                 endif
