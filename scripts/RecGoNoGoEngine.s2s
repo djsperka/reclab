@@ -367,8 +367,8 @@ Proc InitializePlayWaveAreas()
     var i%;
 
         
-    for i% := 0 to recMaxPWA% do
-        
+    for i% := 0 to recMaxPWA%-1 do
+
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, recMaxPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
