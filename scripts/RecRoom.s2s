@@ -1026,7 +1026,7 @@ func RecExpSearchDialog%()
     DlgText("Repeats of each tone",64,3);
     DlgReal(6,6,0.001,50000,83,4);  'Tone sweep low freq
     DlgText("Low Frequency, Hz",64,4);
-    DlgReal(7,6,0.001,50000,83,5);  'Tone sweep high freq
+    DlgReal(7,6,0.002,50000,83,5);  'Tone sweep high freq
     DlgText("High Frequency, Hz",64,5);
     DlgInteger(8,6,2,10,83,6);  'Tone sweep number of steps
     DlgText("Number of Steps",64,6);
