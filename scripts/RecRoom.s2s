@@ -1026,7 +1026,7 @@ func RecExpSearchDialog%()
     DlgText("Repeats of each tone",64,3);
     DlgReal(6,6,0.001,50000,83,4);  'Tone sweep low freq
     DlgText("Low Frequency, Hz",64,4);
-    DlgReal(7,6,0.002,50000,83,5);  'Tone sweep high freq
+    DlgReal(7,6,0.001,50000,83,5);  'Tone sweep high freq
     DlgText("High Frequency, Hz",64,5);
     DlgInteger(8,6,2,10,83,6);  'Tone sweep number of steps
     DlgText("Number of Steps",64,6);
@@ -1694,8 +1694,16 @@ func RecExpTimingRewardDialog%()
     
     var i%;
     var status% := 0;
-    var trwid% := 42;
+    'var trwid% := 42;
+    var trwid% := 84;
     var intStr$[2];
+    var c1%;
+    c1% := trwid%-56;
+    var c1txt% := 2;
+    var c2%;
+    c2% := trwid%-14;
+    var c2txt%;
+    c2txt% := trwid%-40;
     
     intStr$[0] := "Stop Sound";
     intStr$[1] := "Complete Sound";
@@ -1705,31 +1713,31 @@ func RecExpTimingRewardDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Timing and Reward Dialog", trwid%, 10);
-    DlgGroup("Timing Parameters",1,1,trwid%-2,6);
-    DlgReal(1, "Minimum Onset Delay, s",0,10,trwid%-14,2);
-    DlgReal(2, "Variable Onset Delay, s",0,10,trwid%-14,3);
-    DlgReal(3, "ISI, s",0,10,trwid%-14,4);
-    DlgReal(4, "Trial Initiation Window, s",0,100,trwid%-14,5);
-    DlgReal(5, "Response Window, s",0,100,trwid%-14,6);
+    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 19);
+    DlgGroup("Timing Parameters",1,1,trwid%-2,4);
+    DlgReal(1,12,0,10,c1%,2); DlgText("Minimum Onset Delay, s",c1txt%,2);
+    DlgReal(2,12,0,10,c1%,3); DlgText("Variable Onset Delay, s",c1txt%,3);
+    DlgReal(3,12,0,10,c1%,4); DlgText("ISI, s",c1txt%,4);
+    DlgReal(4,12,0,100,c2%,2); DlgText("Trial Initiation Window, s",c2txt%,2);
+    DlgReal(5,12,0,100,c2%,3); DlgText("Response Window, s",c2txt%,3);
     
-    DlgGroup("Time Outs",1,8,trwid%-2,4);
-    DlgReal(6, "Lazy Monkey TO, s",0,300,trwid%-14,9);
-    DlgReal(7, "Miss TO, s",0,300,trwid%-14,10);
-    DlgReal(8, "False Alarm TO, s",0,300,trwid%-14,11);
+    DlgGroup("Time Outs",1,6,trwid%-2,3);
+    DlgReal(6,12,0,300,c2%,7); DlgText("Lazy Monkey TO, s",c2txt%,7);
+    DlgReal(7,12,0,300,c1%,7); DlgText("Miss TO, s",c1txt%,7);
+    DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
     
-    DlgGroup("Rewards",1,13,trwid%-2,8);
-    DlgReal(9,"Training Reward Duration, s",0,3,trwid%-14,14);
-    DlgReal(10,"Hit Reward Duration, s",0,3,trwid%-14,15);
-    DlgReal(11,"CR Reward Duration, s",0,3,trwid%-14,16);
-    DlgReal(12,"Max Hit Duration, s",0,3,trwid%-14,17);
-    DlgReal(13,"Max CR Duration, s",0,3,trwid%-14,18);
-    DlgReal(14,"Reward Increment on hits, s",0,1,trwid%-14,19);
-    DlgReal(15,"Reward Increment Per S1, s",0,1,trwid%-14,20);
+    DlgGroup("Rewards",1,10,trwid%-2,5);
+    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward Duration, s",c1txt%+20,11);
+    DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward Duration, s",c1txt%,12);
+    DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward Duration, s",c2txt%,12);
+    DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Duration, s",c1txt%,13);
+    DlgReal(13,12,0,3,c2%,13); DlgText("Max CR Duration, s",c2txt%,13);
+    DlgReal(14,12,0,1,c1%,14); DlgText("Reward Increment on hits, s",c1txt%,14);
+    DlgReal(15,12,0,1,c2%,14); DlgText("Reward Increment Per S1, s",c2txt%,14);
     
-    DlgGroup("Interrupts",1,22,trwid%-2,3);
-    DlgList(16,"On S1 Interrupt",intStr$[],2,trwid%-20,23);
-    DlgList(17,"On S2 Interrupt",intStr$[],2,trwid%-20,24);
+    DlgGroup("Interrupts",1,16,trwid%-2,2);
+    DlgList(16,20,intStr$[],2,c1%-8,17); DlgText("On S1 Interrupt",c1txt%,17);
+    DlgList(17,20,intStr$[],2,c2%-8,17); DlgText("On S2 Interrupt",c2txt%,17);
     
     
     ' Show the dialog. 
