@@ -439,7 +439,17 @@ Func PlaySound%(isS2%)
     
     'Get total attenuation
     atten := calatten + trlatten;
-     
+    
+    'Set some attenuation (30 db) during testing, just for the sake of our ears.
+    'Once reclab_panstim starts returning a value here, we're in business
+    'For now, don't set any attenuation if there is trial-based (e.g. intensity tuning) because
+    'it would be useful to hear that.  If those are too loud, drop the atten=0 part and just dump
+    '30 dB during the debug phase.  Might want to comment this all out once we're up and running
+    if atten = 0 and recDebug% = 1 then
+        atten := rand(4,30);  'To check that the PA4 is working properly, let's just set a new value every time
+    endif;
+    
+    
     ' Set speaker and atten
     if recCEDIsPresent% = 1 then
         status% := recSpeaker%(spkr%);
