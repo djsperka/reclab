@@ -367,8 +367,8 @@ Proc InitializePlayWaveAreas()
     var i%;
 
         
-    for i% := 0 to recMaxPWA%-1 do
-        printlog("playwave is %s\n",GetPlayWaveKey$(i%));
+    for i% := 0 to recMaxPWA% do
+        
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, recMaxPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
@@ -868,7 +868,6 @@ func PrepareNextTrial%(dontLoadPWAs%)
     var pwChar$;
     var matPutOK% := 0;
     var ok% := 1;  'by default, return 1 (success)
-    var now;
     
     ' Check to see if we are done
     if recCurrentTrial% >= recNTrials% then
@@ -907,7 +906,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
     if dontLoadPWAs% = 0 then
         ' Generate/Load stimuli and put them into PlayWaveAreas
         'for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
-        for i% := 0 to recNUniqueStims%[thisTrial%]-1 do
+        for i% := 0 to recNUniqueStims%[thisTrial%] do
             'Get play wave area for current stimulus
             pwChar$ := GetPlayWaveKey$(i%); 
             
@@ -937,15 +936,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 'conditions you can put and get a 100000-element float in essentially 0 time, and maximally 15 ms.  So in principle as
                 'long as the Matlab commands to eval are quick, we shouldn't worry about the time to do up to 10 "gets".  If we can
                 'cleverly have all of them come simultaneously (i.e. a 2-d array of stimuli), that's cool too.  May not be necessary.
-                '   
-                'Bottom line is that on the RecLab machine, the average number of stimuli created in a 15-ms
-                'time increment is a bit north of 2.  Since we have a max of 10 PWAs, we ought to be able to
-                'create all matlab stimuli (and transfer from matlab to CED) in 75 ms total (or faster).  
-                'Loading the PWAs will be an additional delay, and I don't know how long per.  But timing 
-                'looks fine for now.
-            
                 
-            
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
@@ -983,7 +974,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 'Note that loading the filter coefficients for each speaker on each call would be a time-waster.
                 'Instead, we will load up CALIB into the Matlab workspace as the experiment begins, and the call
                 'to RECLAB_PANSTIM above will use that CALIB variable (indexed by the speaker).
-            
+                
             case recMatGenStim% = 1 and recSearchStimType% = 3 then  'Clicks - matlab is not set up to generate these
                 
                 recStimTransfer%[1] := 1;  'make the second element 1, then everything else 0 - that's a click
@@ -1394,10 +1385,10 @@ func IdleLoop%()
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
                         stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                     else
-                        stmp% := 1;  'simulate success in reward if debugging
+                        stmp% := 0;  'simulate success in reward if debugging
                     endif;
                    
-                    if stmp% <> 1 then
+                    if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!!\n");
                         Message("Error in recREWARD%()!!!");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
@@ -1552,10 +1543,10 @@ func IdleLoop%()
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
                         stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                     else
-                        stmp% := 1;  'simulate success in reward if debugging
+                        stmp% := 0;  'simulate success in reward if debugging
                     endif;
                    
-                    if stmp% <> 1 then
+                    if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!!\n");
                         Message("Error in recREWARD%()!!!");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
