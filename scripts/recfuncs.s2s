@@ -107,6 +107,10 @@ end
 ' reading the TDT PI2. Assumes that the PI2 bit 5 is always set (0x10 = 16), and that bit 6
 ' is also set (0x30 = 48) when the lever circuit is closed (lever down). 
 '
+' Above assumptions have been removed, now only assumes lever is attached to PI2 port 6, which
+' will indicate a decimal 32 (binary 00100000) when the lever is depressed.  Thus, port settings
+' xx1xxxxx will indicate lever press and xx0xxxxx will indicate no lever press
+'
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recLeverDown%()
@@ -117,11 +121,19 @@ func recLeverDown%()
     ' read PI2
     status% := tdtPI2Read%(1, pii%);
     if status% = 0 then
-        if pii% = 48 then status% := 1; endif;
+        'if pii% = 48 then status% := 1; endif;
+        'The above line makes assumptions about ALL non-lever ports, the below lines
+        'make no assumptions about any non-lever ports.
+        if isBitSet%(pii%,6) = 1 then 
+            status% := 1; 
+            PrintLog("recLeverDown: Lever is depressed\n");
+        else
+            PrintLog("recLeverDown: Lever is not depressed\n");
+        endif;
     else
+        PrintLog("Error in recLeverDown: Unexpected tdtPI2Read status %d\n", status%);
         status% := -1;
     endif
-    PrintLog("recLeverDown: tdtPI2Read status %d pii %d\n", status%, pii%);
     return status%;
 end
 
@@ -170,12 +182,14 @@ func recBlinkUntilLeverDown%(yieldTime, maxBlinkTime)
     var s%;
     var idone% := 0;
     var t% := 1;
+    var startTime;
+    startTime := MaxTime();
     'var approxTime := 0;
     
     if yieldTime < 0 then yieldTime := 0; endif
     
     'while idone% = 0 and (maxBlinkTime <= 0 or (maxBlinkTime > 0 and approxTime < maxBlinkTime)) do  'not sure why we don't just look at the actual time
-    while idone% = 0 and (maxBlinkTime <= 0 or (MaxTime() < maxBlinkTime)) do  'the MaxTime() version will only work if we are sampling, but when would we NOT be?
+    while idone% = 0 and (maxBlinkTime <= 0 or (MaxTime()-startTime < maxBlinkTime)) do  'the MaxTime() version will only work if we are sampling, but when would we NOT be?
         
         if t% = 1 then
             's% := tdtPI2Setbit%(1, 2);
@@ -272,4 +286,57 @@ func recInitTDT%()
     tdtPA4Atten%(1, 30);
     
     return 0;
+end
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' isBitSet%(value%,bit%)
+' 
+' Function which takes a binary sum (i.e. a decimal representation of a binary number) and
+' determines whether one particular bit is set or not.  This function defines bits as follows:
+'
+' Bit#      Binary value
+'    1                  1
+'    2                  2
+'    3                  4
+'    4                  8
+'
+' etc.  Take this scheme into account if your bit values do not start at 1 or decrease or whatever.
+'
+' Returns 1 is the bit is set, 0 if not.
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func isBitSet%(value%,bit%)
+    const maxlen% := 31;  'integer overflow after 2^30, so we only need 31 slots (0 to 30)
+    var bits%[maxlen%];
+    var temp%;
+    var i%;
+    var keepgoing% := 1;
+
+    'There doesn't look to be an easy way of generating powers of 2, so...
+    while keepgoing% = 1 do
+        temp% := pow(2,i%);
+        if temp% >= value% then
+            keepgoing% := 0;
+        else
+            i% += 1;
+        endif;
+    wend;
+    
+    'now, go backwards, finding powers of 2
+    keepgoing% := 1;
+    while keepgoing% = 1 do
+        temp% := pow(2,i%);
+        if value% >= temp% then
+            bits%[i%] := 1;
+            value% := value%-temp%;
+        endif
+        if value% = 0 then
+            keepgoing% := 0;
+        endif;
+        i% := i%-1;
+    wend;
+    
+    return bits%[bit%-1];
 end
