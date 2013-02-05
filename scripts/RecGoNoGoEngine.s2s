@@ -1141,11 +1141,15 @@ func IdleLoop%()
             
         case iState% = statePreTrialDelay% then
             
-            if tNow - tStateStart >= recDelayIntervalTime then
+            docase
+            case recLeverDown%() = 0 then
+                RecLogStatus("DelayInterval", "Interrupt during delay.");
+                ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
+            case tNow - tStateStart >= recDelayIntervalTime then
                 RecLogStatus("DelayInterval", "Delay done.");
                 ChangeStateTo(stateStartSoundA%);
                 nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
-            endif
+            endcase
             
             
             
@@ -1201,7 +1205,7 @@ func IdleLoop%()
                 else
                     ChangeStateTo(stateISIDelay%);
                 endif
-                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+                nextStateImmed% := 1;  'go to ISI without ceding time to windows
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop                
             case recLeverDown%() = 0 then  'if the sound is still playing, check for interrupt
@@ -1247,12 +1251,15 @@ func IdleLoop%()
                     docase 
                     case isS2% = 0 then
                         ChangeStateTo(stateStartSoundA%);
+                        nextStateImmed% := 1;  'Start next sound without ceding time to windows
                     case isS2% = 1 then
                         isTerminalS1% := 0;
                         ChangeStateTo(stateStartSoundB%);
+                        nextStateImmed% := 1;  'Start next sound without ceding time to windows
                     case isS2% = 2 then
                         isTerminalS1% := 1;
                         ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go
+                        nextStateImmed% := 1;  'Start next sound without ceding time to windows
                     else
                         RecLogStatus("WaitISI", "Unknown return value from StimComplete");
                         Message("Error in StimComplete%()!!!");
@@ -1303,7 +1310,7 @@ func IdleLoop%()
             case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
                 ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
-                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+                nextStateImmed% := 1;  'go to reward without ceding time to windows
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
             case recLeverDown%() = 0 then  'if the sound is still playing, check for early hit
