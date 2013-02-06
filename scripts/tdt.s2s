@@ -80,10 +80,19 @@ func readTDTReply%(data%[])
     var counter% := 0;
     var status%;
     var len% := 0;
+    
+    var data2%[10];   'testing
+    printlog("Starting Serial Read Process...\n");  'testing
+    
     repeat
         bytes% := SerialCount(port%);
+        printlog("Bytes read is %d\n",bytes%); 'testing
+       
         if bytes% > 0 then
-            len% += SerialRead(port%, data%[len%:]);
+            len% += SerialRead(port%, data2%[len%:]);  'testing
+            printlog("Current values are %d\n",data2%[]);  'testing, just print the whole damn thing
+            printlog("...and Len is %d\n",len%);  'testing
+            'len% += SerialRead(port%, data%[len%:]);  'original
 '            PrintLog("Read reply len=" + str$(len%) + "\n");
         else
             counter% += 1;
@@ -97,7 +106,9 @@ func readTDTReply%(data%[])
     if counter% = timeoutCounter% then
         len% := -1;
     endif
-
+    
+arrconst(data%[],data2%[0:2]);    'testing, return the data...
+    
 '    PrintLog("Returning reply len% = " + str$(len%) + "\n");
     
     return len%;
