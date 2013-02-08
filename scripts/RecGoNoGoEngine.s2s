@@ -1564,14 +1564,18 @@ func IdleLoop%()
                     endif;
                    
                     if stmp% <> 0 then
-                        PrintLog("ERROR in recREWARD%()!!!\n");
+                        PrintLog("ERROR in recREWARD%()!!! STMP is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
+                    else
+                        ChangeStateTo(stateInitializeTrials%);  'move to next trial
                     endif;
+                else
+                    ChangeStateTo(stateInitializeTrials%);  'move to next trial
                 endif
-            endif
-            ChangeStateTo(stateInitializeTrials%);  'move to next trial
-            
+            else
+                ChangeStateTo(stateInitializeTrials%);  'move to next trial
+            endif;
             
             
         case iState% = stateCRReward% then

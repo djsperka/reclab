@@ -5,7 +5,7 @@ var par% := 0;
 var stopbit% := 1;
 var hsk% := 0;
 var timeoutCounterDefault% := 100;
-var timeoutCounter% := 100;
+var timeoutCounter% := 1000000;
 #include "tdtconst.s2s"
 
 func tdtSerial(open%, to%)
@@ -86,9 +86,10 @@ func readTDTReply%(data%[])
     
     repeat
         bytes% := SerialCount(port%);
-        printlog("Bytes read is %d\n",bytes%); 'testing
+        
        
         if bytes% > 0 then
+            printlog("Bytes read is %d\n",bytes%); 'testing
             len% += SerialRead(port%, data2%[len%:]);  'testing
             printlog("Current values are %d\n",data2%[]);  'testing, just print the whole damn thing
             printlog("...and Len is %d\n",len%);  'testing
@@ -98,6 +99,9 @@ func readTDTReply%(data%[])
             counter% += 1;
             Yield();
         endif
+    
+    arrconst(data%[],data2%[]);    'testing, return the data...
+    
         if (len% >= 2 and len% = (2+data%[1])) then
             done% := 1;
         endif
@@ -107,7 +111,7 @@ func readTDTReply%(data%[])
         len% := -1;
     endif
     
-arrconst(data%[],data2%[0:2]);    'testing, return the data...
+
     
 '    PrintLog("Returning reply len% = " + str$(len%) + "\n");
     
@@ -135,7 +139,7 @@ end
 
 func tdtREWARD%(rewardLength%)
     var cmd%[4];
-    var reply%[2];
+    var reply%[10];
     var status%:=0;
     cmd%[0] := cmdREWARD%;
     cmd%[1] := 2;
@@ -143,6 +147,7 @@ func tdtREWARD%(rewardLength%)
     cmd%[3] := rewardLength% / 256;
     sendTDTCommand%(cmd%[]);
     Yield();
+    printlog("ReplyOK is %d and reply(0) is %d\n",replyOK%,reply%[0]);
     if (readTDTReply%(reply%[]) < 0) then  'communication error
         status% := -1;
     else
