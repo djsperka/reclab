@@ -5,7 +5,7 @@ var par% := 0;
 var stopbit% := 1;
 var hsk% := 0;
 var timeoutCounterDefault% := 100;
-var timeoutCounter% := 1000000;
+var timeoutCounter% := 100;
 #include "tdtconst.s2s"
 
 func tdtSerial(open%, to%)
@@ -81,26 +81,26 @@ func readTDTReply%(data%[])
     var status%;
     var len% := 0;
     
-    var data2%[10];   'testing
-    printlog("Starting Serial Read Process...\n");  'testing
+    'var data2%[10];   'testing
+    'printlog("Starting Serial Read Process...\n");  'testing
     
     repeat
         bytes% := SerialCount(port%);
         
        
         if bytes% > 0 then
-            printlog("Bytes read is %d\n",bytes%); 'testing
-            len% += SerialRead(port%, data2%[len%:]);  'testing
-            printlog("Current values are %d\n",data2%[]);  'testing, just print the whole damn thing
-            printlog("...and Len is %d\n",len%);  'testing
-            'len% += SerialRead(port%, data%[len%:]);  'original
+            'printlog("Bytes read is %d\n",bytes%); 'testing
+            'len% += SerialRead(port%, data2%[len%:]);  'testing
+            'printlog("Current values are %d\n",data2%[]);  'testing, just print the whole damn thing
+            'printlog("...and Len is %d\n",len%);  'testing
+            len% += SerialRead(port%, data%[len%:]);  'original
 '            PrintLog("Read reply len=" + str$(len%) + "\n");
         else
             counter% += 1;
             Yield();
         endif
     
-    arrconst(data%[],data2%[]);    'testing, return the data...
+    'arrconst(data%[],data2%[]);    'testing, return the data...
     
         if (len% >= 2 and len% = (2+data%[1])) then
             done% := 1;
@@ -147,7 +147,6 @@ func tdtREWARD%(rewardLength%)
     cmd%[3] := rewardLength% / 256;
     sendTDTCommand%(cmd%[]);
     Yield();
-    printlog("ReplyOK is %d and reply(0) is %d\n",replyOK%,reply%[0]);
     if (readTDTReply%(reply%[]) < 0) then  'communication error
         status% := -1;
     else
@@ -158,6 +157,18 @@ func tdtREWARD%(rewardLength%)
     return status%;  'return 0 on success
 end
 
+
+func tdtRewardNoWait%(rewardLength%)
+    var cmd%[4];
+    var reply%[10];
+    var status%:=0;
+    cmd%[0] := cmdREWARD%;
+    cmd%[1] := 2;
+    cmd%[2] := rewardLength% mod 256;
+    cmd%[3] := rewardLength% / 256;
+    sendTDTCommand%(cmd%[]);
+    return 0;  'just return a value, it won't mean anything
+end
 
 func tdtPM1Clear%(din%)
     var cmd%[3];

@@ -763,9 +763,52 @@ end
 func Reward%()
     ' This function is only used for the toolbar-based reward button, all other reward directly calls recReward%()
     ' use recRewardMs%, it's global!
-    ' This function isn't really being used - we're just calling recReward% directly, which is fine
-    recReward%(recRewardMs%,useTDTforJuicer%);
-    return 1;
+    var stmp%;
+    var tStart;
+    var tNow;
+    var data%[10];  'oversized for readTDTreply%
+    var temp%;
+    var s;
+    
+    stmp% := recReward%(recRewardMs%,useTDTforJuicer%);  'for TDT or CED
+    
+    'If we're using the TDT, we really ought to check for succesful completion before moving forward (CED has SafeSampleKey)
+    if useTDTforJuicer% = 1 then
+        'have to wait for juicer to stop, keep looking for TDT return on serial port until then.
+        stmp% := -1;  'by default, assume failure
+        s := recRewardMs%;  'get non-integer version of reward duration
+        s := (s/1000) + 0.2;  'convert to seconds of expected reward, give 200 ms of slop
+        if SampleStatus() = 2 then  'if we are currently sampling, use MaxTime()
+            tStart := View(recDataWindowView%).MaxTime();  'this is the time that the reward command was sent, roughly
+            while tNow < tStart + s do  'integer < float operation is OK
+                temp% := readTDTReply%(data%[]);
+                if temp% = -1 then 'if TDT has not yet put data onto the serial port
+                    tNow := View(recDataWindowView%).MaxTime();  'fill tNow with current clock time
+                    yield(.01);
+                else
+                    tNow := tStart + s + 1000;  'that'll break the loop
+                    stmp% := 0;
+                endif;
+            wend;
+        else 'This could happen because the reward button is enabled pre-sampling, but it's very rough (in seconds)
+            'Please note that this function WILL FAIL if the reward delivery begins before midnight and ends after midnight.
+            var tStart%;
+            var tNow%;
+            TimeDate(tStart%); 'get current clock time in seconds
+            tStart := tStart%;  'get non-integer version
+            while tNow% < tStart + s do  'integer < float operation is OK
+                temp% := readTDTReply%(data%[]);
+                if temp% = -1 then 'if TDT has not yet put data onto the serial port
+                    TimeDate(tNow%);  'fill tNow% with current clock time
+                    yield(.01);
+                else
+                    tNow% := tStart + s + 1000;  'that'll break the loop, tStart + s will be floored but no biggie
+                    stmp% := 0;
+                endif;
+            wend;
+        endif;    
+    endif;
+    return stmp%;  'return 0 on success
 end
 
 
@@ -1400,7 +1443,8 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := recTrainingRewardDur*1000;
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
-                        stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
+                        'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
+                        stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
@@ -1558,7 +1602,8 @@ func IdleLoop%()
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$);
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
-                        stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
+                        'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
+                        stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
@@ -1587,7 +1632,8 @@ func IdleLoop%()
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$);
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
-                        stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
+                        'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
+                        stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
