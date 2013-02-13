@@ -129,7 +129,7 @@ func RunGoNoGoEngine%()
     'Set up sampling configuration
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         CreateSampleConfiguration();   'CreateSampleConfiguration() is below     TODO: make sure it is OK, fix up .pls file
-    endif
+    endif;
     
     
     ' Initialize PlayWave areas. The call to InitializePlayWaveAreas MUST
@@ -137,7 +137,7 @@ func RunGoNoGoEngine%()
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then 'don't try to initialize a PlayWaveArea if there's no 1401
         InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
-    endif
+    endif;
     
     
     'Open XY and data windows
@@ -151,7 +151,7 @@ func RunGoNoGoEngine%()
             'ExtractSpaceInitialize(recXYWindowView%,recNSpeakers%);  'TODO: ExtractSpaceInitialize() is in extract_space_functions, may need to be adapted
         'This function basically does prep to plot a polar plot of activity v. speaker location.  Assumes full circular
         'array, evenly spaced, speaker 0 at top and subsequent speakers clockwise.  Could be adapted for more variable arrays.
-    endif
+    endif;
     
 
     ' Initialize toolbar. Once Toolbar is called the experiment is controlled by the toolbar
@@ -173,11 +173,7 @@ func RunGoNoGoEngine%()
     
     
     'once we leave the toolbar, return to calling function
-    if TDTError% = 1 then
-        return 1;  'quit if fatal error (1 is just easier to quit based on logic from calling function)
-    else
-        return 0;  'don't quit
-    endif;
+    return recReadyToQuit%;
 
 end
 
@@ -674,13 +670,16 @@ func Stop%()
     
     ' Stop sampling....
     if SampleStatus() <> -1 then
-        SafeSampleKey("K");  'Kill reward, just in case
+        if useTDTforJuicer% = 0 then
+            SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
+        endif;        
         SampleStop();
         FileSaveAs(recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
     endif
 
     ' Returning zero from here any ToolbarSet() functions causes the 
     ' Toolbar() function to return.
+    recReadyToQuit% := 1;  'prevent from trying to open another experiment
     return 0;
     
 end
