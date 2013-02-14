@@ -1,3 +1,5 @@
+
+var recDataWindowView%;
 #include "recfuncs.s2s"  'already includes tdt.s2s
 #include "filesystemvars.s2s"
 
@@ -6,9 +8,9 @@
 var recRewardMs%;
 'var myFile$;
 var recChanTM%;
-var recDataWindowView%;
+
 var i%;
-const nRepeats% := 100;
+const nRepeats% := 2;
 var dur[nRepeats%];
 var on;
 var off;
@@ -17,6 +19,7 @@ var mymax;
 var mymean;
 
 'meat of code
+RecInitTDT%();
 if myDialog%() = 1 then
     
     
@@ -33,6 +36,9 @@ if myDialog%() = 1 then
     ' Text marks - we're not actually using this channel, but we need a channel
     SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
     recChanTM% := 30;  'That's the TextMark channel
+    
+    'waveform on channel 1
+    SampleWaveform(1, 1, 50000);
     
     SampleOptimise(2, 1, 7, 2, 50);  'Optimization settings, don't change unless there's an issue
     SampleMode(1);  'Continuous recording
@@ -136,7 +142,10 @@ func myDialog%()
         case myIndex% = 14 then
             recRewardMs% := 200;            
         endcase;
-    endif
+endif
+
+return i%
+
 end
 
 
@@ -151,31 +160,36 @@ func Reward%(&on,&off)
     var tStart;
     var tNow;
     var tEnd;
-    var data%[10];  'oversized for readTDTreply%
+    var data%[2];  'DO NOT OVERSIZE - results in long delay!
     var temp%;
     var s;
     
     tStart := View(recDataWindowView%).MaxTime();  'this is the time that the reward command was sent, roughly
-    
+    sampletext("on " + str$(tStart), tStart);
+
     stmp% := recReward%(recRewardMs%,1); 'yes, we're using TDT
-        
+
     'have to wait for juicer to stop, keep looking for TDT return on serial port until then.
     stmp% := -1;  'by default, assume failure
     s := recRewardMs%;  'get non-integer version of reward duration
     s := (s/1000) + 10.2;  'convert to seconds of expected reward, give lotsa slop
     
     while tNow < tStart + s do  'integer < float operation is OK
-        temp% := readTDTReply%(data%[]);
+        'sampletext("calling readTDTReplyNoWait",View(recDataWindowView%).MaxTime());
+        temp% := readTDTReplyNoWait%(data%[]);
+        
         if temp% = -1 then 'if TDT has not yet put data onto the serial port
             tNow := View(recDataWindowView%).MaxTime();  'fill tNow with current clock time
             yield(.001);
         else
             tEnd := View(recDataWindowView%).MaxTime();
+            sampletext("off " + str$(tEnd), tEnd);
             tNow := tStart + s + 1000;  'that'll break the loop
             stmp% := 0;
         endif;
     wend;
-    
+
+
     on := tStart;
     off := tEnd;
     

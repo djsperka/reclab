@@ -56,7 +56,7 @@ func recReward%(ms%,useTDT%)
     if useTDT% = 1 then
         'translate ms% into approximate ms value
         ms2% := ms%/msFactor;
-        return tdtRewardNoWait%(ms2%); 'always returns 0 
+        return tdtRewardNoWait%(ms2%); 'always returns 0
     else
         DeliverRewardCED(ms%);
         return 0;  'there's not really a success check here, so return success

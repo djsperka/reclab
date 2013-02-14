@@ -119,6 +119,32 @@ func readTDTReply%(data%[])
 end
 
 
+func readTDTReplyNoWait%(data%[])
+    var bytes% := 0;
+    var status% := -1;  'return -1 on no data
+    var len% := 0;
+
+    bytes% := SerialCount(port%);
+          
+    if bytes% > 0 then
+        len% += SerialRead(port%, data%[len%:]);  'original
+    endif
+    
+    if (len% >= 2 and len% = (2+data%[1])) then
+        status% := 1;  'return 1 on success
+    else
+        if len% > 0 then
+            status% := 0;  'return 0 on read but not all of expected data
+        endif;
+    
+    endif
+    
+    return status%;
+end
+
+
+
+
 func tdtPING%()
     var cmd%[2];
     var reply%[2];
