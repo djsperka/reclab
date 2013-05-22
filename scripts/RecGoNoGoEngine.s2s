@@ -1437,10 +1437,10 @@ func IdleLoop%()
         case iState% = stateTrainingReward% then
             
             ' Are we giving free (training) rewards? If we are, then do so, otherwise we just pass on through. 
-            if recTrainingRewardDur > 0 then
-                RecLogStatus("TrainingReward", "Giving training reward size " + str$(recTrainingRewardDur) + " seconds");
+            if recTrainingRewardmL > 0 then
+                RecLogStatus("TrainingReward", "Giving training reward, size " + str$(recTrainingRewardmL) + " mLs");
                 if recCEDIsPresent% = 1 then
-                    recRewardMs% := recTrainingRewardDur*1000;
+                    recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
                         'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                         stmp% := Reward%();
@@ -1594,10 +1594,10 @@ func IdleLoop%()
                
         case iState% = stateHitReward% then
             
-            if recHitRewardDur > 0 then
-                RecLogStatus("HitReward", "(long)) Reward size=" + str$(recHitRewardDur) + "seconds");
+            if recHitRewardmL > 0 then
+                RecLogStatus("HitReward", "Giving Hit Reward, size=" + str$(recHitRewardmL) + " mLs");
                 if recCEDIsPresent% = 1 then
-                    recRewardMs% := recHitRewardDur*1000;
+                    recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$);
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
@@ -1624,10 +1624,10 @@ func IdleLoop%()
             
         case iState% = stateCRReward% then
             
-            if recCRRewardDur > 0 then
-                RecLogStatus("CRReward", "(long)) Reward size=" + str$(recCRRewardDur) + "seconds");
+            if recCRRewardmL > 0 then
+                RecLogStatus("CRReward", "Giving CR Reward, size=" + str$(recCRRewardmL) + " mLs");
                 if recCEDIsPresent% = 1 then
-                    recRewardMs% := recCRRewardDur*1000;
+                    recRewardMs% := ConvertmLToSeconds(recCRRewardmL)*1000;
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$);
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then

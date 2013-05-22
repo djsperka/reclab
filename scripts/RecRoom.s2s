@@ -250,11 +250,18 @@ var recInterruptTO;
 var recTrainingRewardDur;           'Duration of training reward, seconds
 var recHitRewardDur;                'Duration of hit reward, seconds
 var recCRRewardDur;                 'Duration of correct rejection reward, seconds
-var recMaxHitRewardDur;             'Max duration of hit reward, seconds
-var recMaxCRRewardDur;              'Max duration of CR reward, seconds
+'var recMaxHitRewardDur;             'Max duration of hit reward, seconds
+'var recMaxCRRewardDur;              'Max duration of CR reward, seconds
+var recTrainingRewardmL;            'Volume of training reward, milliliters
+var recHitRewardmL;                 'Volume of hit reward, milliliters
+var recCRRewardmL;                  'Volume of correct rejection reward, milliliters
+var recMaxHitRewardmL;              'Max volume of hit reward, milliliters
+var recMaxCRRewardmL;               'Max volume of CR reward, milliliters
 var recRewardMs%;                   'Temp variable, used for duration of any reward, conversion to milliseconds
-var recHitRewardInc;                'Reward increment per hit, seconds (both hit and CR rewards, will stop at max, will reset on miss/FA)
-var recS1RewardInc;                 'Reward increment per S1 stimulus, seconds (additional reward on each trial per S1)
+'var recHitRewardInc;                'Reward increment per hit, seconds (both hit and CR rewards, will stop at max, will reset on miss/FA)
+'var recS1RewardInc;                 'Reward increment per S1 stimulus, seconds (additional reward on each trial per S1)
+var recHitRewardIncmL;              'Reward increment per hit, milliliters (both hit and CR rewards, will stop at max, will reset on miss/FA)
+var recS1RewardIncmL;               'Reward increment per S1 stimulus, milliliters (additional reward on each trial per S1)
 var useTDTforJuicer% := 1;          'if 1, use TDT for juicer, just hardcode this   
     
 'Interrupts
@@ -1084,8 +1091,8 @@ func RecExpSearchDialog%()
             recFixLED% := recSearchFixLED%;
             if recSearchStimType% = 4 then  'adjustment of values - if doing tone sweep, do not have task
                 recActive% := 0;
-                recHitRewardDur := 0;  'don't allow rewards for tone sweep
-                recCRRewardDur := 0;
+                recHitRewardmL := 0;  'don't allow rewards for tone sweep
+                recCRRewardmL := 0;
             endif;
             if recActive% = 0 then 'adjustment of values, if not active, don't have second speaker or catch trials
                 recPropCatch := 0;
@@ -1742,8 +1749,8 @@ func RecExpTimingRewardDialog%()
     
     ' Show the dialog. 
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
-                recTrainingRewardDur,recHitRewardDur,recCRRewardDur,recMaxHitRewardDur,recMaxCRRewardDur,recHitRewardInc,
-                recS1RewardInc,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%);
+                recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
+                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1783,13 +1790,13 @@ proc RecTimingRewardGetParams()
     recMissTO := GetFloatRegistryValue(key$, "MissTO", recMissTO);
     recFalseAlarmTO := GetFloatRegistryValue(key$, "FalseAlarmTO", recFalseAlarmTO);
     recInterruptTO := GetFloatRegistryValue(key$, "InterruptTO", recInterruptTO);
-    recTrainingRewardDur := GetFloatRegistryValue(key$, "TrainingRewardDur", recTrainingRewardDur);
-    recHitRewardDur := GetFloatRegistryValue(key$, "HitRewardDur", recHitRewardDur);
-    recCRRewardDur := GetFloatRegistryValue(key$, "CRRewardDur", recCRRewardDur);
-    recMaxHitRewardDur := GetFloatRegistryValue(key$, "MaxHitRewardDur", recMaxHitRewardDur);
-    recMaxCRRewardDur := GetFloatRegistryValue(key$, "MaxCRRewardDur", recMaxCRRewardDur);
-    recHitRewardInc := GetFloatRegistryValue(key$, "HitRewardInc", recHitRewardInc);
-    recS1RewardInc := GetFloatRegistryValue(key$, "S1RewardInc", recS1RewardInc);
+    recTrainingRewardmL := GetFloatRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
+    recHitRewardmL := GetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
+    recCRRewardmL := GetFloatRegistryValue(key$, "CRRewardmL", recCRRewardmL);
+    recMaxHitRewardmL := GetFloatRegistryValue(key$, "MaxHitRewardmL", recMaxHitRewardmL);
+    recMaxCRRewardmL := GetFloatRegistryValue(key$, "MaxCRRewardmL", recMaxCRRewardmL);
+    recHitRewardIncmL := GetFloatRegistryValue(key$, "HitRewardIncmL", recHitRewardIncmL);
+    recS1RewardIncmL := GetFloatRegistryValue(key$, "S1RewardIncmL", recS1RewardIncmL);
     recContinueSoundOnS1Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS1Interrupt", recContinueSoundOnS1Interrupt%);
     recContinueSoundOnS2Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
     
@@ -1821,13 +1828,13 @@ proc RecTimingRewardSaveParams()
     SetFloatRegistryValue(key$, "MissTO", recMissTO);
     SetFloatRegistryValue(key$, "FalseAlarmTO", recFalseAlarmTO);
     SetFloatRegistryValue(key$, "InterruptTO", recInterruptTO);
-    SetFloatRegistryValue(key$, "TrainingRewardDur", recTrainingRewardDur);
-    SetFloatRegistryValue(key$, "HitRewardDur", recHitRewardDur);
-    SetFloatRegistryValue(key$, "CRRewardDur", recCRRewardDur);
-    SetFloatRegistryValue(key$, "MaxHitRewardDur", recMaxHitRewardDur);
-    SetFloatRegistryValue(key$, "MaxCRRewardDur", recMaxCRRewardDur);
-    SetFloatRegistryValue(key$, "HitRewardInc", recHitRewardInc);
-    SetFloatRegistryValue(key$, "S1RewardInc", recS1RewardInc); 
+    SetFloatRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
+    SetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
+    SetFloatRegistryValue(key$, "CRRewardmL", recCRRewardmL);
+    SetFloatRegistryValue(key$, "MaxHitRewardmL", recMaxHitRewardmL);
+    SetFloatRegistryValue(key$, "MaxCRRewardmL", recMaxCRRewardmL);
+    SetFloatRegistryValue(key$, "HitRewardIncmL", recHitRewardIncmL);
+    SetFloatRegistryValue(key$, "S1RewardIncmL", recS1RewardIncmL); 
     SetIntRegistryValue(key$, "ContinueSoundOnS1Interrupt", recContinueSoundOnS1Interrupt%);
     SetIntRegistryValue(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
     
@@ -3240,3 +3247,19 @@ end
 '===== End GenTrialsFRA =====
 '
 '
+
+
+
+
+'
+'
+'===== ConvertmLToSeconds =====
+func ConvertmLToSeconds(mL)
+    var sec;
+    if mL <= 0.417 then
+        sec := (mL + 0.072)/13; 'The relationships in this function have been painstakingly calculated for the
+    else                        'Recanzone juicer on the left-hand booth.  The relationship between TDT reward time
+        sec := (mL - 0.24)/4.7; 'and output is best described by two linear functions which intersect at a delivery
+    endif                       'of 0.417 mL (which corresponds to 0.0376 seconds of requested reward.
+    return sec;                 'If this script is used on another booth or the juicer is changed, the function will 
+end                             'need to be recalculated.
