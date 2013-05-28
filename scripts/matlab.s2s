@@ -22,6 +22,7 @@ func OpenMatlab%()
             matlabIsOpen% := 1;
         else
             printlog("Failure in opening Matlab!\n");
+            printlog("Error code is %d\n",openOK%);
             matlabIsOpen% := 0;
         endif;
     else
