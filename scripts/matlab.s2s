@@ -34,7 +34,7 @@ func OpenMatlab%()
     endif;
     
     'Explicitly seed Matlab's random number generator with the system clock (because otherwise it won't!)
-    EvalMatlabStatement%("s = RandStream.create('mt19937ar','seed',floor(rem(now,10^4)*10^5));RandStream.setDefaultStream(s);");
+    EvalMatlabStatement%("s = RandStream.create('mt19937ar','seed',floor(rem(now,10^4)*10^5));RandStream.setGlobalStream(s);");
     
     'Return results
     return openOK%
@@ -84,13 +84,20 @@ func EvalMatlabStatement%(statement$)
     
     evalOK% := MatLabEval(statement$,err$);
     
-    if evalOK% = 0 then
-        'Yeah, this gets called WAY too often to see every successful call
-        'printlog("Success in passing command to Matlab!\n");
-    else
-        printlog("Failure in passing command to Matlab!\n");
+'    if evalOK% = 0 then
+'        'Yeah, this gets called WAY too often to see every successful call
+'        'printlog("Success in passing command to Matlab!\n");
+'    else
+'        printlog("Failure in passing command to Matlab!\n");
+'        printlog("Matlab response is '" + err$ + "'\n");
+'    endif
+    
+    'I'm not sure that the "evalOK%" method works here
+    if err$ <> "" then
+        printlog("Possible failure in passing command to Matlab!\n");
         printlog("Matlab response is '" + err$ + "'\n");
-    endif
+        evalOK% := -1;
+    endif;
     
     return evalOK%;    
     
