@@ -1029,7 +1029,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 
             case recMatGenStim% = 1 and recSearchStimType% = 3 then  'Clicks - matlab is not set up to generate these
                 
-                recStimTransfer%[1] := 1;  'make the second element 1, then everything else 0 - that's a click
+                recStimTransfer%[1] := 32767;  'make the second element (2^15)-1, then everything else 0 - that's a click
                 
             else  'Load stimuli from file
                 
@@ -1055,7 +1055,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
             
             'Finally, place the stimulus into the appropriate Play Wave Area
             if recCEDIsPresent% = 1 then
-                PlayWaveCopy(pwChar$, recStimTransfer%[]);
+                PlayWaveCopy(pwChar$, recStimTransfer%[]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
             endif;
             
         next;
@@ -1101,7 +1101,7 @@ func IdleLoop%()
         docase
         case iState% = stateStart% then
             'This state is only entered once per "experiment" - once per each time the template file passes control
-            RecLogStatus("Start", "Starting expt state loop.");
+            RecLogStatus("Start", "Starting state logic loop.");
             ChangeStateTo(stateInitializeTrials%);
             nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             
