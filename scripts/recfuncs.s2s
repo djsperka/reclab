@@ -129,9 +129,11 @@ func recLeverDown%()
         'make no assumptions about any non-lever ports.
         if isBitSet%(pii%,6) = 1 then 
             status% := 1; 
-            PrintLog("recLeverDown: Lever is depressed\n");
+            'JSJ taking out over-verbosity
+            'PrintLog("recLeverDown: Lever is depressed\n");
         else
-            PrintLog("recLeverDown: Lever is not depressed\n");
+            'JSJ taking out over-verbosity
+            'PrintLog("recLeverDown: Lever is not depressed\n");
         endif;
     else
         PrintLog("Error in recLeverDown: Unexpected tdtPI2Read status %d\n", status%);
