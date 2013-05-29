@@ -56,7 +56,8 @@ func sendTDTCommand%(cmd%[])
     var status;
     var len%;
     len% := len(cmd%[]);
-    PrintLog("sendTDTCommand, command %x length %d\n", cmd%[0], cmd%[1]);
+    'JSJ taking this out because it's WAY too verbose
+    'PrintLog("sendTDTCommand, command %x length %d\n", cmd%[0], cmd%[1]);
     status := SerialWrite(port%, cmd%[]);
     return status;
 end
