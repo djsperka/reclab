@@ -1734,13 +1734,13 @@ func RecExpTimingRewardDialog%()
     DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
     
     DlgGroup("Rewards",1,10,trwid%-2,5);
-    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward Duration, s",c1txt%+20,11);
-    DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward Duration, s",c1txt%,12);
-    DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward Duration, s",c2txt%,12);
-    DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Duration, s",c1txt%,13);
-    DlgReal(13,12,0,3,c2%,13); DlgText("Max CR Duration, s",c2txt%,13);
-    DlgReal(14,12,0,1,c1%,14); DlgText("Reward Increment on hits, s",c1txt%,14);
-    DlgReal(15,12,0,1,c2%,14); DlgText("Reward Increment Per S1, s",c2txt%,14);
+    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward Duration, mL",c1txt%+20,11);
+    DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward Duration, mL",c1txt%,12);
+    DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward Duration, mL",c2txt%,12);
+    DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Duration, mL",c1txt%,13);
+    DlgReal(13,12,0,3,c2%,13); DlgText("Max CR Duration, mL",c2txt%,13);
+    DlgReal(14,12,0,1,c1%,14); DlgText("Reward Increment on hits, mL",c1txt%,14);
+    DlgReal(15,12,0,1,c2%,14); DlgText("Reward Increment Per S1, mL",c2txt%,14);
     
     DlgGroup("Interrupts",1,16,trwid%-2,2);
     DlgList(16,20,intStr$[],2,c1%-8,17); DlgText("On S1 Interrupt",c1txt%,17);
