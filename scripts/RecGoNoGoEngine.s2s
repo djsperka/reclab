@@ -1022,15 +1022,19 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
                 GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
                 GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
-                
+            
+                'printlog("gen values are %d\n",recStimTransfer%[4000:50]);   
+            
                 'Note that loading the filter coefficients for each speaker on each call would be a time-waster.
                 'Instead, we will load up CALIB into the Matlab workspace as the experiment begins, and the call
                 'to RECLAB_PANSTIM above will use that CALIB variable (indexed by the speaker).
                 
             case recMatGenStim% = 1 and recSearchStimType% = 3 then  'Clicks - matlab is not set up to generate these
                 
-                recStimTransfer%[1] := 32767;  'make the second element (2^15)-1, then everything else 0 - that's a click
-                
+            recStimTransfer%[1] := 32767;  'make the second element (2^15)-1, then everything else 0 - that's a click
+            'arrconst(recStimTransfer%[3:500],30000);
+            'printlog("click values are %d\n",recStimTransfer%[0:20]); 
+            
             else  'Load stimuli from file
                 
                 'get filename
