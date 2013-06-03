@@ -39,6 +39,7 @@ var recMatlabIsPresent%:=1;         'Is Matlab present? Default to 1 (yes), defa
 var recTDTIsPresent%:=1;            'Is TDT present? Default to 1 (yes), default will apply after debug period
 var recCEDIsPresent%:=1;            'Is CED 1401 present? Default to 1 (yes), default will apply after debug period
 var matlabOpenSuccess%:=-1;         'Was Matlab opened successfully?  Default to -1 (no matlab open)
+var recCalibIsPresent%:=1;          'Is the calibration file present?  Default to 1 (yes), default will apply after debug period    
 var recDebug%:=1;                   'Write debug log statements and record sound output?
 var dummyVar%;                      'For placeholder GUIs, just lets me have a checkbox setting SOMETHING
 
@@ -157,6 +158,8 @@ var recAMDiscExpIndexGen%;          'Experiment index, for generating stims, etc
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
 var recMonkPrefix$;                 'String to hold monkey prefix, used in naming files - bit of a misnomer, will be used as complete file name
+const recFileSaveLoc$  := "C:\\Data\\";       'Have to set this...  
+const recCalibLoc$ := "C:\\Data\\Calib\\";           'Have to set this too...
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recReadyToQuit%;                'Set this variable to 1 to escape the experiment loop
@@ -355,8 +358,13 @@ while recReadyToQuit% = 0 do
             'We will eventually pass the 2-cell array CALIB (where CALIB = calib{recNSpeakers%}) to
             'Matlab when generating stimuli.  CALIB{1} is the B filter coefficients, CALIB{2} is the A coeffcients
             if recMatlabIsPresent% = 1 then
-                statement$ := "load('   HARDCODED LOCATION /GenCalibs" + Str$(recNSpeakers%) + ".mat');";
-                calibOK% := EvalMatlabStatement%(statement$);
+                if recCalibIsPresent% = 1 then
+                    statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                    calibOK% := EvalMatlabStatement%(statement$);
+                else
+                    printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                    calibOK% := 0;
+                endif;
             else
                 message("Matlab is not open, but you have selected a scenario that requires Matlab!");
                 if recCEDIsPresent% = 0 then  'if both are not present, this must be a testing scenario - let it go forward
@@ -369,8 +377,13 @@ while recReadyToQuit% = 0 do
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
-                statement$ := "load('   HARDCODED LOCATION /GenCalibs" + Str$(recNSpeakers%) + ".mat');";
-                calibOK% := EvalMatlabStatement%(statement$);
+                if recCalibIsPresent% = 1 then
+                    statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                    calibOK% := EvalMatlabStatement%(statement$);
+                else
+                    printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                    calibOK% := 0;
+                endif;    
             else
                 message("Matlab is not open, but you have selected a scenario that requires Matlab!");
                 if recCEDIsPresent% = 0 then  'if both are not present, this must be a testing scenario - let it go forward
@@ -399,8 +412,13 @@ while recReadyToQuit% = 0 do
             if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
                 'TODO Load calibration file into Matlab's workspace, same details as above in Search
                 if recMatlabIsPresent% = 1 then
-                    statement$ := "load('   HARDCODED LOCATION /GenCalibs" + Str$(recNSpeakers%) + ".mat');";
-                    calibOK% := EvalMatlabStatement%(statement$);
+                    if recCalibIsPresent% = 1 then 
+                        statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                        calibOK% := EvalMatlabStatement%(statement$);
+                    else
+                        printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                        calibOK% := 0;
+                    endif;
                 else
                     message("Matlab is not open, but you have selected a scenario that requires Matlab!");
                 endif;
@@ -416,8 +434,13 @@ while recReadyToQuit% = 0 do
             'Copy from generate version of AM Disc when cueing is ready
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
-                statement$ := "load('   HARDCODED LOCATION /GenCalibs" + Str$(recNSpeakers%) + ".mat');";
-                calibOK% := EvalMatlabStatement%(statement$);
+                if recCalibIsPresent% = 1 then
+                    statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                    calibOK% := EvalMatlabStatement%(statement$);
+                else
+                    printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                    calibOK% := 0;
+                endif;
             else
                 message("Matlab is not open, but you have selected a scenario that requires Matlab!");
             endif;
@@ -582,14 +605,15 @@ func RecDebugDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Debug Dialog",0,0,40,6);
+    DlgCreate("Debug Dialog",0,0,40,7);
     DlgCheck(1, "Matlab is present");
     DlgCheck(2, "TDT is present");
     DlgCheck(3, "CED 1401 is present");
-    DlgCheck(4, "Do Sound Recording and Debug Logging");
+    DlgCheck(4, "Calibration file is present");
+    DlgCheck(5, "Do Sound Recording and Debug Logging");
     
     ' Show the dialog. 
-    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recDebug%);
+    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recDebug%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -630,6 +654,7 @@ proc RecDebugGetParams()
     recMatlabIsPresent% := GetIntRegistryValue%(key$, "MatlabIsPresent", recMatlabIsPresent%);
     recTDTIsPresent% := GetIntRegistryValue%(key$, "TDTIsPresent", recTDTIsPresent%);
     recCEDIsPresent% := GetIntRegistryValue%(key$, "CEDIsPresent", recCEDIsPresent%);
+    recCalibIsPresent% := GetIntRegistryValue%(key$, "CalibIsPresent", recCalibIsPresent%);
     recDebug% := GetIntRegistryValue%(key$, "Debug", recDebug%);
     
 	return;
@@ -654,6 +679,7 @@ proc RecDebugSaveParams()
     SetIntRegistryValue(key$, "MatlabIsPresent", recMatlabIsPresent%);   
     SetIntRegistryValue(key$, "TDTIsPresent", recTDTIsPresent%); 
     SetIntRegistryValue(key$, "CEDIsPresent", recCEDIsPresent%); 
+    SetIntRegistryValue(key$, "CalibIsPresent", recCalibIsPresent%); 
     SetIntRegistryValue(key$, "Debug", recDebug%); 
     
 	return;
@@ -936,6 +962,8 @@ func RecExpSelectDialog%()
         case recSpeakerArrayIndex% = 3 then
             recNSpeakers% := 31;  
         endcase;
+        
+        recMonkPrefix$ := recFileSaveLoc$ + recMonkPrefix$;
         
         status% := 1;
     else
