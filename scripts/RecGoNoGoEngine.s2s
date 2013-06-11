@@ -202,7 +202,7 @@ proc CreateSampleConfiguration()
 	SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
 	SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
     SampleAutoFile(0);     'set auto-filing state to "off"
-    SampleAutoName$("reclab000");  'set file name template
+    'SampleAutoName$("reclab000");  'set file name template
     
     ' Event channel 0 is for sound triggers
     SampleEvent(recTrigChannel%, 0, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
@@ -442,7 +442,11 @@ Func PlaySound%(isS2%)
     'it would be useful to hear that.  If those are too loud, drop the atten=0 part and just dump
     '30 dB during the debug phase.  Might want to comment this all out once we're up and running
     if atten = 0 and recDebug% = 1 then
-        atten := rand(4,30);  'To check that the PA4 is working properly, let's just set a new value every time
+        if recSearchStimType% = 3 then
+            atten := 0;  'for clicks, don't attenuate
+        else
+            atten := rand(4,30);  'To check that the PA4 is working properly, let's just set a new value every time
+        endif;
     endif;
     
     
@@ -674,7 +678,7 @@ func Stop%()
             SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
         endif;        
         SampleStop();
-        FileSaveAs(recFileSaveLoc$+ recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
+        FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
     endif
 
     ' Returning zero from here any ToolbarSet() functions causes the 

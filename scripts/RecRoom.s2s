@@ -351,6 +351,7 @@ while recReadyToQuit% = 0 do
         'For generated stimuli, load calibration file to Matlab here
         docase
         case recExpToRun% = recExpSearchButton% then  'For Search, all stimuli are generated
+            SampleText("Running Search");
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace
@@ -373,6 +374,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpFRAButton% then  'For FRA, all stimuli are generated
+            SampleText("Running FRA");
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
@@ -392,6 +394,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 0 then  'Loading stims
+            SampleText("Running AMDisc");
             'Get stimfile and trials file lists
             RecAMDiscExpListLoadGetParams(recAMDiscExpNameLoad$[],recAMDiscStimcalNameLoad$[],recAMDiscTrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -402,6 +405,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 1 then  'Generating stims
+            SampleText("Running AMDisc");
             'Get stimfile and trials file lists
             RecAMDiscExpListGenGetParams(recAMDiscExpNameGen$[],recAMDiscStimcalNameGen$[],recAMDiscTrialsNameGen$[]);
             'Load trials file, stim file, cal file
@@ -425,11 +429,13 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
+            SampleText("Running Cueing");
             'NYI
             'Copy from load version of AM Disc when cueing is ready
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 1 then  'Generating stims
+            SampleText("Running Cueing");
             'NYI
             'Copy from generate version of AM Disc when cueing is ready
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
@@ -563,7 +569,7 @@ wend;
 if recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
     SafeSampleKey("K");  'Kill reward, just in case
     SampleStop();
-    FileSaveAs(recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
+    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
 endif;
 
 CloseMatlab(matlabOpenSuccess%);  'close Matlab if it is open and we are quitting
@@ -962,8 +968,9 @@ func RecExpSelectDialog%()
         case recSpeakerArrayIndex% = 3 then
             recNSpeakers% := 31;  
         endcase;
-        
-        recMonkPrefix$ := recFileSaveLoc$ + recMonkPrefix$;
+    
+        'For the love of all that is holy DO NOT DO THIS!
+        'recMonkPrefix$ := recFileSaveLoc$ + recMonkPrefix$;
         
         status% := 1;
     else
