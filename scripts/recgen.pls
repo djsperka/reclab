@@ -64,13 +64,13 @@
 ;note that the precise output channel for CED reward is not determined pre-implementation
 0061 REWARD: 'R MOVI   V2,1            ;Do not allow sequencer access
 0062            MULI   V1,ms(1)        ;Multiply V1 (ms) by #clock ticks/ms, put in V1
-0063            DIGOUT [....11..]      ;Pulse output for reward solenoid, (E2, patch panel)
+0063            DIGOUT [.......1]      ;Pulse output for reward solenoid, (DIGOUT 0)
 0064            DELAY  V1              ;wait required msec (v1), delay is in clock ticks
-0065            DIGOUT [....00..]      ;Set output low (close solenoid)
+0065            DIGOUT [.......0]      ;Set output low (close solenoid)
 0066            MOVI   V2,0            ;Allow sequencer access
 0067            JUMP   next
 0068 KILLRW: 'K MOVI   V2,1            ;Do not allow sequencer access
-0069            DIGOUT [....00..]      ;Set output low for solenoid, in case
+0069            DIGOUT [.......0]      ;Set output low for solenoid, in case
 0070            MOVI   V2,0            ;Allow sequencer access
 0071            JUMP   next            ;Extra DIGOUT bit for solenoid monitor
 0072 NEXT:      NOP    

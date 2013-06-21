@@ -7,20 +7,26 @@
 
 
 ' channel numbers and window handles
-var recDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
-var recTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
-var recLeverChannel% := 3;         ' Channel for behavioral lever recording
-var recTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
-var recTrode2Channel% := 12;       ' I'm breaking the above rule (don't use channel numbers above this)
-var recTrode3Channel% := 13;       '   because it makes no sense to me.  If it turns out to matter
-var recTrode4Channel% := 14;       '   then I suppose we'll figure that out!
-var recTrode5Channel% := 15;
-var recTrode6Channel% := 16;
-var recTrode7Channel% := 17;
-var recTrode8Channel% := 18;
-var recTrode9Channel% := 19;
-var recTrode10Channel% := 20;
+const recDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
+const recTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
+const recLeverChannel% := 3;         ' Channel for behavioral lever recording
+const recTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
+const recTrode2Channel% := 12;       ' I'm breaking the above rule (don't use channel numbers above this)
+const recTrode3Channel% := 13;       '   because it makes no sense to me.  If it turns out to matter
+const recTrode4Channel% := 14;       '   then I suppose we'll figure that out!
+const recTrode5Channel% := 15;
+const recTrode6Channel% := 16;
+const recTrode7Channel% := 17;
+const recTrode8Channel% := 18;
+const recTrode9Channel% := 19;
+const recTrode10Channel% := 20;
 
+' ports
+const recTriggerPort% := 0;
+const recLeverPort% := 1;
+
+' memory channels
+var recMemChanLeverDebounce%;
 
 ' for anything other than electrodes!
 var recXYWindowView%;              ' View variable for XY window
@@ -100,9 +106,13 @@ var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoo
 var tLast:=-1;		' last time we checked for a trigger. 
 var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
+var tNextTrial;
 var TDTError%;
 var isTerminalS1%:=0;    'if trial has terminal S1, logic of state loop must change, so we need to keep track
 var RTESDIsPressed%;  'has ReturnToExperimentSelectionDialog button been pressed?
+var recLeverState%;
+var recLeverTime;
+var recLeverCodes%[4];
 
 'var channels%[4];
 
@@ -205,12 +215,19 @@ proc CreateSampleConfiguration()
     'SampleAutoName$("reclab000");  'set file name template
     
     ' Event channel 0 is for sound triggers
-    SampleEvent(recTrigChannel%, 0, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
+    SampleEvent(recTrigChannel%, recTriggerPort%, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
+    SampleComment$(recTrigChannel%, "Trigger");
     SampleTitle$(recTrigChannel%, "Trigger");
     
     ' Event channel 1 is for the lever
-    SampleEvent(recLeverChannel%, 1, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
+    SampleEvent(recLeverChannel%, recLeverPort%, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
     SampleTitle$(recLeverChannel%, "Lever");
+    SampleComment$(recLeverChannel%, "Lever");
+    
+    ' Create a memory channel for the debounced lever information
+    recMemChanLeverDebounce% := MemChan(8,25); 'Create textmark channel for debounced lever with attached lever value, 25 characters
+    ChanTitle$(recMemChanLeverDebounce%,"DBLever");  'Give it a title
+    chanshow(recMemChanLeverDebounce%);  'Show it
     
     ' Text marks
     SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
@@ -220,6 +237,7 @@ proc CreateSampleConfiguration()
     if recDebug% = 1 then
         SampleWaveform(recDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
         SampleTitle$(recDAC0Channel%, "DAC0");
+        SampleComment$(recDAC0Channel%, "DAC0");
     endif
     
     
@@ -229,33 +247,43 @@ proc CreateSampleConfiguration()
         case i% = 1 then
             SampleWaveMark(recTrode1Channel%, 0, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode1Channel%, "Trode 1"); 
+            SampleComment$(recTrode1Channel%, "Trode 1");
         case i% = 2 then
             SampleWaveMark(recTrode2Channel%, 1, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
             SampleTitle$(recTrode2Channel%, "Trode 2");
+            SampleComment$(recTrode2Channel%, "Trode 2");
         case i% = 3 then
             SampleWaveMark(recTrode3Channel%, 2, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode3Channel%, "Trode 3");    
+            SampleTitle$(recTrode3Channel%, "Trode 3");  
+            SampleComment$(recTrode3Channel%, "Trode 3");            
         case i% = 4 then
             SampleWaveMark(recTrode4Channel%, 3, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode4Channel%, "Trode 4");    
+            SampleTitle$(recTrode4Channel%, "Trode 4"); 
+            SampleComment$(recTrode4Channel%, "Trode 4");            
         case i% = 5 then
             SampleWaveMark(recTrode5Channel%, 4, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode5Channel%, "Trode 5");    
+            SampleTitle$(recTrode5Channel%, "Trode 5"); 
+            SampleComment$(recTrode5Channel%, "Trode 5");
         case i% = 6 then
             SampleWaveMark(recTrode6Channel%, 5, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode6Channel%, "Trode 6");    
+            SampleTitle$(recTrode6Channel%, "Trode 6");
+            SampleComment$(recTrode6Channel%, "Trode 6");
         case i% = 7 then
             SampleWaveMark(recTrode7Channel%, 6, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode7Channel%, "Trode 7");    
+            SampleTitle$(recTrode7Channel%, "Trode 7");   
+            SampleComment$(recTrode7Channel%, "Trode 7");
         case i% = 8 then
             SampleWaveMark(recTrode8Channel%, 7, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode8Channel%, "Trode 8");    
+            SampleTitle$(recTrode8Channel%, "Trode 8");
+            SampleComment$(recTrode8Channel%, "Trode 8");
         case i% = 9 then
             SampleWaveMark(recTrode9Channel%, 8, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode9Channel%, "Trode 9");    
+            SampleTitle$(recTrode9Channel%, "Trode 9"); 
+            SampleComment$(recTrode9Channel%, "Trode 9");            
         case i% = 10 then
             SampleWaveMark(recTrode10Channel%, 9, 100, 34, 15, 28000); ' chan, ADC port, sustained spike rate, points, pre-trigger, rate
-            SampleTitle$(recTrode10Channel%, "Trode 10");    
+            SampleTitle$(recTrode10Channel%, "Trode 10");
+            SampleComment$(recTrode10Channel%, "Trode 10");            
         endcase;        
     next;
     'Note that the sample rate is strange (28 kHz) and 34 samples covers about 1.25 ms.  These are exactly the Usrey lab conventions, so whatevs.
@@ -646,6 +674,7 @@ func Start%()
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         recCurrentlySampling% := 1;  'don't start sampling again
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
+        SampleText(recExptText$);  'put in the experiment type
     case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
         'virtually start sampling
         recCurrentlySampling% := 1;
@@ -713,6 +742,7 @@ func ReturnToExptSelectDialog%()
     recCurrentTrial% := 0;  'start with trial #1
     recSearchLoaded% := 0;  'Need to reset recSearchLoaded, or load will be skipped even for non-search scenarios
     RTESDIsPressed% := 0;
+    recExptText$ := "";
     
     'Unset the idle function, so things don't start moving immediately when the Toolbar is next called
     ToolbarSet(0, "");
@@ -764,8 +794,7 @@ end
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Reward%()
-    ' This function is only used for the toolbar-based reward button, all other reward directly calls recReward%()
-    ' use recRewardMs%, it's global!
+    ' This function is now used for all reward!
     var stmp%;
     var tStart;
     var tNow;
@@ -1104,7 +1133,13 @@ func IdleLoop%()
         endif
         
         nextStateImmed% := 0;  'Don't repeat this (internal) loop unless specifically asked to below for timing purposes
-    
+        
+        'Update the state of the lever if using CED
+        if useTDTforLever% = 0 then
+            DebounceLever%(tNow);  'this fills recLeverTime and recLeverState%
+        endif;
+        
+        
         ' State Logic - determine which state we are in 
         docase
         case iState% = stateStart% then
@@ -1153,29 +1188,33 @@ func IdleLoop%()
             
             
         case iState% = stateWaitForInitiationMovement% then
-            RecLogStatus("WaitLvrDown", "Blink/Wait.");
             
-            if recCEDIsPresent% = 1 and recActive% = 1 then
-                stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
-                'Will leave LED on once lever is down
-            else
-                stmp% := 1;  'simulate success in lever press
-            endif
+            if tNow > tNextTrial then
             
-            docase
-            case stmp% = 1 then
-                recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
-                'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
-                RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
-                ChangeStateTo(statePreTrialDelay%);
-            case stmp% = 0 then
-                RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
-                ChangeStateTo(stateLazyMonkeyTimeout%);
-            else
-                PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
-                Message("Error in recBlinkUntilLeverDown!");
-                ChangeStateTo(stateTDTError%);
-            endcase
+                RecLogStatus("WaitLvrDown", "Blink/Wait.");
+                
+                if recCEDIsPresent% = 1 and recActive% = 1 then
+                    stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
+                    'Will leave LED on once lever is down
+                else
+                    stmp% := 1;  'simulate success in lever press
+                endif
+                
+                docase
+                case stmp% = 1 then
+                    recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+                    'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
+                    RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
+                    ChangeStateTo(statePreTrialDelay%);
+                case stmp% = 0 then
+                    RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
+                    ChangeStateTo(stateLazyMonkeyTimeout%);
+                else
+                    PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
+                    Message("Error in recBlinkUntilLeverDown!");
+                    ChangeStateTo(stateTDTError%);
+                endcase
+            endif;
             
             
             
@@ -1192,7 +1231,7 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             
             docase
-            case recLeverDown%() = 0 then
+            case CheckLever%() = 0 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
             case tNow - tStateStart >= recDelayIntervalTime then
@@ -1258,7 +1297,7 @@ func IdleLoop%()
                 nextStateImmed% := 1;  'go to ISI without ceding time to windows
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop                
-            case recLeverDown%() = 0 then  'if the sound is still playing, check for interrupt
+            case CheckLever%() = 0 then  'if the sound is still playing, check for interrupt
                 'institute interrupt procedure, will be completed on the next iteration or when stimulus stops
                 isInterrupt% := 1;
                 RecLogStatus("TrialSoundA", "False Positive Interrupt! Lever is up");
@@ -1276,7 +1315,7 @@ func IdleLoop%()
             
             ' Check that lever is still down.
             if recCEDIsPresent% = 1 and recActive% = 1 then
-                stmp% := recLeverDown%();
+                stmp% := CheckLever%();
             else
                 stmp% := 1; 'simulate lever down in testing, and in non-response scenarios
             endif
@@ -1363,7 +1402,7 @@ func IdleLoop%()
                 nextStateImmed% := 1;  'go to reward without ceding time to windows
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
-            case recLeverDown%() = 0 then  'if the sound is still playing, check for early hit
+            case CheckLever%() = 0 then  'if the sound is still playing, check for early hit
                 'accept response whether sound should be stopped or not
                 isEarlyHit% := 1;  'this is a hit before the sound has stopped playing
                 RecLogStatus("WaitTrialSoundB", "Lever is up - HIT interrupting S2");
@@ -1428,7 +1467,7 @@ func IdleLoop%()
                 nextStateImmed% := 1;  'Change state immediately
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
-            case recLeverDown%() = 0 then 'if the sound is still playing, check for early FA
+            case CheckLever%() = 0 then 'if the sound is still playing, check for early FA
                 'accept response whether sound should be stopped or not
                 isEarlyFA% := 1;  'this is a hit before the sound has stopped playing
                 RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
@@ -1450,7 +1489,6 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
-                        'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                         stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
@@ -1472,7 +1510,7 @@ func IdleLoop%()
         case iState% = stateInResponseWindow% then
             
             if recCEDIsPresent% = 1 and recActive% = 1 then
-                stmp% := recLeverDown%();  'check lever status
+                stmp% := CheckLever%();  'check lever status
             else 
                 if isTerminalS1% = 1 then
                     stmp% := 1; 'simulate CR for debugging/passive
@@ -1554,6 +1592,7 @@ func IdleLoop%()
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
+                tNextTrial := tNow;  'ready to go
                 nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
@@ -1578,6 +1617,7 @@ func IdleLoop%()
                 SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
                 
                 ChangeStateTo(stateInitializeTrials%); 
+                tNextTrial := tNow;  'ready to go
                 nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
@@ -1595,6 +1635,7 @@ func IdleLoop%()
                 SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
                 
                 ChangeStateTo(stateInitializeTrials%); 
+                tNextTrial := tNow;  'ready to go
                 nextStateImmed% := 1;  'Go load a new trial now
             endif            
             
@@ -1606,10 +1647,10 @@ func IdleLoop%()
                 RecLogStatus("HitReward", "Giving Hit Reward, size=" + str$(recHitRewardmL) + " mLs");
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
+                    recRewardMs := recRewardMs%;  'we need a float version for later math
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$);
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
-                        'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                         stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
@@ -1620,13 +1661,28 @@ func IdleLoop%()
                         Message("Error in recREWARD%()!!!");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     else
-                        ChangeStateTo(stateInitializeTrials%);  'move to next trial
+                        ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
+                        if useTDTforJuicer% = 0 then
+                            tNextTrial := tNow + (recRewardMs/1000);
+                        else
+                            tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                        endif;
                     endif;
                 else
-                    ChangeStateTo(stateInitializeTrials%);  'move to next trial
+                    ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
+                    if useTDTforJuicer% = 0 then
+                        tNextTrial := tNow + (recRewardMs/1000);
+                    else
+                        tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                    endif;
                 endif
             else
-                ChangeStateTo(stateInitializeTrials%);  'move to next trial
+                ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
+                if useTDTforJuicer% = 0 then
+                    tNextTrial := tNow + (recRewardMs/1000);
+                else
+                    tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                endif;
             endif;
             
             
@@ -1639,7 +1695,6 @@ func IdleLoop%()
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$);
                     if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
-                        'stmp% := recReward%(recRewardMs%,useTDTforJuicer%);
                         stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
@@ -1652,7 +1707,12 @@ func IdleLoop%()
                     endif;
                 endif
             endif
-            ChangeStateTo(stateInitializeTrials%);  'move to next trial            
+            ChangeStateTo(stateInitializeTrials%);  'move to next trial when reward is done
+            if useTDTforJuicer% = 0 then
+                tNextTrial := tNow + (recRewardMs/1000);
+            else
+                tNextTrial := tNow; 'the TDT delay is built in, ready to go
+            endif;            
             
             
             
@@ -1716,3 +1776,171 @@ func IdleLoop%()
     return iStatus%;  'if iStatus% is 0, the Toolbar() will return
 end
 
+
+
+
+'=================================Debounce the Lever Channel=================================
+'This function serves as a software debounce for incoming TTL pulses.  It can only parse 1000
+'events at one time, but is called every time the idle loop is called (if we are sampling) and at 
+'so the 1000 event limit should not really be in danger.
+'If there are > 1000 events, I BELIEVE it will simply parse the first 1000, allowing it to 
+'continue parsing 1000 events each time it is called until it is caught up.  ...that hasn't been tested.
+func DebounceLever%(Now)
+    
+    var TimesArray[1000];            'array of times of most recent events
+    var TimesArrayTemp[999];         'array of times used only the first time through
+    var LeverStatusAfter[1000];      'array of lever statuses corresponding to TimesArray[]
+    var TimeToPrev[1000];            'array of differences between times in TimesArray[] and previous event
+    var TimeToNext[1000];            'array of differences between times in TimesArray[] and next event
+    var temp1[999];
+    var temp2;
+    var RealEventTime[1000];         'Holds times of real (not bouncing) events 
+    var RealEventValue[1000];        'Holds lever values resulting from real events
+    var EventCount%;                 'Counter for real events
+    var ValueCount%;                 'Counter for real lever values
+    var DebounceTime := .040;        'Debounce over 40 ms, can be changed manually
+    var NumEvents%;                  'Number of potential lever events in the current execution
+    var LeverString$;						'A string which details the lever event (for textmark channel)
+    var ii%, jj%, BreakVar;
+    
+    
+    view(recDataWindowView%);
+    
+    if recLeverTime = 0 then 'if it's the first pass or there have not been any events (LeverInitTime and LeverResponseTime are identical for lever scenarios)
+        NumEvents% := chandata(recLeverChannel%,TimesArrayTemp[],0,Now);  'put recent times of lever presses in a temporary array
+        arrconst(TimesArray[1:999],TimesArrayTemp[]);  'move temporary numbers to regular array, leaving first time blank (indicates "known" event at time = 0)
+        NumEvents% := NumEvents% + 1;  'Increment NumEvents% by one to account for asserted event at time = 0
+    else
+        NumEvents% := chandata(recLeverChannel%,TimesArray[],recLeverTime,Now);  'put times of recent lever presses in regular array, starting with most recent known event
+    endif;
+    
+    
+	'There should always be a "first event" at LeverInitTime.  If there are no more, we haven't actually
+	'had anything happen, so don't do anything
+    if NumEvents% > 1 then
+		'Calculate time to previous, next events
+        
+		'Fill temp1 with a shifted version of TimesArray, shifted one to the left
+		'Note that the fill for a single element must be done differently
+        if NumEvents% = 2 then
+            temp1[0] := TimesArray[1];
+        else
+            arrconst(temp1[0:NumEvents%-1],TimesArray[1:NumEvents%-1]);
+        endif;
+        
+		'Subtract, so temp1[x] holds the time difference between TimesArray[x] and TimesArray[x+1]
+        arrsub(temp1,TimesArray[]);
+        
+		'Fill TimeToNext and TimeToPrev, note that temp1[NumEvents%-1] will be negative, and is useless
+        if NumEvents% = 2 then
+            TimeToPrev[1] := temp1[0];
+            TimeToNext[0] := temp1[0];
+        else
+            arrconst(TimeToPrev[1:NumEvents%-1],temp1[0:NumEvents%-1]);
+            arrconst(TimeToNext[0:NumEvents%-1],temp1[0:NumEvents%-1]);
+        endif;
+        
+		'Fill final spot in TimeToNext with time to Now.
+        TimeToNext[NumEvents%-1] := Now - TimesArray[NumEvents%-1];
+        
+		'Get lever status resulting from each lever event
+        for ii% := 1 to NumEvents%-1 do 'only consider events starting at second position in array
+            nexttime(recLeverChannel%,TimesArray[ii%],temp2);  'temp2 will be 0 if low-to-high and 1 if high-to-low
+            LeverStatusAfter[ii%] := 1 - temp2; 'LeverStatusAfter will be 1 if low-to-high and 0 if high-to-low
+        next;
+        
+        
+		'Check each event in TimesArray (except [0])
+        for ii% := 1 to NumEvents%-1 do 
+			'If there was more than DebounceTime between the previous event and this one, the
+			'previous state was stable, this should be considered a real event
+            if TimeToPrev[ii%] > DebounceTime then
+                RealEventTime[EventCount%] := TimesArray[ii%];
+                EventCount% := EventCount% + 1;
+				'Get the lever status for this event by looking for next stable period
+                BreakVar := 0;
+                jj% := ii%;
+                while jj% <= NumEvents%-1 and BreakVar = 0 do
+                    if TimeToNext[jj%] > DebounceTime then 'it has been stable long enough
+                        RealEventValue[ValueCount%] := LeverStatusAfter[jj%];
+                        ValueCount% := ValueCount% + 1;
+                        BreakVar := 1;
+                    else
+                        jj% := jj% + 1;
+                    endif;
+                wend;
+            endif;
+        next;
+        
+		'Check to see that the number of lever presses and events correspond appropriately
+        if ValueCount% <> EventCount% then
+            if ValueCount% > EventCount% then
+                printlog("Quitting because we have found more real lever presses than real events.  This is a serious bug!\n");
+                'view(HiddenLogHandle%).print("Quitting because we have found more real lever presses than real events.  This is a serious bug!\r");
+                Stop%();
+            endif;
+            if ValueCount% < EventCount%-1 then
+                printlog("Quitting because we have found more than one event which does not correspond to a stable lever press!\n");
+                'view(HiddenLogHandle%).print("Quitting because we have found more than one event which does not correspond to a stable lever press!\r");
+                Stop%();
+            else
+                EventCount% := EventCount%-1;  'decrement, do not consider last event real as we do not have a
+                'corresponding lever press
+            endif;
+        endif;
+        
+        'Put events in memory channel if they exist and change LeverInitTime/LeverResponseTime/LeverInit%/LeverResponse%
+        if EventCount% > 0 then	
+            'Sutter verbose, just taken out
+            'if VerboseJoyLev% = 1 then
+            '    view(HiddenLogHandle%).print("Debounce: The lever events we considered to be real occurred at times: %f\r",RealEventTime[0:EventCount%]);
+            'endif;
+            for ii% := 0 to EventCount%-1 do
+                recLeverCodes%[0] := RealEventValue[ii%];
+                if RealEventValue[ii%] = 0 then
+                    LeverString$ := "Lever Pressed";
+                else
+                    LeverString$ := "Lever Released";
+                endif;
+                view(recDataWindowView%).MemSetItem(recMemChanLeverDebounce%,0,RealEventTime[ii%],recLeverCodes%[],LeverString$);
+            next;
+            'return most recent event and value
+            recLeverTime := RealEventTime[ii%-1]; 'subtract one because ii% is incremented a final time by the for loop
+            recLeverState% := RealEventValue[ii%-1]; 'ditto
+            
+            'more Sutter stuff, probably not necessary here
+			'indicate whether lever is in the origin (meaning not pressed), only if we are responding w/ lever
+			'also indicate if lever is in trial initiation position
+			'also indicate if lever is in trial response position
+            'if RespDevice% = 0 then
+            '    InOrigin% := 1 - LeverPos%;
+            '    TrialInit% := LeverPos%;
+            '    TrialResponse% := InOrigin%;  'for lever, trial response position is same as origin
+            '    if TrialResponse% = 1 then
+            '        ResponseTime := LeverTime;
+            '    endif;
+            'endif;
+            
+        endif;  'end "if there were any events"
+        
+    endif;  
+    
+    return 1;
+    
+end;
+
+
+
+'A simple function which points to either recLeverDown%() or DebounceLever%() depending on whether the lever is plugged
+'into the TDT
+func CheckLever%()
+    var myret%;  'the return value, 0 if lever is up, 1 if lever is depressed
+    if useTDTforLever% = 1 then
+        myret% := recLeverDown%();
+    else
+        myret% := recLeverState%;  'DebounceLever%() is run at the beginning of each idle loop, do it again if necessary before calling
+    endif;
+    
+    return myret%;
+    
+end;

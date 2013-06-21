@@ -174,6 +174,7 @@ var calibOK%;                       'If 1, successfully loaded calibration file
 const recPlayRateHz:=50000;         'Set stimulus play rate to 50 kHz, this will need to be constant
 const recMaxStimLengthSec:=1;       'Set maximum length of each individual stimulus, in seconds
 const recDAC0% := 0;                'Set output channel to DAC 0, don't let this change
+var recExptText$ := "";             'text that describes this expt, for a SampleText
 
 'Speaker variables
 const recMaxSpeaker%:=31;           'Maximum number of simultaneous speakers
@@ -261,11 +262,13 @@ var recCRRewardmL;                  'Volume of correct rejection reward, millili
 var recMaxHitRewardmL;              'Max volume of hit reward, milliliters
 var recMaxCRRewardmL;               'Max volume of CR reward, milliliters
 var recRewardMs%;                   'Temp variable, used for duration of any reward, conversion to milliseconds
+var recRewardMs;                    'float version    
 'var recHitRewardInc;                'Reward increment per hit, seconds (both hit and CR rewards, will stop at max, will reset on miss/FA)
 'var recS1RewardInc;                 'Reward increment per S1 stimulus, seconds (additional reward on each trial per S1)
 var recHitRewardIncmL;              'Reward increment per hit, milliliters (both hit and CR rewards, will stop at max, will reset on miss/FA)
 var recS1RewardIncmL;               'Reward increment per S1 stimulus, milliliters (additional reward on each trial per S1)
-var useTDTforJuicer% := 1;          'if 1, use TDT for juicer, just hardcode this   
+var useTDTforJuicer% := 0;          'if 1, use TDT for juicer, just hardcode this 
+var useTDTforLever% := 0;           'if 1, lever is plugged into TDT, just hardcode this
     
 'Interrupts
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
@@ -351,7 +354,7 @@ while recReadyToQuit% = 0 do
         'For generated stimuli, load calibration file to Matlab here
         docase
         case recExpToRun% = recExpSearchButton% then  'For Search, all stimuli are generated
-            SampleText("Running Search");
+            recExptText$ := "Running Search " + recExptText$;
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace
@@ -374,7 +377,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpFRAButton% then  'For FRA, all stimuli are generated
-            SampleText("Running FRA");
+            recExptText$ := "Running FRA ";  '+ recExptText$???
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
@@ -394,7 +397,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 0 then  'Loading stims
-            SampleText("Running AMDisc");
+            recExptText$ := "Running AMDisc "; '+ recExptText$???
             'Get stimfile and trials file lists
             RecAMDiscExpListLoadGetParams(recAMDiscExpNameLoad$[],recAMDiscStimcalNameLoad$[],recAMDiscTrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -405,7 +408,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 1 then  'Generating stims
-            SampleText("Running AMDisc");
+            recExptText$ := "Running AMDisc "; '+ recExptText$???
             'Get stimfile and trials file lists
             RecAMDiscExpListGenGetParams(recAMDiscExpNameGen$[],recAMDiscStimcalNameGen$[],recAMDiscTrialsNameGen$[]);
             'Load trials file, stim file, cal file
@@ -429,13 +432,13 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
-            SampleText("Running Cueing");
+            recExptText$ := "Running Cueing "; '+ recExptText$???
             'NYI
             'Copy from load version of AM Disc when cueing is ready
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 1 then  'Generating stims
-            SampleText("Running Cueing");
+            recExptText$ := "Running Cueing "; '+ recExptText$???
             'NYI
             'Copy from generate version of AM Disc when cueing is ready
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
@@ -1107,6 +1110,7 @@ func RecExpSearchDialog%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then 
         RecSearchSaveParams();
+        recExptText$ := searchList$[recSearchStimType%];  'this puts the stimulus type into the values which will be SampleText'ed
         if recSearchMinS1% + recSearchVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run Search");

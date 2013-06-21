@@ -76,7 +76,7 @@ proc DeliverRewardCED(iMS%)
     PrintLog("Reward %d\n", iMS%);
     SampleSeqVar(1, iMS%);
     SafeSampleKey("R");
-    Yield(); YieldSystem(iMS%/1000.0);
+    'Yield(); YieldSystem(iMS%/1000.0);
     return;
 end
 
@@ -345,3 +345,7 @@ func isBitSet%(value%,bit%)
     
     return bits%[bit%-1];
 end
+
+
+
+
