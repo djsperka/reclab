@@ -224,10 +224,6 @@ proc CreateSampleConfiguration()
     SampleTitle$(recLeverChannel%, "Lever");
     SampleComment$(recLeverChannel%, "Lever");
     
-    ' Create a memory channel for the debounced lever information
-    recMemChanLeverDebounce% := MemChan(8,25); 'Create textmark channel for debounced lever with attached lever value, 25 characters
-    ChanTitle$(recMemChanLeverDebounce%,"DBLever");  'Give it a title
-    chanshow(recMemChanLeverDebounce%);  'Show it
     
     ' Text marks
     SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
@@ -325,6 +321,12 @@ proc InitializeWindows()
         recDataWindowView% := FileNew(0,4);
         Window(0, 0, 100, 50); 
         View(recDataWindowView%).WindowVisible(1);
+    
+        ' Create a memory channel for the debounced lever information
+        recMemChanLeverDebounce% := MemChan(8,25); 'Create textmark channel for debounced lever with attached lever value, 25 characters
+        ChanTitle$(recMemChanLeverDebounce%,"DBLever");  'Give it a title
+        chanshow(recMemChanLeverDebounce%);  'Show it
+
     endif
     
 end;
@@ -1195,6 +1197,7 @@ func IdleLoop%()
                 
                 if recCEDIsPresent% = 1 and recActive% = 1 then
                     stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
+                    'stmp% := CheckLever%();
                     'Will leave LED on once lever is down
                 else
                     stmp% := 1;  'simulate success in lever press
@@ -1316,6 +1319,7 @@ func IdleLoop%()
             ' Check that lever is still down.
             if recCEDIsPresent% = 1 and recActive% = 1 then
                 stmp% := CheckLever%();
+                printlog("Lever status is %d, dammit!\n",stmp%);
             else
                 stmp% := 1; 'simulate lever down in testing, and in non-response scenarios
             endif

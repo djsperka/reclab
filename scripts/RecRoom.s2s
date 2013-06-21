@@ -268,7 +268,7 @@ var recRewardMs;                    'float version
 var recHitRewardIncmL;              'Reward increment per hit, milliliters (both hit and CR rewards, will stop at max, will reset on miss/FA)
 var recS1RewardIncmL;               'Reward increment per S1 stimulus, milliliters (additional reward on each trial per S1)
 var useTDTforJuicer% := 0;          'if 1, use TDT for juicer, just hardcode this 
-var useTDTforLever% := 0;           'if 1, lever is plugged into TDT, just hardcode this
+var useTDTforLever% := 1;           'if 1, lever is plugged into TDT, just hardcode this
     
 'Interrupts
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
