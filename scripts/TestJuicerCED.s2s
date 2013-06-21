@@ -1,0 +1,206 @@
+
+var recDataWindowView%;
+#include "recfuncs.s2s"  'already includes tdt.s2s
+#include "filesystemvars.s2s"
+
+'get values of duration automatically, calculate mean, max, min, but probably don't have to save the datafile
+
+var recRewardMs%;
+'var myFile$;
+var recChanTM%;
+
+var i%;
+const nRepeats% := 2;
+var dur[nRepeats%];
+var on;
+var off;
+var mymin;
+var mymax;
+var mymean;
+
+'meat of code
+'RecInitTDT%();
+if myDialog%() = 1 then
+    
+    
+    ' Since we are opening files here, set the path. 
+    FilePathSet(data$, 1, 1);  'Sets path for new data files
+    
+    ' Initialize sampling settings, probably can skip these
+    'SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
+	'SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
+	'SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
+    'SampleAutoFile(0);     'set auto-filing state to "off"
+    'SampleAutoName$("reclab000");  'set file name template
+    
+    ' Text marks - we're not actually using this channel, but we need a channel
+    SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
+    recChanTM% := 30;  'That's the TextMark channel
+    
+    'waveform on channel 1
+    SampleWaveform(1, 1, 50000);
+    
+    SampleOptimise(2, 1, 7, 2, 50);  'Optimization settings, don't change unless there's an issue
+    SampleMode(1);  'Continuous recording
+    
+    
+    recDataWindowView% := FileNew(0,4);
+    Window(0, 0, 100, 50); 
+    View(recDataWindowView%).WindowVisible(1);
+    
+    
+    SampleStart();
+    
+    for i% := 1 to nRepeats% do 
+        Reward%(on,off);
+        dur[i%-1] := off-on;  'put duration of juicer hit
+        yield(0.3);  'give the juicer a rest
+    next;
+    
+    
+    SampleStop();
+    
+    'get min, max, mean
+    mymin := dur[min(dur[])];
+    mymax := dur[max(dur[])];
+    ArrSum(dur[],mymean);  'fills mymean
+    
+    'just printlog the results
+    printlog("For an input of %d ms, mean is %f s, min is %f s, max is %f s\n",recRewardMs%,mymean,mymin,mymax);
+    
+    'nah bro
+    'FileSaveAs(myFile$ + ".smr", -1); 'Save data file automagically 
+endif
+
+
+    
+    
+func myDialog%()
+    var i%;
+    var myIndex%;
+    var dur$[15];
+    dur$[0] := "0.01";
+    dur$[1] := "0.02";
+    dur$[2] := "0.03";
+    dur$[3] := "0.04";
+    dur$[4] := "0.05";
+    dur$[5] := "0.06";
+    dur$[6] := "0.07";
+    dur$[7] := "0.08";
+    dur$[8] := "0.09";
+    dur$[9] := "0.10";
+    dur$[10] := "0.12";
+    dur$[11] := "0.14";
+    dur$[12] := "0.16";
+    dur$[13] := "0.18";
+    dur$[14] := "0.20";
+    
+    DlgCreate("Juicer Volume/Timing Dialog",0,0);
+    
+    'DlgString(1,"FileName",30,"",0,2);  'don't need it
+    DlgList(1,"Duration",dur$[],15,0);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(myIndex%);
+    
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Assign filename, nah bro
+        'myFile$ := "TestJuicerDur" + dur$[myIndex%] + "Units";
+        
+        'Assign speaker number
+        docase
+        case myIndex% = 0 then
+            recRewardMs% := 10;
+        case myIndex% = 1 then
+            recRewardMs% := 20;
+        case myIndex% = 2 then
+            recRewardMs% := 30;
+        case myIndex% = 3 then
+            recRewardMs% := 40;
+        case myIndex% = 4 then
+            recRewardMs% := 50;
+        case myIndex% = 5 then
+            recRewardMs% := 60;
+        case myIndex% = 6 then
+            recRewardMs% := 70;
+        case myIndex% = 7 then
+            recRewardMs% := 80;
+        case myIndex% = 8 then
+            recRewardMs% := 90;
+        case myIndex% = 9 then
+            recRewardMs% := 100;
+        case myIndex% = 10 then
+            recRewardMs% := 120;
+        case myIndex% = 11 then
+            recRewardMs% := 140;
+        case myIndex% = 12 then
+            recRewardMs% := 160;
+        case myIndex% = 13 then
+            recRewardMs% := 180;
+        case myIndex% = 14 then
+            recRewardMs% := 200;            
+        endcase;
+endif
+
+return i%
+
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' Reward%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func Reward%(&on,&off)
+
+    var stmp%;
+    var tStart;
+    var tNow;
+    var tEnd;
+    var data%[2];  'DO NOT OVERSIZE - results in long delay!
+    var temp%;
+    var s;
+    
+    tStart := View(recDataWindowView%).MaxTime();  'this is the time that the reward command was sent, roughly
+    sampletext("on " + str$(tStart), tStart);
+
+    stmp% := recReward%(recRewardMs%,0); '0, we're not using TDT
+
+    'have to wait for juicer to stop, keep looking for TDT return on serial port until then.
+    'stmp% := -1;  'by default, assume failure
+    's := recRewardMs%;  'get non-integer version of reward duration
+    's := (s/1000) + 10.2;  'convert to seconds of expected reward, give lotsa slop
+    
+'    while tNow < tStart + s do  'integer < float operation is OK
+'        'sampletext("calling readTDTReplyNoWait",View(recDataWindowView%).MaxTime());
+'        temp% := readTDTReplyNoWait%(data%[]);
+'        
+'        if temp% = -1 then 'if TDT has not yet put data onto the serial port
+'            tNow := View(recDataWindowView%).MaxTime();  'fill tNow with current clock time
+'            yield(.001);
+'        else
+'            tEnd := View(recDataWindowView%).MaxTime();
+'            sampletext("off " + str$(tEnd), tEnd);
+'            tNow := tStart + s + 1000;  'that'll break the loop
+'            stmp% := 0;
+'        endif;
+'    wend;
+    
+    while SampleSeqVar(2) <> 0 do
+        tEnd := View(recDataWindowView%).MaxTime();  'keep updating the time until the juicer is closed
+    wend;
+    
+    on := tStart;
+    off := tEnd;
+    
+    return stmp%;  'return 0 on success (not really even doing anything)
+end
+
+
+
+
+
+
