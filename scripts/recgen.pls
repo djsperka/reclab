@@ -1,3 +1,11 @@
+;V1 is the open time for the solenoid (reward)
+;V2 is the sequencer access/deny variable (SafeSampleKey)
+;V3 is the time of sound onset, in ticks, read by CED
+;V4 is the Which LED Flashing indicator (0 = none, 1 = LED)
+;V5 is the number of flashes
+;V6 will be the duration of each on/off half-cycle, in clock steps (i.e. one period = 2*V6)
+;V7 allows me to calculate a delay accounting for known clock steps
+;V8 is a flash-allow variable - allows early kill of a flash sequence from CED when LED is next off
                 SET      0.010 1 0     ;10 microseconds per step (DON'T CHANGE), fastest possible
                 VAR    V2=0            ;V2 logs whether the sequencer is in use
 0000            JUMP   next
@@ -73,5 +81,34 @@
 0069            DIGOUT [.......0]      ;Set output low for solenoid, in case
 0070            MOVI   V2,0            ;Allow sequencer access
 0071            JUMP   next            ;Extra DIGOUT bit for solenoid monitor
-0072 NEXT:      NOP    
+0072 LEDON:  'L MOVI   V2,1            ;Do not allow sequencer access
+0073            DIGOUT [......1.]      ;Turn LED on, LED connects to Digital Outputs 1
+0074            BGT    V4,0,FLOFFW     ;If FLASH sequence exists, jump to FLASH OFF WAIT
+0075            JUMP   EXITLED
+0076 LEDOFF: 'M MOVI   V2,1            ;Do not allow sequencer access
+0077            DIGOUT [......0.]      ;Turn LED off
+0078            BGT    V8,0,FLONW      ;If FLASH sequence exists, jump to FLASH ON WAIT
+0079            JUMP   EXITLED
+0080 FLON:      BEQ    V4,1,LEDON      ;Start point, if flashing LED, jump to LED on
+0082            JUMP   EXITLED         ;If 0 or intended light not found above, give up
+0083 FLOFF:     BEQ    V4,1,LEDOFF     ;If flashing LED, jump to LED off
+0084            JUMP   EXITLED         ;Just in case, should not happen
+0085 FLONW:     MOVI   V7,0            ;Make sure #clock tick delays is zero
+0086            BEQ    V8,0,EXITLED    ;If Flash-Allow variable 0, exit because light is already off
+0087            ADD    V7,V6           ;add in #clock tick delays from pres_engine
+0088            SUB    V7,V4,-9        ;subtract # of BEQ ticks and add -9 constant ticks
+0089            DELAY  V7              ;Wait for next FLASH ON
+0090            DBNZ   V5,FLON         ;Decrement #repeats, continue flashing if any remain
+0091            JUMP   EXITLED
+0092 FLOFFW:    MOVI   V7,0            ;Make sure #clock tick delays is zero
+0093            ADD    V7,V6           ;add in #clock tick delays from pres_engine
+0094            SUB    V7,V4,-8        ;subtract # of BEQ ticks and add -8 constant ticks
+0095            DELAY  V7              ;Wait for next FLASH OFF
+0096            JUMP   FLOFF           ;Do not decrement, jump to FLASH OFF
+0097 FLSTOP: 'S DIGOUT [......0.]      ;Turn LED off
+0098            JUMP   EXITLED
+0099 EXITLED:   MOVI   V4,0            ;Set which light to flash to NONE
+0100            MOVI   V8,0            ;Set Flash-Allow Variable to 0, disallow flashing
+0101            MOVI   V2,0            ;Allow sequencer access, now done only once at end
+0102 NEXT:      NOP    
 

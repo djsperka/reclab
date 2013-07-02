@@ -100,9 +100,13 @@ const stateFAInterrupt%                       := 23;
 const stateStartSoundC%                       := 24;
 const stateSoundCPlaying%                     := 25;
 const stateCRReward%                          := 26;
+const stateStartCEDBlink%                     := 27;
+const stateCEDBlinking%                       := 28;
+const stateTDTBlink%                          := 29;
 
 var recDelayIntervalTime         := 0;
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
+var tStartBlink;    ' used in idle loop
 var tLast:=-1;		' last time we checked for a trigger. 
 var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
@@ -1012,7 +1016,11 @@ func PrepareNextTrial%(dontLoadPWAs%)
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
                 TDTError% := 1;  'This will allow the entire thing to quit
-                recTDTLEDOff%();
+                if useTDTforLever% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
+                endif;
                 Stop%();
                 return -1;
             case recMatGenStim% = 1 and recSearchStimType% <> 3 then  'Generate stimuli using Matlab - even something CED can do like tones.  Just easier to be consistent.
@@ -1042,7 +1050,11 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
                     TDTError% := 1;  'This will allow the entire thing to quit
-                    recTDTLEDOff%();
+                    if useTDTforLever% = 1 then  'turn off LED
+                        recTDTLEDOff%();
+                    else
+                        SafeSampleKey("M");
+                    endif;
                     Stop%();
                     return -1;
                 endif;
@@ -1188,8 +1200,47 @@ func IdleLoop%()
             endif
             
             
+        case iState% = stateWaitForInitiationMovement% then   'this state just decides which state to go to, it's easier than replacing all the instances 
+            if useTDTforLever% = 1 then
+                iState% := stateTDTBlink%;
+            else
+                iState% := stateStartCEDBlink%;
+            endif;
             
-        case iState% = stateWaitForInitiationMovement% then
+            
+        case iState% = stateStartCEDBlink% then
+            if tNow > tNextTrial then
+                RecLogStatus("WaitLvrDown", "Blink/Wait.");
+                if recCEDIsPresent% = 1 and recActive% = 1 then
+                    SampleSeqVar(4,1);  'set the flash sequence to on
+                    Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
+                    sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
+                    sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
+                    SafeSampleKey("L");  'Start the flash
+                    
+                endif;
+                tStartBlink := MaxTime();
+                iState% := stateCEDBlinking%;
+            endif;
+            
+            
+        case iState% = stateCEDBlinking% then
+            if tNow < tStartBlink + recTrialInitWindow then
+                stmp% := CheckLever%();
+                if stmp% = 1 then
+                    SafeSampleKey("S"); 'stop blink sequence immediately
+                    SafeSampleKey("L"); 'turn on LED for fixpt
+                    RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
+                    ChangeStateTo(statePreTrialDelay%);
+                endif;
+            else  'this is timeout
+                SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
+                RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
+                ChangeStateTo(stateLazyMonkeyTimeout%);
+            endif;
+            
+            
+        case iState% = stateTDTBlink% then
             
             if tNow > tNextTrial then
             
@@ -1197,7 +1248,6 @@ func IdleLoop%()
                 
                 if recCEDIsPresent% = 1 and recActive% = 1 then
                     stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
-                    'stmp% := CheckLever%();
                     'Will leave LED on once lever is down
                 else
                     stmp% := 1;  'simulate success in lever press
@@ -1290,8 +1340,10 @@ func IdleLoop%()
                 if isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);
-                    if recTDTIsPresent% = 1 then
+                    if useTDTforLever% = 1 then  'turn off LED
                         recTDTLEDOff%();
+                    else
+                        SafeSampleKey("M");
                     endif;
                     ChangeStateTo(stateFAInterrupt%);  'on FA interrupt, reshuffle entire stim sequence in later
                 else
@@ -1333,8 +1385,10 @@ func IdleLoop%()
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("WaitISI", "False Positive! Lever is up");
                 StimComplete%(0, 0);
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
@@ -1528,8 +1582,10 @@ func IdleLoop%()
             case isEarlyHit% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyHit% := 0;  'reset variable
                 StimComplete%(1, 1);
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
                 nextStateImmed% := 1;  'Deliver reward immediately
@@ -1537,8 +1593,10 @@ func IdleLoop%()
             case isEarlyFA% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyFA% := 0;  'reset variable
                 StimComplete%(2, 0);  'terminal S1
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFalsePositive%);
                 nextStateImmed% := 1;  'Begin penalty immediately
@@ -1552,8 +1610,10 @@ func IdleLoop%()
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("WaitLvrUp", "Lever is up - HIT");
                 StimComplete%(1, 1);
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
                 nextStateImmed% := 1;  'Deliver reward immediately
@@ -1561,8 +1621,10 @@ func IdleLoop%()
             case stmp% = 0 and isTerminalS1% = 1 then
                 RecLogStatus("WaitLvrUp", "Lever is up - False Alarm on terminal S1");
                 StimComplete%(2, 0);  'terminal S1
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFalsePositive%);
                 nextStateImmed% := 1;  'Begin penalty immediately
@@ -1570,16 +1632,20 @@ func IdleLoop%()
             case tNow - tStateStart > recResponseWindow and isTerminalS1% = 0 then
                 RecLogStatus("WaitLvrUp", "Lever not up - timed out - MISS");
                 StimComplete%(1, 0);
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateMissTimeout%);
             'Response window is closed, correct rejection    
             case tNow - tStateStart > recResponseWindow and isTerminalS1% = 1 then 
                 RecLogStatus("WaitLvrUp", "Lever not up - Correct Rejection on terminal S1");
                 StimComplete%(2, 1);  'terminal S1
-                if recTDTIsPresent% = 1 then
+                if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateCRReward%);  
             'Otherwise, the response window is still open and the lever is still down    
@@ -1722,8 +1788,10 @@ func IdleLoop%()
             
         case iState% = stateDone% then
             
-            if recTDTIsPresent% = 1 then
+            if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
+            else
+                SafeSampleKey("M");
             endif;
             RecLogStatus("Done", "");
             ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
@@ -1739,8 +1807,10 @@ func IdleLoop%()
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
             TDTError% := 1;  'This will allow the entire thing to quit
-            if recTDTIsPresent% = 1 then
+            if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
+            else
+                SafeSampleKey("M");
             endif;
             iStatus% := 0;
             Stop%();
@@ -1755,8 +1825,10 @@ func IdleLoop%()
             RecLogStatus("A coding Error has occurred!", "");
             iStatus% := 0;
             TDTError% := 1;  'This will allow the entire thing to quit (even if it isn't technically a TDT error)
-            if recTDTIsPresent% = 1 then
+            if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
+            else
+                SafeSampleKey("M");
             endif;
             Stop%();
             
@@ -1768,8 +1840,10 @@ func IdleLoop%()
             Message("Unknown state (%d)!", iState%);
             iStatus% := 0;
             TDTError% := 1;  'This will allow the entire thing to quit (even if it isn't technically a TDT error)
-            if recTDTIsPresent% = 1 then
+            if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
+            else
+                SafeSampleKey("M");
             endif;
             Stop%();          
         endcase

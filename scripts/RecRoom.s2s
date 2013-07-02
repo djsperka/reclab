@@ -268,7 +268,7 @@ var recRewardMs;                    'float version
 var recHitRewardIncmL;              'Reward increment per hit, milliliters (both hit and CR rewards, will stop at max, will reset on miss/FA)
 var recS1RewardIncmL;               'Reward increment per S1 stimulus, milliliters (additional reward on each trial per S1)
 var useTDTforJuicer% := 0;          'if 1, use TDT for juicer, just hardcode this 
-var useTDTforLever% := 1;           'if 1, lever is plugged into TDT, just hardcode this
+var useTDTforLever% := 0;           'if 1, lever is plugged into TDT, just hardcode this, lever and LED must be on same device
     
 'Interrupts
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
@@ -631,7 +631,7 @@ func RecDebugDialog%()
             LogInfo("User reports no Matlab present.  Running in testing mode.  Bypassing all Matlab calls.");
         endif
         if recTDTIsPresent% = 0 then
-            LogInfo("User reports no TDT present.  Running in testing mode.  Bypassing all TDT calls.");
+            LogInfo("User reports no TDT present.  Running in testing mode.  Bypassing all TDT calls."); 
         endif
         if recCEDIsPresent% = 0 then
             LogInfo("User reports no 1401 present.  Running in testing mode.  Bypassing all 1401 calls.");
@@ -640,6 +640,12 @@ func RecDebugDialog%()
     else
         status% := 0;
     endif
+    
+    if useTDTforLever% = 1 and recTDTIsPresent% = 0 then 'uh-oh, this won't work!
+        Printlog("TDT is supposed to be used for lever, but TDT is not present!  Quitting!\n");
+        Message("TDT is supposed to be used for lever, but TDT is not present!  Quitting!");
+        status% := 0;
+    endif;
     
 	return status%;
    
