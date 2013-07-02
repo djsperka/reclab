@@ -709,6 +709,9 @@ func Stop%()
     
     ' Stop sampling....
     if SampleStatus() <> -1 then
+        if useTDTforLever% = 0 then
+            SampleKey("S");  'Kill blink sequence, if one exists
+        endif;
         if useTDTforJuicer% = 0 then
             SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
         endif;        
@@ -1137,7 +1140,7 @@ func IdleLoop%()
     var PWA$;
     var s$;
     
-    while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
+    'while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
         
         'Get the current time
         if recCEDIsPresent% = 1 then
@@ -1151,6 +1154,7 @@ func IdleLoop%()
         'Update the state of the lever if using CED
         if useTDTforLever% = 0 then
             DebounceLever%(tNow);  'this fills recLeverTime and recLeverState%
+            'printlog("Lever state is %d at %f\n",recLeverState%,tNow);
         endif;
         
         
@@ -1227,14 +1231,15 @@ func IdleLoop%()
         case iState% = stateCEDBlinking% then
             if tNow < tStartBlink + recTrialInitWindow then
                 stmp% := CheckLever%();
+                'printlog("Lever value is %d and time is %f\n",stmp%,tNow);
                 if stmp% = 1 then
-                    SafeSampleKey("S"); 'stop blink sequence immediately
+                    SampleKey("S"); 'stop blink sequence immediately
                     SafeSampleKey("L"); 'turn on LED for fixpt
                     RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                     ChangeStateTo(statePreTrialDelay%);
                 endif;
             else  'this is timeout
-                SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
+                SampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
                 RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
                 ChangeStateTo(stateLazyMonkeyTimeout%);
             endif;
@@ -1282,7 +1287,7 @@ func IdleLoop%()
             
             
         case iState% = statePreTrialDelay% then
-            
+            'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             docase
             case CheckLever%() = 0 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
@@ -1848,7 +1853,7 @@ func IdleLoop%()
             Stop%();          
         endcase
         
-    wend  'close the nextStateImmed% while
+    'wend  'close the nextStateImmed% while
     
     
     return iStatus%;  'if iStatus% is 0, the Toolbar() will return
@@ -1891,7 +1896,7 @@ func DebounceLever%(Now)
     else
         NumEvents% := chandata(recLeverChannel%,TimesArray[],recLeverTime,Now);  'put times of recent lever presses in regular array, starting with most recent known event
     endif;
-    
+    'printlog("Events are at %f and recLeverTime is %f and now is %f\n",TimesArray[],recLeverTime,Now);
     
 	'There should always be a "first event" at LeverInitTime.  If there are no more, we haven't actually
 	'had anything happen, so don't do anything
@@ -1969,13 +1974,12 @@ func DebounceLever%(Now)
         
         'Put events in memory channel if they exist and change LeverInitTime/LeverResponseTime/LeverInit%/LeverResponse%
         if EventCount% > 0 then	
-            'Sutter verbose, just taken out
-            'if VerboseJoyLev% = 1 then
-            '    view(HiddenLogHandle%).print("Debounce: The lever events we considered to be real occurred at times: %f\r",RealEventTime[0:EventCount%]);
-            'endif;
+            'verbose, just taken out
+            'printlog("Debounce: The lever events we considered to be real occurred at times: %f\n",RealEventTime[0:EventCount%]);
+
             for ii% := 0 to EventCount%-1 do
                 recLeverCodes%[0] := RealEventValue[ii%];
-                if RealEventValue[ii%] = 0 then
+                if RealEventValue[ii%] = 1 then
                     LeverString$ := "Lever Pressed";
                 else
                     LeverString$ := "Lever Released";
