@@ -359,11 +359,12 @@ while recReadyToQuit% = 0 do
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace
             'The file specified must contain a cell array named "calib" with recNSpeakers% cells inside
-            'We will eventually pass the 2-cell array CALIB (where CALIB = calib{recNSpeakers%}) to
-            'Matlab when generating stimuli.  CALIB{1} is the B filter coefficients, CALIB{2} is the A coeffcients
+            'We will eventually pass a structure (syntax: FFT(1,thisSpkr%) or Filt(1,thisSpkr%)) to
+            'Matlab when generating stimuli.  Reclab_Panstim will do the rest
+            'I'm not sure the filter coefficient version is the best method - looks like the FFT version will be best
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
-                    statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
                     calibOK% := EvalMatlabStatement%(statement$);
                 else
                     printlog("Calibration is not present, stimuli will be uncalibrated!\n");
@@ -383,7 +384,7 @@ while recReadyToQuit% = 0 do
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
-                    statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
                     calibOK% := EvalMatlabStatement%(statement$);
                 else
                     printlog("Calibration is not present, stimuli will be uncalibrated!\n");
@@ -420,7 +421,7 @@ while recReadyToQuit% = 0 do
                 'TODO Load calibration file into Matlab's workspace, same details as above in Search
                 if recMatlabIsPresent% = 1 then
                     if recCalibIsPresent% = 1 then 
-                        statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                        statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
                         calibOK% := EvalMatlabStatement%(statement$);
                     else
                         printlog("Calibration is not present, stimuli will be uncalibrated!\n");
@@ -444,7 +445,7 @@ while recReadyToQuit% = 0 do
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
-                    statement$ := "load('" + recCalibLoc$ + "GenCalibs" + Str$(recNSpeakers%) + ".mat');";
+                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
                     calibOK% := EvalMatlabStatement%(statement$);
                 else
                     printlog("Calibration is not present, stimuli will be uncalibrated!\n");

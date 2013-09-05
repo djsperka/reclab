@@ -475,7 +475,8 @@ Func PlaySound%(isS2%)
     'For now, don't set any attenuation if there is trial-based (e.g. intensity tuning) because
     'it would be useful to hear that.  If those are too loud, drop the atten=0 part and just dump
     '30 dB during the debug phase.  Might want to comment this all out once we're up and running
-    if atten = 0 and recDebug% = 1 then
+    'if atten = 0 and recDebug% = 1 then
+    if recCalibIsPresent% = 0 then
         if recSearchStimType% = 3 then
             atten := 0;  'for clicks, don't attenuate
         else
@@ -1065,7 +1066,8 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
                 'NOTE THAT WITHOUT THE CALIB VARIABLE, THE FULL STATEMENT DOES NOT WORK PROPERLY
                 'USE THE TRUNCATED STATEMENT WITH NO CALIB UNTIL CALIBRATION IS IMPLEMENTED
-                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,calib{spk});";
+                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,FFT(1,spk));";  'this is for the FFT filtering method
+                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,Filt(1,spk));";  'this is for the standard filtering method
                 statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 EvalMatlabStatement%(statement$);
                 'Get the stimulus and the seed back from Matlab
