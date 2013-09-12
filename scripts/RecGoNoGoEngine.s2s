@@ -963,6 +963,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
     var pwChar$;
     var matPutOK% := 0;
     var ok% := 1;  'by default, return 1 (success)
+
     
     ' Check to see if we are done
     if recCurrentTrial% >= recNTrials% then
@@ -1001,7 +1002,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
     if dontLoadPWAs% = 0 then
         ' Generate/Load stimuli and put them into PlayWaveAreas
         'for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
-        for i% := 0 to recNUniqueStims%[thisTrial%] do
+        for i% := 0 to recNUniqueStims%[thisTrial%]-1 do
             'Get play wave area for current stimulus
             pwChar$ := GetPlayWaveKey$(i%); 
             
@@ -1010,7 +1011,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
             
             'get speaker of trial
             thisSpkr% := recSpeakerList%[i%][thisTrial%];
-            
+                
             'Set recStimTransfer%[] to zeros
             arrconst(recStimTransfer%[],0);  
             
@@ -1066,10 +1067,11 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
                 'NOTE THAT WITHOUT THE CALIB VARIABLE, THE FULL STATEMENT DOES NOT WORK PROPERLY
                 'USE THE TRUNCATED STATEMENT WITH NO CALIB UNTIL CALIBRATION IS IMPLEMENTED
-                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,FFT(1,spk));";  'this is for the FFT filtering method
-                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,Filt(1,spk));";  'this is for the standard filtering method
-                statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 EvalMatlabStatement%(statement$);
+
                 'Get the stimulus and the seed back from Matlab
                 GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
                 GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
