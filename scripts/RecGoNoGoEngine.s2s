@@ -1067,11 +1067,19 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
                 'NOTE THAT WITHOUT THE CALIB VARIABLE, THE FULL STATEMENT DOES NOT WORK PROPERLY
                 'USE THE TRUNCATED STATEMENT WITH NO CALIB UNTIL CALIBRATION IS IMPLEMENTED
-                statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
-                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
-                'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                if recCalibIsPresent% = 1 then
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+                    'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                else
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                endif;
                 EvalMatlabStatement%(statement$);
-
+                printlog("%s\n",statement$);
+                printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+            
+            
                 'Get the stimulus and the seed back from Matlab
                 GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
                 GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
@@ -1380,7 +1388,7 @@ func IdleLoop%()
             ' Check that lever is still down.
             if recCEDIsPresent% = 1 and recActive% = 1 then
                 stmp% := CheckLever%();
-                printlog("Lever status is %d, dammit!\n",stmp%);
+                'printlog("Lever status is %d, dammit!\n",stmp%);
             else
                 stmp% := 1; 'simulate lever down in testing, and in non-response scenarios
             endif
