@@ -180,11 +180,11 @@ func RunGoNoGoEngine%()
     ' start it up again, if it still thinks the idle function is our state-logic loop, it jumps right into 
     ' it.  If we clear that idle function, then only the Start%() function sets the Toolbar idle function 
     ' to our state-logic loop and gets things going.
-    
+
     InitializeToolbar();
     printlog("Toolbar initialized\n");
     Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar; the experiment will be here most of the time
-    
+
     
     'once we leave the toolbar, return to calling function
     return recReadyToQuit%;
@@ -1164,7 +1164,7 @@ func IdleLoop%()
         nextStateImmed% := 0;  'Don't repeat this (internal) loop unless specifically asked to below for timing purposes
         
         'Update the state of the lever if using CED
-        if useTDTforLever% = 0 then
+        if useTDTforLever% = 0 and recCEDIsPresent% = 1 then
             DebounceLever%(tNow);  'this fills recLeverTime and recLeverState%
             'printlog("Lever state is %d at %f\n",recLeverState%,tNow);
         endif;
@@ -1235,14 +1235,22 @@ func IdleLoop%()
                     SafeSampleKey("L");  'Start the flash
                     
                 endif;
-                tStartBlink := MaxTime();
+                if recCEDIsPresent% = 1 then
+                    tStartBlink := MaxTime();
+                else
+                    tStartBlink := tNow;
+                endif;
                 iState% := stateCEDBlinking%;
             endif;
             
             
         case iState% = stateCEDBlinking% then
             if tNow < tStartBlink + recTrialInitWindow then
-                stmp% := CheckLever%();
+                if recCEDIsPresent% = 1 then
+                    stmp% := CheckLever%();
+                else
+                    stmp% := 1; 'simulate success
+                endif;
                 'printlog("Lever value is %d and time is %f\n",stmp%,tNow);
                 if stmp% = 1 then
                     SampleKey("S"); 'stop blink sequence immediately
@@ -1301,7 +1309,7 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             docase
-            case CheckLever%() = 0 then
+            case CheckLever%() = 0 and recCEDIsPresent% = 1 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
             case tNow - tStateStart >= recDelayIntervalTime then

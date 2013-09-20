@@ -184,7 +184,7 @@ var recNSpeakers%;                  'How many speakers are there in the array (u
 
 'Trial list generation variables
 const recMaxStim%:=1000;            'Maximum number of stimuli, 1000 is probably overlarge
-const recMaxStimPerTrial%:=20;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
+const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas    
 const recMaxTrial%:=5000;          'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
 var recTotalStim%;                  'Total number of stimuli specified in Stim or Stim/Cal file
@@ -1183,11 +1183,11 @@ func RecExpSearchDialog%()
                 arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
                 'get the log progression with the new values 
                 GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);
-            for j% := 0 to recSearchToneSweepNSteps%-1 do
+                for j% := 0 to recSearchToneSweepNSteps%-1 do
                     recTrialGenLowpassHz[j%] := recSearchToneSweepFreqList[j%];
                     recTrialGenHighpassHz[j%] := recSearchToneSweepFreqList[j%];
                 next
-                printlog("Tone Sweep selected from search dialog, %d repeats\n",recSearchToneSweepRepeats%);
+                printlog("Tone Sweep selected from search dialog, %d repeats\n",recSearchToneSweepRepeats%); 'n repeats of each tone
                 printlog("Tone Sweep Progression is %d Hz\n",recSearchToneSweepFreqList[0:recSearchToneSweepNSteps%]);
             endcase
             
@@ -1905,7 +1905,7 @@ Proc GetLinearProgression(xmin, xmax, nsteps%, vec[])
 	var i%:= 0;
 	stepsize := (xmax -xmin)/nsteps%;
 	for v := xmin to xmax+stepsize/2 step stepsize do
-	'	PrintLog("Value=" + str$(v) + "\n");
+		'PrintLog("Value=" + str$(v) + "\n");
 		vec[i%] := v;
 		i% := i% + 1;
 	next;
