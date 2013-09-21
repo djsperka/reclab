@@ -1181,8 +1181,9 @@ func RecExpSearchDialog%()
                 printlog("Clicks selected from search dialog\n");
             case recSearchStimType% = 4 then  'for tone sweeps
                 arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
-                'get the log progression with the new values 
-                GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);
+                'get the log progression with the new values
+                GetLogProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);            
+                'GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);
                 for j% := 0 to recSearchToneSweepNSteps%-1 do
                     recTrialGenLowpassHz[j%] := recSearchToneSweepFreqList[j%];
                     recTrialGenHighpassHz[j%] := recSearchToneSweepFreqList[j%];
@@ -1313,7 +1314,8 @@ func RecExpSearchDialogChanged%(item%)
             'Update GUI
             DlgValue$(recSearchToneSweepFreqList%,recSearchToneSweepFreqList$);
         else
-            GetLinearProgression(DlgValue(6), DlgValue(7), DlgValue(8)-1, recSearchToneSweepFreqList[]);   
+            GetLogProgression(DlgValue(6), DlgValue(7), DlgValue(8)-1, recSearchToneSweepFreqList[]);   
+            'GetLinearProgression(DlgValue(6), DlgValue(7), DlgValue(8)-1, recSearchToneSweepFreqList[]);   
             recSearchToneSweepFreqList$ := StringifyProgression2$(DlgValue(8), recSearchToneSweepFreqList[0:DlgValue(8)], inds%[],0);
             'Update GUI
             DlgValue$(recSearchToneSweepFreqList%,recSearchToneSweepFreqList$);

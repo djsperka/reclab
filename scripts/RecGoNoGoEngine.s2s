@@ -481,6 +481,7 @@ Func PlaySound%(isS2%)
             atten := 0;  'for clicks, don't attenuate
         else
             atten := rand(4,30);  'To check that the PA4 is working properly, let's just set a new value every time
+            'atten := 0;  'temporary, during calibrations
         endif;
     endif;
     
@@ -1246,7 +1247,7 @@ func IdleLoop%()
             
         case iState% = stateCEDBlinking% then
             if tNow < tStartBlink + recTrialInitWindow then
-                if recCEDIsPresent% = 1 then
+                if recCEDIsPresent% = 1  and recActive% = 1 then
                     stmp% := CheckLever%();
                 else
                     stmp% := 1; 'simulate success
@@ -1309,7 +1310,7 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             docase
-            case CheckLever%() = 0 and recCEDIsPresent% = 1 then
+            case CheckLever%() = 0 and recCEDIsPresent% = 1  and recActive% = 1 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
             case tNow - tStateStart >= recDelayIntervalTime then
