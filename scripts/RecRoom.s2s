@@ -359,7 +359,7 @@ while recReadyToQuit% = 0 do
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace
             'The file specified must contain a cell array named "calib" with recNSpeakers% cells inside
-            'We will eventually pass a structure (syntax: FFT(1,thisSpkr%) or Filt(1,thisSpkr%)) to
+            'We will eventually pass a structure (syntax: AFFT(1,thisSpkr%) or AFilt(1,thisSpkr%)) to
             'Matlab when generating stimuli.  Reclab_Panstim will do the rest
             'I'm not sure the filter coefficient version is the best method - looks like the FFT version will be best
             if recMatlabIsPresent% = 1 then

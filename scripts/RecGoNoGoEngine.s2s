@@ -111,7 +111,6 @@ var tLast:=-1;		' last time we checked for a trigger.
 var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
 var tNextTrial;
-var TDTError%;
 var isTerminalS1%:=0;    'if trial has terminal S1, logic of state loop must change, so we need to keep track
 var RTESDIsPressed%;  'has ReturnToExperimentSelectionDialog button been pressed?
 var recLeverState%;
@@ -1021,7 +1020,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 'don't do anything, just pretend all is OK
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
-                TDTError% := 1;  'This will allow the entire thing to quit
+                recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
@@ -1055,7 +1054,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
-                    TDTError% := 1;  'This will allow the entire thing to quit
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     if useTDTforLever% = 1 then  'turn off LED
                         recTDTLEDOff%();
                     else
@@ -1460,7 +1459,7 @@ func IdleLoop%()
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundB", "PlaySound returned unknown value (>0).");
-                ChangeStateTo(stateTDTerror%);
+                ChangeStateTo(stateTDTError%);
             endcase
             
             
@@ -1518,7 +1517,7 @@ func IdleLoop%()
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundC", "PlaySound returned unknown value (>0).");
-                ChangeStateTo(stateTDTerror%);
+                ChangeStateTo(stateTDTError%);
             endcase            
             
             
@@ -1820,10 +1819,11 @@ func IdleLoop%()
                 SafeSampleKey("M");
             endif;
             RecLogStatus("Done", "");
-            ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
-            'Stop%();
             iStatus% := 0;
             recReadyToQuit% := 0;
+            ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
+            'Stop%();
+            
             
             
         case iState% = stateTDTError% then
@@ -1832,7 +1832,7 @@ func IdleLoop%()
             
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
-            TDTError% := 1;  'This will allow the entire thing to quit
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
             if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
@@ -1850,7 +1850,7 @@ func IdleLoop%()
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A coding Error has occurred!", "");
             iStatus% := 0;
-            TDTError% := 1;  'This will allow the entire thing to quit (even if it isn't technically a TDT error)
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
             if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
@@ -1865,7 +1865,7 @@ func IdleLoop%()
             RecLogStatus("UNKNOWN STATE", "iState%=" + str$(iState%));
             Message("Unknown state (%d)!", iState%);
             iStatus% := 0;
-            TDTError% := 1;  'This will allow the entire thing to quit (even if it isn't technically a TDT error)
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
             if useTDTforLever% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
