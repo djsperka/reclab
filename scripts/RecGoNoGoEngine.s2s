@@ -10,6 +10,8 @@
 const recDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
 const recTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
 const recLeverChannel% := 3;         ' Channel for behavioral lever recording
+const configJoyXChannel% := 4;       ' Channel for JoystickX
+const configJoyYChannel% := 5;       ' Channel for JoystickY
 const recTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
 const recTrode2Channel% := 12;       ' I'm breaking the above rule (don't use channel numbers above this)
 const recTrode3Channel% := 13;       '   because it makes no sense to me.  If it turns out to matter
@@ -21,12 +23,37 @@ const recTrode8Channel% := 18;
 const recTrode9Channel% := 19;
 const recTrode10Channel% := 20;
 
+
+
 ' ports
 const recTriggerPort% := 0;
 const recLeverPort% := 1;
+const configJoyXPort% := 2;  'A2D port
+const configJoyYPort% := 3;  'A2D port
 
 ' memory channels
 var recMemChanLeverDebounce%;
+
+' For Joystick
+var joystickXOffset; 'use registry  
+var joystickYOffset;
+var joyview%;
+var joydatachan%;
+var LastPos%;
+var JoystickReadOnce%;
+var LeverCodes%[4]; 
+var XPos%;
+var YPos%;
+var XTime;
+var YTime;
+var InOrigin%;
+var RespDevice%;
+var TrialInit%;
+var TrialResponse%;
+var ResponseTime;
+var OffAxis%;
+var XJoy;
+var YJoy;
 
 ' for anything other than electrodes!
 var recXYWindowView%;              ' View variable for XY window
@@ -52,6 +79,8 @@ var recFreq%                := 20000;
 var StimOn;                                ' time of stimulus onset
 var PrevStimOn;                            ' time of previous stimulus onset, avoids error if Spike2 code executes faster than sequencer
 var UsPerTime;                             ' number of microseconds per sequencer sample period
+var TimePerADC;                            ' 
+var SecPerSample;                          ' 
 var RewOn;                                 ' time of reward onset
 var PrevRewOn;                             ' time of previous reward onset, avoids error if Spike2 code executes faster than sequencer
 
@@ -65,12 +94,14 @@ var PrevRewOn;                             ' time of previous reward onset, avoi
 
 
 ' toolbar button numbers
-const recStartButton%  := 1;
-const recPauseButton%  := 2;
-const recResumeButton% := 3;
+const recStartButton%         := 1;
+const recPauseButton%         := 2;
+const recResumeButton%        := 3;
 const recSelectNewExptButton% := 4;
-const recRewardButton% := 5;
-const recStopButton%   := 6;
+const recRewardButton%        := 5;
+const recStopButton%          := 6;
+const recTimingRewardButton%  := 7;
+const recJoystickButton%      := 8;
 
 
 ' States and state control vars 
@@ -108,6 +139,7 @@ var recDelayIntervalTime         := 0;
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
 var tStartBlink;    ' used in idle loop
 var tLast:=-1;		' last time we checked for a trigger. 
+var tLastJoyUpdate; 'last time we updated the joystick
 var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
 var tNextTrial;
@@ -116,6 +148,7 @@ var RTESDIsPressed%;  'has ReturnToExperimentSelectionDialog button been pressed
 var recLeverState%;
 var recLeverTime;
 var recLeverCodes%[4];
+var startingNewExpt%;  'only used with joystick, marks beginning of experiment so that joystick events in the past are "forgotten"
 
 'var channels%[4];
 
@@ -222,10 +255,41 @@ proc CreateSampleConfiguration()
     SampleComment$(recTrigChannel%, "Trigger");
     SampleTitle$(recTrigChannel%, "Trigger");
     
-    ' Event channel 1 is for the lever
-    SampleEvent(recLeverChannel%, recLeverPort%, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
-    SampleTitle$(recLeverChannel%, "Lever");
-    SampleComment$(recLeverChannel%, "Lever");
+    if 1 then
+        ' Event channel 1 is for the lever
+        SampleEvent(recLeverChannel%, recLeverPort%, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
+        SampleTitle$(recLeverChannel%, "Lever");
+        SampleComment$(recLeverChannel%, "Lever");
+    else
+        'create joystick channels
+        'X
+        SampleWaveform(configJoyXChannel%,configJoyXPort%,5000); 
+        SampleComment$(configJoyXChannel%,"JoystikX");
+        SampleTitle$(configJoyXChannel%,"JoystikX");
+        'Y
+        SampleWaveform(configJoyYChannel%,configJoyYPort%,5000); 
+        SampleComment$(configJoyYChannel%,"JoystikY");
+        SampleTitle$(configJoyYChannel%,"JoystikY");
+        'Read joystick offsets
+        GetJoystickOffsets(1);  'there is only one joystick type for Recanzone
+        'Set additional info for joystick channels, notably offset
+        SampleCalibrate(configJoyXChannel%,"volt",1,joystickXOffset);
+        SampleCalibrate(configJoyYChannel%,"volt",1,joystickYOffset);
+        
+        'Create XY view for joystick display
+        joyview% := FileNew(12);  'open an XY window
+        'Create a new channel in the XY view to display the fixation point
+        joydatachan% := XYSetChan(0);
+        XRange(-2.5,2.5);  'set XRange
+        YRange(-2,-2.5,2.5);  'set YRange, all visible channels
+        XYDrawMode(0,5,0);  'turns off automatic axis range mode
+        WindowVisible(1);  'make window visible
+        'Window(75, 55, 100, 100); 'set to lower 16th of screen
+        Window(0, 60, 40, 100); 'trying different position
+        XYColour(joydatachan%,16);  'set a colo(u)r for joydatachan%
+        XYSize(joydatachan%,-1); 'for channel joydatachan%, plot only one point at a time (-1)
+    endif
+    
     
     
     ' Text marks
@@ -324,12 +388,16 @@ proc InitializeWindows()
         recDataWindowView% := FileNew(0,4);
         Window(0, 0, 100, 50); 
         View(recDataWindowView%).WindowVisible(1);
-    
-        ' Create a memory channel for the debounced lever information
-        recMemChanLeverDebounce% := MemChan(8,25); 'Create textmark channel for debounced lever with attached lever value, 25 characters
-        ChanTitle$(recMemChanLeverDebounce%,"DBLever");  'Give it a title
-        chanshow(recMemChanLeverDebounce%);  'Show it
-
+        
+        if 1 then
+            ' Create a memory channel for the debounced lever information
+            recMemChanLeverDebounce% := MemChan(8,25); 'Create textmark channel for debounced lever with attached lever value, 25 characters
+            ChanTitle$(recMemChanLeverDebounce%,"DBLever");  'Give it a title
+            chanshow(recMemChanLeverDebounce%);  'Show it
+        else
+            CreateJoystickChannels%();
+        endif;
+        
     endif
     
 end;
@@ -354,6 +422,8 @@ proc InitializeToolbar()
     ToolbarSet(recSelectNewExptButton%, "New Expt.", PrepToReturnToExptSelectDialog%);
 	ToolbarSet(recRewardButton%, "Reward", Reward%);
     ToolbarSet(recStopButton%, "Stop Sampling", Stop%);
+    Toolbarset(recTimingRewardButton%, "Timing/Reward", CallTimingReward%);
+    Toolbarset(recJoystickButton%, "Joystick", CallJoystick%);
     
     ' Explicitly set enabled state of things...
     ToolbarEnable(recStartButton%, 1);
@@ -362,6 +432,8 @@ proc InitializeToolbar()
     ToolbarEnable(recSelectNewExptButton%, 1);
     ToolbarEnable(recRewardButton%, 1);
     ToolbarEnable(recStopButton%, 0);
+    ToolbarEnable(recTimingRewardButton%, 0);
+    ToolbarEnable(recJoystickButton%, 0);
     
 end;
 
@@ -672,6 +744,8 @@ func Start%()
     ToolbarEnable(recStartButton%, 0);
     ToolbarEnable(recStopButton%, 1);
     ToolbarEnable(recPauseButton%, 1);
+    ToolbarEnable(recTimingRewardButton%, 1);
+    ToolbarEnable(recJoystickButton%, 1);
     
     ' Start the sampling.
     docase    
@@ -680,12 +754,17 @@ func Start%()
         ToolbarText("Sampling started.");  ' Tell the world about it. 
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         recCurrentlySampling% := 1;  'don't start sampling again
+        TimePerADC := SampleTimePerAdc();  'get AD conversion rate
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
+        SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample
         SampleText(recExptText$);  'put in the experiment type
+        startingNewExpt% := 1;  'this allows a reset of joystick event checking
     case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
         'virtually start sampling
         recCurrentlySampling% := 1;
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
+        SampleText(recExptText$);  'put in the experiment type
+        startingNewExpt% := 1;  'this allows a reset of joystick event checking
     endcase
     
     ' Set idle function
@@ -794,6 +873,74 @@ func Resume%()
     return 1;
 end
 
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' CallTimingReward%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func CallTimingReward%()
+    PrintLog("Pause called to bring up Timing/Reward Dialog\n");
+    recIsPaused% := 1;
+    recRunTimeCall% := 1;
+    recWhichDialogCalled% := 1;  '1 is for timing/reward
+    'Don't let nobody do nothing! (start and resume are already disabled
+    ToolbarEnable(recPauseButton%, 0);
+    ToolbarEnable(recSelectNewExptButton%, 0);
+    ToolbarEnable(recRewardButton%, 0);
+    ToolbarEnable(recStopButton%, 0);
+    ToolbarEnable(recTimingRewardButton%, 0);
+    ToolbarEnable(recJoystickButton%, 0);
+    return 1;
+end
+
+
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' CallJoystick%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func CallJoystick%()
+    PrintLog("Pause called to bring up Joystick Properties Dialog\n");
+    recIsPaused% := 1;
+    recRunTimeCall% := 1;
+    recWhichDialogCalled% := 2;  '2 is for joystick
+    'Don't let nobody do nothing! (start and resume are already disabled
+    ToolbarEnable(recPauseButton%, 0);
+    ToolbarEnable(recSelectNewExptButton%, 0);
+    ToolbarEnable(recRewardButton%, 0);
+    ToolbarEnable(recStopButton%, 0);
+    ToolbarEnable(recTimingRewardButton%, 0);
+    ToolbarEnable(recJoystickButton%, 0);
+    return 1;
+end
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' ReturnFromDialogCall%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func ReturnFromDialogCall%()
+    recRunTimeCall% := 0;  'reset RunTimeCall
+    recIsPaused% := 0;  'set it free
+    recWhichDialogCalled% := 0;  'no dialog called anymore
+    'reenable appropriate buttons
+    ToolbarEnable(recPauseButton%, 1);
+    ToolbarEnable(recSelectNewExptButton%, 1);
+    ToolbarEnable(recRewardButton%, 1);
+    ToolbarEnable(recStopButton%, 1);
+    ToolbarEnable(recTimingRewardButton%, 1);
+    ToolbarEnable(recJoystickButton%, 1);
+    return 1;
+end
 
 
 
@@ -1168,6 +1315,15 @@ func IdleLoop%()
             DebounceLever%(tNow);  'this fills recLeverTime and recLeverState%
             'printlog("Lever state is %d at %f\n",recLeverState%,tNow);
         endif;
+    
+        'Update the joystick plot every 5 ms
+        if RespDevice% <> 0 and tNow-tLastJoyUpdate > .005 then
+            XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
+            YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.001,tNow-.006);
+            View(joyview%).XYAddData(joydatachan%,-XJoy,-YJoy);  'both axes need to be "flipped" with negative values to display properly
+            tLastJoyUpdate := tNow;
+        endif;
+    
         
         
         ' State Logic - determine which state we are in 
@@ -1191,7 +1347,7 @@ func IdleLoop%()
             endif;
             
             
-            if recIsPaused% = 0 then
+            if recIsPaused% = 0 then  'if not paused, do trial initialization
                 
                 if recExpToRun% <> recExpSearchButton% or recSearchLoaded% = 0 then
                     stmp% := PrepareNextTrial%(0); 'load PWAs, should gracefully pass through in debug mode as well
@@ -1213,6 +1369,17 @@ func IdleLoop%()
                     RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
                     ChangeStateTo(stateWaitForInitiationMovement%);
                 endcase
+            else  'but if paused, check to see if we have a call out to a dialog box to change values
+                if recRunTimeCall% = 1 then
+                    docase
+                    case recWhichDialogCalled% = 1 then
+                        RecExpTimingRewardDialog%();
+                        ReturnFromDialogCall%();
+                    case recWhichDialogCalled% = 2 then
+                        'RecExpTimingRewardDialog%();  'note that this is the wrong name and the real function ain't writ yet
+                        ReturnFromDialogCall%();
+                    endcase
+                endif
             endif
             
             

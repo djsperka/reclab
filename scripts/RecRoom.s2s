@@ -54,6 +54,7 @@ var recAMDiscAddExpButton%:=7;
 var recAMDiscDeleteExpButton%:=8;
 var recSelectStimFileButton%:=9;
 var recSelectTrialsFileButton%:=10;
+var recLeverJoystickButton%:=11;
 
 'Selection Dialog variables
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
@@ -175,7 +176,9 @@ const recPlayRateHz:=50000;         'Set stimulus play rate to 50 kHz, this will
 const recMaxStimLengthSec:=1;       'Set maximum length of each individual stimulus, in seconds
 const recDAC0% := 0;                'Set output channel to DAC 0, don't let this change
 var recExptText$ := "";             'text that describes this expt, for a SampleText
-
+var recRunTimeCall%;                'will be 1 if dialog box is called during run time
+var recWhichDialogCalled%;          'lets us know which dialog to call    
+    
 'Speaker variables
 const recMaxSpeaker%:=31;           'Maximum number of simultaneous speakers
 var recS1Speaker%;                  'Speaker on which S1 plays
@@ -228,7 +231,7 @@ var recTotalTrials%;                                    'Holds the number of tri
 var recNTrials%;                                        'Holds the total number of trials
 var recNUniqueStims%[recMaxTrial%];                     'Holds the number of unique stims on each trial, for loading PWAs
 var recSpeakerList%[recMaxPWA%][recMaxTrial%];          'Same as recStimList%[][], but holds speaker number
-'var recAttenList%[recMaxStimPerTrial%][recMaxTrial%];   'Same as recStimList%[][], but holds CALIBRATING attenuation
+'var recAttenList%[recMaxStimPerTrial%][recMaxTrial%];   'Same as recStimList%[][], but holds CALIBRATING attenuation FROM A FILE, currently disabled
 var recDeltadBList[recMaxStimPerTrial%][recMaxTrial%];  'Same as recPWAList%[][], but holds TRIAL-BASED attenuation (experimentally relevant)  
 var recTrialOrder%[recMaxTrial%];                       'Holds order in which trials should be presented
 var recCurrentTrial%;                                   'Holds current trial in ordinal sequence, will be used to index recTrialOrder%[]    
@@ -242,6 +245,7 @@ var recVarOnsetDelay;               'Variable time added to recMinOnsetDelay, se
 var recISI;                         'Interstimulus interval, seconds
 var recTrialInitWindow;             'Allowable time for monkey to initiate trial before TO, seconds
 var recResponseWindow;              'Allowable time for monkey to respond to target, seconds
+var recMinJoystickRespTime;         'Minimum time required for a joystick move to be considered real, seconds
 
 'Time-Outs
 var recLazyMonkeyTO;                'Duration of time-out for not working, seconds
@@ -249,7 +253,13 @@ var recMissTO;                      'Duration of time-out for miss, seconds
 var recFalseAlarmTO;                'Duration of time-out for false alarms, seconds
 var recInterruptTO;
     
-
+'Joystick variables    
+var recUseJoystick%;                'Do we use the joystick, 1 = yes, 0 = no
+var recTrialInitPosition%:=1;       'Joystick trial initiation position; 0/1/2/3/4/5/6 = center/down/up/right/left/x/y, default to down
+var recTrialResponsePosition1%;     'Joystick position of response 1, same values as init above
+var recTrialResponsePosition2%:=7;  'Joystick position of response 2, 0/1/2/3/4/5/6/7, where 7 = no second response position, default to no second response position
+var recDoIncrements%;   
+    
 'Reward durations, etc.
 var recTrainingRewardDur;           'Duration of training reward, seconds
 var recHitRewardDur;                'Duration of hit reward, seconds
@@ -290,7 +300,8 @@ endif;
 
 'Include files that depend on global variables
 #include "RecGoNoGoEngine.s2s"
-
+'Include files that rely on recGoNoGoEngine
+#include "RecJoystickFuncs.s2s"
 
 '
 '
@@ -933,6 +944,7 @@ func RecExpSelectDialog%()
     var j%;
     var status% := 0;  
     var spkArr$[4];
+    var levText$;
     spkArr$[0] := "None Selected";
     spkArr$[1] := "15";
     spkArr$[2] := "16";
@@ -940,27 +952,35 @@ func RecExpSelectDialog%()
     
     recExpSelectDialogAllowOK% := 0;  'Disable OK button to start, force selection of experiment
     
+    'get the LeverJoystick parameters so we know whether the Joystick or Lever is initially selected
+    RecLeverJoystickGetParams();    
+    if recUseJoystick% = 0 then
+        levText$ := "    Lever Selected     ";
+    else
+        levText$ := "  Joystick Selected    ";
+    endif;
+    
     ' Generate the dialog
     
     DlgCreate("Experiment Selection Dialog",0,0,52,16);
     
-    DlgGroup("Experimental Details", 1,1,50,4);
+    DlgGroup("Experimental Details", 1,1,50,5);
     DlgString(1,"Monkey Prefix",30,"",0,2);  'currently no "legal" specified, meaning all characters OK
     DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,10,0,3); 
     DlgList(3,"Speaker array used",spkArr$[],10,0,4);
     
-    DlgGroup("Experiments", 1,6,50,6);
+    DlgGroup("Experiments", 1,7,50,6);
     DlgButton(0,"         Quit         ");
     DlgButton(1,"          OK          ");
-    DlgButton(recExpSearchButton%, "             Search             ", RecExpSearchDialog%, 2, 7);
-    DlgButton(recExpFRAButton%,    "FRA/Rate-level/Space", RecExpFRADialog%, 2, 8);
-    DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 7);
-    DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 8);
+    DlgButton(recExpSearchButton%, "             Search             ", RecExpSearchDialog%, 2, 8);
+    DlgButton(recExpFRAButton%,    "FRA/Rate-level/Space", RecExpFRADialog%, 2, 9);
+    DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 8);
+    DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 9);
     
     
-    DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
-    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 14);
-     
+    'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
+    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 5);
+    DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 5);
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
@@ -1004,6 +1024,7 @@ end;
 
 ' This function is initially called with a "0" input
 func RecExpSelectDialogChanged%(item%) 
+    var levText$;
     'This disables the "OK" button (though it will have different labels) until an experiment is selected
     'AND a file name is chosen AND a number of electrodes is entered
     if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 and DlgValue(3) > 0 then
@@ -1011,6 +1032,14 @@ func RecExpSelectDialogChanged%(item%)
     else
         DlgEnable(0,-1);  'Otherwise disable "OK"
     endif;
+    
+    'change button text based on selected response device
+    if recUseJoystick% = 0 then
+        levText$ := "    Lever Selected     ";
+    else
+        levText$ := "  Joystick Selected    ";
+    endif;
+    DlgValue$(-recLeverJoystickButton%, levText$);
     
     return 1;
 end
@@ -1763,8 +1792,11 @@ func RecExpTimingRewardDialog%()
     intStr$[0] := "Stop Sound";
     intStr$[1] := "Complete Sound";
     
-    ' Fetch parameters from registry    
-    RecTimingRewardGetParams();   'RecTimingRewardGetParams() is below    
+    ' Fetch parameters from registry , only if not a runtime call
+    if recRunTimeCall% = 0 then   
+        RecTimingRewardGetParams();   'RecTimingRewardGetParams() is below 
+    endif;
+    
     
     ' Generate the dialog
     
@@ -1775,6 +1807,7 @@ func RecExpTimingRewardDialog%()
     DlgReal(3,12,0,10,c1%,4); DlgText("ISI, s",c1txt%,4);
     DlgReal(4,12,0,100,c2%,2); DlgText("Trial Initiation Window, s",c2txt%,2);
     DlgReal(5,12,0,100,c2%,3); DlgText("Response Window, s",c2txt%,3);
+    DlgReal(18,12,0,100,c2%,4); DlgText("Joystick Min Duration, s",c2txt%,4);
     
     DlgGroup("Time Outs",1,6,trwid%-2,3);
     DlgReal(6,12,0,300,c2%,7); DlgText("Lazy Monkey TO, s",c2txt%,7);
@@ -1798,11 +1831,13 @@ func RecExpTimingRewardDialog%()
     ' Show the dialog. 
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
                 recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
-                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%);
+                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMinJoystickRespTime);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        RecTimingRewardSaveParams();   'RecTimingRewardSaveParams() is below 
+        if recRunTimeCall% = 0 then 'only save parameters if it's a non-run-time call, run-time calls are often for late-session adjustments and shouldn't start the next session
+            RecTimingRewardSaveParams();   'RecTimingRewardSaveParams() is below 
+        endif;
         
         status% := 1;
     else
@@ -1845,6 +1880,7 @@ proc RecTimingRewardGetParams()
     recMaxCRRewardmL := GetFloatRegistryValue(key$, "MaxCRRewardmL", recMaxCRRewardmL);
     recHitRewardIncmL := GetFloatRegistryValue(key$, "HitRewardIncmL", recHitRewardIncmL);
     recS1RewardIncmL := GetFloatRegistryValue(key$, "S1RewardIncmL", recS1RewardIncmL);
+    recMinJoystickRespTime := GetFloatRegistryValue(key$, "MinJoystickRespTime", recMinJoystickRespTime);
     recContinueSoundOnS1Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS1Interrupt", recContinueSoundOnS1Interrupt%);
     recContinueSoundOnS2Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
     
@@ -1883,15 +1919,210 @@ proc RecTimingRewardSaveParams()
     SetFloatRegistryValue(key$, "MaxCRRewardmL", recMaxCRRewardmL);
     SetFloatRegistryValue(key$, "HitRewardIncmL", recHitRewardIncmL);
     SetFloatRegistryValue(key$, "S1RewardIncmL", recS1RewardIncmL); 
+    SetFloatRegistryValue(key$, "MinJoystickRespTime", recMinJoystickRespTime);
     SetIntRegistryValue(key$, "ContinueSoundOnS1Interrupt", recContinueSoundOnS1Interrupt%);
     SetIntRegistryValue(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
     
 	return;
 end
 
-'===== End RecDebugSaveParams =====
+'===== End RecTimingRewardSaveParams =====
 '
 '
+
+
+
+'
+'
+'===== RecLeverJoystickDialog =====
+
+'A dialog for Lever/Joystick settings
+
+func RecExpLeverJoystickDialog%()
+    
+    var i%;
+    var status% := 0;
+    var trwid% := 42;
+    var joyStr$[2];
+    var initStr$[7];
+    var resp1Str$[7];
+    var resp2Str$[8];
+    var c1%;
+    c1% := trwid%-15;
+    var c1txt% := 2;
+    
+    'This variable will allow us to set limits in a threshold subfunction based on whether or not
+    'incrementing is happening, must set this to 0 before exiting function
+    incrementDialogItem% := 5;
+    
+    joyStr$[0] := "Lever";
+    joyStr$[1] := "Joystick";
+    
+    initStr$[0] := "Center";
+    initStr$[1] := "Down";
+    initStr$[2] := "Up";
+    initStr$[3] := "Right";
+    initStr$[4] := "Left";
+    initStr$[5] := "X Axis";
+    initStr$[6] := "Y Axis";
+    
+    resp1Str$[0] := "Center";
+    resp1Str$[1] := "Down";
+    resp1Str$[2] := "Up";
+    resp1Str$[3] := "Right";
+    resp1Str$[4] := "Left";
+    resp1Str$[5] := "X Axis";
+    resp1Str$[6] := "Y Axis";
+    
+    resp2Str$[0] := "Center";
+    resp2Str$[1] := "Down";
+    resp2Str$[2] := "Up";
+    resp2Str$[3] := "Right";
+    resp2Str$[4] := "Left";
+    resp2Str$[5] := "X Axis";
+    resp2Str$[6] := "Y Axis";
+    resp2Str$[7] := "None";
+    
+    
+    ' Fetch parameters from registry
+    RecLeverJoystickGetParams();   'RecLeverJoystickGetParams() is below    
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 10);
+    DlgList(1,20,joyStr$[],2,c1%-6,1); DlgText("Response Device",c1txt%,1);
+    DlgList(2,20,initStr$[],7,c1%-6,2); DlgText("Trial Initiation Position",c1txt%,2);
+    DlgList(3,20,resp1Str$[],7,c1%-6,3); DlgText("Response 1 Position",c1txt%,3);
+    DlgList(4,20,resp2Str$[],8,c1%-6,4); DlgText("Response 2 Position",c1txt%,4);
+    DlgButton(2,"Joystick Thresholds",SetJoystickThresholdDialog%,2,5);
+    DlgCheck(5,"Do Increments",2,6);
+    DlgButton(3,"Joystick Increments",SetJoystickThresholdIncrementDialog%,2,7);
+    DlgButton(4,"Joystick Limits",SetJoystickThresholdLimitDialog%,2,8);
+    
+    'set dialog changed function
+    DlgAllow(0xffff, 0, RecExpLeverJoystickDialogChanged%);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(recUseJoystick%,recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recDoIncrements%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecExpSelectDialogChanged%(0); 'this might work?  Yep!  This changes the button label on the main dialog, if necessary
+        if recTrialInitPosition% = recTrialResponsePosition1% or recTrialInitPosition% = recTrialResponsePosition2% or recTrialResponsePosition1% = recTrialResponsePosition2% then
+            message("Error - Init/resp1/resp2 positions cannot coincide!");
+            RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
+            status% := 1;
+        else
+            RecLeverJoystickSaveParams();   'RecLeverJoystickSaveParams() is below 
+            status% := 1;
+        endif;
+    else
+        status% := 1;
+    endif
+    
+    incrementDialogItem% := 0;  'must set to 0 on exit
+    
+	return status%;
+   
+end;
+
+'===== End RecLeverJoystickDialog =====
+'
+'
+
+
+
+
+'
+'
+'===== RecExpLeverJoystickDialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpLeverJoystickDialogChanged%(item%) 
+    
+    if DlgValue(1) = 0 then  'if we're using the lever, disable the init position, etc.
+        DlgEnable(0,2);
+        DlgEnable(0,3);
+        DlgEnable(0,4);
+        DlgEnable(0,5);
+        DlgEnable(0,-2);  'this is the threshold dialog button
+    else
+        DlgEnable(1,2); 'if we're using the joystick, enbable the init position, etc.
+        DlgEnable(1,3);
+        DlgEnable(1,4);
+        DlgEnable(1,5);
+        DlgEnable(1,-2);  'this is the threshold dialog button
+    endif;
+    
+    if DlgValue(5) = 1 and DlgValue(1) = 1 then
+        DlgEnable(1,-3);  'this is the threshold increment dialog button
+        DlgEnable(1,-4);  'this is the threshold limit dialog button
+    else
+        DlgEnable(0,-3);  'this is the threshold increment dialog button
+        DlgEnable(0,-4);  'this is the threshold limit dialog button
+    endif
+    
+    
+    return 1;
+end
+
+'===== End RecExpLeverJoystickDialogChanged =====
+'
+'
+
+
+
+
+
+'
+'
+'===== RecLeverJoystickGetParams =====
+
+'Fetch Lever/Joystick parameters from the registry
+proc RecLeverJoystickGetParams()
+	var key$;
+    key$:="Reclab\\LeverJoystick";
+
+    recUseJoystick% := GetIntRegistryValue%(key$, "UseJoystick", recUseJoystick%);
+    recTrialInitPosition% := GetIntRegistryValue%(key$, "TrialInitPosition", recTrialInitPosition%);
+    recTrialResponsePosition1% := GetIntRegistryValue%(key$, "TrialResponsePosition1", recTrialResponsePosition1%);
+    recTrialResponsePosition2% := GetIntRegistryValue%(key$, "TrialResponsePosition2", recTrialResponsePosition2%);
+    recDoIncrements% := GetIntRegistryValue%(key$, "DoIncrements", recDoIncrements%);
+    
+    
+	return;
+end
+
+'===== End RecJoystickLeverGetParams =====
+'
+'
+
+
+
+'
+'
+'===== RecLeverJoystickSaveParams =====
+
+'Save Lever/Joystick parameters to the registry
+proc RecLeverJoystickSaveParams()
+
+	var key$;
+    key$:="Reclab\\LeverJoystick";
+    
+    SetIntRegistryValue(key$, "UseJoystick", recUseJoystick%);
+    SetIntRegistryValue(key$, "TrialInitPosition", recTrialInitPosition%);
+    SetIntRegistryValue(key$, "TrialResponsePosition1", recTrialResponsePosition1%);
+    SetIntRegistryValue(key$, "TrialResponsePosition2", recTrialResponsePosition2%);
+    SetIntRegistryValue(key$, "DoIncrements", recDoIncrements%);
+    
+	return;
+end
+
+'===== End RecLeverJoystickSaveParams =====
+'
+'
+
 
 
 
