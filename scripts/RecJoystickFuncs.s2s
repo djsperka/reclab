@@ -1,0 +1,1984 @@
+' RecJoystickFuncs - a set of functions intended to support joystick inputs on the
+'                    Recanzone CED system (RecRoom).  Basically taken directly from
+'                    Sutter functions, to the extent possible.  I'm sure there will
+'                    probably be some differences.  Currently in very early stages.
+
+
+if 1 then  'just allows folding away of the long variable list
+
+	'=====Joystick Variables=====
+var HoldLastCheckTime;
+var HoldLastEventTime;
+var MemChanJoystickRO%; 
+var MemChanJoystickLO%;
+var MemChanJoystickUO%;
+var MemChanJoystickDO%;
+var MemChanJoystickRI%;
+var MemChanJoystickLI%;
+var MemChanJoystickUI%;
+var MemChanJoystickDI%;
+var MemChanJoystick%;
+
+var UpThreshInner := 5;               'Threshold in up direction, inner border, in degrees
+var DownThreshInner := 5;             'etc.
+var LeftThreshInner := 5;
+var RightThreshInner := 5;
+var UpThreshInnerInc;            'Threshold Increment in up direction, inner border, in degrees
+var DownThreshInnerInc;          'etc.
+var LeftThreshInnerInc;
+var RightThreshInnerInc;
+var UpThreshInnerDec;            'Threshold Decrement in up direction, inner border, in degrees
+var DownThreshInnerDec;          'etc.
+var LeftThreshInnerDec;
+var RightThreshInnerDec;
+var UpThreshInnerMax := 10;            'Threshold Maximum in up direction, inner border, in degrees
+var DownThreshInnerMax := 10;          'etc.
+var LeftThreshInnerMax := 10;
+var RightThreshInnerMax := 10;
+var UpThreshInnerMin := 1;            'Threshold Minimum in up direction, inner border, in degrees
+var DownThreshInnerMin := 1;          'etc.
+var LeftThreshInnerMin := 1;
+var RightThreshInnerMin := 1;
+var UpThreshOuter := 15;               'Threshold in up direction, outer border, in degrees
+var DownThreshOuter := 15;             'etc.
+var LeftThreshOuter := 15;
+var RightThreshOuter := 15;
+var UpThreshOuterInc;            'Threshold Increment in up direction, outer border, in degrees
+var DownThreshOuterInc;          'etc.
+var LeftThreshOuterInc;
+var RightThreshOuterInc;
+var UpThreshOuterDec;            'Threshold Decrement in up direction, outer border, in degrees
+var DownThreshOuterDec;          'etc.
+var LeftThreshOuterDec;
+var RightThreshOuterDec;
+var UpThreshOuterMax := 20;            'Threshold Maximum in up direction, outer border, in degrees
+var DownThreshOuterMax := 20;          'etc.
+var LeftThreshOuterMax := 20;
+var RightThreshOuterMax := 20;
+var UpThreshOuterMin := 10;            'Threshold Minimum in up direction, outer border, in degrees
+var DownThreshOuterMin := 10;          'etc.
+var LeftThreshOuterMin := 10;
+var RightThreshOuterMin := 10;
+'Voltage versions of the same variables
+var vUpThreshInner;               'Threshold in up direction, inner border, in degrees
+var vDownThreshInner;             'etc.
+var vLeftThreshInner;
+var vRightThreshInner;
+var vUpThreshInnerInc;            'Threshold Increment in up direction, inner border, in degrees
+var vDownThreshInnerInc;          'etc.
+var vLeftThreshInnerInc;
+var vRightThreshInnerInc;
+var vUpThreshInnerDec;            'Threshold Decrement in up direction, inner border, in degrees
+var vDownThreshInnerDec;          'etc.
+var vLeftThreshInnerDec;
+var vRightThreshInnerDec;
+var vUpThreshInnerMax;            'Threshold Maximum in up direction, inner border, in degrees
+var vDownThreshInnerMax;          'etc.
+var vLeftThreshInnerMax;
+var vRightThreshInnerMax;
+var vUpThreshInnerMin;            'Threshold Minimum in up direction, inner border, in degrees
+var vDownThreshInnerMin;          'etc.
+var vLeftThreshInnerMin;
+var vRightThreshInnerMin;
+var vUpThreshOuter;               'Threshold in up direction, outer border, in degrees
+var vDownThreshOuter;             'etc.
+var vLeftThreshOuter;
+var vRightThreshOuter;
+var vUpThreshOuterInc;            'Threshold Increment in up direction, outer border, in degrees
+var vDownThreshOuterInc;          'etc.
+var vLeftThreshOuterInc;
+var vRightThreshOuterInc;
+var vUpThreshOuterDec;            'Threshold Decrement in up direction, outer border, in degrees
+var vDownThreshOuterDec;          'etc.
+var vLeftThreshOuterDec;
+var vRightThreshOuterDec;
+var vUpThreshOuterMax;            'Threshold Maximum in up direction, outer border, in degrees
+var vDownThreshOuterMax;          'etc.
+var vLeftThreshOuterMax;
+var vRightThreshOuterMax;
+var vUpThreshOuterMin;            'Threshold Minimum in up direction, outer border, in degrees
+var vDownThreshOuterMin;          'etc.
+var vLeftThreshOuterMin;
+var vRightThreshOuterMin;
+
+
+var OneAxis%;               'can be used to "turn off" off-axis joystick interrupts for some response devices 
+var Grow%;                  'determines the increment type: if 1, incremements/decrements will grow/shrink the gap
+'between center and response areas; if 2, increments/decrements will move the gap
+'away from/towards the center
+var xstat%:=1;              'current status of x position, 1 is center, 0 is left, 2 is right
+var ystat%:=10;             'current status of y position, 10 is center, 0 is down, 20 is up
+var incrementDialogItem%;
+'var allInnerInc;  'these variables were intended for the ability to do "mass changes", but that's probably too much work
+'var allInnerDec;
+'var allOuterInc;
+'var allOuterDec;
+'var allInnerMax;
+'var allInnerMin;
+'var allOuterMax;
+'var allOuterMin;
+const joystickMaxDegrees := 20;  'hardcode this based on the actual max
+var joystickVoltageConversionFactor := .09;  'conversion of degrees to voltage, .09 should about work for a 4.5V power supply
+var joystickThreshInDegrees% := 0;
+var joystickIncInDegrees% := 0;
+var joystickLimitInDegrees% := 0;
+    
+endif;
+
+
+
+'
+'
+'
+'now for the functions
+func CreateJoystickChannels%()
+    MemChanJoystickRO% := MemChan(3,0);  'Create event channels for joystick transitions
+    MemChanJoystickLO% := MemChan(3,0);
+    MemChanJoystickUO% := MemChan(3,0);
+    MemChanJoystickDO% := MemChan(3,0);
+    MemChanJoystickRI% := MemChan(3,0);
+    MemChanJoystickLI% := MemChan(3,0);
+    MemChanJoystickUI% := MemChan(3,0);
+    MemChanJoystickDI% := MemChan(3,0);
+    MemChanJoystick% := MemChan(8,30);  'Channel to save joystick info, don't show?
+    ChanTitle$(MemChanJoystick%,"JoyEvents");  'Give it a title
+    ChanTitle$(MemChanJoystickRO%,"JoystickRight");
+    ChanTitle$(MemChanJoystickLO%,"JoystickLeft");
+    ChanTitle$(MemChanJoystickUO%,"JoystickUp");
+    ChanTitle$(MemChanJoystickDO%,"JoystickDown");
+    ChanTitle$(MemChanJoystickRI%,"JoystickRCenter");
+    ChanTitle$(MemChanJoystickLI%,"JoystickLCenter");
+    ChanTitle$(MemChanJoystickUI%,"JoystickUCenter");
+    ChanTitle$(MemChanJoystickDI%,"JoystickDCenter");
+    
+    return 1;  'not really doing anything with the return here
+end
+
+
+
+'=================================Read the Joystick Channel=================================
+'this function will read the joystick channel.  Data from the two joystick channels will be moved
+'to four level channels in memory, two per axis.  If both levels for an axis read 0, the joystick
+'is centered on that axis.  If either reads 1, the joystick is in that position.  If both read 1, 
+'this is an error.
+func ReadJoystick%()
+    
+    var Now;								'Gets current time at begining of function execution
+    var TimesArrayTemp[1000];   'getting rid of "asserted" events
+    var TimesArrayRO[1000];		'Arrays of event times for each of the eight memory channels
+    var TimesArrayLO[1000];
+    var TimesArrayUO[1000];
+    var TimesArrayDO[1000];
+    var TimesArrayRI[1000];	
+    var TimesArrayLI[1000];
+    var TimesArrayUI[1000];
+    var TimesArrayDI[1000];
+    var TimesArrayAll[8000];
+    var NumEventsRO%;		   'How many events were found for the rightward movement channel
+    var NumEventsLO%;
+    var NumEventsUO%;
+    var NumEventsDO%;
+    var NumEventsRI%;		   'How many events were found for the centerward (from right) movement channel
+    var NumEventsLI%;
+    var NumEventsUI%;
+    var NumEventsDI%;
+    var DebounceTime := 0;     'Debounce over 40 ms, don't know if MemImport expects seconds yet
+    'Oh, no, no!  Do not use debounce!  Set to 0!
+    var LastEventTime;		   'LastEventTime will correspond to the most recent event, whether it was the X- or Y-axis on the joystick 
+    var LastRunTime;           'An attempt to separate the last time it was run from the last time anything real happened
+    var temp;
+    var temp2;
+    var JoystickAfter%[8000];
+    var LeverString$;
+    var rio%;								'right index, outward
+    var lio%;								'left index, outward
+    var uio%;								'up index, outward
+    var dio%;								'down index, outward
+    var rii%;                                'right index, inward
+    var lii%;                                'etc.
+    var uii%;
+    var dii%;
+    var ai%;                      'all index, for TimesArrayAll[]
+    var ii%;
+    var EventCount%;						'total number of events
+    var RealEventCount%;                    'total number of events, does not include non-state-changing axis crossings (inner/outer threshold "recrossings" do not change state)
+    var IsRealEvent%;                       'If 1, this event is counted in RealEventCount%
+    var move%;
+    var xmove%;
+    var ymove%;
+    var xind%:=1;							'"index" into TimesArrayAll for xmoves
+    var yind%:=1;							'"index" into TimesArrayAll for ymoves
+    var tic;								'A tiny clock increment, kind of a fudge, see note to 1.0.4/1.0.5
+    var tic2;
+    var tempx;
+    var tempy;
+    var trash%[4];
+    
+    
+    
+    
+    view(recDataWindowView%);
+    
+    'Set tic value
+    tic := SecPerSample;  'This tic prevents us from reading the same event twice
+    tic2 := 0.005;  'This tic allows us to grab 5 ms of redundant time - that corresponds to 25 samples of
+    'the joystick channels - because threshold crossings were being missed on occasion
+    
+    'find out what time it is now
+    Now := maxtime();
+    
+    'find most recent time ReadJoystick% was run and most recent event time
+    LastRunTime := HoldLastCheckTime;  'LastRunTime updates every call the ReadJoystick, regardless of whether there was a joystick event or not
+    LastEventTime := HoldLastEventTime;  
+    HoldLastCheckTime := Now;  'Set HoldLastCheckTime for NEXT run of ReadJoystick
+    
+    'taking out hidden log for Recanzone, can wrangle back in if necessary
+    'if VerboseJoyLev% = 1 then
+    '    view(HiddenLogHandle%).print("LastRunTime is %f and Now is %f\r",LastRunTime,Now);
+    'endif;
+    
+    'If we are starting a new experiment, there may be too many (over 1000) joystick events.
+    'In order to avoid overflowing JoystickAfter%[], just ignore any previous joystick events
+    if startingNewExpt% = 1 then  'If we are starting a new experiment
+        LastEventTime := Now;  'Override HoldLastCheckTime, change to Now, events during Passive will be ignored
+        startingNewExpt% := 0;  'reset startingNewExpt%
+        JoystickReadOnce% := 0;  'and initialize JoystickReadOnce
+    endif;
+    
+    
+    'Define events by threshold crossings; Put event times into the eight channels
+    MemImport(MemChanJoystickRO%,10,LastRunTime-tic2,Now,3,DebounceTime,-vRightThreshOuter);  'Crossing RO thresh going outward
+    MemImport(MemChanJoystickLO%,10,LastRunTime-tic2,Now,2,DebounceTime,vLeftThreshOuter);    'Crossing LO thresh going outward
+    MemImport(MemChanJoystickUO%,11,LastRunTime-tic2,Now,3,DebounceTime,-vUpThreshOuter);     'Crossing UO thresh going outward
+    MemImport(MemChanJoystickDO%,11,LastRunTime-tic2,Now,2,DebounceTime,vDownThreshOuter);    'Crossing DO thresh going outward
+    MemImport(MemChanJoystickRI%,10,LastRunTime-tic2,Now,2,DebounceTime,-vRightThreshInner);  'Crossing RI thresh going inward
+    MemImport(MemChanJoystickLI%,10,LastRunTime-tic2,Now,3,DebounceTime,vLeftThreshInner);    'Crossing LI thresh going inward
+    MemImport(MemChanJoystickUI%,11,LastRunTime-tic2,Now,2,DebounceTime,-vUpThreshInner);     'Crossing UI thresh going inward
+    MemImport(MemChanJoystickDI%,11,LastRunTime-tic2,Now,3,DebounceTime,vDownThreshInner);    'Crossing DI thresh going inward
+    
+    'Determine initial joystick location the very first time ReadJoystick is run, per experiment
+    if JoystickReadOnce% = 0 then
+        JoystickReadOnce% := 1;  'only do this the very first time the joystick is read
+        tempx := ChanValue(10,0);  'Put the very first X axis value into tempx
+        tempy := ChanValue(11,0);  'Same for Y, tempy
+        LastPos% := 0;
+        xstat% := 0;
+        ystat% := 0;
+        if tempx < -vRightThreshOuter then
+            LastPos% := LastPos% + 2;
+            xstat% := 2;
+        else
+            if tempx < vLeftThreshOuter then
+                LastPos% := LastPos% + 1;
+                xstat% := 1;
+            endif;
+        endif;
+        if tempy < -vUpThreshOuter then
+            LastPos% := LastPos% + 20;
+            ystat% := 20;
+        else
+            if tempy < vDownThreshOuter then
+                LastPos% := LastPos% + 10;
+                ystat% := 10;
+            endif;
+        endif;
+        printlog("Initial values: x = %f, y = %f, upthreshinner = %f, downthreshinner = %f, leftthreshinner = %f, rightthreshinner = %f\n",tempx,tempy,UpThreshInner,DownThreshInner,LeftThreshInner,RightThreshInner);
+        printlog("    upthreshouter = %f, downthreshouter = %f, leftthreshouter = %f, rightthreshouter = %f\n",UpThreshOuter,DownThreshOuter,LeftThreshOuter,RightThreshOuter);
+        printlog("Initial joystick position was %d where 20-10-0 is up-center-down and 2-1-0 is right-center-left\n",LastPos%);
+        
+        'taking out hidden log for Recanzone, can wrangle back in if necessary        
+        'view(HiddenLogHandle%).print("Initial values: x = %f, y = %f, upthreshinner = %f, downthreshinner = %f, leftthreshinner = %f, rightthreshinner = %f\r",tempx,tempy,UpThreshInner,DownThreshInner,LeftThreshInner,RightThreshInner);
+        'view(HiddenLogHandle%).print("    upthreshouter = %f, downthreshouter = %f, leftthreshouter = %f, rightthreshouter = %f\r",UpThreshOuter,DownThreshOuter,LeftThreshOuter,RightThreshOuter);
+        'view(HiddenLogHandle%).print("Initial joystick position was %d where 20-10-0 is up-center-down and 2-1-0 is right-center-left\r",LastPos%);
+    endif;
+    
+    'Put recent events into time arrays
+    NumEventsRO% := chandata(MemChanJoystickRO%,TimesArrayTemp[],LastEventTime+tic,Now);  'Put recent event times in a temporary array
+    arrconst(TimesArrayRO[],TimesArrayTemp[]);  'Move temporary numbers to real array, "asserted" events removed
+    NumEventsLO% := chandata(MemChanJoystickLO%,TimesArrayTemp[],LastEventTime+tic,Now);  
+    arrconst(TimesArrayLO[],TimesArrayTemp[]);
+    NumEventsUO% := chandata(MemChanJoystickUO%,TimesArrayTemp[],LastEventTime+tic,Now);  
+    arrconst(TimesArrayUO[],TimesArrayTemp[]);
+    NumEventsDO% := chandata(MemChanJoystickDO%,TimesArrayTemp[],LastEventTime+tic,Now);  
+    arrconst(TimesArrayDO[],TimesArrayTemp[]);
+    NumEventsRI% := chandata(MemChanJoystickRI%,TimesArrayTemp[],LastEventTime+tic,Now);
+    arrconst(TimesArrayRI[],TimesArrayTemp[]);
+    NumEventsLI% := chandata(MemChanJoystickLI%,TimesArrayTemp[],LastEventTime+tic,Now);  
+    arrconst(TimesArrayLI[],TimesArrayTemp[]);
+    NumEventsUI% := chandata(MemChanJoystickUI%,TimesArrayTemp[],LastEventTime+tic,Now);  
+    arrconst(TimesArrayUI[],TimesArrayTemp[]);
+    NumEventsDI% := chandata(MemChanJoystickDI%,TimesArrayTemp[],LastEventTime+tic,Now);  
+    arrconst(TimesArrayDI[],TimesArrayTemp[]);
+    
+    
+    'We are getting some frustrating crashes here, and I can't figure out why there should be a problem so I am going to 
+    'hit the thing with a big fat hammer and see if I can make it stop.  This is monstruous but I don't have much choice.
+    
+    'In case the logic isn't clear, here we are asserting a time of 99999999 for the (nonexistent) threshold crossing
+    'AFTER the final real crossing we have in the memory channel.  If we did not do this, the value would be zero.  However,
+    'then the subsequent line that finds the earliest unprocessed threshold crossing would break once we had exhausted the
+    'events in any given channel, because the MIN function would find the min to be 0.  99999999 is safely larger than any
+    'possible event time (by a lot) and keeps the MIN function working as expected.
+    'For Recanzone lab, removing the debug code as most of this seems to be worked out in Sutter lab.  Can be put back in,
+    'but needs mechanism for report and variables do not exist.
+    if NumEventsRO% < 0 then
+        TimesArrayRO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsRO% > Len(TimesArrayRO)-1 then
+            TimesArrayRO[Len(TimesArrayRO)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsRO%;
+        else
+            TimesArrayRO[NumEventsRO%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsLO% < 0 then
+        TimesArrayLO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsLO% > Len(TimesArrayLO)-1 then
+            TimesArrayLO[Len(TimesArrayLO)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsLO%;
+        else
+            TimesArrayLO[NumEventsLO%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsUO% < 0 then
+        TimesArrayUO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsUO% > Len(TimesArrayUO)-1 then
+            TimesArrayUO[Len(TimesArrayUO)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsUO%;
+        else
+            TimesArrayUO[NumEventsUO%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsDO% < 0 then
+        TimesArrayDO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsDO% > Len(TimesArrayDO)-1 then
+            TimesArrayDO[Len(TimesArrayDO)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsDO%;
+        else
+            TimesArrayDO[NumEventsDO%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsRI% < 0 then
+        TimesArrayRI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsRI% > Len(TimesArrayRI)-1 then
+            TimesArrayRI[Len(TimesArrayRI)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsRI%;
+        else
+            TimesArrayRI[NumEventsRI%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsLI% < 0 then
+        TimesArrayLI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsLI% > Len(TimesArrayLI)-1 then
+            TimesArrayLI[Len(TimesArrayLI)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsLI%;
+        else
+            TimesArrayLI[NumEventsLI%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsUI% < 0 then
+        TimesArrayUI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsUI% > Len(TimesArrayUI)-1 then
+            TimesArrayUI[Len(TimesArrayUI)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsUI%;
+        else
+            TimesArrayUI[NumEventsUI%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    if NumEventsDI% < 0 then
+        TimesArrayDI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
+    else
+        if NumEventsDI% > Len(TimesArrayDI)-1 then
+            TimesArrayDI[Len(TimesArrayDI)-1] := 99999999;  'If the value is too large, just change the last value
+            'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
+            'TooBigIndexValue% := NumEventsDI%;
+        else
+            TimesArrayDI[NumEventsDI%] := 99999999;  'The index value is OK, do what we expect
+        endif;
+    endif;
+    
+    
+    'Restore this code if we ever figure out the problem above ---
+    'I believe the negative index isn't happening much if at all, but the "too big" does appear to happen time to time
+    ''put dummy numbers into the first "empty" slot in TimesArrays, necessary for next FOR loop, empty slot can't be 0
+    'TimesArrayRO[NumEventsRO%] := 99999999;  'should be sufficiently large to never be the minimum number
+    'TimesArrayLO[NumEventsLO%] := 99999999;  
+    'TimesArrayUO[NumEventsUO%] := 99999999;
+    'TimesArrayDO[NumEventsDO%] := 99999999;
+    'TimesArrayRI[NumEventsRI%] := 99999999;
+    'TimesArrayLI[NumEventsLI%] := 99999999;
+    'TimesArrayUI[NumEventsUI%] := 99999999;
+    'TimesArrayDI[NumEventsDI%] := 99999999;
+    
+    'Get joystick status resulting from each event
+    'Go through each event in order that it occurred
+    EventCount% := NumEventsRO%+NumEventsLO%+NumEventsUO%+NumEventsDO%+NumEventsRI%+NumEventsLI%+NumEventsUI%+NumEventsDI%;  'removing "asserted" events
+    
+    for ii% := 1 to EventCount% do  'if EventCount% is 0, loop does not execute, which is perfect
+        temp := min(TimesArrayRO[rio%],TimesArrayLO[lio%],TimesArrayUO[uio%],TimesArrayDO[dio%],TimesArrayRI[rii%],TimesArrayLI[lii%],TimesArrayUI[uii%],TimesArrayDI[dii%]);
+        
+        IsRealEvent% := 1;  'Assume for now the event is real    
+        
+        docase
+            case temp = TimesArrayRO[rio%] then	  'Crossing RO thresh going outward
+            docase
+                case xstat% = 0 then  'unexpected - the joystick went from left to right without registering in the center
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Error - x position change (l->r) did not go through center, setting state anyway!\r")
+                'endif;
+                xstat% := 2;  'but set the x state to 2 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayRO[rio%];  'fill TimesArrayAll because it's a real event
+                rio% := rio%+1;  'and update both indices
+                ai% := ai%+1;  
+                case xstat% = 1 then  'center to right movement
+                xstat% := 2;
+                TimesArrayAll[ai%] := TimesArrayRO[rio%];  'fill TimesArrayAll because it's a real event
+                rio% := rio%+1;  'and update both indices
+                ai% := ai%+1;
+                case xstat% = 2 then  're-crossed threshold without going to center - just ignore 
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick exceeded outer right threshold without going to center!\r")
+                'endif;
+                rio% := rio%+1;  'and update rio% index, or we get stuck here - do not update ai% index
+            endcase;
+            case temp = TimesArrayLO[lio%] then   'Crossing LO thresh going outward
+            docase
+                case xstat% = 2 then  'unexpected - the joystick went from right to left without registering in the center
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary                
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Error - x position change (r->l) did not go through center, setting state anyway!\r")
+                'endif;
+                xstat% := 0;  'but set the x state to 2 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayLO[lio%];  'fill TimesArrayAll because it's a real event
+                lio% := lio%+1;  'and update both indices
+                ai% := ai%+1;
+                case xstat% = 1 then  'center to leftt movement
+                xstat% := 0;
+                TimesArrayAll[ai%] := TimesArrayLO[lio%];  'fill TimesArrayAll because it's a real event
+                lio% := lio%+1;  'and update both indices
+                ai% := ai%+1;
+                case xstat% = 0 then  're-crossed threshold without going to center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary                
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick exceeded outer left threshold without going to center!\r")
+                'endif;
+                lio% := lio%+1;  'and update lio% index, or we get stuck here - do not update ai% index
+            endcase;
+            case temp = TimesArrayUO[uio%] then	  'Crossing UO thresh going outward		
+            docase
+                case ystat% = 0 then  'unexpected - the joystick went from down to up without registering in the center
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Error - y position change (d->u) did not go through center, setting state anyway!\r")
+                'endif;
+                ystat% := 20;  'but set the y state to 2 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayUO[uio%];  'fill TimesArrayAll because it's a real event
+                uio% := uio%+1;  'and update both indices
+                ai% := ai%+1;
+                case ystat% = 10 then  'center to up movement
+                ystat% := 20;
+                TimesArrayAll[ai%] := TimesArrayUO[uio%];  'fill TimesArrayAll because it's a real event
+                uio% := uio%+1;  'and update both indices
+                ai% := ai%+1;
+                case ystat% = 20 then  're-crossed threshold without going to center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick exceeded outer up threshold without going to center!\r")
+                'endif;
+                uio% := uio%+1;  'and update uio% index, or we get stuck here - do not update ai% index
+            endcase;
+            case temp = TimesArrayDO[dio%] then   'Crossing DO thresh going outward
+            docase
+                case ystat% = 20 then  'unexpected - the joystick went from up to down without registering in the center
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Error - y position change (u->d) did not go through center, setting state anyway!\r")
+                'endif;
+                ystat% := 0;  'but set the y state to 2 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayDO[dio%];  'fill TimesArrayAll because it's a real event
+                dio% := dio%+1;  'and update both indices
+                ai% := ai%+1;
+                case ystat% = 10 then  'center to down movement
+                ystat% := 0;
+                TimesArrayAll[ai%] := TimesArrayDO[dio%];  'fill TimesArrayAll because it's a real event
+                dio% := dio%+1;  'and update both indices
+                ai% := ai%+1;
+                case ystat% = 0 then  're-crossed threshold without going to center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick exceeded outer down threshold without going to center!\r")
+                'endif;
+                dio% := dio%+1;  'and update dio% index, or we get stuck here - do not update ai% index
+            endcase;
+            case temp = TimesArrayRI[rii%] then   'Crossing RI thresh going inward
+            docase
+                case xstat% = 0 then  'highly unexpected - the joystick went from left to crossing a right threshold towards the left
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("VERY MAJOR Error - x position change (r->c) started from left, setting state anyway!\r")
+                'endif;
+                xstat% := 1;  'but set the x state to 1 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayRI[rii%];  'fill TimesArrayAll because it's a real event
+                rii% := rii%+1;  'and update both indices
+                ai% := ai%+1;
+                case xstat% = 1 then  're-crossed threshold without leaving center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick recrossed inner right threshold without going fully right!\r")
+                'endif;
+                rii% := rii%+1;  'and update rii% index, or we get stuck here - do not update ai% index
+                case xstat% = 2 then  'right to center movement 
+                xstat% := 1;
+                TimesArrayAll[ai%] := TimesArrayRI[rii%];  'fill TimesArrayAll because it's a real event
+                rii% := rii%+1;  'and update both indices
+                ai% := ai%+1;
+            endcase;
+            case temp = TimesArrayLI[lii%] then   'Crossing LI thresh going inward
+            docase
+                case xstat% = 2 then  'highly unexpected - the joystick went from right to crossing a left threshold towards the right
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("VERY MAJOR Error - x position change (l->c) started from right, setting state anyway!\r")
+                'endif;
+                xstat% := 1;  'but set the x state to 1 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayLI[lii%];  'fill TimesArrayAll because it's a real event
+                lii% := lii%+1;  'and update both indices
+                ai% := ai%+1;
+                case xstat% = 1 then  're-crossed threshold without leaving center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick recrossed inner left threshold without going fully left!\r")
+                'endif;
+                lii% := lii%+1;  'and update lii% index, or we get stuck here - do not update ai% index
+                case xstat% = 0 then  'left to center movement 
+                xstat% := 1;
+                TimesArrayAll[ai%] := TimesArrayLI[lii%];  'fill TimesArrayAll because it's a real event
+                lii% := lii%+1;  'and update both indices
+                ai% := ai%+1;
+            endcase;
+            case temp = TimesArrayUI[uii%] then   'Crossing UI thresh going inward
+            docase
+                case ystat% = 0 then  'highly unexpected - the joystick went from down to crossing an up threshold downwards
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("VERY MAJOR Error - y position change (u->c) started from down, setting state anyway!\r")
+                'endif;
+                ystat% := 10;  'but set the y state to 1 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayUI[uii%];  'fill TimesArrayAll because it's a real event
+                uii% := uii%+1;  'and update both indices
+                ai% := ai%+1;
+                case ystat% = 10 then  're-crossed threshold without leaving center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick recrossed inner up threshold without going fully up!\r")
+                'endif;
+                uii% := uii%+1;  'and update uii% index, or we get stuck here - do not update ai% index
+                case ystat% = 20 then  'up to center movement 
+                ystat% := 10;
+                TimesArrayAll[ai%] := TimesArrayUI[uii%];  'fill TimesArrayAll because it's a real event
+                uii% := uii%+1;  'and update both indices
+                ai% := ai%+1;
+            endcase;
+            case temp = TimesArrayDI[dii%] then  'Crossing DI thresh going inward
+            docase
+                case ystat% = 20 then  'highly unexpected - the joystick went from up to crossing a down threshold upwards
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("VERY MAJOR Error - y position change (d->c) started from up, setting state anyway!\r")
+                'endif;
+                ystat% := 10;  'but set the y state to 1 anyway, because that's where it is
+                TimesArrayAll[ai%] := TimesArrayDI[dii%];  'fill TimesArrayAll because it's a real event
+                dii% := dii%+1;  'and update both indices
+                ai% := ai%+1;
+                case ystat% = 10 then  're-crossed threshold without leaving center - just ignore
+                IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Joystick recrossed inner down threshold without going fully down!\r")
+                'endif;
+                dii% := dii%+1;  'and update dii% index, or we get stuck here - do not update ai% index
+                case ystat% = 0 then  'down to center movement 
+                ystat% := 10;
+                TimesArrayAll[ai%] := TimesArrayDI[dii%];  'fill TimesArrayAll because it's a real event
+                dii% := dii%+1;  'and update both indices
+                ai% := ai%+1;
+            endcase;
+        else
+            
+            'taking out hidden log for Recanzone, can wrangle back in if necessary
+            'if VerboseJoyLev% = 1 then
+            '    view(HiddenLogHandle%).print("Error in ReadJoystick% - event time does not correspond to known event!\r");
+            'endif;
+        endcase;
+        if IsRealEvent% = 1 then  'we are definitely getting excessive counts of IsRealEvent when doing a passive/active
+            'switch when Udon has the joystick...is it checking joystick position during passive?
+            RealEventCount% := RealEventCount% + 1;  'increment count of real events
+            
+            'taking out hidden log for Recanzone, can wrangle back in if necessary
+            'if RealEventCount% > 8000 then
+            '    view(HiddenLogHandle%).print("RealEventCount has reached %d, crash imminent!\r",RealEventCount%);
+            'endif
+            JoystickAfter%[RealEventCount%-1] := xstat% + ystat%;  'holds a code indicating joystick position:
+            '0 = down/left;  1 = down/middle;  2 = down/right
+            '10 = middle/left;  11 = middle/middle;  12 = middle/right
+            '20 = up/left;  21 = up/middle;  22 = up/right
+            
+            'taking out hidden log for Recanzone, can wrangle back in if necessary
+            'if VerboseJoyLev% = 1 then
+            '    view(HiddenLogHandle%).print("JoystickAfter set to %d\r",JoystickAfter%[RealEventCount%-1]);
+            'endif;
+        endif;
+    next;
+    
+    
+    'Put events in memory channel if they exist and change LeverInitTime/LeverResponseTime/LeverInit%/LeverResponse%	
+    if RealEventCount% > 0 then	
+        
+        'taking out hidden log for Recanzone, can wrangle back in if necessary
+        'if VerboseJoyLev% = 1 then
+        '    for ii% := 0 to 4 do  'this lists first five entries from TimesArrayAll for reference, regardless of how many there are
+        '        view(HiddenLogHandle%).print("Entry %d in TimesArrayAll is %f\r",ii%,TimesArrayAll[ii%]);
+        '    next;
+        'endif;
+        for ii% := 0 to RealEventCount%-1 do
+            LeverCodes%[0] := LastPos%;
+            LeverCodes%[1] := JoystickAfter%[ii%];
+            docase
+                case JoystickAfter%[ii%] = 22 and LastPos% = 21 then
+                LeverString$ := "X Center to Right (Y Up)";
+                move% := 1;
+                case JoystickAfter%[ii%] = 21 and LastPos% = 22 then
+                LeverString$ := "X Right to Center (Y Up)";
+                move% := -1;
+                case JoystickAfter%[ii%] = 12 and LastPos% = 11 then
+                LeverString$ := "X Center to Right (Y Middle)";
+                move% := 1;
+                case JoystickAfter%[ii%] = 11 and LastPos% = 12 then
+                LeverString$ := "X Right to Center (Y Middle)";
+                move% := -1;
+                case JoystickAfter%[ii%] = 2 and LastPos% = 1 then
+                LeverString$ := "X Center to Right (Y Down)";
+                move% := 1;
+                case JoystickAfter%[ii%] = 1 and LastPos% = 2 then
+                LeverString$ := "X Right to Center (Y Down)";
+                move% := -1;
+                case JoystickAfter%[ii%] = 20 and LastPos% = 21 then
+                LeverString$ := "X Center to Left (Y Up)";
+                move% := 2;
+                case JoystickAfter%[ii%] = 21 and LastPos% = 20 then
+                LeverString$ := "X Left to Center (Y Up)";
+                move% := -2;
+                case JoystickAfter%[ii%] = 10 and LastPos% = 11 then
+                LeverString$ := "X Center to Left (Y Middle)";
+                move% := 2;
+                case JoystickAfter%[ii%] = 11 and LastPos% = 10 then
+                LeverString$ := "X Left to Center (Y Middle)";
+                move% := -2;
+                case JoystickAfter%[ii%] = 0 and LastPos% = 1 then
+                LeverString$ := "X Center to Left (Y Down)";
+                move% := 2;
+                case JoystickAfter%[ii%] = 1 and LastPos% = 0 then
+                LeverString$ := "X Left to Center (Y Down)";
+                move% := -2;
+                case JoystickAfter%[ii%] = 22 and LastPos% = 12 then
+                LeverString$ := "Y Middle to Up (X Right)";
+                move% := 3;
+                case JoystickAfter%[ii%] = 12 and LastPos% = 22 then
+                LeverString$ := "Y Up to Middle (X Right)";
+                move% := -3;
+                case JoystickAfter%[ii%] = 21 and LastPos% = 11 then
+                LeverString$ := "Y Middle to Up (X Center)";
+                move% := 3;
+                case JoystickAfter%[ii%] = 11 and LastPos% = 21 then
+                LeverString$ := "Y Up to Middle (X Center)";
+                move% := -3;
+                case JoystickAfter%[ii%] = 20 and LastPos% = 10 then
+                LeverString$ := "Y Middle to Up (X Left)";
+                move% := 3;
+                case JoystickAfter%[ii%] = 10 and LastPos% = 20 then
+                LeverString$ := "Y Up to Middle (X Left)";
+                move% := -3;
+                case JoystickAfter%[ii%] = 2 and LastPos% = 12 then
+                LeverString$ := "Y Middle to Down (X Right)";
+                move% := 4;
+                case JoystickAfter%[ii%] = 12 and LastPos% = 2 then
+                LeverString$ := "Y Down to Middle (X Right)";
+                move% := -4;
+                case JoystickAfter%[ii%] = 1 and LastPos% = 11 then
+                LeverString$ := "Y Middle to Down (X Center)";
+                move% := 4;
+                case JoystickAfter%[ii%] = 11 and LastPos% = 1 then
+                LeverString$ := "Y Down to Middle (X Center)";
+                move% := -4;
+                case JoystickAfter%[ii%] = 0 and LastPos% = 10 then
+                LeverString$ := "Y Middle to Down (X Left)";
+                move% := 4;
+                case JoystickAfter%[ii%] = 10 and LastPos% = 0 then
+                LeverString$ := "Y Down to Middle (X Left)";
+                move% := -4;
+            else
+                
+                'taking out hidden log for Recanzone, can wrangle back in if necessary
+                'if VerboseJoyLev% = 1 then
+                '    view(HiddenLogHandle%).print("Error! JoystickAfter (%d) and LastPos (%d) do not correspond to any known combo!\r",JoystickAfter%[ii%],LastPos%);
+                'endif;
+            endcase;
+            if move% > 2 or move% < -2 then  'if it was a move in the Y direction
+                ymove% := move%;  'set ymove% to most recent move in Y direction
+                yind% := 1;  'set yind% to 1 because y was the last direction moved
+                xind% := xind% + 1;  'Increment xind% by 1 - will hold the number of ymoves since the last xmove, plus 1
+            else
+                if move% < 3 and move% > -3 then  'do opposite
+                    xmove% := move%;
+                    xind% := 1;
+                    yind% := yind% + 1;
+                else
+                    xind% := xind% + 1;  'increment both if the move was "unexplained"
+                    yind% := yind% + 1;
+                endif;
+            endif;
+            LastPos% := JoystickAfter%[ii%];  'Update LastPos%
+            view(recDataWindowView%).MemSetItem(MemChanJoystick%,0,TimesArrayAll[ii%],LeverCodes%[],LeverString$);
+        next;
+        
+        'return most recent event and value
+        docase
+            case xmove% = 1 then						
+            XPos% := 1;  '1 for right joystick
+            XTime := TimesArrayAll[ii%-xind%];  'ii% is incremented by the for loop as loop exits
+            case xmove% = 2 then
+            XPos% := 2;  '2 for left joystick
+            XTime := TimesArrayAll[ii%-xind%];
+            case xmove% = -1 or xmove% = -2 then
+            XPos% := 0;  '0 for centering joystick
+            XTime := TimesArrayAll[ii%-xind%];
+        endcase;
+        docase
+            case ymove% = 3 then
+            YPos% := 1;  '1 for up joystick
+            YTime := TimesArrayAll[ii%-yind%];
+            case ymove% = 4 then
+            YPos% := 2;  '2 for down joystick
+            YTime := TimesArrayAll[ii%-yind%];
+            case ymove% = -3 or ymove% = -4 then
+            YPos% := 0;  '0 for centering joystick
+            YTime := TimesArrayAll[ii%-yind%];
+        endcase;
+        
+        'update LastEventTime to that of the last real event
+        if XTime > YTime then
+            HoldLastEventTime := XTime;
+        else
+            HoldLastEventTime := YTime;
+        endif;
+        
+    else  'if there are no real events
+        if Now - HoldLastEventTime > 10 then 'if there have been no "real" events in the last 10 seconds
+            HoldLastEventTime := Now - 10;  'Update HoldLastEventTime so that we only check for events within
+            'the last 10 seconds on the next go-around.  This should hopefully
+            'solve the buffer overflow problems we are having.
+        endif;
+        
+        
+    endif;	'end "if there is a joystick event"	
+    
+    'Finish up
+    AssignJoystickVariables();
+    
+    'taking out hidden log for Recanzone, can wrangle back in if necessary
+    'if VerboseJoyLev% = 1 then
+    '    view(HiddenLogHandle%).print("TrialInit% is %d, XPos% is %d, YPos% is %d\r",TrialInit%,XPos%,YPos%);
+    'endif;
+    
+    return 1;
+end;
+
+
+
+
+'=========================Given Joystick Position, Determine IN_ORIGIN, etc.======================
+'Once XPos% and YPos% are known, we need to decide whether the joystick is in the origin, in a response
+'position, etc.  This depends on which "joystick device" is being used.
+'This code is now farmed out to a subfunction because it has to be done twice.
+proc AssignJoystickVariables()
+    
+    'XPos% = 0,1,2 = center,right,left
+    'YPos% = 0,1,2 = center,up,down
+    'recTrialInitPosition% = 0,1,2,3,4,5,6 = center,down,up,right,left,x-axis,y-axis
+    'recTrialResponsePosition1%, same as above, currently FORCED to 0 = center
+    'recTrialResponsePosition2%, same as above but includes 7 = none, currently forced to 7 = none
+    
+    'Thus, the joystick is broken into nine regions, but only five of them are legal start/end points.
+    'An easy way to indicate which position the joystick is in is to multiply the Y value by 10 and add
+    'to the X value
+    '
+    '   12  |   10   |   11
+    '       |   up   |
+    '       |  (y)   |
+    '------------------------
+    '   2   |   0    |   1
+    ' left  | center | right
+    '  (x)  |        |  (x)
+    '------------------------    
+    '   22  |   20   |   21
+    '       |  down  |
+    '       |  (y)   |
+    '
+    'The four corner regions are not legal start/end points and are basically used to indicate that the
+    'joystick is in an illegal position for now
+    
+    var joyPos%;
+    joyPos% := XPos% + (10*YPos%);
+    
+    if recTrialResponsePosition2% = 7 then 'this is the go/no-go case, as there is no second response
+        'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialResponsePosition1,
+        '2 if in any other position, 2 will act as FA or miss depending on context
+        docase
+        'joystick in center
+        case joyPos% = 0 then
+            recLeverState% := 0;
+            recLeverTime := max(XTime,YTime);  'we don't know where it came from, barring weird circular action this will be correct
+        'joystick in right    
+        case joyPos% = 1 and (recTrialResponsePosition1% = 3 or recTrialResponsePosition1% = 5) then
+            recLeverState% := 1;
+            recLeverTime := XTime;
+        'joystick in left    
+        case joyPos% = 2 and (recTrialResponsePosition1% = 4 or recTrialResponsePosition1% = 5) then
+            recLeverState% := 1; 
+            recLeverTime := XTime;            
+        'joystick in down    
+        case joyPos% = 20 and (recTrialResponsePosition1% = 1 or recTrialResponsePosition1% = 6) then
+            recLeverState% := 1;
+            recLeverTime := YTime;
+        'joystick in up    
+        case joyPos% = 10 and (recTrialResponsePosition1% = 2 or recTrialResponsePosition1% = 6) then
+            recLeverState% := 1; 
+            recLeverTime := YTime;            
+        'joystick in one of the corner positions, or in an inappropriate position for the specified response    
+        else
+            recLeverState% := 2;
+            recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
+        endcase
+        
+    else 'this is a forced choice scenario
+        'nothing is written here, nor is the syntax worked out
+        'currently this is disallowed - no forced choice - but the dialog box has the bits ready to go
+    endif;
+    
+    
+    
+    
+    
+    
+    
+    '==== The below Sutter lab syntax does not really apply to Recanzone lab
+    '==== Just keeping it in case it is useful one day
+    '==== When/If the decision is made to dump it, I won't be sad    
+'    'Indicate whether joystick is in the origin
+'    if XPos% + YPos% = 0 then
+'        InOrigin% := 1;
+'    else
+'        InOrigin% := 0;
+'    endif;
+'    
+'    'Get TrialInit, TrialResponse, OffAxis, ResponseTime for all cases
+'    docase
+'        case RespDevice% = 1 then  '"Joystick"(l/r init, up/down response)
+'        'Indicate whether joystick is in trial initiation position
+'        if XPos% > 0 then
+'            TrialInit% := 1;
+'        else
+'            TrialInit% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick is in trial response position
+'        if YPos% > 0 then
+'            TrialResponse% := 1;
+'            ResponseTime := YTime;
+'        else
+'            TrialResponse% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        if YPos% > 0 then
+'            OffAxis% := 1;
+'        else
+'            OffAxis% := 0;
+'        endif;
+'        
+'        case RespDevice% = 2 then  '"JoystickLR"(u/d init, left/right response)
+'        'Indicate whether joystick is in trial initiation position
+'        if YPos% > 0 then
+'            TrialInit% := 1;
+'        else
+'            TrialInit% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick is in trial response position
+'        if XPos% > 0 then
+'            TrialResponse% := 1;
+'            ResponseTime := XTime;
+'        else
+'            TrialResponse% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        if XPos% > 0 then
+'            OffAxis% := 1;
+'        else
+'            OffAxis% := 0;
+'        endif;
+'        ''''''    implement in the future, if necessary
+'        '    case RespDevice% = 3 then '"JoystickUDC" (new device, l/r init, up/down/center response
+'        '        'Indicate whether joystick is in trial initiation position
+'        '        if XPos% > 0 then
+'        '            TrialInit% := 1;
+'        '        else
+'        '            TrialInit% := 0;
+'        '        endif;
+'        '        
+'        '        'Indicate whether joystick is in trial response position
+'        '        if YPos% > 0 then  'either move on the y-axis is a response
+'        '            TrialResponse% := 1;
+'        '            ResponseTime := YTime;
+'        '        else
+'        '            if XPos% = 0 then  'centering on the x-axis is also a response
+'        '                TrialResponse% := 1;
+'        '                ResponseTime := XTime;
+'        '            else
+'        '                TrialResponse% := 0;
+'        '            endif;
+'        '        endif;
+'        '        
+'        '        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        '        if YPos% > 0 then
+'        '            OffAxis% := 1;
+'        '        else
+'        '            OffAxis% := 0;
+'        '        endif;
+'        
+'        case RespDevice% = -1 then  '"JoystickAsLever"
+'        'Indicate whether joystick is in trial initiation position
+'        if Ypos% = 2 then
+'            TrialInit% := 1;
+'        else
+'            TrialInit% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick is in trial response position
+'        if YPos% = 0 then  
+'            TrialResponse% := 1;
+'            ResponseTime := YTime;
+'        else
+'            TrialResponse% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        if XPos% > 0 and OneAxis% = 0 then  'if OneAxis% is 1, do not interrupt for off-axis
+'            OffAxis% := 1;
+'        else
+'            OffAxis% := 0;
+'        endif;
+'        
+'        case RespDevice% = -2 then  '"DownUpJoystick"
+'        'Indicate whether joystick is in trial initiation position
+'        if Ypos% = 2 then
+'            TrialInit% := 1;
+'        else
+'            TrialInit% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick is in trial response position
+'        if YPos% = 1 then  
+'            TrialResponse% := 1;
+'            ResponseTime := YTime;
+'        else
+'            TrialResponse% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        if XPos% > 0 and OneAxis% = 0 then  'if OneAxis% is 1, do not interrupt for off-axis
+'            OffAxis% := 1;
+'        else
+'            OffAxis% := 0;
+'        endif;
+'        
+'        case RespDevice% = -3 then  '"JoystickAsLeverLR" - moving lever L/R inititates trial, response is to center
+'        'Indicate whether joystick is in trial initiation position
+'        if Xpos% > 0 then
+'            TrialInit% := 1;
+'        else
+'            TrialInit% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick is in trial response position
+'        if XPos% = 0 then  
+'            TrialResponse% := 1;
+'            ResponseTime := XTime;
+'        else
+'            TrialResponse% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        if YPos% > 0 and OneAxis% = 0 then  'if OneAxis% is 1, do not interrupt for off-axis
+'            OffAxis% := 1;
+'        else
+'            OffAxis% := 0;
+'        endif;
+'        
+'        case RespDevice% = -4 then  '"MonoJoystickFRUD" - moving lever L/R inititates trial, response is up or down
+'        'Indicate whether joystick is in trial initiation position
+'        if Xpos% > 0 then
+'            TrialInit% := 1;
+'        else
+'            TrialInit% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick is in trial response position
+'        if YPos% > 0 then  
+'            TrialResponse% := 1;
+'            ResponseTime := YTime;
+'        else
+'            TrialResponse% := 0;
+'        endif;
+'        
+'        'Indicate whether joystick has moved in "off" (non-trial-init) axis
+'        if YPos% > 0 and OneAxis% = 0 then  'if OneAxis% is 1, do not interrupt for off-axis
+'            OffAxis% := 1;
+'        else
+'            OffAxis% := 0;
+'        endif;        
+'        
+'    endcase;
+    
+end;
+
+
+
+'========================= GetJoystickOffsets===============================
+'A function that gets joystick offsets from the registry
+proc GetJoystickOffsets(jt%)
+	var key$;
+    var i%;
+    key$:="Reclab\\JoystickParam";
+    
+    joystickXOffset := GetFloatRegistryValue(key$, "joystickXOffset"+Str$(jt%), 0); 'return 0 if registry value does not exist
+    joystickYOffset := GetFloatRegistryValue(key$, "joystickYOffset"+Str$(jt%), 0); 'return 0 if registry value does not exist
+    
+	return;
+end
+
+'========================= SaveJoystickOffsets===============================
+'A function that saves joystick offsets to the registry
+proc SaveJoystickOffsets(jt%)
+	var key$;
+    var i%;
+    key$:="Reclab\\JoystickParam";
+    
+    SetFloatRegistryValue(key$, "joystickXOffset"+Str$(jt%), joystickXOffset); 
+    SetFloatRegistryValue(key$, "joystickYOffset"+Str$(jt%), joystickYOffset); 
+    
+	return;
+end
+
+
+'==============================Calibrate Joystick=========================
+'This function will automatically calibrate the joystick.  Woot.
+func CalibrateJoystick%()
+    var currentX;
+    var currentY;
+    var ii%;
+    var jview%;
+    
+    'need a dialog to determine whether joystick is human or monkey so we can keep both
+    var jt%;  'joystick type
+    var mystr$[2];
+    mystr$[0] := "monkey";
+    mystr$[1] := "human";
+    
+    DlgCreate("Select Joystick Type");
+    DlgList(1,"Type of Joystick",mystr$);
+    ii% := DlgShow(jt%);
+    
+    if ii% = 1 then
+        'get the current offsets, joystickXOffset and joystickYOffset
+        GetJoystickOffsets(jt%);  
+        
+        'here we need code to start sampling with two joystick channels and get the values of the current
+        'position, which won't be exactly 0 in either the X or Y direction into currentX, currentY
+        'create joystick channels
+        'X
+        SampleWaveform(configJoyXChannel%,configJoyXPort%,5000); 
+        SampleComment$(configJoyXChannel%,"JoystikX");
+        SampleTitle$(configJoyXChannel%,"JoystikX");
+        'Y
+        SampleWaveform(configJoyYChannel%,configJoyYPort%,5000); 
+        SampleComment$(configJoyYChannel%,"JoystikY");
+        SampleTitle$(configJoyYChannel%,"JoystikY");
+
+        'Set additional info for joystick channels, notably current offset
+        SampleCalibrate(configJoyXChannel%,"volt",1,joystickXOffset);
+        SampleCalibrate(configJoyYChannel%,"volt",1,joystickYOffset);
+        
+        'Start sampling, sample for about 5 seconds,
+        samplemode(1);   'sets continuous recording
+        jview% := FileNew(0,1+2+4);
+        SampleStart();   'start sampling
+        while view(jview%).maxtime() < 5 do
+            yield(1);
+        wend;
+        
+        'Get mean X and Y value in currentX, currentY
+        currentX := ChanMeasure(configJoyXChannel%,2,0,5);
+        currentY := ChanMeasure(configJoyYChannel%,2,0,5);
+        
+        'Stop sampling
+        SampleStop();
+        
+        'Adjust the offsets
+        joystickXOffset := joystickXOffset - currentX;  'Not sure of sign because not sure of "offset" logic.  Test.
+        joystickYOffset := joystickYOffset - currentY;
+    
+        'Save the new offset values
+        SaveJoystickOffsets(jt%);
+    endif;
+    
+    
+    return 1;  'return to toolbar
+end;
+
+
+
+'============================ Change Joystick Thresholds ===========================
+'This function allows the increment or decrement of the Up, Down, Left and Right thresholds simultaneously,
+'making it possible to do in one line of code in the main loop what took 8 lines before.
+'The first input is the Up change, the second input is the Down change, the third is the Left, the fourth the Right.  
+'Enter 0 for no change, -1 to decrement and 1 to increment.  That easy.
+func ChangeThresh(ddUp,dDown,dLeft,dRight)  '"dup" is reserved
+    
+    var overshoot;
+    
+    if Grow% = 0 then  'shifting the thresholds
+        
+        if ddUp > 0 then 'increment Up
+            'shift both together
+            vUpThreshOuter := vUpThreshOuter + vUpThreshOuterInc;  'Increment Up threshold, Outer
+            vUpThreshInner := vUpThreshInner + vUpThreshInnerInc;  'Increment Up threshold, Inner
+            'check for overshoot
+            if vUpThreshOuter > vUpThreshOuterMax then
+                overshoot := vUpThreshOuter - vUpThreshOuterMax;
+                vUpThreshOuter := vUpThreshOuterMax;  '= UpThreshOuter - overshoot;
+                vUpThreshInner := vUpThreshInner - overshoot;  'Decrement UpThreshInner by the same amount
+            endif;
+            if vUpThreshInner > vUpThreshInnerMax then
+                overshoot := vUpThreshInner - vUpThreshInnerMax;
+                vUpThreshInner := vUpThreshInnerMax;  '= UpThreshInner - overshoot;
+                vUpThreshOuter := vUpThreshOuter - overshoot;  'Decrement UpThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if ddUp < 0 then 'decrement Up
+            'shift both together
+            vUpThreshOuter := vUpThreshOuter - vUpThreshOuterDec;  'Decrement Up threshold, Outer
+            vUpThreshInner := vUpThreshInner - vUpThreshInnerDec;  'Decrement Up threshold, Inner
+            'check for overshoot
+            if vUpThreshOuter < vUpThreshOuterMin then
+                overshoot := vUpThreshOuterMin - vUpThreshOuter;
+                vUpThreshOuter := vUpThreshOuterMin;  '= UpThreshOuter + overshoot;
+                vUpThreshInner := vUpThreshInner + overshoot;  'Increment UpThreshInner by the same amount
+            endif;
+            if vUpThreshInner < vUpThreshInnerMin then
+                overshoot := vUpThreshInnerMin - vUpThreshInner;
+                vUpThreshInner := vUpThreshInnerMin;  '= UpThreshInner + overshoot;
+                vUpThreshOuter := vUpThreshOuter + overshoot;  'Increment UpThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if dDown > 0 then 'increment Down
+            'shift both together
+            vDownThreshOuter := vDownThreshOuter + vDownThreshOuterInc;  'Increment Down threshold, Outer
+            vDownThreshInner := vDownThreshInner + vDownThreshInnerInc;  'Increment Down threshold, Inner
+            'check for overshoot
+            if vDownThreshOuter > vDownThreshOuterMax then
+                overshoot := vDownThreshOuter - vDownThreshOuterMax;
+                vDownThreshOuter := vDownThreshOuterMax;  '= DownThreshOuter - overshoot;
+                vDownThreshInner := vDownThreshInner - overshoot;  'Decrement DownThreshInner by the same amount
+            endif;
+            if vDownThreshInner > vDownThreshInnerMax then
+                overshoot := vDownThreshInner - vDownThreshInnerMax;
+                vDownThreshInner := vDownThreshInnerMax;  '= DownThreshInner - overshoot;
+                vDownThreshOuter := vDownThreshOuter - overshoot;  'Decrement DownThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if dDown < 0 then 'decrement Down
+            'shift both together
+            vDownThreshOuter := vDownThreshOuter - vDownThreshOuterDec;  'Decrement Down threshold, Outer
+            vDownThreshInner := vDownThreshInner - vDownThreshInnerDec;  'Decrement Down threshold, Inner
+            'check for overshoot
+            if vDownThreshOuter < vDownThreshOuterMin then
+                overshoot := vDownThreshOuterMin - vDownThreshOuter;
+                vDownThreshOuter := vDownThreshOuterMin;  '= DownThreshOuter + overshoot;
+                vDownThreshInner := vDownThreshInner + overshoot;  'Increment DownThreshInner by the same amount
+            endif;
+            if vDownThreshInner < vDownThreshInnerMin then
+                overshoot := vDownThreshInnerMin - vDownThreshInner;
+                vDownThreshInner := vDownThreshInnerMin;  '= DownThreshInner + overshoot;
+                vDownThreshOuter := vDownThreshOuter + overshoot;  'Increment DownThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if dLeft > 0 then 'increment Left
+            'shift both together
+            vLeftThreshOuter := vLeftThreshOuter + vLeftThreshOuterInc;  'Increment Left threshold, Outer
+            vLeftThreshInner := vLeftThreshInner + vLeftThreshInnerInc;  'Increment Left threshold, Inner
+            'check for overshoot
+            if vLeftThreshOuter > vLeftThreshOuterMax then
+                overshoot := vLeftThreshOuter - vLeftThreshOuterMax;
+                vLeftThreshOuter := vLeftThreshOuterMax;  '= LeftThreshOuter - overshoot;
+                vLeftThreshInner := vLeftThreshInner - overshoot;  'Decrement LeftThreshInner by the same amount
+            endif;
+            if vLeftThreshInner > vLeftThreshInnerMax then
+                overshoot := vLeftThreshInner - vLeftThreshInnerMax;
+                vLeftThreshInner := vLeftThreshInnerMax;  '= LeftThreshInner - overshoot;
+                vLeftThreshOuter := vLeftThreshOuter - overshoot;  'Decrement LeftThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if dLeft < 0 then 'decrement Left
+            'shift both together
+            vLeftThreshOuter := vLeftThreshOuter - vLeftThreshOuterDec;  'Decrement Left threshold, Outer
+            vLeftThreshInner := vLeftThreshInner - vLeftThreshInnerDec;  'Decrement Left threshold, Inner
+            'check for overshoot
+            if vLeftThreshOuter < vLeftThreshOuterMin then
+                overshoot := vLeftThreshOuterMin - vLeftThreshOuter;
+                vLeftThreshOuter := vLeftThreshOuterMin;  '= LeftThreshOuter + overshoot;
+                vLeftThreshInner := vLeftThreshInner + overshoot;  'Increment LeftThreshInner by the same amount
+            endif;
+            if vLeftThreshInner < vLeftThreshInnerMin then
+                overshoot := vLeftThreshInnerMin - vLeftThreshInner;
+                vLeftThreshInner := vLeftThreshInnerMin;  '= LeftThreshInner + overshoot;
+                vLeftThreshOuter := vLeftThreshOuter + overshoot;  'Increment LeftThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if dRight > 0 then 'increment Right
+            'shift both together
+            vRightThreshOuter := vRightThreshOuter + vRightThreshOuterInc;  'Increment Right threshold, Outer
+            vRightThreshInner := vRightThreshInner + vRightThreshInnerInc;  'Increment Right threshold, Inner
+            'check for overshoot
+            if vRightThreshOuter > vRightThreshOuterMax then
+                overshoot := vRightThreshOuter - vRightThreshOuterMax;
+                vRightThreshOuter := vRightThreshOuterMax;  '= RightThreshOuter - overshoot;
+                vRightThreshInner := vRightThreshInner - overshoot;  'Decrement RightThreshInner by the same amount
+            endif;
+            if vRightThreshInner > vRightThreshInnerMax then
+                overshoot := vRightThreshInner - vRightThreshInnerMax;
+                vRightThreshInner := vRightThreshInnerMax;  '= RightThreshInner - overshoot;
+                vRightThreshOuter := vRightThreshOuter - overshoot;  'Decrement RightThreshOuter by the same amount
+            endif;
+        endif;
+        
+        if dRight < 0 then 'decrement Right
+            'shift both together
+            vRightThreshOuter := vRightThreshOuter - vRightThreshOuterDec;  'Decrement Right threshold, Outer
+            vRightThreshInner := vRightThreshInner - vRightThreshInnerDec;  'Decrement Right threshold, Inner
+            'check for overshoot
+            if vRightThreshOuter < vRightThreshOuterMin then
+                overshoot := vRightThreshOuterMin - vRightThreshOuter;
+                vRightThreshOuter := vRightThreshOuterMin;  '= RightThreshOuter + overshoot;
+                vRightThreshInner := vRightThreshInner + overshoot;  'Increment RightThreshInner by the same amount
+            endif;
+            if vRightThreshInner < vRightThreshInnerMin then
+                overshoot := vRightThreshInnerMin - vRightThreshInner;
+                vRightThreshInner := vRightThreshInnerMin;  '= RightThreshInner + overshoot;
+                vRightThreshOuter := vRightThreshOuter + overshoot;  'Increment RightThreshOuter by the same amount
+            endif;
+        endif;
+        
+    else 'if Grow% = 1, we grow/shrink the gap between thresholds 
+        
+        if ddUp > 0 then 'grow the gap
+            vUpThreshOuter := vUpThreshOuter + vUpThreshOuterInc;  'Increment Up threshold, Outer
+            vUpThreshInner := vUpThreshInner - vUpThreshInnerDec;  'Decrement Up threshold, Inner
+            'check for overshoot
+            if vUpThreshOuter > vUpThreshOuterMax then
+                vUpThreshOuter := vUpThreshOuterMax;  'Do not allow to go beyond the Max
+            endif;
+            if vUpThreshInner < vUpThreshInnerMin then
+                vUpThreshInner := vUpThreshInnerMin;  'Do not allow to go beyond the Min
+            endif;
+        endif;
+        
+        if ddUp < 0 then 'shrink the gap
+            vUpThreshOuter := vUpThreshOuter - vUpThreshOuterDec;  'Decrement Up threshold, Outer
+            vUpThreshInner := vUpThreshInner + vUpThreshInnerInc;  'Increment Up threshold, Inner
+            if vUpThreshOuter < vUpThreshOuterMin then
+                vUpThreshOuter := vUpThreshOuterMin;  'Do not allow to go beyond the Min
+            endif;
+            if vUpThreshInner > vUpThreshInnerMax then
+                vUpThreshInner := vUpThreshInnerMax;  'Do not allow to go beyond the Max
+            endif;
+        endif;
+        
+        if dDown > 0 then 'grow the gap
+            vDownThreshOuter := vDownThreshOuter + vDownThreshOuterInc;  'Increment Down threshold, Outer
+            vDownThreshInner := vDownThreshInner - vDownThreshInnerDec;  'Decrement Down threshold, Inner
+            'check for overshoot
+            if vDownThreshOuter > vDownThreshOuterMax then
+                vDownThreshOuter := vDownThreshOuterMax;  'Do not allow to go beyond the Max
+            endif;
+            if vDownThreshInner < vDownThreshInnerMin then
+                vDownThreshInner := vDownThreshInnerMin;  'Do not allow to go beyond the Min
+            endif;
+        endif;
+        
+        if dDown < 0 then 'shrink the gap
+            vDownThreshOuter := vDownThreshOuter - vDownThreshOuterDec;  'Decrement Down threshold, Outer
+            vDownThreshInner := vDownThreshInner + vDownThreshInnerInc;  'Increment Down threshold, Inner
+            if vDownThreshOuter < vDownThreshOuterMin then
+                vDownThreshOuter := vDownThreshOuterMin;  'Do not allow to go beyond the Min
+            endif;
+            if vDownThreshInner > vDownThreshInnerMax then
+                vDownThreshInner := vDownThreshInnerMax;  'Do not allow to go beyond the Max
+            endif;
+        endif;
+        
+        if dLeft > 0 then 'grow the gap
+            vLeftThreshOuter := vLeftThreshOuter + vLeftThreshOuterInc;  'Increment Left threshold, Outer
+            vLeftThreshInner := vLeftThreshInner - vLeftThreshInnerDec;  'Decrement Left threshold, Inner
+            'check for overshoot
+            if vLeftThreshOuter > vLeftThreshOuterMax then
+                vLeftThreshOuter := vLeftThreshOuterMax;  'Do not allow to go beyond the Max
+            endif;
+            if vLeftThreshInner < vLeftThreshInnerMin then
+                vLeftThreshInner := vLeftThreshInnerMin;  'Do not allow to go beyond the Min
+            endif;
+        endif;
+        
+        if dLeft < 0 then 'shrink the gap
+            vLeftThreshOuter := vLeftThreshOuter - vLeftThreshOuterDec;  'Decrement Left threshold, Outer
+            vLeftThreshInner := vLeftThreshInner + vLeftThreshInnerInc;  'Increment Left threshold, Inner
+            if vLeftThreshOuter < vLeftThreshOuterMin then
+                vLeftThreshOuter := vLeftThreshOuterMin;  'Do not allow to go beyond the Min
+            endif;
+            if vLeftThreshInner > vLeftThreshInnerMax then
+                vLeftThreshInner := vLeftThreshInnerMax;  'Do not allow to go beyond the Max
+            endif;
+        endif;
+        
+        if dRight > 0 then 'grow the gap
+            vRightThreshOuter := vRightThreshOuter + vRightThreshOuterInc;  'Increment Right threshold, Outer
+            vRightThreshInner := vRightThreshInner - vRightThreshInnerDec;  'Decrement Right threshold, Inner
+            'check for overshoot
+            if vRightThreshOuter > vRightThreshOuterMax then
+                vRightThreshOuter := vRightThreshOuterMax;  'Do not allow to go beyond the Max
+            endif;
+            if vRightThreshInner < vRightThreshInnerMin then
+                vRightThreshInner := vRightThreshInnerMin;  'Do not allow to go beyond the Min
+            endif;
+        endif;
+        
+        if dRight < 0 then 'shrink the gap
+            vRightThreshOuter := vRightThreshOuter - vRightThreshOuterDec;  'Decrement Right threshold, Outer
+            vRightThreshInner := vRightThreshInner + vRightThreshInnerInc;  'Increment Right threshold, Inner
+            if vRightThreshOuter < vRightThreshOuterMin then
+                vRightThreshOuter := vRightThreshOuterMin;  'Do not allow to go beyond the Min
+            endif;
+            if vRightThreshInner > vRightThreshInnerMax then
+                vRightThreshInner := vRightThreshInnerMax;  'Do not allow to go beyond the Max
+            endif;
+        endif;
+        
+    endif;    
+    
+    'if VerboseIncrements% = 1 then
+    '    printlog("New UpThreshOuter = %f degrees, New UpThreshInner = %f degrees\n",UpThreshOuter/.09,UpThreshInner/.09);
+    '    printlog("New DownThreshOuter = %f degrees, New DownThreshInner = %f degrees\n",DownThreshOuter/.09,DownThreshInner/.09);
+    '    printlog("New LeftThreshOuter = %f degrees, New LeftThreshInner = %f degrees\n",LeftThreshOuter/.09,LeftThreshInner/.09);
+    '    printlog("New RightThreshOuter = %f degrees, New RightThreshInner = %f degrees\n",RightThreshOuter/.09,RightThreshInner/.09);
+    '    
+    '    'taking out hidden log for Recanzone, can wrangle back in if necessary
+    '    'view(HiddenLogHandle%).print("New UpThreshOuter = %f degrees, New UpThreshInner = %f degrees\r",UpThreshOuter/.09,UpThreshInner/.09);
+    '    'view(HiddenLogHandle%).print("New DownThreshOuter = %f degrees, New DownThreshInner = %f degrees\r",DownThreshOuter/.09,DownThreshInner/.09);
+    '    'view(HiddenLogHandle%).print("New LeftThreshOuter = %f degrees, New LeftThreshInner = %f degrees\r",LeftThreshOuter/.09,LeftThreshInner/.09);
+    '    'view(HiddenLogHandle%).print("New RightThreshOuter = %f degrees, New RightThreshInner = %f degrees\r",RightThreshOuter/.09,RightThreshInner/.09);
+    'endif;
+    
+end;
+
+
+
+
+
+func SetJoystickThresholdDialog%()
+    var i%;
+    var doInc%;
+    var massChange% := 0;  'don't save this to the registry
+    
+    'Don't load parameters from the registry for a run-time call, use current values
+    if recRunTimeCall% = 0 then
+        RecThresholdGetParams();
+        RecThresholdLimitGetParams();  'get these because we don't want to set values that are impossible based on another dialog
+    else
+        'on runtime call, current values are in voltage, change to degrees
+        GetJoystickVoltageInDegrees(joystickVoltageConversionFactor);  
+    endif;
+    
+    DlgCreate("Joystick thresholds",0,0,60,16);
+    
+    'The totally awesome thing about this bit is that DlgValue refers to the CALLING DIALOG
+    'However, if this is not called from RecExpLeverJoystickDialog%() (that includes
+    'calling from the toolbar) then this function will break.  So we've got to make sure
+    'we're actually calling it from the appropriate dialog, this also allows us to tell
+    'what dialog item to check, if things change (or we call from a different dialog)
+    if incrementDialogItem% > 0 then
+        doInc% := DlgValue(incrementDialogItem%); 'See, we can't use recDoIncrements% here because the
+        'value of the checkbox may have changed, but that won't be saved until OK is clicked on the
+        'parent dialog        
+    else
+        doInc% := recDoIncrements%;  'If there is no parent dialog, use the value of recDoIncrements%, naturally.
+    endif;
+    
+    'next order of business (Monday!) is to set our max/min values based on whether we are incrementing
+    'if we are incrementing, max/min should be as below, but if not, limits should be...open, I guess.
+    'then, allowing us to mass-set increment/max/etc. values without going to dialog would be nice.
+    'then, the increment and max dialogs...
+    
+    DlgGroup("Joystick in degrees",2,1,56,14);
+    
+    DlgReal(1,8,UpThreshInnerMin,UpThreshInnerMax,26,3);  DlgText("Up Inner",36,3);
+    DlgReal(2,8,UpThreshOuterMin,UpThreshOuterMax,26,2);  DlgText("Up Outer",36,2);
+    DlgReal(3,8,DownThreshInnerMin,DownThreshInnerMax,26,13);  DlgText("Down Inner",36,13);
+    DlgReal(4,8,DownThreshOuterMin,DownThreshOuterMax,26,14);  DlgText("Down Outer",36,14);
+    DlgReal(5,8,LeftThreshInnerMin,LeftThreshInnerMax,14,8);  DlgText("Left Inner",13,7);
+    DlgReal(6,8,LeftThreshOuterMin,LeftThreshOuterMax,4,8);  DlgText("Left Outer",3,7);
+    DlgReal(7,8,RightThreshInnerMin,RightThreshInnerMax,38,8);  DlgText("Right Inner",37,7);
+    DlgReal(8,8,RightThreshOuterMin,RightThreshOuterMax,48,8);  DlgText("Right Outer",47,7);
+    
+    
+    'this is just going to be way too much of a pain, not gonna do it unless it really has to happen.
+    'DlgGroup("Mass Settings",2,15,56,6);
+    'DlgCheck(9,"Select to change all of the below increments and limits",3,16);
+    
+    
+    i%:=DlgShow(UpThreshInner,UpThreshOuter,DownThreshInner,DownThreshOuter,
+                LeftThreshInner,LeftThreshOuter,RightThreshInner,RightThreshOuter);
+    
+    if i% = 1 then
+        RecThresholdSaveParams();
+    endif;
+    
+    return 1;
+end
+
+
+
+
+
+
+'Fetch Threshold (not increments, ceilings) parameters from the registry
+proc RecThresholdGetParams()
+	var key$;
+    key$:="Reclab\\ThresholdParam";
+
+    UpThreshInner := GetFloatRegistryValue(key$, "UpThreshInner", UpThreshInner);
+    DownThreshInner := GetFloatRegistryValue(key$, "DownThreshInner", DownThreshInner);
+    LeftThreshInner := GetFloatRegistryValue(key$, "LeftThreshInner", LeftThreshInner);
+    RightThreshInner := GetFloatRegistryValue(key$, "RightThreshInner", RightThreshInner);
+    UpThreshOuter := GetFloatRegistryValue(key$, "UpThreshOuter", UpThreshOuter);
+    DownThreshOuter := GetFloatRegistryValue(key$, "DownThreshOuter", DownThreshOuter);
+    LeftThreshOuter := GetFloatRegistryValue(key$, "LeftThreshOuter", LeftThreshOuter);
+    RightThreshOuter := GetFloatRegistryValue(key$, "RightThreshOuter", RightThreshOuter);
+    
+	return;
+end
+
+
+
+
+
+
+
+'Save Threshold (not increments, ceilings) parameters to the registry
+proc RecThresholdSaveParams()
+
+	var key$;
+    key$:="Reclab\\ThresholdParam";
+
+    SetFloatRegistryValue(key$, "UpThreshInner", UpThreshInner);
+    SetFloatRegistryValue(key$, "DownThreshInner", DownThreshInner);
+    SetFloatRegistryValue(key$, "LeftThreshInner", LeftThreshInner);
+    SetFloatRegistryValue(key$, "RightThreshInner", RightThreshInner);
+    SetFloatRegistryValue(key$, "UpThreshOuter", UpThreshOuter);
+    SetFloatRegistryValue(key$, "DownThreshOuter", DownThreshOuter);
+    SetFloatRegistryValue(key$, "LeftThreshOuter", LeftThreshOuter);
+    SetFloatRegistryValue(key$, "RightThreshOuter", RightThreshOuter);
+    
+	return;
+end
+
+
+func SetJoystickThresholdIncrementDialog%()
+    var i%;
+    
+    'Don't load parameters from the registry for a run-time call, use current values
+    if recRunTimeCall% = 0 then
+        RecThresholdIncrementGetParams();
+    else
+        'on runtime call, current values are in voltage, change to degrees
+        GetJoystickVoltageInDegrees(joystickVoltageConversionFactor);  
+    endif;
+    
+    
+    DlgCreate("Joystick threshold limits",0,0,76,18);
+    
+    DlgGroup("Joystick in degrees",2,1,73,15);
+    
+    'Top labels
+    DlgText("Decrement",30,2);
+    DlgText("Increment",46,2);
+    'First row, up outer
+    DlgText("Up Outer",55,3);
+    DlgReal(1,8,0,1,31,3);
+    DlgReal(2,8,0,1,47,3);
+    'Second row, up inner
+    DlgText("Up Inner",55,4);
+    DlgReal(3,8,0,1,31,4);
+    DlgReal(4,8,0,1,47,4);
+    'Third row, down inner
+    DlgText("Down Inner",55,14);
+    DlgReal(5,8,0,1,31,14);
+    DlgReal(6,8,0,1,47,14);
+    'Fourth row, down outer
+    DlgText("Down Outer",55,15);
+    DlgReal(7,8,0,1,31,15);
+    DlgReal(8,8,0,1,47,15);
+    'Side labels
+    DlgText("Decrement",3,8);
+    DlgText("Increment",3,10);
+    'Middle row first column, left outer
+    DlgText("Left Outer",12,7);
+    DlgReal(9,8,0,1,13,8);
+    DlgReal(10,8,0,1,13,10);
+    'Middle row second column, left inner
+    DlgText("Left Inner",22,7);
+    DlgReal(11,8,0,1,23,8);
+    DlgReal(12,8,0,1,23,10);
+    'Middle row third column, right inner
+    DlgText("Right Inner",55,7);
+    DlgReal(13,8,0,1,56,8);
+    DlgReal(14,8,0,1,56,10);
+    'Middle row fourth column, right outer
+    DlgText("Right Outer",65,7);
+    DlgReal(15,8,0,1,66,8);
+    DlgReal(16,8,0,1,66,10);
+
+    
+    
+    i%:=DlgShow(UpThreshOuterDec,UpThreshOuterInc,UpThreshInnerDec,UpThreshInnerInc,
+                DownThreshInnerDec,DownThreshInnerInc,DownThreshOuterDec,DownThreshOuterInc,
+                LeftThreshOuterInc,LeftThreshOuterDec,LeftThreshInnerInc,LeftThreshInnerDec,
+                RightThreshInnerInc,RightThreshInnerDec,RightThreshOuterInc,RightThreshOuterDec);
+    
+    if i% = 1 then
+        RecThresholdIncrementSaveParams();
+    endif;
+    
+    return 1;
+end
+
+
+
+
+
+
+'Fetch Threshold increment parameters from the registry
+proc RecThresholdIncrementGetParams()
+	var key$;
+    key$:="Reclab\\ThresholdParam";
+
+    UpThreshInnerInc := GetFloatRegistryValue(key$, "UpThreshInnerInc", UpThreshInnerInc);
+    DownThreshInnerInc := GetFloatRegistryValue(key$, "DownThreshInnerInc", DownThreshInnerInc);
+    LeftThreshInnerInc := GetFloatRegistryValue(key$, "LeftThreshInnerInc", LeftThreshInnerInc);
+    RightThreshInnerInc := GetFloatRegistryValue(key$, "RightThreshInnerInc", RightThreshInnerInc);
+    UpThreshOuterInc := GetFloatRegistryValue(key$, "UpThreshOuterInc", UpThreshOuterInc);
+    DownThreshOuterInc := GetFloatRegistryValue(key$, "DownThreshOuterInc", DownThreshOuterInc);
+    LeftThreshOuterInc := GetFloatRegistryValue(key$, "LeftThreshOuterInc", LeftThreshOuterInc);
+    RightThreshOuterInc := GetFloatRegistryValue(key$, "RightThreshOuterInc", RightThreshOuterInc);
+    
+    UpThreshInnerDec := GetFloatRegistryValue(key$, "UpThreshInnerDec", UpThreshInnerDec);
+    DownThreshInnerDec := GetFloatRegistryValue(key$, "DownThreshInnerDec", DownThreshInnerDec);
+    LeftThreshInnerDec := GetFloatRegistryValue(key$, "LeftThreshInnerDec", LeftThreshInnerDec);
+    RightThreshInnerDec := GetFloatRegistryValue(key$, "RightThreshInnerDec", RightThreshInnerDec);
+    UpThreshOuterDec := GetFloatRegistryValue(key$, "UpThreshOuterDec", UpThreshOuterDec);
+    DownThreshOuterDec := GetFloatRegistryValue(key$, "DownThreshOuterDec", DownThreshOuterDec);
+    LeftThreshOuterDec := GetFloatRegistryValue(key$, "LeftThreshOuterDec", LeftThreshOuterDec);
+    RightThreshOuterDec := GetFloatRegistryValue(key$, "RightThreshOuterDec", RightThreshOuterDec);
+        
+	return;
+end
+
+
+
+
+
+
+
+'Save Threshold increment parameters to the registry
+proc RecThresholdIncrementSaveParams()
+
+	var key$;
+    key$:="Reclab\\ThresholdParam";
+
+    SetFloatRegistryValue(key$, "UpThreshInnerInc", UpThreshInnerInc);
+    SetFloatRegistryValue(key$, "DownThreshInnerInc", DownThreshInnerInc);
+    SetFloatRegistryValue(key$, "LeftThreshInnerInc", LeftThreshInnerInc);
+    SetFloatRegistryValue(key$, "RightThreshInnerInc", RightThreshInnerInc);
+    SetFloatRegistryValue(key$, "UpThreshOuterInc", UpThreshOuterInc);
+    SetFloatRegistryValue(key$, "DownThreshOuterInc", DownThreshOuterInc);
+    SetFloatRegistryValue(key$, "LeftThreshOuterInc", LeftThreshOuterInc);
+    SetFloatRegistryValue(key$, "RightThreshOuterInc", RightThreshOuterInc);
+    
+    SetFloatRegistryValue(key$, "UpThreshInnerDec", UpThreshInnerDec);
+    SetFloatRegistryValue(key$, "DownThreshInnerDec", DownThreshInnerDec);
+    SetFloatRegistryValue(key$, "LeftThreshInnerDec", LeftThreshInnerDec);
+    SetFloatRegistryValue(key$, "RightThreshInnerDec", RightThreshInnerDec);
+    SetFloatRegistryValue(key$, "UpThreshOuterDec", UpThreshOuterDec);
+    SetFloatRegistryValue(key$, "DownThreshOuterDec", DownThreshOuterDec);
+    SetFloatRegistryValue(key$, "LeftThreshOuterDec", LeftThreshOuterDec);
+    SetFloatRegistryValue(key$, "RightThreshOuterDec", RightThreshOuterDec);
+    
+	return;
+end
+
+
+func SetJoystickThresholdLimitDialog%()
+    var i%;
+    var ok%;
+    
+    'Don't load parameters from the registry for a run-time call, use current values
+    if recRunTimeCall% = 0 then
+        RecThresholdGetParams();
+        RecThresholdLimitGetParams();
+    else
+        'on runtime call, current values are in voltage, change to degrees
+        GetJoystickVoltageInDegrees(joystickVoltageConversionFactor);  
+    endif;
+    
+    
+    DlgCreate("Joystick threshold limits",0,0,76,18);
+    
+    DlgGroup("Joystick in degrees",2,1,73,15);
+    
+    'Top labels
+    DlgText("Minimum",30,2);
+    DlgText("Thresh",39,2);
+    DlgText("Maximum",46,2);
+    'First row, up outer
+    DlgText("Up Outer",55,3);
+    DlgReal(1,8,UpThreshInner+0.1,UpThreshOuter,31,3);
+    DlgText(Str$(UpThreshOuter),41,3);
+    DlgReal(2,8,UpThreshOuter,joystickMaxDegrees,47,3);
+    'Second row, up inner
+    DlgText("Up Inner",55,4);
+    DlgReal(3,8,0.1,UpThreshInner,31,4);
+    DlgText(Str$(UpThreshInner),41,4);
+    DlgReal(4,8,UpThreshInner,UpThreshOuter-0.1,47,4);
+    'Third row, down inner
+    DlgText("Down Inner",55,14);
+    DlgReal(5,8,0.1,DownThreshInner,31,14);
+    DlgText(Str$(DownThreshInner),41,14);
+    DlgReal(6,8,DownThreshInner,DownThreshOuter-0.1,47,14);
+    'Fourth row, down outer
+    DlgText("Down Outer",55,15);
+    DlgReal(7,8,DownThreshInner+0.1,DownThreshOuter,31,15);
+    DlgText(Str$(DownThreshOuter),41,15);
+    DlgReal(8,8,DownThreshOuter,joystickMaxDegrees,47,15);
+    'Side labels
+    DlgText("Minimum",3,8);
+    DlgText("Thresh",3,9);
+    DlgText("Maximum",3,10);
+    'Middle row first column, left outer
+    DlgText("Left Outer",11,7);
+    DlgReal(9,8,LeftThreshOuter,joystickMaxDegrees,12,8);
+    DlgText(Str$(LeftThreshOuter),14,9);
+    DlgReal(10,8,LeftThreshInner+0.1,LeftThreshOuter,12,10);
+    'Middle row second column, left inner
+    DlgText("Left Inner",21,7);
+    DlgReal(11,8,LeftThreshInner,LeftThreshOuter-0.1,22,8);
+    DlgText(Str$(LeftThreshInner),24,9);
+    DlgReal(12,8,0.1,LeftThreshInner,22,10);
+    'Middle row third column, right inner
+    DlgText("Right Inner",55,7);
+    DlgReal(13,8,RightThreshInner,RightThreshOuter-0.1,56,8);
+    DlgText(Str$(RightThreshInner),58,9);
+    DlgReal(14,8,0.1,RightThreshInner,56,10);
+    'Middle row fourth column, right outer
+    DlgText("Right Outer",65,7);
+    DlgReal(15,8,RightThreshOuter,joystickMaxDegrees,66,8);
+    DlgText(Str$(RightThreshOuter),68,9);
+    DlgReal(16,8,RightThreshInner+0.1,RightThreshOuter,66,10);
+
+    
+    
+    i%:=DlgShow(UpThreshOuterMin,UpThreshOuterMax,UpThreshInnerMin,UpThreshInnerMax,
+                DownThreshInnerMin,DownThreshInnerMax,DownThreshOuterMin,DownThreshOuterMax,
+                LeftThreshOuterMax,LeftThreshOuterMin,LeftThreshInnerMax,LeftThreshInnerMin,
+                RightThreshInnerMax,RightThreshInnerMin,RightThreshOuterMax,RightThreshOuterMin);
+    
+    if i% = 1 then
+        ok% := CheckInnerOuterThresh%();
+        if ok% = 1 then
+            RecThresholdLimitSaveParams();
+        else
+            RecThresholdLimitGetParams();
+            message("Invalid entry, values have been reset!  See logfile for details.");
+        endif;
+    endif;
+    
+    
+    return 1;
+end
+
+
+
+
+
+
+'Fetch Threshold limit parameters from the registry
+proc RecThresholdLimitGetParams()
+	var key$;
+    key$:="Reclab\\ThresholdParam";
+
+    UpThreshInnerMax := GetFloatRegistryValue(key$, "UpThreshInnerMax", UpThreshInnerMax);
+    DownThreshInnerMax := GetFloatRegistryValue(key$, "DownThreshInnerMax", DownThreshInnerMax);
+    LeftThreshInnerMax := GetFloatRegistryValue(key$, "LeftThreshInnerMax", LeftThreshInnerMax);
+    RightThreshInnerMax := GetFloatRegistryValue(key$, "RightThreshInnerMax", RightThreshInnerMax);
+    UpThreshOuterMax := GetFloatRegistryValue(key$, "UpThreshOuterMax", UpThreshOuterMax);
+    DownThreshOuterMax := GetFloatRegistryValue(key$, "DownThreshOuterMax", DownThreshOuterMax);
+    LeftThreshOuterMax := GetFloatRegistryValue(key$, "LeftThreshOuterMax", LeftThreshOuterMax);
+    RightThreshOuterMax := GetFloatRegistryValue(key$, "RightThreshOuterMax", RightThreshOuterMax);
+    
+    UpThreshInnerMin := GetFloatRegistryValue(key$, "UpThreshInnerMin", UpThreshInnerMin);
+    DownThreshInnerMin := GetFloatRegistryValue(key$, "DownThreshInnerMin", DownThreshInnerMin);
+    LeftThreshInnerMin := GetFloatRegistryValue(key$, "LeftThreshInnerMin", LeftThreshInnerMin);
+    RightThreshInnerMin := GetFloatRegistryValue(key$, "RightThreshInnerMin", RightThreshInnerMin);
+    UpThreshOuterMin := GetFloatRegistryValue(key$, "UpThreshOuterMin", UpThreshOuterMin);
+    DownThreshOuterMin := GetFloatRegistryValue(key$, "DownThreshOuterMin", DownThreshOuterMin);
+    LeftThreshOuterMin := GetFloatRegistryValue(key$, "LeftThreshOuterMin", LeftThreshOuterMin);
+    RightThreshOuterMin := GetFloatRegistryValue(key$, "RightThreshOuterMin", RightThreshOuterMin);
+        
+	return;
+end
+
+
+
+
+
+
+
+'Save Threshold limit parameters to the registry
+proc RecThresholdLimitSaveParams()
+
+	var key$;
+    key$:="Reclab\\ThresholdParam";
+
+    SetFloatRegistryValue(key$, "UpThreshInnerMax", UpThreshInnerMax);
+    SetFloatRegistryValue(key$, "DownThreshInnerMax", DownThreshInnerMax);
+    SetFloatRegistryValue(key$, "LeftThreshInnerMax", LeftThreshInnerMax);
+    SetFloatRegistryValue(key$, "RightThreshInnerMax", RightThreshInnerMax);
+    SetFloatRegistryValue(key$, "UpThreshOuterMax", UpThreshOuterMax);
+    SetFloatRegistryValue(key$, "DownThreshOuterMax", DownThreshOuterMax);
+    SetFloatRegistryValue(key$, "LeftThreshOuterMax", LeftThreshOuterMax);
+    SetFloatRegistryValue(key$, "RightThreshOuterMax", RightThreshOuterMax);
+    
+    SetFloatRegistryValue(key$, "UpThreshInnerMin", UpThreshInnerMin);
+    SetFloatRegistryValue(key$, "DownThreshInnerMin", DownThreshInnerMin);
+    SetFloatRegistryValue(key$, "LeftThreshInnerMin", LeftThreshInnerMin);
+    SetFloatRegistryValue(key$, "RightThreshInnerMin", RightThreshInnerMin);
+    SetFloatRegistryValue(key$, "UpThreshOuterMin", UpThreshOuterMin);
+    SetFloatRegistryValue(key$, "DownThreshOuterMin", DownThreshOuterMin);
+    SetFloatRegistryValue(key$, "LeftThreshOuterMin", LeftThreshOuterMin);
+    SetFloatRegistryValue(key$, "RightThreshOuterMin", RightThreshOuterMin);
+    
+	return;
+end
+
+
+
+func CheckInnerOuterThresh%()
+    var ok%;
+    
+    docase
+    case UpThreshOuterMin < UpThreshInnerMax then
+        ok% := 0;
+        printlog("ERROR: The specified 'up' outer minimum was less than the specified inner maximum!");
+    case DownThreshOuterMin < DownThreshInnerMax then
+        ok% := 0;
+        printlog("ERROR: The specified 'down' outer minimum was less than the specified inner maximum!");
+    case LeftThreshOuterMin < LeftThreshInnerMax then
+        ok% := 0;
+        printlog("ERROR: The specified left' outer minimum was less than the specified inner maximum!");
+    case RightThreshOuterMin < RightThreshInnerMax then
+        ok% := 0;
+        printlog("ERROR: The specified 'right' outer minimum was less than the specified inner maximum!");        
+    else
+        ok% := 1;
+    endcase;
+    
+    
+    return ok%;
+end
+
+
+
+
+'This function will read in the current joystick values from the registry,
+'which are saved in user-friendly degrees, and convert them to voltage
+func GetJoystickDegreesInVoltage(vdcon);
+    'load 'em
+    RecThresholdGetParams();
+    RecThresholdIncrementGetParams();
+    RecThresholdLimitGetParams();
+    
+    'convert 'em    
+    vUpThreshInner := UpThreshInner*vdcon;
+    vUpThreshOuter := UpThreshOuter*vdcon;
+    vDownThreshInner := DownThreshInner*vdcon;
+    vDownThreshOuter := DownThreshOuter*vdcon;
+    vLeftThreshInner := LeftThreshInner*vdcon;
+    vLeftThreshOuter := LeftThreshOuter*vdcon;
+    vRightThreshInner := RightThreshInner*vdcon;
+    vRightThreshOuter := RightThreshOuter*vdcon;
+    vUpThreshInnerInc := UpThreshInnerInc*vdcon;
+    vUpThreshOuterInc := UpThreshOuterInc*vdcon;
+    vDownThreshInnerInc := DownThreshInnerInc*vdcon;
+    vDownThreshOuterInc := DownThreshOuterInc*vdcon;
+    vLeftThreshInnerInc := LeftThreshInnerInc*vdcon;
+    vLeftThreshOuterInc := LeftThreshOuterInc*vdcon;
+    vRightThreshInnerInc := RightThreshInnerInc*vdcon;
+    vRightThreshOuterInc := RightThreshOuterInc*vdcon;
+    vUpThreshInnerMax := UpThreshInnerMax*vdcon;
+    vUpThreshOuterMax := UpThreshOuterMax*vdcon;
+    vDownThreshInnerMax := DownThreshInnerMax*vdcon;
+    vDownThreshOuterMax := DownThreshOuterMax*vdcon;
+    vLeftThreshInnerMax := LeftThreshInnerMax*vdcon;
+    vLeftThreshOuterMax := LeftThreshOuterMax*vdcon;
+    vRightThreshInnerMax := RightThreshInnerMax*vdcon;
+    vRightThreshOuterMax := RightThreshOuterMax*vdcon;
+    vUpThreshInnerDec := UpThreshInnerDec*vdcon;
+    vUpThreshOuterDec := UpThreshOuterDec*vdcon;
+    vDownThreshInnerDec := DownThreshInnerDec*vdcon;
+    vDownThreshOuterDec := DownThreshOuterDec*vdcon;
+    vLeftThreshInnerDec := LeftThreshInnerDec*vdcon;
+    vLeftThreshOuterDec := LeftThreshOuterDec*vdcon;
+    vRightThreshInnerDec := RightThreshInnerDec*vdcon;
+    vRightThreshOuterDec := RightThreshOuterDec*vdcon;
+    vUpThreshInnerMin := UpThreshInnerMin*vdcon;
+    vUpThreshOuterMin := UpThreshOuterMin*vdcon;
+    vDownThreshInnerMin := DownThreshInnerMin*vdcon;
+    vDownThreshOuterMin := DownThreshOuterMin*vdcon;
+    vLeftThreshInnerMin := LeftThreshInnerMin*vdcon;
+    vLeftThreshOuterMin := LeftThreshOuterMin*vdcon;
+    vRightThreshInnerMin := RightThreshInnerMin*vdcon;
+    vRightThreshOuterMin := RightThreshOuterMin*vdcon;
+    return 1;
+end
+
+
+
+'This function take the current joystick values from the experiment,
+'which may have incremented, are convert them from voltage to degrees
+func GetJoystickVoltageInDegrees(vdcon);
+    
+    'convert 'em    
+    UpThreshInner := vUpThreshInner/vdcon;
+    UpThreshOuter := vUpThreshOuter/vdcon;
+    DownThreshInner := vDownThreshInner/vdcon;
+    DownThreshOuter := vDownThreshOuter/vdcon;
+    LeftThreshInner := vLeftThreshInner/vdcon;
+    LeftThreshOuter := vLeftThreshOuter/vdcon;
+    RightThreshInner := vRightThreshInner/vdcon;
+    RightThreshOuter := vRightThreshOuter/vdcon;
+    UpThreshInnerInc := vUpThreshInnerInc/vdcon;
+    UpThreshOuterInc := vUpThreshOuterInc/vdcon;
+    DownThreshInnerInc := vDownThreshInnerInc/vdcon;
+    DownThreshOuterInc := vDownThreshOuterInc/vdcon;
+    LeftThreshInnerInc := vLeftThreshInnerInc/vdcon;
+    LeftThreshOuterInc := vLeftThreshOuterInc/vdcon;
+    RightThreshInnerInc := vRightThreshInnerInc/vdcon;
+    RightThreshOuterInc := vRightThreshOuterInc/vdcon;
+    UpThreshInnerMax := vUpThreshInnerMax/vdcon;
+    UpThreshOuterMax := vUpThreshOuterMax/vdcon;
+    DownThreshInnerMax := vDownThreshInnerMax/vdcon;
+    DownThreshOuterMax := vDownThreshOuterMax/vdcon;
+    LeftThreshInnerMax := vLeftThreshInnerMax/vdcon;
+    LeftThreshOuterMax := vLeftThreshOuterMax/vdcon;
+    RightThreshInnerMax := vRightThreshInnerMax/vdcon;
+    RightThreshOuterMax := vRightThreshOuterMax/vdcon;
+    UpThreshInnerDec := vUpThreshInnerDec/vdcon;
+    UpThreshOuterDec := vUpThreshOuterDec/vdcon;
+    DownThreshInnerDec := vDownThreshInnerDec/vdcon;
+    DownThreshOuterDec := vDownThreshOuterDec/vdcon;
+    LeftThreshInnerDec := vLeftThreshInnerDec/vdcon;
+    LeftThreshOuterDec := vLeftThreshOuterDec/vdcon;
+    RightThreshInnerDec := vRightThreshInnerDec/vdcon;
+    RightThreshOuterDec := vRightThreshOuterDec/vdcon;
+    UpThreshInnerMin := vUpThreshInnerMin/vdcon;
+    UpThreshOuterMin := vUpThreshOuterMin/vdcon;
+    DownThreshInnerMin := vDownThreshInnerMin/vdcon;
+    DownThreshOuterMin := vDownThreshOuterMin/vdcon;
+    LeftThreshInnerMin := vLeftThreshInnerMin/vdcon;
+    LeftThreshOuterMin := vLeftThreshOuterMin/vdcon;
+    RightThreshInnerMin := vRightThreshInnerMin/vdcon;
+    RightThreshOuterMin := vRightThreshOuterMin/vdcon;
+    return 1;
+end
+
