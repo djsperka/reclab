@@ -558,8 +558,8 @@ Func PlaySound%(isS2%)
         if recSearchStimType% = 3 then
             atten := 0;  'for clicks, don't attenuate
         else
-            atten := rand(4,30);  'To check that the PA4 is working properly, let's just set a new value every time
-            'atten := 0;  'temporary, during calibrations
+            'atten := rand(4,30);  'To check that the PA4 is working properly, let's just set a new value every time
+            atten := 30;  'temporary, during calibrations
         endif;
     endif;
     

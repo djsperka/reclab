@@ -1209,7 +1209,8 @@ func RecExpSearchDialog%()
             case recSearchStimType% = 3 then  'for clicks, we won't use anything, just leave a note
                 printlog("Clicks selected from search dialog\n");
             case recSearchStimType% = 4 then  'for tone sweeps
-                arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
+            'arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
+            arrconst(recTrialDur[0:recSearchToneSweepNSteps%],200);
                 'get the log progression with the new values
                 GetLogProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);            
                 'GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);
