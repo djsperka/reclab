@@ -1990,7 +1990,7 @@ func RecExpLeverJoystickDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 10);
+    DlgCreate("Joystick/Lever Dialog", 0, 0, trwid%, 10);
     DlgList(1,20,joyStr$[],2,c1%-6,1); DlgText("Response Device",c1txt%,1);
     DlgList(2,20,initStr$[],7,c1%-6,2); DlgText("Trial Initiation Position",c1txt%,2);
     DlgList(3,20,resp1Str$[],7,c1%-6,3); DlgText("Response 1 Position",c1txt%,3);
@@ -2014,15 +2014,46 @@ func RecExpLeverJoystickDialog%()
             RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
             status% := 1;
         else
-            RecLeverJoystickSaveParams();   'RecLeverJoystickSaveParams() is below 
+            RecLeverJoystickSaveParams();  
+            'apply the changed values to the voltage versions of the variables            
+            GetJoystickDegreesInVoltage(joystickVoltageConversionFactor);  
             status% := 1;
         endif;
+        
+        'set incrementing variables, start by zeroing everything, then add change what is needed
+        'The current increment/decrement rules are as follows: 
+        'Increment on completion of a correct trial (H/CR)
+        'Decrement on Lazy Monkey Timeout for non-initiation of trial
+        'Do Not adjust on Lazy Monkey Timeout for non-return to center
+        'Do Not adjust in any other circumstance
+        doIncUp% := 0;
+        doIncDown% := 0;
+        doIncLeft% := 0;
+        doIncRight% := 0;
+        if recDoIncrements% = 1 then
+            'right now, only the init position can be set, this will require more thought if response position
+            'can be set in the future
+            if recTrialInitPosition% = 1 or recTrialInitPosition% = 6 then
+                doIncDown% := 1;
+            endif;
+            if recTrialInitPosition% = 2 or recTrialInitPosition% = 6 then
+                doIncUp% := 1;
+            endif;
+            if recTrialInitPosition% = 3 or recTrialInitPosition% = 5 then
+                doIncRight% := 1;
+            endif;
+            if recTrialInitPosition% = 4 or recTrialInitPosition% = 5 then
+                doIncLeft% := 1;
+            endif;            
+        endif;
+        
     else
         status% := 1;
     endif
     
     incrementDialogItem% := 0;  'must set to 0 on exit
     
+        
 	return status%;
    
 end;
@@ -2063,6 +2094,15 @@ func RecExpLeverJoystickDialogChanged%(item%)
         DlgEnable(0,-4);  'this is the threshold limit dialog button
     endif
     
+    
+    'FOR NOW we aren't really doing anything but go/no-go lever stuff, so set and disable the response
+    'position 1 and response position 2 lists
+    DlgValue(3,0); 'set the response position 1 to "center"
+    DlgValue(4,7); 'set the response position 2 to "none"
+    DlgEnable(0,3); 'and disable these
+    DlgEnable(0,4);
+    'These above lines can be eliminated if/when the joystick is expanded to do more than go/no-go
+    'but obviously no code to interpret the other values exists
     
     return 1;
 end

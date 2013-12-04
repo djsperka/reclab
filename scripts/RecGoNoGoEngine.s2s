@@ -54,6 +54,10 @@ var ResponseTime;
 var OffAxis%;
 var XJoy;
 var YJoy;
+var doIncUp%;
+var doIncDown%;
+var doIncLeft%;
+var doIncRight%;
 
 ' for anything other than electrodes!
 var recXYWindowView%;              ' View variable for XY window
@@ -146,9 +150,12 @@ var tNextTrial;
 var isTerminalS1%:=0;    'if trial has terminal S1, logic of state loop must change, so we need to keep track
 var RTESDIsPressed%;  'has ReturnToExperimentSelectionDialog button been pressed?
 var recLeverState%;
-var recLeverTime;
+var recLeverTime;   'this is the time of the most recent lever EVENT - one that we are going to record as a hit, etc.
+var recLastLever;   'this is the time of the most recent lever change - whether we plan to record it or not
+var recPreciseTrialTime;
 var recLeverCodes%[4];
 var startingNewExpt%;  'only used with joystick, marks beginning of experiment so that joystick events in the past are "forgotten"
+var nextStateImmed% := 1;  'when we are changing to a new state, by default we carry to that state immediately instead of waiting for the next idle loop call
 
 'var channels%[4];
 
@@ -255,7 +262,7 @@ proc CreateSampleConfiguration()
     SampleComment$(recTrigChannel%, "Trigger");
     SampleTitle$(recTrigChannel%, "Trigger");
     
-    if 1 then
+    if recUseJoystick% = 0 then
         ' Event channel 1 is for the lever
         SampleEvent(recLeverChannel%, recLeverPort%, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
         SampleTitle$(recLeverChannel%, "Lever");
@@ -389,7 +396,7 @@ proc InitializeWindows()
         Window(0, 0, 100, 50); 
         View(recDataWindowView%).WindowVisible(1);
         
-        if 1 then
+        if recUseJoystick% = 0 then
             ' Create a memory channel for the debounced lever information
             recMemChanLeverDebounce% := MemChan(8,25); 'Create textmark channel for debounced lever with attached lever value, 25 characters
             ChanTitle$(recMemChanLeverDebounce%,"DBLever");  'Give it a title
@@ -665,7 +672,7 @@ func StimComplete%(isS2%, success%)
             ' Record completed stim here, and update online analysis. 
             ' This will print the same output, e.g. "E,234" for each non-terminal S1 in trial 234, so there may be multiple sampletexts with the same entry
             strtmp$ := Print$("E,%d", recCurrentTrial%);  'E is for, I dunno, Early Correct Rejection?  (Keeping 'E' from original code)
-            SampleText(strtmp$, -1);
+            SampleText(strtmp$, recPreciseTrialTime);
             
             'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
             recStimCount% += 1;
@@ -681,25 +688,25 @@ func StimComplete%(isS2%, success%)
         else 'false alarm on S1
             'trial counter will be decremented in the idle loop
             strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
-            SampleText(strtmp$, -1);
+            SampleText(strtmp$, recPreciseTrialTime);
             status% := 0;  'After FA, we will indicate the next stimulus is an S1, as it will be.
         endif
     case isS2% = 1 then  'If it's an S2 (target)
             if success% = 1 then
                 strtmp$ := Print$("H,%d", recCurrentTrial%);  'H is for Hit
-                SampleText(strtmp$, -1);
+                SampleText(strtmp$, recPreciseTrialTime);
             else
                 strtmp$ := Print$("M,%d", recCurrentTrial%);  'M is for Miss
-                SampleText(strtmp$, -1);
+                SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 2 then 'If it's a terminal S1 (intended no-response)
             if success% = 1 then
                 strtmp$ := Print$("C,%d", recCurrentTrial%);  'C is for Correct Rejection, trial is over (This code is new, all other codes are old)
-                SampleText(strtmp$, -1);
+                SampleText(strtmp$, recPreciseTrialTime);
             else
                 strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
-                SampleText(strtmp$, -1);
+                SampleText(strtmp$, recPreciseTrialTime);
             endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     else
@@ -887,7 +894,7 @@ func CallTimingReward%()
     recIsPaused% := 1;
     recRunTimeCall% := 1;
     recWhichDialogCalled% := 1;  '1 is for timing/reward
-    'Don't let nobody do nothing! (start and resume are already disabled
+    'Don't let nobody do nothing! (start and resume are already disabled)
     ToolbarEnable(recPauseButton%, 0);
     ToolbarEnable(recSelectNewExptButton%, 0);
     ToolbarEnable(recRewardButton%, 0);
@@ -911,7 +918,7 @@ func CallJoystick%()
     recIsPaused% := 1;
     recRunTimeCall% := 1;
     recWhichDialogCalled% := 2;  '2 is for joystick
-    'Don't let nobody do nothing! (start and resume are already disabled
+    'Don't let nobody do nothing! (start and resume are already disabled)
     ToolbarEnable(recPauseButton%, 0);
     ToolbarEnable(recSelectNewExptButton%, 0);
     ToolbarEnable(recRewardButton%, 0);
@@ -1014,6 +1021,7 @@ end
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc ChangeStateTo(stateTo%)
 	iState% := stateTo%;
+    nextStateImmed% := 1;  'nothing to wait for
     if recCEDIsPresent% = 1 then
         tStateStart := MaxTime();
     else
@@ -1221,10 +1229,10 @@ func PrepareNextTrial%(dontLoadPWAs%)
                     statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 endif;
                 EvalMatlabStatement%(statement$);
-                printlog("%s\n",statement$);
-                printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
-                printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
-                printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+                'printlog("%s\n",statement$);
+                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
             
             
                 'Get the stimulus and the seed back from Matlab
@@ -1294,12 +1302,11 @@ func IdleLoop%()
     var stmp%;
     var isS2%;
     var strtmp$;
-    var nextStateImmed% := 1;  'Wrapping the case statement to allow multiple runs in one idle loop, when timing is critical
     var isPlaying%;
     var PWA$;
     var s$;
     
-    'while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
+    while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
         
         'Get the current time
         if recCEDIsPresent% = 1 then
@@ -1308,14 +1315,10 @@ func IdleLoop%()
             tNow += .05;  'simulate 50 ms between loops
         endif
         
-        nextStateImmed% := 0;  'Don't repeat this (internal) loop unless specifically asked to below for timing purposes
+        'Don't repeat this (internal) loop unless there is a state change or specifically asked to below for timing purposes
+        nextStateImmed% := 0;  
         
-        'Update the state of the lever if using CED
-        if useTDTforLever% = 0 and recCEDIsPresent% = 1 then
-            DebounceLever%(tNow);  'this fills recLeverTime and recLeverState%
-            'printlog("Lever state is %d at %f\n",recLeverState%,tNow);
-        endif;
-    
+        
         'Update the joystick plot every 5 ms
         if RespDevice% <> 0 and tNow-tLastJoyUpdate > .005 then
             XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
@@ -1323,16 +1326,15 @@ func IdleLoop%()
             View(joyview%).XYAddData(joydatachan%,-XJoy,-YJoy);  'both axes need to be "flipped" with negative values to display properly
             tLastJoyUpdate := tNow;
         endif;
-    
         
         
-        ' State Logic - determine which state we are in 
+        
+        ' ============= State Logic - determine which state we are in 
         docase
         case iState% = stateStart% then
             'This state is only entered once per "experiment" - once per each time the template file passes control
             RecLogStatus("Start", "Starting state logic loop.");
             ChangeStateTo(stateInitializeTrials%);
-            nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             
             
             
@@ -1376,39 +1378,46 @@ func IdleLoop%()
                         RecExpTimingRewardDialog%();
                         ReturnFromDialogCall%();
                     case recWhichDialogCalled% = 2 then
-                        'RecExpTimingRewardDialog%();  'note that this is the wrong name and the real function ain't writ yet
+                        RecExpLeverJoystickDialog%();  
                         ReturnFromDialogCall%();
                     endcase
                 endif
+                CheckLever%();  'during pause, flush joystick/lever data
             endif
             
             
         case iState% = stateWaitForInitiationMovement% then   'this state just decides which state to go to, it's easier than replacing all the instances 
             if useTDTforLever% = 1 then
-                iState% := stateTDTBlink%;
+                ChangeStateTo(stateTDTBlink%);
             else
-                iState% := stateStartCEDBlink%;
+                ChangeStateTo(stateStartCEDBlink%);
             endif;
             
             
         case iState% = stateStartCEDBlink% then
-            if tNow > tNextTrial then
-                RecLogStatus("WaitLvrDown", "Blink/Wait.");
-                if recCEDIsPresent% = 1 and recActive% = 1 then
-                    SampleSeqVar(4,1);  'set the flash sequence to on
-                    Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
-                    sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
-                    sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
-                    SafeSampleKey("L");  'Start the flash
-                    
+            if CheckLever%() = 0 then  'lever must be up to start blink
+                if tNow > tNextTrial then
+                    RecLogStatus("WaitLvrDown", "Blink/Wait.");
+                    if recCEDIsPresent% = 1 and recActive% = 1 then
+                        SampleSeqVar(4,1);  'set the flash sequence to on
+                        Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
+                        sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
+                        sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
+                        SafeSampleKey("L");  'Start the flash
+                        
+                    endif;
+                    if recCEDIsPresent% = 1 then
+                        tStartBlink := MaxTime();
+                    else
+                        tStartBlink := tNow;
+                    endif;
+                    ChangeStateTo(stateCEDBlinking%);
                 endif;
-                if recCEDIsPresent% = 1 then
-                    tStartBlink := MaxTime();
-                else
-                    tStartBlink := tNow;
-                endif;
-                iState% := stateCEDBlinking%;
+            else
+                RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
+                ChangeStateTo(stateLazyMonkeyTimeout%);
             endif;
+            
             
             
         case iState% = stateCEDBlinking% then
@@ -1428,47 +1437,53 @@ func IdleLoop%()
             else  'this is timeout
                 SampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
                 RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
+                'Decrement, if appropriate
+                ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
                 ChangeStateTo(stateLazyMonkeyTimeout%);
             endif;
             
             
         case iState% = stateTDTBlink% then
-            
-            if tNow > tNextTrial then
-            
-                RecLogStatus("WaitLvrDown", "Blink/Wait.");
-                
-                if recCEDIsPresent% = 1 and recActive% = 1 then
-                    stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
-                    'Will leave LED on once lever is down
-                else
-                    stmp% := 1;  'simulate success in lever press
-                endif
-                
-                docase
-                case stmp% = 1 then
-                    recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
-                    'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
-                    RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
-                    ChangeStateTo(statePreTrialDelay%);
-                case stmp% = 0 then
-                    RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
-                    ChangeStateTo(stateLazyMonkeyTimeout%);
-                else
-                    PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
-                    Message("Error in recBlinkUntilLeverDown!");
-                    ChangeStateTo(stateTDTError%);
-                endcase
+            if CheckLever%() = 0 then  'lever must be up to start blink
+                if tNow > tNextTrial then
+                    
+                    RecLogStatus("WaitLvrDown", "Blink/Wait.");
+                    
+                    if recCEDIsPresent% = 1 and recActive% = 1 then
+                        stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
+                        'Will leave LED on once lever is down
+                    else
+                        stmp% := 1;  'simulate success in lever press
+                    endif
+                    
+                    docase
+                    case stmp% = 1 then
+                        recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+                        'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
+                        RecLogStatus("WaitLvrDown", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
+                        ChangeStateTo(statePreTrialDelay%);
+                    case stmp% = 0 then
+                        RecLogStatus("WaitLvrDown", "Timeout waiting for lever down.");
+                        'Decrement, if appropriate
+                        ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
+                        ChangeStateTo(stateLazyMonkeyTimeout%);
+                    else
+                        PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
+                        Message("Error in recBlinkUntilLeverDown!");
+                        ChangeStateTo(stateTDTError%);
+                    endcase
+                endif;
+            else
+                RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
+                ChangeStateTo(stateLazyMonkeyTimeout%);
             endif;
             
             
-            
         case iState% = stateLazyMonkeyTimeout% then
-            
+            CheckLever%();  'Flush lever/joystick during timeout
             if tNow - tStateStart > recLazyMonkeyTO then
                 RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'restart as if we had just finished loading
-                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
             
@@ -1476,13 +1491,12 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             docase
-            case CheckLever%() = 0 and recCEDIsPresent% = 1  and recActive% = 1 then
+            case CheckLever%() <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
             case tNow - tStateStart >= recDelayIntervalTime then
                 RecLogStatus("DelayInterval", "Delay done.");
                 ChangeStateTo(stateStartSoundA%);
-                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endcase
             
             
@@ -1531,7 +1545,7 @@ func IdleLoop%()
             case isPlaying% = 0 then  'use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
                 if isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
-                    StimComplete%(0, 0);
+                    StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
                     if useTDTforLever% = 1 then  'turn off LED
                         recTDTLEDOff%();
                     else
@@ -1541,21 +1555,23 @@ func IdleLoop%()
                 else
                     ChangeStateTo(stateISIDelay%);
                 endif
-                nextStateImmed% := 1;  'go to ISI without ceding time to windows
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop                
-            case CheckLever%() = 0 then  'if the sound is still playing, check for interrupt
+            case CheckLever%() <> 1 then  'if the sound is still playing, check for interrupt
                 'institute interrupt procedure, will be completed on the next iteration or when stimulus stops
-                isInterrupt% := 1;
-                RecLogStatus("TrialSoundA", "False Positive Interrupt! Lever is up");
-                if recContinueSoundOnS1Interrupt% = 0 then
-                    if recCEDIsPresent% = 1 then
-                        PlayWaveStop();  'stop playing stimulus
+                if isInterrupt% = 0 then  'only do this for "first" interrupt, if stimulus continues  
+                    recPreciseTrialTime := recLeverTime;  'time interrupt occurred
+                    RecLogStatus("TrialSoundA", "False Positive Interrupt! Lever is up");
+                    isInterrupt% := 1;
+                    if recContinueSoundOnS1Interrupt% = 0 then
+                        if recCEDIsPresent% = 1 then
+                            PlayWaveStop();  'stop playing stimulus
+                        endif;
+                        isPlaying% := 0;
                     endif;
-                    isPlaying% := 0;
-                endif
+                endif;                
             endcase
-  
+            
             
             
         case iState% = stateISIDelay% then
@@ -1573,9 +1589,9 @@ func IdleLoop%()
                 RecLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
                 Message("Error in recLeverDown()!!!");
                 ChangeStateTo(stateTDTError%);
-            case stmp% = 0 then
-                'SafeSampleKey("R");  'not in Recgen.pls!
+            case stmp% <> 1 then
                 RecLogStatus("WaitISI", "False Positive! Lever is up");
+                recPreciseTrialTime := recLeverTime;  'time false positive occurred
                 StimComplete%(0, 0);
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1586,19 +1602,17 @@ func IdleLoop%()
             else
                 if tNow - tStateStart > recISI then
                     RecLogStatus("WaitISI", "ISI done.");
+                    recPreciseTrialTime := tNow;  'time ISI is complete
                     isS2% := StimComplete%(0, 1);
                     docase 
                     case isS2% = 0 then
                         ChangeStateTo(stateStartSoundA%);
-                        nextStateImmed% := 1;  'Start next sound without ceding time to windows
                     case isS2% = 1 then
                         isTerminalS1% := 0;
                         ChangeStateTo(stateStartSoundB%);
-                        nextStateImmed% := 1;  'Start next sound without ceding time to windows
                     case isS2% = 2 then
                         isTerminalS1% := 1;
                         ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go
-                        nextStateImmed% := 1;  'Start next sound without ceding time to windows
                     else
                         RecLogStatus("WaitISI", "Unknown return value from StimComplete");
                         Message("Error in StimComplete%()!!!");
@@ -1649,18 +1663,20 @@ func IdleLoop%()
             case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
                 ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
-                nextStateImmed% := 1;  'go to reward without ceding time to windows
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
-            case CheckLever%() = 0 then  'if the sound is still playing, check for early hit
+            case CheckLever%() <> 1 then  'if the sound is still playing, check for early hit
                 'accept response whether sound should be stopped or not
-                isEarlyHit% := 1;  'this is a hit before the sound has stopped playing
-                RecLogStatus("WaitTrialSoundB", "Lever is up - HIT interrupting S2");
-                if recContinueSoundOnS2Interrupt% = 0 then
-                    if recCEDIsPresent% = 1 then
-                        PlayWaveStop();  'stop playing stimulus
-                    endif;
-                    isPlaying% := 0;
+                if isEarlyHit% = 0 then
+                    isEarlyHit% := 1;  'this is a hit before the sound has stopped playing
+                    recPreciseTrialTime := recLeverTime;  'time early hit occurred
+                    RecLogStatus("WaitTrialSoundB", "Lever is up - HIT interrupting S2");
+                    if recContinueSoundOnS2Interrupt% = 0 then
+                        if recCEDIsPresent% = 1 then
+                            PlayWaveStop();  'stop playing stimulus
+                        endif;
+                        isPlaying% := 0;
+                    endif
                 endif
             endcase
             
@@ -1692,7 +1708,7 @@ func IdleLoop%()
         case iState% = stateSoundCPlaying% then
             'here there really is no difference between terminal S1 ("nontarget") and target trials, we deal with the difference
             'in stateInResponseWindow% (at least if there's no interrupt of the stimulus
-        
+            
             if recCEDIsPresent% = 1 then
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             endif;
@@ -1714,18 +1730,20 @@ func IdleLoop%()
                 else
                     ChangeStateTo(stateTrainingReward%);
                 endif;
-                nextStateImmed% := 1;  'Change state immediately
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
-            case CheckLever%() = 0 then 'if the sound is still playing, check for early FA
+            case CheckLever%() <> 1 then 'if the sound is still playing, check for early FA
                 'accept response whether sound should be stopped or not
-                isEarlyFA% := 1;  'this is a hit before the sound has stopped playing
-                RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
-                if recContinueSoundOnS1Interrupt% = 0 then
-                    if recCEDIsPresent% = 1 then
-                        PlayWaveStop();  'stop playing stimulus
-                    endif;
-                    isPlaying% := 0;
+                if isEarlyFA% = 0 then
+                    isEarlyFA% := 1;  'this is a hit before the sound has stopped playing
+                    recPreciseTrialTime := recLeverTime;  'time early FA occurred
+                    RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
+                    if recContinueSoundOnS1Interrupt% = 0 then
+                        if recCEDIsPresent% = 1 then
+                            PlayWaveStop();  'stop playing stimulus
+                        endif;
+                        isPlaying% := 0;
+                    endif
                 endif
             endcase            
             
@@ -1743,7 +1761,7 @@ func IdleLoop%()
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
-                   
+                    
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
@@ -1770,9 +1788,10 @@ func IdleLoop%()
             endif
             
             docase
-            'Early hit, interrupted final stimulus, this is OK   
+                'Early hit, interrupted final stimulus, this is OK   
             case isEarlyHit% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyHit% := 0;  'reset variable
+                'time of early hit is recorded above
                 StimComplete%(1, 1);
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1780,10 +1799,10 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
-                nextStateImmed% := 1;  'Deliver reward immediately
-            'Early FA, interrupted final stimulus before actual response window
+                'Early FA, interrupted final stimulus before actual response window
             case isEarlyFA% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyFA% := 0;  'reset variable
+                'time of early FA is recorded above
                 StimComplete%(2, 0);  'terminal S1
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1791,16 +1810,16 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFalsePositive%);
-                nextStateImmed% := 1;  'Begin penalty immediately
-            'Error in RecLeverDown%()
+                'Error in RecLeverDown%()
             case stmp% < 0 then
                 RecLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
                 Message("Error in recLeverDown()!!!");
                 ChangeStateTo(stateTDTError%);
-            'Hit in response window    
+                'Hit in response window    
             case stmp% = 0 and isTerminalS1% = 0 then
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("WaitLvrUp", "Lever is up - HIT");
+                recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(1, 1);
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1808,10 +1827,10 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
-                nextStateImmed% := 1;  'Deliver reward immediately
-            'False alarm in response window    
+                'False alarm in response window    
             case stmp% = 0 and isTerminalS1% = 1 then
                 RecLogStatus("WaitLvrUp", "Lever is up - False Alarm on terminal S1");
+                recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(2, 0);  'terminal S1
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1819,10 +1838,10 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFalsePositive%);
-                nextStateImmed% := 1;  'Begin penalty immediately
-            'Response window is closed, miss    
+                'Response window is closed, miss    
             case tNow - tStateStart > recResponseWindow and isTerminalS1% = 0 then
                 RecLogStatus("WaitLvrUp", "Lever not up - timed out - MISS");
+                recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
                 StimComplete%(1, 0);
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1830,9 +1849,10 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateMissTimeout%);
-            'Response window is closed, correct rejection    
+                'Response window is closed, correct rejection    
             case tNow - tStateStart > recResponseWindow and isTerminalS1% = 1 then 
                 RecLogStatus("WaitLvrUp", "Lever not up - Correct Rejection on terminal S1");
+                recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 StimComplete%(2, 1);  'terminal S1
                 if useTDTforLever% = 1 then  'turn off LED
                     recTDTLEDOff%();
@@ -1840,22 +1860,21 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateCRReward%);  
-            'Otherwise, the response window is still open and the lever is still down    
+                'Otherwise, the response window is still open and the lever is still down    
             else
                 'Nothing, just a comment                
             endcase
             'We can aggressively wait for the response if the RT is important, just uncomment below (is RT even recorded?)
-            'nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
+            nextStateImmed% := 1; 
             
             
             
         case iState% = stateMissTimeout% then
-            
+            CheckLever%();  'Flush lever/joystick during timeout
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
                 tNextTrial := tNow;  'ready to go
-                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
             
@@ -1863,6 +1882,7 @@ func IdleLoop%()
         case iState% = stateFalsePositive% then 
             'this state is used to give a FA timeout for an incorrect response to a terminal S1 (nontarget) stim 
             'no real need to repeat entire stim sequence as the whole sequence was presented
+            CheckLever%();  'Flush lever/joystick during timeout
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
                 'ChangeStateTo(stateWaitForInitiationMovement%);  'was stateInitializeTrials% but we want to repeat the stimulus
@@ -1880,13 +1900,13 @@ func IdleLoop%()
                 
                 ChangeStateTo(stateInitializeTrials%); 
                 tNextTrial := tNow;  'ready to go
-                nextStateImmed% := 1;  'We didn't really do anything but print log status, so repeat loop rather than wait
             endif
             
             
             
         case iState% = stateFAInterrupt% then
             'this state is used to repeat a FA interrupted stimulus, so that the S2 gets played
+            CheckLever%();  'Flush lever/joystick during timeout
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
                 
@@ -1898,12 +1918,14 @@ func IdleLoop%()
                 
                 ChangeStateTo(stateInitializeTrials%); 
                 tNextTrial := tNow;  'ready to go
-                nextStateImmed% := 1;  'Go load a new trial now
             endif            
             
             
-               
+            
         case iState% = stateHitReward% then
+            
+            'Increment, if appropriate
+            ChangeThresh(doIncUp%,doIncDown%,doIncLeft%,doIncRight%);
             
             if recHitRewardmL > 0 then
                 RecLogStatus("HitReward", "Giving Hit Reward, size=" + str$(recHitRewardmL) + " mLs");
@@ -1917,7 +1939,7 @@ func IdleLoop%()
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
-                   
+                    
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! STMP is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!");
@@ -1950,6 +1972,9 @@ func IdleLoop%()
             
         case iState% = stateCRReward% then
             
+            'Increment, if appropriate
+            ChangeThresh(doIncUp%,doIncDown%,doIncLeft%,doIncRight%);
+            
             if recCRRewardmL > 0 then
                 RecLogStatus("CRReward", "Giving CR Reward, size=" + str$(recCRRewardmL) + " mLs");
                 if recCEDIsPresent% = 1 then
@@ -1961,7 +1986,7 @@ func IdleLoop%()
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
-                   
+                    
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!!\n");
                         Message("Error in recREWARD%()!!!");
@@ -2041,7 +2066,7 @@ func IdleLoop%()
             Stop%();          
         endcase
         
-    'wend  'close the nextStateImmed% while
+    wend  'close the nextStateImmed% while
     
     
     return iStatus%;  'if iStatus% is 0, the Toolbar() will return
@@ -2201,15 +2226,23 @@ end;
 
 
 
-'A simple function which points to either recLeverDown%() or DebounceLever%() depending on whether the lever is plugged
-'into the TDT
+'A simple function which points to either recLeverDown%() or DebounceLever%() or ReadJoystick%() as appropriate
 func CheckLever%()
     var myret%;  'the return value, 0 if lever is up, 1 if lever is depressed
-    if useTDTforLever% = 1 then
+    docase  'note that in all cases recLeverTime is set within the called function
+    case useTDTforLever% = 1 then
         myret% := recLeverDown%();
-    else
+    case recUseJoystick% = 0 then
+        DebounceLever%(tNow);
         myret% := recLeverState%;  'DebounceLever%() is run at the beginning of each idle loop, do it again if necessary before calling
-    endif;
+    case recUseJoystick% = 1 then
+        ReadJoystick%();  'ReadJoystick needs to call a new function (not AssignJoystickVariables) to get
+        'recLeverState%
+        myret% := recLeverState%;
+    else
+        printlog("Unknown value " + Str$(recUseJoystick%) + " for recUseJoystick%, this is probably your problem!");        
+    endcase
+   
     
     return myret%;
     
