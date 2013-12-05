@@ -106,6 +106,7 @@ const recRewardButton%        := 5;
 const recStopButton%          := 6;
 const recTimingRewardButton%  := 7;
 const recJoystickButton%      := 8;
+const recCalibrationButton%   := 9;
 
 
 ' States and state control vars 
@@ -431,6 +432,7 @@ proc InitializeToolbar()
     ToolbarSet(recStopButton%, "Stop Sampling", Stop%);
     Toolbarset(recTimingRewardButton%, "Timing/Reward", CallTimingReward%);
     Toolbarset(recJoystickButton%, "Joystick", CallJoystick%);
+    ToolbarSet(recCalibrationButton%, "Joystick Calibration", CalibrateJoystick%);  'automatic joystick calibration - make sure power is on to joystick
     
     ' Explicitly set enabled state of things...
     ToolbarEnable(recStartButton%, 1);
@@ -441,6 +443,7 @@ proc InitializeToolbar()
     ToolbarEnable(recStopButton%, 0);
     ToolbarEnable(recTimingRewardButton%, 0);
     ToolbarEnable(recJoystickButton%, 0);
+    ToolbarEnable(recCalibrationButton%, 1);
     
 end;
 
@@ -1305,6 +1308,8 @@ func IdleLoop%()
     var isPlaying%;
     var PWA$;
     var s$;
+    
+    nextStateImmed% := 1;  'obviously we run the damn thing the FIRST time through each idle loop
     
     while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
         
