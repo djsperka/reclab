@@ -150,7 +150,7 @@ func CreateJoystickChannels%()
     ChanTitle$(MemChanJoystickLI%,"JoystickLCenter");
     ChanTitle$(MemChanJoystickUI%,"JoystickUCenter");
     ChanTitle$(MemChanJoystickDI%,"JoystickDCenter");
-    
+    'printlog("Yes, we actually called createjoystickchannels and the first one is %d\n",MemChanJoystickRO%);
     return 1;  'not really doing anything with the return here
 end
 
@@ -244,23 +244,23 @@ func ReadJoystick%()
         startingNewExpt% := 0;  'reset startingNewExpt%
         JoystickReadOnce% := 0;  'and initialize JoystickReadOnce
     endif;
-    
+    'printlog("Voltage crossings are right %f, left %f, up %f, down %f\n",vRightThreshOuter,vLeftThreshOuter,vUpThreshOuter,vDownThreshOuter);
     
     'Define events by threshold crossings; Put event times into the eight channels
-    MemImport(MemChanJoystickRO%,10,LastRunTime-tic2,Now,3,DebounceTime,-vRightThreshOuter);  'Crossing RO thresh going outward
-    MemImport(MemChanJoystickLO%,10,LastRunTime-tic2,Now,2,DebounceTime,vLeftThreshOuter);    'Crossing LO thresh going outward
-    MemImport(MemChanJoystickUO%,11,LastRunTime-tic2,Now,3,DebounceTime,-vUpThreshOuter);     'Crossing UO thresh going outward
-    MemImport(MemChanJoystickDO%,11,LastRunTime-tic2,Now,2,DebounceTime,vDownThreshOuter);    'Crossing DO thresh going outward
-    MemImport(MemChanJoystickRI%,10,LastRunTime-tic2,Now,2,DebounceTime,-vRightThreshInner);  'Crossing RI thresh going inward
-    MemImport(MemChanJoystickLI%,10,LastRunTime-tic2,Now,3,DebounceTime,vLeftThreshInner);    'Crossing LI thresh going inward
-    MemImport(MemChanJoystickUI%,11,LastRunTime-tic2,Now,2,DebounceTime,-vUpThreshInner);     'Crossing UI thresh going inward
-    MemImport(MemChanJoystickDI%,11,LastRunTime-tic2,Now,3,DebounceTime,vDownThreshInner);    'Crossing DI thresh going inward
+    MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vRightThreshOuter);  'Crossing RO thresh going outward
+    MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vLeftThreshOuter);    'Crossing LO thresh going outward
+    MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vUpThreshOuter);     'Crossing UO thresh going outward
+    MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vDownThreshOuter);    'Crossing DO thresh going outward
+    MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vRightThreshInner);  'Crossing RI thresh going inward
+    MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vLeftThreshInner);    'Crossing LI thresh going inward
+    MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vUpThreshInner);     'Crossing UI thresh going inward
+    MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vDownThreshInner);    'Crossing DI thresh going inward
     
     'Determine initial joystick location the very first time ReadJoystick is run, per experiment
     if JoystickReadOnce% = 0 then
         JoystickReadOnce% := 1;  'only do this the very first time the joystick is read
-        tempx := ChanValue(10,0);  'Put the very first X axis value into tempx
-        tempy := ChanValue(11,0);  'Same for Y, tempy
+        tempx := ChanValue(configJoyXChannel%,0);  'Put the very first X axis value into tempx
+        tempy := ChanValue(configJoyYChannel%,0);  'Same for Y, tempy
         LastPos% := 0;
         xstat% := 0;
         ystat% := 0;
@@ -785,6 +785,7 @@ func ReadJoystick%()
             endif;
             LastPos% := JoystickAfter%[ii%];  'Update LastPos%
             view(recDataWindowView%).MemSetItem(MemChanJoystick%,0,TimesArrayAll[ii%],LeverCodes%[],LeverString$);
+        printlog("Move is %s\n",LeverString$);
         next;
         
         'return most recent event and value
@@ -817,7 +818,7 @@ func ReadJoystick%()
         else
             HoldLastEventTime := YTime;
         endif;
-        
+        printlog("And time of %s was %f\n",LeverString$,HoldLastEventTime);
     else  'if there are no real events
         if Now - HoldLastEventTime > 10 then 'if there have been no "real" events in the last 10 seconds
             HoldLastEventTime := Now - 10;  'Update HoldLastEventTime so that we only check for events within
@@ -875,6 +876,7 @@ proc AssignJoystickVariables()
     
     var joyPos%;
     joyPos% := XPos% + (10*YPos%);
+    printlog("joystick position is %d where 10=up 20=down 2=left 1=right\n",joypos%);
     
     if recTrialResponsePosition2% = 7 then 'this is the go/no-go case, as there is no second response
         'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialResponsePosition1,
@@ -1142,9 +1144,10 @@ func CalibrateJoystick%()
     mystr$[0] := "monkey";
     mystr$[1] := "human";
     
-    DlgCreate("Select Joystick Type");
-    DlgList(1,"Type of Joystick",mystr$);
-    ii% := DlgShow(jt%);
+    'DlgCreate("Select Joystick Type");
+    'DlgList(1,"Type of Joystick",mystr$);
+    'ii% := DlgShow(jt%);
+    jt% := 0; 'manual override of joystick, make it 0
     
     if ii% = 1 then
         'get the current offsets, joystickXOffset and joystickYOffset
@@ -1168,7 +1171,7 @@ func CalibrateJoystick%()
         
         'Start sampling, sample for about 5 seconds,
         samplemode(1);   'sets continuous recording
-        jview% := FileNew(0,1+2+4);
+        'jview% := FileNew(0,1+2+4);  'This interferes with the prior FileNew in RecLab
         SampleStart();   'start sampling
         while view(jview%).maxtime() < 5 do
             yield(1);
@@ -1929,6 +1932,8 @@ func GetJoystickDegreesInVoltage(vdcon);
     vLeftThreshOuterMin := LeftThreshOuterMin*vdcon;
     vRightThreshInnerMin := RightThreshInnerMin*vdcon;
     vRightThreshOuterMin := RightThreshOuterMin*vdcon;
+
+    'printlog("voltage value is %f and degree value is %f\n",vUpThreshInner,UpThreshInner);
     return 1;
 end
 

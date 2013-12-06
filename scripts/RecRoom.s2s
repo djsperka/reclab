@@ -959,7 +959,10 @@ func RecExpSelectDialog%()
     else
         levText$ := "  Joystick Selected    ";
     endif;
-    
+
+    'Just DO this, even if we're not using the joystick.  Because I want it to just work.
+    GetJoystickDegreesInVoltage(joystickVoltageConversionFactor);
+
     ' Generate the dialog
     
     DlgCreate("Experiment Selection Dialog",0,0,52,16);

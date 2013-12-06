@@ -279,7 +279,7 @@ proc CreateSampleConfiguration()
         SampleComment$(configJoyYChannel%,"JoystikY");
         SampleTitle$(configJoyYChannel%,"JoystikY");
         'Read joystick offsets
-        GetJoystickOffsets(1);  'there is only one joystick type for Recanzone
+        GetJoystickOffsets(0);  'there is only one joystick type for Recanzone and it is 0
         'Set additional info for joystick channels, notably offset
         SampleCalibrate(configJoyXChannel%,"volt",1,joystickXOffset);
         SampleCalibrate(configJoyYChannel%,"volt",1,joystickYOffset);
@@ -1325,13 +1325,13 @@ func IdleLoop%()
         
         
     'Update the joystick plot every 5 ms
-    printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
+    'printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
         if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 then
             XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
             YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.001,tNow-.006);
-            View(joyview%).XYAddData(joydatachan%,-XJoy,-YJoy);  'both axes need to be "flipped" with negative values to display properly
+            View(joyview%).XYAddData(joydatachan%,XJoy,YJoy);  'do not need to flip axis values
             tLastJoyUpdate := tNow;
-            printlog("Updated joystick voltage with x voltage %f and y voltage %f\n",XJoy,YJoy);
+        'printlog("Updated joystick voltage with x voltage %f and y voltage %f\n",XJoy,YJoy);
         endif;
         
         
@@ -2250,7 +2250,7 @@ func CheckLever%()
         printlog("Unknown value " + Str$(recUseJoystick%) + " for recUseJoystick%, this is probably your problem!");        
     endcase
    
-    
+    printlog("recleverstate is %d and reclevertime is %f\n",recLeverState%,recLeverTime);
     return myret%;
     
 end;
