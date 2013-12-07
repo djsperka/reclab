@@ -240,21 +240,21 @@ func ReadJoystick%()
     'If we are starting a new experiment, there may be too many (over 1000) joystick events.
     'In order to avoid overflowing JoystickAfter%[], just ignore any previous joystick events
     if startingNewExpt% = 1 then  'If we are starting a new experiment
-        LastEventTime := Now;  'Override HoldLastCheckTime, change to Now, events during Passive will be ignored
+        LastEventTime := max(Now-.005, 0);  'Override HoldLastCheckTime, change to Now-.005 (floored at 0), events during Passive will be ignored
         startingNewExpt% := 0;  'reset startingNewExpt%
         JoystickReadOnce% := 0;  'and initialize JoystickReadOnce
     endif;
     'printlog("Voltage crossings are right %f, left %f, up %f, down %f\n",vRightThreshOuter,vLeftThreshOuter,vUpThreshOuter,vDownThreshOuter);
     
     'Define events by threshold crossings; Put event times into the eight channels
-    MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vRightThreshOuter);  'Crossing RO thresh going outward
-    MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vLeftThreshOuter);    'Crossing LO thresh going outward
-    MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vUpThreshOuter);     'Crossing UO thresh going outward
-    MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vDownThreshOuter);    'Crossing DO thresh going outward
-    MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vRightThreshInner);  'Crossing RI thresh going inward
-    MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vLeftThreshInner);    'Crossing LI thresh going inward
-    MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vUpThreshInner);     'Crossing UI thresh going inward
-    MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vDownThreshInner);    'Crossing DI thresh going inward
+    MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vRightThreshOuter);  'Crossing RO thresh going outward
+    MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vLeftThreshOuter);    'Crossing LO thresh going outward
+    MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vUpThreshOuter);     'Crossing UO thresh going outward
+    MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vDownThreshOuter);    'Crossing DO thresh going outward
+    MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vRightThreshInner);  'Crossing RI thresh going inward
+    MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vLeftThreshInner);    'Crossing LI thresh going inward
+    MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vUpThreshInner);     'Crossing UI thresh going inward
+    MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vDownThreshInner);    'Crossing DI thresh going inward
     
     'Determine initial joystick location the very first time ReadJoystick is run, per experiment
     if JoystickReadOnce% = 0 then

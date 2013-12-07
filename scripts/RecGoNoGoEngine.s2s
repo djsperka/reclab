@@ -768,7 +768,7 @@ func Start%()
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
         SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample
         SampleText(recExptText$);  'put in the experiment type
-        startingNewExpt% := 0;  'this is the FIRST experiment, not a new experiment
+        startingNewExpt% := 1;  'should be OK to start here
     case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
         'virtually start sampling
         recCurrentlySampling% := 1;
