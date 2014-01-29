@@ -255,6 +255,7 @@ var recInterruptTO;
     
 'Joystick variables    
 var recUseJoystick%;                'Do we use the joystick, 1 = yes, 0 = no
+var recIsGoNoGo%;                   'Is experiment go/no-go, 1 = yes, 0 = no, forced choice (two alternative)    
 var recTrialInitPosition%:=1;       'Joystick trial initiation position; 0/1/2/3/4/5/6 = center/down/up/right/left/x/y, default to down
 var recTrialResponsePosition1%;     'Joystick position of response 1, same values as init above
 var recTrialResponsePosition2%:=7;  'Joystick position of response 2, 0/1/2/3/4/5/6/7, where 7 = no second response position, default to no second response position
@@ -948,7 +949,7 @@ func RecExpSelectDialog%()
     spkArr$[0] := "None Selected";
     spkArr$[1] := "15";
     spkArr$[2] := "16";
-    spkArr$[3] := "31";
+    spkArr$[3] := "11";
     
     recExpSelectDialogAllowOK% := 0;  'Disable OK button to start, force selection of experiment
     
@@ -999,7 +1000,7 @@ func RecExpSelectDialog%()
         case recSpeakerArrayIndex% = 2 then
             recNSpeakers% := 16;
         case recSpeakerArrayIndex% = 3 then
-            recNSpeakers% := 31;  
+            recNSpeakers% := 11;  
         endcase;
     
         'For the love of all that is holy DO NOT DO THIS!
@@ -1946,7 +1947,7 @@ func RecExpLeverJoystickDialog%()
     
     var i%;
     var status% := 0;
-    var trwid% := 42;
+    var trwid% := 45;
     var joyStr$[2];
     var initStr$[7];
     var resp1Str$[7];
@@ -1954,6 +1955,8 @@ func RecExpLeverJoystickDialog%()
     var c1%;
     c1% := trwid%-15;
     var c1txt% := 2;
+    var nxax%;
+    var nyax%;
     
     'This variable will allow us to set limits in a threshold subfunction based on whether or not
     'incrementing is happening, must set this to 0 before exiting function
@@ -1962,7 +1965,7 @@ func RecExpLeverJoystickDialog%()
     joyStr$[0] := "Lever";
     joyStr$[1] := "Joystick";
     
-    initStr$[0] := "Center";
+    initStr$[0] := "Not Allowed";
     initStr$[1] := "Down";
     initStr$[2] := "Up";
     initStr$[3] := "Right";
@@ -1994,26 +1997,85 @@ func RecExpLeverJoystickDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Joystick/Lever Dialog", 0, 0, trwid%, 10);
+    DlgCreate("Joystick/Lever Dialog", 0, 0, trwid%, 11);
     DlgList(1,20,joyStr$[],2,c1%-6,1); DlgText("Response Device",c1txt%,1);
     DlgList(2,20,initStr$[],7,c1%-6,2); DlgText("Trial Initiation Position",c1txt%,2);
-    DlgList(3,20,resp1Str$[],7,c1%-6,3); DlgText("Response 1 Position",c1txt%,3);
-    DlgList(4,20,resp2Str$[],8,c1%-6,4); DlgText("Response 2 Position",c1txt%,4);
-    DlgButton(2,"Joystick Thresholds",SetJoystickThresholdDialog%,2,5);
-    DlgCheck(5,"Do Increments",2,6);
-    DlgButton(3,"Joystick Increments",SetJoystickThresholdIncrementDialog%,2,7);
-    DlgButton(4,"Joystick Limits",SetJoystickThresholdLimitDialog%,2,8);
+    DlgCheck(6,"Expt is Go/No-Go",2,3);
+    DlgList(3,20,resp1Str$[],7,c1%-6,4); DlgText("Response 1 (S2) Position",c1txt%,4);
+    DlgList(4,20,resp2Str$[],8,c1%-6,5); DlgText("Response 2 (S1) Position",c1txt%,5);
+    DlgButton(2,"Joystick Thresholds",SetJoystickThresholdDialog%,2,6);
+    DlgCheck(5,"Do Increments",2,7);
+    DlgButton(3,"Joystick Increments",SetJoystickThresholdIncrementDialog%,2,8);
+    DlgButton(4,"Joystick Limits",SetJoystickThresholdLimitDialog%,2,9);
     
     'set dialog changed function
     DlgAllow(0xffff, 0, RecExpLeverJoystickDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recUseJoystick%,recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recDoIncrements%);
+    i%:=DlgShow(recUseJoystick%,recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recDoIncrements%,recIsGoNoGo%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         RecExpSelectDialogChanged%(0); 'this might work?  Yep!  This changes the button label on the main dialog, if necessary
-        if recTrialInitPosition% = recTrialResponsePosition1% or recTrialInitPosition% = recTrialResponsePosition2% or recTrialResponsePosition1% = recTrialResponsePosition2% then
+        
+        'here's an attempt at being clever and saving some time
+        'the following three DOCASES just tally up the number of times a certain position (e.g. "up", "left")
+        'is called for in the three boxes.  Many results of 2 or lower are legal; any result of 3 or higher
+        'is illegal; any result of 0 is illegal in forced choice.
+        docase
+        case recTrialInitPosition% = 3 or recTrialInitPosition% = 4 then 'left OR right
+            nxax% := nxax% + 1;
+        case recTrialInitPosition% = 1 or recTrialInitPosition% = 2 then 'up OR down
+            nyax% := nyax% +1;
+        case recTrialInitPosition% = 5 then 'both x-axis used
+            nxax% := nxax% +2;  
+        case recTrialInitPosition% = 6 then 'both y-axis used
+            nyax% := nyax% +2;
+        endcase
+        
+        docase
+        case recTrialResponsePosition1% = 3 or recTrialResponsePosition1% = 4 then 'left OR right
+            nxax% := nxax% + 1;
+        case recTrialResponsePosition1% = 1 or recTrialResponsePosition1% = 2 then 'up OR down 
+            nyax% := nyax% +1;
+        case recTrialResponsePosition1% = 5 then 'both x-axis used
+            nxax% := nxax% +2;  
+        case recTrialResponsePosition1% = 6 then 'both y-axis used
+            nyax% := nyax% +2;
+        endcase
+        
+        docase
+        case recTrialResponsePosition2% = 3 or recTrialResponsePosition2% = 4 then 'left OR right
+            nxax% := nxax% + 1;
+        case recTrialResponsePosition2% = 1 or recTrialResponsePosition2% = 2 then 'up OR down
+            nyax% := nyax% +1;
+        case recTrialResponsePosition2% = 5 then 'both x-axis used
+            nxax% := nxax% +2;  
+        case recTrialResponsePosition2% = 6 then 'both y-axis used
+            nyax% := nyax% +2;
+        endcase
+        
+        docase
+        case recIsGoNoGo% = 0 and recTrialResponsePosition2% = 7 then
+            message("Error - Response Position 2 cannot be 'None' for Forced Choice");
+            RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
+            status% := 1
+        case nyax% > 2 or nxax% > 2 then
+            message("Error - Init/resp1/resp2 positions cannot coincide!");
+            RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
+            status% := 1;
+        case recIsGoNoGo% = 0 and (nyax% = 0 or nxax% = 0) then
+            message("Error - Forced choice positions can't be on a line (think about it)!");
+            'Note that if the origin were allowed to be somewhere other than the center (which it's not)
+            'then the trial init position COULD be the center (currently can't be) and then this case
+            'would no longer apply
+            RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
+            status% := 1;
+        case recTrialInitPosition% = 0 then
+            message("Error - You selected 'Not Allowed', you turd!");
+            RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
+            status% := 1
+        case recTrialInitPosition% = recTrialResponsePosition1% or recTrialInitPosition% = recTrialResponsePosition2% or recTrialResponsePosition1% = recTrialResponsePosition2% then
             message("Error - Init/resp1/resp2 positions cannot coincide!");
             RecExpLeverJoystickDialog%();  'call recursively - you can eat your soup right out of the ash trays if you wanna, it's OK, they're clean!
             status% := 1;
@@ -2022,34 +2084,132 @@ func RecExpLeverJoystickDialog%()
             'apply the changed values to the voltage versions of the variables            
             GetJoystickDegreesInVoltage(joystickVoltageConversionFactor);  
             status% := 1;
+        endcase;
+        
+'This is an older version, using very simple rules        
+'        'set incrementing variables, start by zeroing everything, then add change what is needed
+'        'The current increment/decrement rules are as follows: 
+'        'Increment on completion of a correct trial (H/CR)
+'        'Decrement on Lazy Monkey Timeout for non-initiation of trial
+'        'Do Not adjust on Lazy Monkey Timeout for non-return to center
+'        'Do Not adjust in any other circumstance
+'        doIncUp% := 0;
+'        doIncDown% := 0;
+'        doIncLeft% := 0;
+'        doIncRight% := 0;
+'        if recDoIncrements% = 1 then
+'            'right now, only the init position can be set, this will require more thought if response position
+'            'can be set in the future
+'            if recTrialInitPosition% = 1 or recTrialInitPosition% = 6 then
+'                doIncDown% := 1;
+'            endif;
+'            if recTrialInitPosition% = 2 or recTrialInitPosition% = 6 then
+'                doIncUp% := 1;
+'            endif;
+'            if recTrialInitPosition% = 3 or recTrialInitPosition% = 5 then
+'                doIncRight% := 1;
+'            endif;
+'            if recTrialInitPosition% = 4 or recTrialInitPosition% = 5 then
+'                doIncLeft% := 1;
+'            endif;            
+'        endif;
+        
+        'Set incrementing variables, start by zeroing everything then change what is needed
+        '[0] = up, [1] = down, [2] = left, [3] = right
+        'The current increment/decerement rules are as follows:
+        'Increment trial initiation direction on successful trial initiation
+        'Decrement trial initiation direction on failed trial initiation
+        'Increment S2 response direction on Hit
+        'Decrement S2 response direction on Passive Miss (nothing on Active Miss)
+        'Increment S1 response direction on CR
+        'Decrement S1 response direction on Passive FA (nothing on Active FA)
+        ArrConst(doIncTrialInit%[],0);
+        ArrConst(doDecTrialInit%[],0);
+        ArrConst(doIncHit%[],0);
+        ArrConst(doDecPassiveMiss%[],0);
+        ArrConst(doIncCR%[],0);
+        ArrConst(doDecPassiveFA%[],0);
+        if recDoIncrements% = 1 then
+            docase
+            case recTrialInitPosition% = 1 then
+                doIncTrialInit%[1] := 1;
+                doDecTrialInit%[1] := -1;
+            case recTrialInitPosition% = 2 then
+                doIncTrialInit%[0] := 1;
+                doDecTrialInit%[0] := -1;
+            case recTrialInitPosition% = 3 then
+                doIncTrialInit%[3] := 1;
+                doDecTrialInit%[3] := -1;
+            case recTrialInitPosition% = 4 then
+                doIncTrialInit%[2] := 1;
+                doDecTrialInit%[2] := -1;
+            case recTrialInitPosition% = 5 then
+                doIncTrialInit%[2] := 1;
+                doDecTrialInit%[2] := -1;
+                doIncTrialInit%[3] := 1;
+                doDecTrialInit%[3] := -1;    
+            case recTrialInitPosition% = 6 then
+                doIncTrialInit%[0] := 1;
+                doDecTrialInit%[0] := -1;
+                doIncTrialInit%[1] := 1;
+                doDecTrialInit%[1] := -1;
+            endcase
+            'Note that because there is no logical to inc/dec a return to center (it just conflicts with
+            'the trial initiation inc/dec), these docases are structured exactly the same as the trial init one above
+            'This is S2 response direction
+            docase
+            case recTrialResponsePosition1% = 1 then
+                doIncHit%[1] := 1;
+                doDecPassiveMiss%[1] := -1;
+            case recTrialResponsePosition1% = 2 then
+                doIncHit%[0] := 1;
+                doDecPassiveMiss%[0] := -1;
+            case recTrialResponsePosition1% = 3 then
+                doIncHit%[3] := 1;
+                doDecPassiveMiss%[3] := -1;
+            case recTrialResponsePosition1% = 4 then
+                doIncHit%[2] := 1;
+                doDecPassiveMiss%[2] := -1;
+            case recTrialResponsePosition1% = 5 then
+                doIncHit%[2] := 1;
+                doDecPassiveMiss%[2] := -1;
+                doIncHit%[3] := 1;
+                doDecPassiveMiss%[3] := -1;    
+            case recTrialResponsePosition1% = 6 then
+                doIncHit%[0] := 1;
+                doDecPassiveMiss%[0] := -1;
+                doIncHit%[1] := 1;
+                doDecPassiveMiss%[1] := -1;
+            endcase    
+            'This is S1 response direction
+            docase
+            case recTrialResponsePosition2% = 1 then
+                doIncCR%[1] := 1;
+                doDecPassiveFA%[1] := -1;
+            case recTrialResponsePosition2% = 2 then
+                doIncCR%[0] := 1;
+                doDecPassiveFA%[0] := -1;
+            case recTrialResponsePosition2% = 3 then
+                doIncCR%[3] := 1;
+                doDecPassiveFA%[3] := -1;
+            case recTrialResponsePosition2% = 4 then
+                doIncCR%[2] := 1;
+                doDecPassiveFA%[2] := -1;
+            case recTrialResponsePosition2% = 5 then
+                doIncCR%[2] := 1;
+                doDecPassiveFA%[2] := -1;
+                doIncCR%[3] := 1;
+                doDecPassiveFA%[3] := -1;    
+            case recTrialResponsePosition2% = 6 then
+                doIncCR%[0] := 1;
+                doDecPassiveFA%[0] := -1;
+                doIncCR%[1] := 1;
+                doDecPassiveFA%[1] := -1;
+            endcase    
+                
+                
         endif;
         
-        'set incrementing variables, start by zeroing everything, then add change what is needed
-        'The current increment/decrement rules are as follows: 
-        'Increment on completion of a correct trial (H/CR)
-        'Decrement on Lazy Monkey Timeout for non-initiation of trial
-        'Do Not adjust on Lazy Monkey Timeout for non-return to center
-        'Do Not adjust in any other circumstance
-        doIncUp% := 0;
-        doIncDown% := 0;
-        doIncLeft% := 0;
-        doIncRight% := 0;
-        if recDoIncrements% = 1 then
-            'right now, only the init position can be set, this will require more thought if response position
-            'can be set in the future
-            if recTrialInitPosition% = 1 or recTrialInitPosition% = 6 then
-                doIncDown% := 1;
-            endif;
-            if recTrialInitPosition% = 2 or recTrialInitPosition% = 6 then
-                doIncUp% := 1;
-            endif;
-            if recTrialInitPosition% = 3 or recTrialInitPosition% = 5 then
-                doIncRight% := 1;
-            endif;
-            if recTrialInitPosition% = 4 or recTrialInitPosition% = 5 then
-                doIncLeft% := 1;
-            endif;            
-        endif;
         
     else
         status% := 1;
@@ -2081,12 +2241,14 @@ func RecExpLeverJoystickDialogChanged%(item%)
         DlgEnable(0,3);
         DlgEnable(0,4);
         DlgEnable(0,5);
+        DlgEnable(0,6);
         DlgEnable(0,-2);  'this is the threshold dialog button
     else
         DlgEnable(1,2); 'if we're using the joystick, enbable the init position, etc.
         DlgEnable(1,3);
         DlgEnable(1,4);
         DlgEnable(1,5);
+        DlgEnable(1,6);
         DlgEnable(1,-2);  'this is the threshold dialog button
     endif;
     
@@ -2099,14 +2261,16 @@ func RecExpLeverJoystickDialogChanged%(item%)
     endif
     
     
-    'FOR NOW we aren't really doing anything but go/no-go lever stuff, so set and disable the response
-    'position 1 and response position 2 lists
-    DlgValue(3,0); 'set the response position 1 to "center"
-    DlgValue(4,7); 'set the response position 2 to "none"
-    DlgEnable(0,3); 'and disable these
-    DlgEnable(0,4);
-    'These above lines can be eliminated if/when the joystick is expanded to do more than go/no-go
-    'but obviously no code to interpret the other values exists
+    if DlgValue(6) = 1 then  'if it's go/no-go
+        DlgValue(3,0); 'set the response position 1 to "center"
+        DlgValue(4,7); 'set the response position 2 to "none"
+        DlgEnable(0,3); 'and disable these
+        DlgEnable(0,4);
+    else
+        DlgEnable(1,3); 'enable these
+        DlgEnable(1,4);
+    endif;
+    
     
     return 1;
 end
@@ -2129,6 +2293,7 @@ proc RecLeverJoystickGetParams()
     key$:="Reclab\\LeverJoystick";
 
     recUseJoystick% := GetIntRegistryValue%(key$, "UseJoystick", recUseJoystick%);
+    recIsGoNoGo% := GetIntRegistryValue%(key$, "IsGoNoGo", recIsGoNoGo%);
     recTrialInitPosition% := GetIntRegistryValue%(key$, "TrialInitPosition", recTrialInitPosition%);
     recTrialResponsePosition1% := GetIntRegistryValue%(key$, "TrialResponsePosition1", recTrialResponsePosition1%);
     recTrialResponsePosition2% := GetIntRegistryValue%(key$, "TrialResponsePosition2", recTrialResponsePosition2%);
@@ -2155,6 +2320,7 @@ proc RecLeverJoystickSaveParams()
     key$:="Reclab\\LeverJoystick";
     
     SetIntRegistryValue(key$, "UseJoystick", recUseJoystick%);
+    SetIntRegistryValue(key$, "IsGoNoGo", recIsGoNoGo%);
     SetIntRegistryValue(key$, "TrialInitPosition", recTrialInitPosition%);
     SetIntRegistryValue(key$, "TrialResponsePosition1", recTrialResponsePosition1%);
     SetIntRegistryValue(key$, "TrialResponsePosition2", recTrialResponsePosition2%);

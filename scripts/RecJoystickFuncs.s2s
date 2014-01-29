@@ -104,6 +104,8 @@ var vRightThreshOuterMin;
 
 var OneAxis%;               'can be used to "turn off" off-axis joystick interrupts for some response devices 
 var Grow%;                  'determines the increment type: if 1, incremements/decrements will grow/shrink the gap
+                            'for the time being the logic is being written such that Grow% is expected to be 0.  It's
+                            'really just a holdover from Sutter lab
 'between center and response areas; if 2, increments/decrements will move the gap
 'away from/towards the center
 var xstat%:=1;              'current status of x position, 1 is center, 0 is left, 2 is right
@@ -855,7 +857,7 @@ proc AssignJoystickVariables()
     'recTrialResponsePosition1%, same as above, currently FORCED to 0 = center
     'recTrialResponsePosition2%, same as above but includes 7 = none, currently forced to 7 = none
     
-    'Thus, the joystick is broken into nine regions, but only five of them are legal start/end points.
+    'Thus, the joystick is broken into nine regions, but only five of them are legal start points.
     'An easy way to indicate which position the joystick is in is to multiply the Y value by 10 and add
     'to the X value
     '
@@ -871,46 +873,142 @@ proc AssignJoystickVariables()
     '       |  down  |
     '       |  (y)   |
     '
-    'The four corner regions are not legal start/end points and are basically used to indicate that the
-    'joystick is in an illegal position for now
+    'The four corner regions are not legal start points.  However, they ARE legal end points.  Imagine a task;
+    'the joystick begins in the origin(0) because that's the rules; the joystick is moved down to the trial
+    'initiation position (20); response 1 is to the right and response 2 is to the left.  Obviously response 1
+    'will go to lower right (21) not center right (1).  Etc.  However, it will be far easier and more compact
+    'to code this so that ANY right position (11, 1, 21) would suffice.  Barring a super-fast movement, it will 
+    'be impossible to get into (11) directly from (20) and virtually impossible to get to (1) directly from (20),
+    'so it's probably nothing to worry about.  Let all valid positions (row or column) be accepted on the response
+    '(except for response position in the center, because that is merely a return from a non-corner). 
     
     var joyPos%;
     joyPos% := XPos% + (10*YPos%);
     printlog("joystick position is %d where 10=up 20=down 2=left 1=right\n",joypos%);
     
-    if recTrialResponsePosition2% = 7 then 'this is the go/no-go case, as there is no second response
-        'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialResponsePosition1,
+    if recIsGoNoGo% = 1 then 'this is the go/no-go case
+        'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialInitPosition,
         '2 if in any other position, 2 will act as FA or miss depending on context
         docase
         'joystick in center
         case joyPos% = 0 then
             recLeverState% := 0;
-            recLeverTime := max(XTime,YTime);  'we don't know where it came from, barring weird circular action this will be correct
+            recLeverTime := max(XTime,YTime);  'we don't know where it came from
         'joystick in right    
-        case joyPos% = 1 and (recTrialResponsePosition1% = 3 or recTrialResponsePosition1% = 5) then
+        case joyPos% = 1 and (recTrialInitPosition% = 3 or recTrialInitPosition% = 5) then
             recLeverState% := 1;
             recLeverTime := XTime;
         'joystick in left    
-        case joyPos% = 2 and (recTrialResponsePosition1% = 4 or recTrialResponsePosition1% = 5) then
+        case joyPos% = 2 and (recTrialInitPosition% = 4 or recTrialInitPosition% = 5) then
             recLeverState% := 1; 
             recLeverTime := XTime;            
         'joystick in down    
-        case joyPos% = 20 and (recTrialResponsePosition1% = 1 or recTrialResponsePosition1% = 6) then
+        case joyPos% = 20 and (recTrialInitPosition% = 1 or recTrialInitPosition% = 6) then
             recLeverState% := 1;
             recLeverTime := YTime;
         'joystick in up    
-        case joyPos% = 10 and (recTrialResponsePosition1% = 2 or recTrialResponsePosition1% = 6) then
+        case joyPos% = 10 and (recTrialInitPosition% = 2 or recTrialInitPosition% = 6) then
             recLeverState% := 1; 
             recLeverTime := YTime;            
         'joystick in one of the corner positions, or in an inappropriate position for the specified response    
         else
-            recLeverState% := 2;
+            recLeverState% := -1;
             recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
         endcase
         
     else 'this is a forced choice scenario
-        'nothing is written here, nor is the syntax worked out
-        'currently this is disallowed - no forced choice - but the dialog box has the bits ready to go
+        
+        'set whether joystick is in origin
+        if joyPos% = 0 then 
+            inOrigin% := 1;
+            recLeverTime := max(XTime,YTime);  'we don't know where it came from
+        else
+            inOrigin% := 0;
+        endif;
+        
+        'set whether joystick is in trial init position
+        docase            
+        'joystick is right and in trial init position  
+        case joyPos% = 1 and (recTrialInitPosition% = 3 or recTrialInitPosition% = 5) then
+            inTrialInit% := 1;
+            recLeverTime := XTime;
+        'joystick is left and in trial init position      
+        case joyPos% = 2 and (recTrialInitPosition% = 4 or recTrialInitPosition% = 5) then
+            inTrialInit% := 1; 
+            recLeverTime := XTime;            
+        'joystick is down and in trial init position      
+        case joyPos% = 20 and (recTrialInitPosition% = 1 or recTrialInitPosition% = 6) then
+            inTrialInit% := 1;
+            recLeverTime := YTime;
+        'joystick is up and in trial init position      
+        case joyPos% = 10 and (recTrialInitPosition% = 2 or recTrialInitPosition% = 6) then
+            inTrialInit% := 1; 
+            recLeverTime := YTime;            
+        'joystick in one of the corner positions, or in an inappropriate position for the specified response    
+        else
+            inTrialInit% := 0;
+            recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
+        endcase
+        
+        'set whether joystick is in trial response position 1
+        docase
+        'joystick in center and trial response position is in center
+        case joyPos% = 0 and recTrialResponsePosition1% = 0 then
+            inResponse1% := 1;
+            recLeverTime := max(XTime,YTime);  'we don't know where it came from
+        'joystick is right    
+        case XPos% = 1 and (recTrialResponsePosition1% = 3 or recTrialResponsePosition1% = 5) then
+            inResponse1% := 1;
+            recLeverTime := XTime;
+        'joystick is left    
+        case XPos% = 2 and (recTrialResponsePosition1% = 4 or recTrialResponsePosition1% = 5) then
+            inResponse1% := 1; 
+            recLeverTime := XTime;            
+        'joystick is down    
+        case YPos% = 2 and (recTrialResponsePosition1% = 1 or recTrialResponsePosition1% = 6) then
+            inResponse1% := 1;
+            recLeverTime := YTime;
+        'joystick is up    
+        case YPos% = 1 and (recTrialResponsePosition1% = 2 or recTrialResponsePosition1% = 6) then
+            inResponse1% := 1; 
+            recLeverTime := YTime;            
+        'joystick in one of the corner positions, or in an inappropriate position for the specified response    
+        else
+            inResponse1% := 0;
+            'recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
+            'time should not matter here
+        endcase
+        
+        
+        'set whether joystick is in trial response position 2
+        docase
+        'joystick in center and trial response position is in center
+        case joyPos% = 0 and recTrialResponsePosition2% = 0 then
+            inResponse2% := 1;
+            recLeverTime := max(XTime,YTime);  'we don't know where it came from
+        'joystick is right    
+        case XPos% = 1 and (recTrialResponsePosition2% = 3 or recTrialResponsePosition2% = 5) then
+            inResponse2% := 1;
+            recLeverTime := XTime;
+        'joystick is left    
+        case XPos% = 2 and (recTrialResponsePosition2% = 4 or recTrialResponsePosition2% = 5) then
+            inResponse2% := 1; 
+            recLeverTime := XTime;            
+        'joystick is down    
+        case YPos% = 2 and (recTrialResponsePosition2% = 1 or recTrialResponsePosition2% = 6) then
+            inResponse2% := 1;
+            recLeverTime := YTime;
+        'joystick is up    
+        case YPos% = 1 and (recTrialResponsePosition2% = 2 or recTrialResponsePosition2% = 6) then
+            inResponse2% := 1; 
+            recLeverTime := YTime;            
+        'joystick in one of the corner positions, or in an inappropriate position for the specified response    
+        else
+            inResponse2% := 0;
+            'recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
+            'time should not matter here
+        endcase
+        
     endif;
     
     
@@ -1195,6 +1293,30 @@ func CalibrateJoystick%()
     
     return 1;  'return to toolbar
 end;
+
+
+
+
+
+'================================== Call ChangeThresh ==============================
+'This simple function just serves as a way to call ChangeThresh using a single 1x4 vector
+'instead of four separate inputs - useful for calling ChangeThresh when the direction of
+'the responses is not hardcoded
+func ChangeThresh2(in%[])
+    var a%;
+    var b%;
+    var c%;
+    var d%;
+    
+    a% := in%[0];
+    b% := in%[1];
+    c% := in%[2];
+    d% := in%[3];
+    
+    ChangeThresh(a%,b%,c%,d%);  'Super simple.  Works in a test.
+    
+end
+
 
 
 
