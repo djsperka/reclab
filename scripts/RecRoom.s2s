@@ -2241,8 +2241,10 @@ func RecExpLeverJoystickDialogChanged%(item%)
         DlgEnable(0,3);
         DlgEnable(0,4);
         DlgEnable(0,5);
+        DlgValue(6,1);
         DlgEnable(0,6);
         DlgEnable(0,-2);  'this is the threshold dialog button
+        
     else
         DlgEnable(1,2); 'if we're using the joystick, enbable the init position, etc.
         DlgEnable(1,3);

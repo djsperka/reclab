@@ -298,8 +298,8 @@ proc CreateSampleConfiguration()
         joyview% := FileNew(12);  'open an XY window
         'Create a new channel in the XY view to display the fixation point
         joydatachan% := XYSetChan(0);
-        XRange(-2.5,2.5);  'set XRange
-        YRange(-2,-2.5,2.5);  'set YRange, all visible channels
+        XRange(-2.75,2.75);  'set XRange
+        YRange(-2,-2.75,2.75);  'set YRange, all visible channels
         XYDrawMode(0,5,0);  'turns off automatic axis range mode
         WindowVisible(1);  'make window visible
         'Window(75, 55, 100, 100); 'set to lower 16th of screen
