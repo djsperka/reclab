@@ -73,8 +73,8 @@ end
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc DeliverRewardCED(iMS%)
+    SampleSeqVar(1, iMS%);  'putting this before to give a bit of time in case there's no delay before SafeSampleKey
     PrintLog("Reward %d\n", iMS%);
-    SampleSeqVar(1, iMS%);
     SafeSampleKey("R");
     'Yield(); YieldSystem(iMS%/1000.0);
     return;
