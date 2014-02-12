@@ -446,13 +446,13 @@ while recReadyToQuit% = 0 do
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
             recExptText$ := "Running Cueing "; '+ recExptText$???
-            'NYI
+            'Not Yet Iimplemented
             'Copy from load version of AM Disc when cueing is ready
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 1 then  'Generating stims
             recExptText$ := "Running Cueing "; '+ recExptText$???
-            'NYI
+            'Not Yet Implemented
             'Copy from generate version of AM Disc when cueing is ready
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
@@ -1377,6 +1377,7 @@ func RecExpFRADialog%()
     var i%;
     var status% := 0;  
     var inds%[10];
+    var checkOK% := 1;
     var j%;
     for j% := 0 to 9 do
         inds%[j%] := j%;
@@ -1473,12 +1474,22 @@ func RecExpFRADialog%()
                 recRateLevelNRepeats%,recFRANRepeats%,recFRAFMSweepRepeats%,recFRAFMSweepStart%,
                 recFRAFMSweepEnd%,recFRAFMSweepDur1%,recFRAFMSweepDur2%,recFRAFMSweepDur3%,recFRAFMSweepDur4%,
                 recFRAFMSweepDur5%);
-
     
-    
+    'make sure the dialog values are OK
+    docase
+    case recRateLeveldBLow = recRateLeveldBHigh then
+        message("Low and High dB level for noise cannot be the same value!");
+        checkOK% := 0;
+    case recFRATonedBLow = recFRATonedBHigh then
+        message("Low and High dB level for tone pips cannot be the same value!");
+        checkOK% := 0;
+    case recFRAToneFreqLow = recFRAToneFreqHigh then
+        message("Low and High frequency for tone pips cannot be the same value!");
+        checkOK% := 0;
+    endcase
     
     ' If user hit OK then save parameters (and return 1). 
-	if i% = 1 then
+	if i% = 1 and checkOK% = 1 then
         ' Recalculate dB steps, Freq. steps based on dialog values
         GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
         GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
@@ -1543,8 +1554,10 @@ func RecExpFRADialogChanged%(item%)
         'Update values in variables
         recRateLeveldBLow := DlgValue(2);
         recRateLeveldBHigh := DlgValue(3);
-        'Recalculate linear progression
-        GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
+        'Recalculate linear progression, if values are not the same
+        if recRateLeveldBLow <> recRateLeveldBHigh then
+            GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
+        endif;
         'Update strings
         recRLList1$ := StringifyProgression2$(5, recRateLeveldBList[0:5], inds%[],1);
         recRLList2$ := StringifyProgression2$(5, recRateLeveldBList[5:5], inds%[],1);
@@ -1555,8 +1568,10 @@ func RecExpFRADialogChanged%(item%)
         'Update values in variables
         recFRATonedBLow := DlgValue(4);
         recFRATonedBHigh := DlgValue(5);
-        'Recalculate linear progression
-        GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
+        'Recalculate linear progression, if values are not the same
+        if recFRATonedBLow <> recFRATonedBHigh then
+            GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
+        endif;
         'Update strings
         recFRAdBList1$ := StringifyProgression2$(5, recFRAdBList[0:5], inds%[],1);
         recFRAdBList2$ := StringifyProgression2$(5, recFRAdBList[5:5], inds%[],1);
@@ -1568,7 +1583,9 @@ func RecExpFRADialogChanged%(item%)
         recFRAToneFreqLow := DlgValue(6);
         recFRAToneFreqHigh := DlgValue(7);
         'Recalculate log progression
-        GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);
+        if recFRAToneFreqLow <> recFRAToneFreqHigh then
+            GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);
+        endif;
         'Update strings
         recFRAFreqList1$ := StringifyProgression2$(10, recFRAFreqList[0:10], inds%[],0);
         recFRAFreqList2$ := StringifyProgression2$(10, recFRAFreqList[10:10], inds%[],0);

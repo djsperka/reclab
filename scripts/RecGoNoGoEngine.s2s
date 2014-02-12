@@ -232,6 +232,7 @@ func RunGoNoGoEngine%()
     ' to our state-logic loop and gets things going.
 
     InitializeToolbar();
+    ToolbarSet(0, "");  'explicitly set the idle function to nothing - for some reason on second/third/etc. expts. the idle function is kicking in early even though I don't think it should be active yet
     printlog("Toolbar initialized\n");
     Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar; the experiment will be here most of the time
 
@@ -782,13 +783,16 @@ func Start%()
     case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
         'virtually start sampling
         recCurrentlySampling% := 1;
-        printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
+        printlog("'Sampling' started\n");  ' Tell her about it, tell her everything you feel
         SampleText(recExptText$);  'put in the experiment type
         startingNewExpt% := 1;  'this allows a reset of joystick event checking
     endcase
     
     ' Set idle function
     ToolbarSet(0, "", IdleLoop%);
+    
+    ' Set iState to start
+    iState% := stateStart%;    
     
     return 1;
 end
@@ -1055,9 +1059,9 @@ end;
 '
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc RecLogStatus(stateName$, msg$)
-    if recDebug% = 1 then
+    'if recDebug% = 1 then
         PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tStateStart) + " " + msg$ + "\n");
-    endif
+    'endif
 end
 
 
@@ -1189,7 +1193,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1223,7 +1227,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    if useTDTforLever% = 1 then  'turn off LED
+                    if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                         recTDTLEDOff%();
                     else
                         SafeSampleKey("M");
@@ -1447,7 +1451,9 @@ func IdleLoop%()
                 'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
                 if inTrialInit% = 1 then
                     SampleKey("S"); 'stop blink sequence immediately
-                    SafeSampleKey("L"); 'turn on LED for fixpt
+                    if recFixLED% = 1 then
+                        SafeSampleKey("L"); 'turn on LED for fixpt
+                    endif;
                     RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                     'Increment, if appropriate
                     ChangeThresh2(doIncTrialInit%[]);
@@ -1474,6 +1480,9 @@ func IdleLoop%()
                     if recCEDIsPresent% = 1 and recActive% = 1 then
                         stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
                         'Will leave LED on once lever is down
+                        if recFixLED% = 0 then
+                            SafeSampleKey("M"); 'turn LED off if we are not using it for fixation
+                        endif;
                     else
                         stmp% := 1;  'simulate success in lever press
                     endif
@@ -1575,7 +1584,7 @@ func IdleLoop%()
                 if isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
-                    if useTDTforLever% = 1 then  'turn off LED
+                    if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                         recTDTLEDOff%();
                     else
                         SafeSampleKey("M");
@@ -1621,7 +1630,7 @@ func IdleLoop%()
                 RecLogStatus("WaitISI", "False Positive! Lever is up");
                 recPreciseTrialTime := recLeverTime;  'time false positive occurred
                 StimComplete%(0, 0);
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLed% = 1 then 'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1878,7 +1887,7 @@ func IdleLoop%()
                 isEarlyHit% := 0;  'reset variable
                 'time of early hit is recorded above
                 StimComplete%(1, 1);
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLed% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1889,7 +1898,7 @@ func IdleLoop%()
                 isEarlyFA% := 0;  'reset variable
                 'time of early FA is recorded above
                 StimComplete%(2, 0);  'terminal S1
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1900,7 +1909,7 @@ func IdleLoop%()
                 isEarlyCR% := 0;  'reset variable
                 'time of early hit is recorded above
                 StimComplete%(2, 1);   'terminal S2
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1911,7 +1920,7 @@ func IdleLoop%()
                 isEarlyMiss% := 0;  'reset variable
                 'time of early FA is recorded above
                 StimComplete%(1, 0);
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1928,7 +1937,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(1, 1);
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1939,7 +1948,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - False Alarm on terminal S1");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(2, 0);  'terminal S1
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1951,7 +1960,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - Correct Rejection");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(2, 1);    'terminal S1
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1962,7 +1971,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - Miss on terminal S2");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1973,7 +1982,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - NO RESPONSE ON FORCED CHOICE");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
                 StimComplete%(isTerminalS1%+1, 0);  'this covers whether it is terminal S1 or not
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -1991,7 +2000,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
                 StimComplete%(1, 0);
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -2002,7 +2011,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - Correct Rejection on terminal S1");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 StimComplete%(2, 1);  'terminal S1
-                if useTDTforLever% = 1 then  'turn off LED
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
                     SafeSampleKey("M");
@@ -2155,7 +2164,7 @@ func IdleLoop%()
             
         case iState% = stateDone% then
             
-            if useTDTforLever% = 1 then  'turn off LED
+            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
                 SafeSampleKey("M");
@@ -2175,7 +2184,7 @@ func IdleLoop%()
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            if useTDTforLever% = 1 then  'turn off LED
+            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
                 SafeSampleKey("M");
@@ -2193,7 +2202,7 @@ func IdleLoop%()
             RecLogStatus("A coding Error has occurred!", "");
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            if useTDTforLever% = 1 then  'turn off LED
+            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
                 SafeSampleKey("M");
@@ -2208,7 +2217,7 @@ func IdleLoop%()
             Message("Unknown state (%d)!", iState%);
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            if useTDTforLever% = 1 then  'turn off LED
+            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
                 SafeSampleKey("M");
