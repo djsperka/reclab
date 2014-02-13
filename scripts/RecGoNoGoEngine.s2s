@@ -814,7 +814,7 @@ func Stop%()
     ' Stop sampling....
     if SampleStatus() <> -1 then
         if useTDTforLever% = 0 then
-            SampleKey("S");  'Kill blink sequence, if one exists
+            SafeSampleKey("S");  'Kill blink sequence, if one exists
         endif;
         if useTDTforJuicer% = 0 then
             SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
@@ -862,6 +862,7 @@ func ReturnToExptSelectDialog%()
     
     ' This causes the Toolbar() to return
     return 0;
+
 
 end
 
@@ -1322,7 +1323,8 @@ func IdleLoop%()
     var isPlaying%;
     var PWA$;
     var s$;
-    
+
+
     nextStateImmed% := 1;  'obviously we run the damn thing the FIRST time through each idle loop
     
     while nextStateImmed% = 1 do  'Allows repeat of internal loop; otherwise we have to wait until the idle function is called again, OS may grab time
@@ -1450,7 +1452,7 @@ func IdleLoop%()
                 endif;
                 'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
                 if inTrialInit% = 1 then
-                    SampleKey("S"); 'stop blink sequence immediately
+                    SafeSampleKey("S"); 'stop blink sequence immediately
                     if recFixLED% = 1 then
                         SafeSampleKey("L"); 'turn on LED for fixpt
                     endif;
@@ -1460,14 +1462,14 @@ func IdleLoop%()
                     ChangeStateTo(statePreTrialDelay%);
                 endif;
             else  'this is timeout
-                SampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
+                SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
                 RecLogStatus("WaitTrlInit", "Timeout waiting for trial initiation.");
                 'Decrement, if appropriate
                 'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%); 'old version
                 ChangeThresh2(doDecTrialInit%[]);
                 ChangeStateTo(stateLazyMonkeyTimeout%);
             endif;
-            
+           
             
         case iState% = stateTDTBlink% then
             CheckLever%();
@@ -2227,7 +2229,6 @@ func IdleLoop%()
         
     wend  'close the nextStateImmed% while
     
-    
     return iStatus%;  'if iStatus% is 0, the Toolbar() will return
 end
 
@@ -2410,7 +2411,7 @@ func CheckLever%()
         printlog("Unknown value " + Str$(recUseJoystick%) + " for recUseJoystick%, this is probably your problem!");        
     endcase
    
-    printlog("inOrigin is %d, inTrialInit is %d, inResponse1 is %d, inResponse2 is %d, and reclevertime is %f\n",inOrigin%,inTrialInit%,inResponse1%,inResponse2%,recLeverTime);
+    'printlog("inOrigin is %d, inTrialInit is %d, inResponse1 is %d, inResponse2 is %d, and reclevertime is %f\n",inOrigin%,inTrialInit%,inResponse1%,inResponse2%,recLeverTime);
     return 0
     
 end;

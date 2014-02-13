@@ -884,7 +884,7 @@ proc AssignJoystickVariables()
     
     var joyPos%;
     joyPos% := XPos% + (10*YPos%);
-    printlog("joystick position is %d where 10=up 20=down 2=left 1=right\n",joypos%);
+    'printlog("joystick position is %d where 10=up 20=down 2=left 1=right\n",joypos%);
     
     if recIsGoNoGo% = 1 then 'this is the go/no-go case
         'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialInitPosition,
