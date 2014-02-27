@@ -1702,7 +1702,7 @@ func SetJoystickThresholdIncrementDialog%()
     endif;
     
     
-    DlgCreate("Joystick threshold limits",0,0,76,18);
+    DlgCreate("Joystick increments",0,0,76,18);
     
     DlgGroup("Joystick in degrees",2,1,73,15);
     
