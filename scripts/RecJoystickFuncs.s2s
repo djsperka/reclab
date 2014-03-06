@@ -218,7 +218,6 @@ func ReadJoystick%()
     
     
     
-    
     view(recDataWindowView%);
     
     'Set tic value
