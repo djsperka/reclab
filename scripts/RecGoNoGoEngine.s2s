@@ -232,11 +232,9 @@ func RunGoNoGoEngine%()
     ' to our state-logic loop and gets things going.
 
     InitializeToolbar();
-    ToolbarSet(0, "");  'explicitly set the idle function to nothing - for some reason on second/third/etc. expts. the idle function is kicking in early even though I don't think it should be active yet
+    ToolbarSet(0, "");  'explicitly set the idle function to nothing - for some reason on second/third/etc. expts. the idle function is kicking in early even though I don't think it should be active yet   
     printlog("Toolbar initialized\n");
     Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar; the experiment will be here most of the time
-
-    
     'once we leave the toolbar, return to calling function
     return recReadyToQuit%;
 
@@ -823,7 +821,7 @@ func Stop%()
         FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
     endif
 
-    ' Returning zero from here any ToolbarSet() functions causes the 
+    ' Returning zero from here or any ToolbarSet() functions causes the 
     ' Toolbar() function to return.
     recReadyToQuit% := 1;  'prevent from trying to open another experiment
     return 0;
@@ -840,6 +838,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func PrepToReturnToExptSelectDialog%()
     RTESDIsPressed% := 1;
+    return 1;  '<-------  This missing line cost me literally like 50 hours to track down.
 end;
 
 
@@ -858,7 +857,7 @@ func ReturnToExptSelectDialog%()
     recExptText$ := "";
     
     'Unset the idle function, so things don't start moving immediately when the Toolbar is next called
-    ToolbarSet(0, "");
+    'ToolbarSet(0, "");
     
     ' This causes the Toolbar() to return
     return 0;
@@ -1337,12 +1336,13 @@ func IdleLoop%()
         endif
         
         'Don't repeat this (internal) loop unless there is a state change or specifically asked to below for timing purposes
-        nextStateImmed% := 0;  
+        nextStateImmed% := 0; 
+               
         
         
     'Update the joystick plot every 5 ms
     'printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
-        if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 then
+        if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 and recCEDIsPresent% = 1 then
             XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
             YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.001,tNow-.006);
             View(joyview%).XYAddData(joydatachan%,XJoy,YJoy);  'do not need to flip axis values
@@ -1368,12 +1368,14 @@ func IdleLoop%()
             ' button anytime, but the actual pause will happen here. 
             
             if RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return
-                ReturnToExptSelectDialog%();
+                ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
+                iStatus% := 0;  'this is how we get out
+                nextStateImmed% := 0;  'this keeps the rest of everything from executing
             endif;
             
-            CheckLever%();  'flush joystick/lever data
+            CheckLever%("inOrigin%",1);  'flush joystick/lever data, default to inOrigin
             
-            if recIsPaused% = 0 then  'if not paused, do trial initialization
+            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
                 if recExpToRun% <> recExpSearchButton% or recSearchLoaded% = 0 then
                     stmp% := PrepareNextTrial%(0); 'load PWAs, should gracefully pass through in debug mode as well
@@ -1418,8 +1420,8 @@ func IdleLoop%()
             
             
         case iState% = stateStartCEDBlink% then
-            CheckLever%();
-            if InOrigin% = 1 then  'lever must be in origin to start blink
+            CheckLever%("inOrigin%",1);
+            if inOrigin% = 1 then  'lever must be in origin to start blink
                 if tNow > tNextTrial then
                     RecLogStatus("WaitTrlInit", "Blink/Wait.");
                     if recCEDIsPresent% = 1 and recActive% = 1 then
@@ -1445,11 +1447,12 @@ func IdleLoop%()
             
         case iState% = stateCEDBlinking% then
             if tNow < tStartBlink + recTrialInitWindow then
-                if recCEDIsPresent% = 1  and recActive% = 1 then
-                    CheckLever%();
-                else
-                    inTrialInit% := 1; 'simulate success
-                endif;
+'                if recCEDIsPresent% = 1  and recActive% = 1 then
+'                    CheckLever%();
+'                else
+'                    inTrialInit% := 1; 'simulate success
+'                endif;
+                CheckLever%("inTrialInit%",1);
                 'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
                 if inTrialInit% = 1 then
                     SafeSampleKey("S"); 'stop blink sequence immediately
@@ -1472,7 +1475,7 @@ func IdleLoop%()
            
             
         case iState% = stateTDTBlink% then
-            CheckLever%();
+            CheckLever%("inOrigin%",1);
             if inOrigin% = 1 then  'lever must be up to start blink
                 if tNow > tNextTrial then
                     
@@ -1516,7 +1519,7 @@ func IdleLoop%()
             
             
         case iState% = stateLazyMonkeyTimeout% then
-            CheckLever%();  'Flush lever/joystick during timeout
+            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
             if tNow - tStateStart > recLazyMonkeyTO then
                 RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'restart as if we had just finished loading
@@ -1527,7 +1530,7 @@ func IdleLoop%()
             
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
-            CheckLever%();
+            CheckLever%("inTrialInit%",1);
             docase
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
@@ -1580,7 +1583,7 @@ func IdleLoop%()
                 isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
             
-            CheckLever%();
+            CheckLever%("inTrialInit%",1);
             docase
             case isPlaying% = 0 then  'use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
                 if isInterrupt% = 1 then
@@ -1616,13 +1619,13 @@ func IdleLoop%()
             
         case iState% = stateISIDelay% then
             ' Check that lever is still down.
-            if recCEDIsPresent% = 1 and recActive% = 1 then
-                CheckLever%()
-                'printlog("Lever status is %d, dammit!\n",stmp%);
-            else
-                inTrialInit% := 1; 'simulate lever down in testing, and in non-response scenarios
-            endif
-            
+'            if recCEDIsPresent% = 1 and recActive% = 1 then
+'                CheckLever%()
+'                'printlog("Lever status is %d, dammit!\n",stmp%);
+'            else
+'                inTrialInit% := 1; 'simulate lever down in testing, and in non-response scenarios
+'            endif
+            CheckLever%("inTrialInit%",1);
             docase
             'case stmp% < 0 then
             '    RecLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
@@ -1698,7 +1701,7 @@ func IdleLoop%()
                 isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
             
-            CheckLever%();
+            CheckLever%("inResponse1%",0);  'default is no early hit
             docase
             case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
@@ -1788,7 +1791,7 @@ func IdleLoop%()
                 isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
             
-            CheckLever%();
+            CheckLever%("inResponse1%",1);  'default no false alarm
             docase
             case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
                 RecLogStatus("WaitTrialSoundC", "Sound done playing.");
@@ -1874,12 +1877,16 @@ func IdleLoop%()
         case iState% = stateInResponseWindow% then
             
             if recActive% = 1 then
-                CheckLever%();  'check lever status
+                if isTerminalS1% = 1 then
+                    CheckLever%("inResponse2%",1);  'check lever status, simulate CR for debugging
+                else
+                    CheckLever%("inResponse1%",1);  'check lever status, simulate hit for debugging
+                endif;
             else 
                 if isTerminalS1% = 1 then
-                    inResponse2% := 1; 'simulate CR for debugging/passive
+                    inResponse2% := 1; 'simulate CR for passive
                 else
-                    inResponse1% := 1;  'simulate hit for debugging/passive
+                    inResponse1% := 1;  'simulate hit for passive
                 endif;
             endif
             
@@ -2029,7 +2036,7 @@ func IdleLoop%()
             
             
         case iState% = stateMissTimeout% then
-            CheckLever%();  'Flush lever/joystick during timeout
+            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
@@ -2041,7 +2048,7 @@ func IdleLoop%()
         case iState% = stateFalsePositive% then 
             'this state is used to give a FA timeout for an incorrect response to a terminal S1 (nontarget) stim 
             'no real need to repeat entire stim sequence as the whole sequence was presented
-            CheckLever%();  'Flush lever/joystick during timeout
+            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
                 'ChangeStateTo(stateWaitForInitiationMovement%);  'was stateInitializeTrials% but we want to repeat the stimulus
@@ -2065,7 +2072,7 @@ func IdleLoop%()
             
         case iState% = stateFAInterrupt% then
             'this state is used to repeat a FA interrupted stimulus, so that the S2 gets played
-            CheckLever%();  'Flush lever/joystick during timeout
+            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
                 
@@ -2226,9 +2233,9 @@ func IdleLoop%()
             endif;
             Stop%();          
         endcase
-        
+
     wend  'close the nextStateImmed% while
-    
+
     return iStatus%;  'if iStatus% is 0, the Toolbar() will return
 end
 
@@ -2387,29 +2394,49 @@ end;
 
 
 'A simple function which points to either recLeverDown%() or DebounceLever%() or ReadJoystick%() as appropriate
-func CheckLever%()
+func CheckLever%(varName$,varState%)
     'This function no longer returns a value, it merely changes inOrigin%, inTrialInit%, inResponse1%, inResponse2%
-    docase  'note that in all cases recLeverTime is set within the called function
-    case useTDTforLever% = 1 then
-        recLeverState% := recLeverDown%();
-        inOrigin% := 1-recLeverState%;  'recLeverState% is 0 if not depressed, 1 if depressed
-        inTrialInit% := recLeverState%;
-        inResponse1% := inOrigin%;  'for a lever, response 1 position is the origin (not pressed)
-        inResponse2% := 0;  'there is no response 2 with a lever
-        'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal 
-    case recUseJoystick% = 0 then
-        DebounceLever%(tNow);  'DebounceLever%() is run at the beginning of each idle loop, do it again if necessary before calling 
-        inOrigin% := 1-recLeverState%;
-        inTrialInit% := recLeverState%;
-        inResponse1% := inOrigin%;  'for a lever, response 1 position is the origin (not pressed)
-        inResponse2% := 0;  'there is no response 2 with a lever
-        'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal
-    case recUseJoystick% = 1 then
-        ReadJoystick%();  'ReadJoystick calls another function (AssignJoystickVariables) to get
-        'joystick position variables, not done here.
+    'Major update to CheckLever% - the problem is that there was really no way to move the "experiment" forward
+    'in testing mode.  Now CheckLever% REQUIRES two inputs in the form of a variable name (inOrigin%, etc.) and a
+    'state to set that variable to which will allow the state logic to step forward.  This will only happen if BOTH
+    'the CED and TDT are not present, otherwise, the program assumes you're actually trying to run it.
+    if recActive% = 1 and recCEDIsPresent% = 1 then
+        docase  'note that in all cases recLeverTime is set within the called function
+        case useTDTforLever% = 1 then
+            recLeverState% := recLeverDown%();
+            inOrigin% := 1-recLeverState%;  'recLeverState% is 0 if not depressed, 1 if depressed
+            inTrialInit% := recLeverState%;
+            inResponse1% := inOrigin%;  'for a lever, response 1 position is the origin (not pressed)
+            inResponse2% := 0;  'there is no response 2 with a lever
+            'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal 
+        case recUseJoystick% = 0 then
+            DebounceLever%(tNow);  'DebounceLever%() is run at the beginning of each idle loop, do it again if necessary before calling 
+            inOrigin% := 1-recLeverState%;
+            inTrialInit% := recLeverState%;
+            inResponse1% := inOrigin%;  'for a lever, response 1 position is the origin (not pressed)
+            inResponse2% := 0;  'there is no response 2 with a lever
+            'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal
+        case recUseJoystick% = 1 then
+            ReadJoystick%();  'ReadJoystick calls another function (AssignJoystickVariables) to get
+            'joystick position variables, not done here.
+        else
+            printlog("Unknown value " + Str$(recUseJoystick%) + " for recUseJoystick%, this is probably your problem!\n");        
+        endcase
     else
-        printlog("Unknown value " + Str$(recUseJoystick%) + " for recUseJoystick%, this is probably your problem!");        
-    endcase
+        docase
+        case varName$ = "inOrigin%" then
+            inOrigin% := varState%;
+        case varName$ = "inTrialInit%" then
+            inTrialInit% := varState%;
+        case varName$ = "inResponse1%" then
+            inResponse1% := varState%; 
+        case varName$ = "inResponse2%" then
+            inResponse2% := varState%; 
+        else
+            printlog("Unknown value " + varName$ + " in debug level of CheckLever% call!\n");
+        endcase        
+    endif
+    
    
     'printlog("inOrigin is %d, inTrialInit is %d, inResponse1 is %d, inResponse2 is %d, and reclevertime is %f\n",inOrigin%,inTrialInit%,inResponse1%,inResponse2%,recLeverTime);
     return 0
