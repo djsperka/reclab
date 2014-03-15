@@ -55,6 +55,7 @@ var recAMDiscDeleteExpButton%:=8;
 var recSelectStimFileButton%:=9;
 var recSelectTrialsFileButton%:=10;
 var recLeverJoystickButton%:=11;
+var recExpJoyTrnButton%:=12; '*jao
 
 'Selection Dialog variables
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
@@ -260,6 +261,7 @@ var recTrialInitPosition%:=1;       'Joystick trial initiation position; 0/1/2/3
 var recTrialResponsePosition1%;     'Joystick position of response 1, same values as init above
 var recTrialResponsePosition2%:=7;  'Joystick position of response 2, 0/1/2/3/4/5/6/7, where 7 = no second response position, default to no second response position
 var recDoIncrements%;   
+var recDoJoyTrain%; '*jao
     
 'Reward durations, etc.
 var recTrainingRewardDur;           'Duration of training reward, seconds
@@ -408,7 +410,25 @@ while recReadyToQuit% = 0 do
                     calibOK% := 0; 
                 endif;
             endif;
-            
+        case recExpToRun% = recExpJoyTrnButton% then '*jao
+            recExptText$ := "Running Joy Train " + recExptText$;
+            trialsOK% := 2;  'Short circuit, no trials file to load
+            stimOK% := 1;  'Short circuit, no stim file to load
+            'Load calibration file into Matlab's workspace, same details as above in Search
+            if recMatlabIsPresent% = 1 then
+                if recCalibIsPresent% = 1 then
+                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                    calibOK% := EvalMatlabStatement%(statement$);
+                else
+                    printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                    calibOK% := 0;
+                endif;
+            else
+                message("Matlab is not open, but you have selected a scenario that requires Matlab!");
+                if recCEDIsPresent% = 0 then  'if both are not present, this must be a testing scenario - let it go forward
+                    calibOK% := 0; 
+                endif;
+            endif; '*jao            
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 0 then  'Loading stims
             recExptText$ := "Running AMDisc "; '+ recExptText$???
             'Get stimfile and trials file lists
@@ -552,6 +572,16 @@ while recReadyToQuit% = 0 do
                 'do Trial List Generation stuff!
                 result% := GenTrialsFRA%();  'Generate trials for FRA.  Return result of 1 if OK, 0 if not.
                 'message("FRA is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
+                
+            case recExpToRun% = recExpJoyTrnButton% then '*jao
+                'do Trial List Generation stuff!
+                recSearchLoaded% := 0;  'reset variable to allow PWAs to be loaded only once for SEARCH, or JoyTrain, because all the trials are the same!
+                recNTrials% := recMaxTrial%;  'Allow Search to run until experimenter stops it or the variable runs out
+                if recDebug% = 1 then
+                    recNTrials% := 10; 'testing
+                endif;
+                result% := GenTrialsJoyTrain%();  'Generate trials for JoyTrain
+                '*jao
                 
             case recExpToRun% = recExpAMDiscButton% then
                 'do Trial List Generation stuff!
@@ -980,7 +1010,8 @@ func RecExpSelectDialog%()
     DlgButton(recExpFRAButton%,    "FRA/Rate-level/Space", RecExpFRADialog%, 2, 9);
     DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 8);
     DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 9);
-    
+    DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 10); 'will go under FRA button '*jao
+
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 5);
@@ -1534,7 +1565,120 @@ end;
 '
 '
 
+'===== RecJoyTrainDialog ===== '*jao
 
+func RecJoyTrainDialog%()
+'**look at search dialog for important functional details!!!
+    var i%; 'for DlgShow
+    var status% := 0;
+    
+    ' Fetch parameters from registry    
+    RecJoyTrainGetParams(); 'make this below! 'do i need to do this?
+    
+    ' Generate the dialog
+    DlgCreate("Joystick training dialog", 0,0, 50,16); '0,0=ctr of scrn; 50,16=size of dlg
+    DlgCheck(1, "Give juice for hitting trial start window?");
+
+    DlgGroup("Timing and Rewards",1,2,48,7); 'just text for now to tell ppl where to go to change things
+    'i think i can actually set these here (basically copy from those dialogs and then assign those vars below
+    DlgText("Use Timing/Reward Dialog to set (can't do it here!):",2,3); 
+        DlgText("* Hit Reward Duration,mL = amount of juice",3,4); 'msg: amount of juice --> update HIT REWARD in timing and reward dialog!
+        DlgText("* Reward Increment on hits",3,5); 'msg: reward increment on hits --> update in Timing & Reward Dialog!
+        DlgText("* Minimum Onset Delay = hold to get juice",3,6); 'msg: juice delay? --> Minimum onset delay in timing and reward dialog!
+        DlgText("* ????? to Increment Onset Delay",3,7);'**increment delay? --> set max delay (is there already a variable for this?)
+
+    DlgGroup("Joystick",1,9,48,6);
+    DlgText("Use Joystick/Lever Dialog to set (can't do it here!):",2,10); 
+        DlgText("* Trial Initiation Position",3,11); 'msg: set trial initiation position in Joystick Dialog!
+        DlgText("* Joystick Thresholds and Increments",3,12);  'msg: set joystick increments in Joystick Dialog --> joystick increments!
+
+    DlgAllow(0xffff, 0, RecExpJoyTrnDialogChanged%); 'no idea how this works, but i'm sure i need it!
+
+    ' Show the dialog. 
+    i%:=DlgShow(recDoJoyTrain%); 'DlgCheck(1... ??
+    
+    ' If user checked box and hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecJoyTrainSaveParams(); 'hmm... do i need to do this??
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
+        DlgValue$(-1,"Run JoyTrain"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
+        recExpToRun% := recExpJoyTrnButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+    
+        'assign JoyTrain-specific variables to experiment-wide variables here????
+        'see lines 1163-1170 in RecRoom (RecExpSearchDialog) for examples of this (i think)
+    
+        'trial generation??? --> RecRoom do while 
+ 
+    
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+
+end; 'end func
+'end RecJoyTrainDialog '*jao
+
+'===== RecJoyTrnDialogChanged ===== '*jao
+
+func RecExpJoyTrnDialogChanged%(item%)
+'this is where dialog functions are enabled for JoyTrain dialog
+'i dont understand how input and call to this func
+
+'i actually don't need this ... YET!
+
+    return 1;
+
+
+end;
+'end RecExpJoyTrnDialogChanged%() '*jao
+
+
+'===== RecJoyTrainGetParams ===== '*jao
+
+func RecJoyTrainGetParams()
+	var key$;
+    key$:="Reclab\\LeverJoystick";
+
+    recDoJoyTrain%:= GetIntRegistryValue%(key$, "DoJoyTrain", recDoJoyTrain%);
+    
+    return;
+
+end; 
+'end  RecJoyTrainGetParams(); '*jao
+
+
+'===== RecJoyTrainSaveParams ===== '*jao
+
+func RecJoyTrainSaveParams()
+	var key$;
+    key$:="Reclab\\LeverJoystick";
+
+    SetIntRegistryValue(key$, "DoJoyTrain", recDoJoyTrain%);
+    
+	return;
+
+end; 
+'end  RecJoyTrainSaveParams(); '*jao
+
+
+'===== GenTrialsJoyTrain ===== '*jao
+
+func GenTrialsJoyTrain%()
+'**check out GenTrialsSearch%() !!!
+' or can I just use GenTrialsSearch and avoid needing a new function? what would need to change??
+' technically this program will never get to make a sound so it shouldn't matter right?
+    var status% := 1;
+
+    ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep
+    return status%;  'right now, it "can't" fail
+end;
+'end GenTrialsJoyTrain%() '*jao
 
 '
 '
@@ -1606,6 +1750,7 @@ end
 '===== End RecExpFRADialogChanged =====
 '
 '
+
 
 
 
