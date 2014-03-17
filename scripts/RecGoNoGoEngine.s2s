@@ -1531,15 +1531,16 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             CheckLever%("inTrialInit%",1);
-            docase
-            case recDoJoyTrain% = 1 then '*jao
-                ChangeStateTo(stateHitReward%); '*jao
+            docase          
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
                 tNextTrial := tNow;
             case tNow - tStateStart >= recDelayIntervalTime then
                 RecLogStatus("DelayInterval", "Delay done.");
+                if recDoJoyTrain% = 1 then '*jao
+                    ChangeStateTo(stateHitReward%); 
+                endif '*jao
                 ChangeStateTo(stateStartSoundA%);
             endcase
             
