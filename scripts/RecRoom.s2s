@@ -1596,7 +1596,7 @@ func RecJoyTrainDialog%()
 
     ' Show the dialog. 
     i%:=DlgShow(recDoJoyTrain%); 'DlgCheck(1... ??
-    
+
     ' If user checked box and hit OK then save parameters (and return 1). 
 	if i% = 1 then
         RecJoyTrainSaveParams(); 'hmm... do i need to do this??
@@ -1606,6 +1606,8 @@ func RecJoyTrainDialog%()
         recExpToRun% := recExpJoyTrnButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+    
+        recActive% := 1;
     
         'assign JoyTrain-specific variables to experiment-wide variables here????
         'see lines 1163-1170 in RecRoom (RecExpSearchDialog) for examples of this (i think)

@@ -543,6 +543,7 @@ Func PlaySound%(isS2%)
     
     'Get speaker for current stimulus
     spkr% := recSpeakerList%[thisPWAIndex%][playInd%];
+
     
     'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
     if recMatGenStim% = 0 then
@@ -1540,8 +1541,9 @@ func IdleLoop%()
                 RecLogStatus("DelayInterval", "Delay done.");
                 if recDoJoyTrain% = 1 then '*jao
                     ChangeStateTo(stateHitReward%); 
+                else
+                    ChangeStateTo(stateStartSoundA%);
                 endif '*jao
-                ChangeStateTo(stateStartSoundA%);
             endcase
             
             
