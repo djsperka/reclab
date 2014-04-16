@@ -149,6 +149,8 @@ const stateCRReward%                          := 26;
 const stateStartCEDBlink%                     := 27;
 const stateCEDBlinking%                       := 28;
 const stateTDTBlink%                          := 29;
+const stateStartSoundD%                       := 30;
+const stateSoundDPlaying%                     := 31;
 
 var recDelayIntervalTime         := 0;
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
@@ -167,6 +169,7 @@ var recPreciseTrialTime;
 var recLeverCodes%[4];
 var startingNewExpt%;  'only used with joystick, marks beginning of experiment so that joystick events in the past are "forgotten"
 var nextStateImmed% := 1;  'when we are changing to a new state, by default we carry to that state immediately instead of waiting for the next idle loop call
+var coinFlipResult%;    'to reward SAME trials for AMDis Hi/Lo *jao
 
 'var channels%[4];
 
@@ -655,7 +658,7 @@ end
 '----------- StimComplete%(isS2%, success%) -------------------------------------
 '
 ' Stim has ended. isS2% tells StimComplete% whether the just-finished stimulus 
-' is an S1 (0), S2 (1), or terminal S1 (2). 
+' is an S1 (0), S2 (1), or terminal S1 (2). .. or S3 (3) *jao 
 ' success% tells the function whether the response was successful: 1=good, 0=bad.
 ' (Success on an S1 is no response, success on an S2 is response)
 ' Records text marker, does an analysis update using ExtractSpace. 
@@ -691,11 +694,15 @@ func StimComplete%(isS2%, success%)
             recStimCount% += 1;
             termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
             if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
-                if recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target
-                    status% := 1;  'return indicates S2 is next
-                else
-                    status% := 2;  'return indicates terminal S1 is next
-                endif;
+                docase '*jao
+                    case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
+                        status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
+                    case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
+                        printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3"); 
+                        status% := 3;  'return indicates S2-LO is next
+                    else
+                        status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
+                endcase;
                 'otherwise, return is 0 indicating non-terminal S1
             endif;
         else 'false alarm on S1
@@ -704,23 +711,53 @@ func StimComplete%(isS2%, success%)
             SampleText(strtmp$, recPreciseTrialTime);
             status% := 0;  'After FA, we will indicate the next stimulus is an S1, as it will be.
         endif
-    case isS2% = 1 then  'If it's an S2 (target)
-            if success% = 1 then
-                strtmp$ := Print$("H,%d", recCurrentTrial%);  'H is for Hit
-                SampleText(strtmp$, recPreciseTrialTime);
-            else
-                strtmp$ := Print$("M,%d", recCurrentTrial%);  'M is for Miss
-                SampleText(strtmp$, recPreciseTrialTime);
+    case isS2% = 1 and recExpToRun% = recExpAMDiscButton% then  'If it's an S2 (target), AMDis S2-HI *jao
+        printlog("AMDis Hi!, current trial is %d", recCurrentTrial%); 
+        if success% = 1 then
+            strtmp$ := Print$("HH,%d", recCurrentTrial%);  'H is for Hit
+            SampleText(strtmp$, recPreciseTrialTime);
+        else
+            strtmp$ := Print$("MH,%d", recCurrentTrial%);  'M is for Miss
+            SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
-    case isS2% = 2 then 'If it's a terminal S1 (intended no-response)
-            if success% = 1 then
-                strtmp$ := Print$("C,%d", recCurrentTrial%);  'C is for Correct Rejection, trial is over (This code is new, all other codes are old)
-                SampleText(strtmp$, recPreciseTrialTime);
-            else
-                strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
-                SampleText(strtmp$, recPreciseTrialTime);
-            endif;
+    case isS2% = 1 then  'If it's an S2 (target) - (SAME/DIFF)
+        if success% = 1 then
+            strtmp$ := Print$("H,%d", recCurrentTrial%);  'H is for Hit
+            SampleText(strtmp$, recPreciseTrialTime);
+        else
+            strtmp$ := Print$("M,%d", recCurrentTrial%);  'M is for Miss
+            SampleText(strtmp$, recPreciseTrialTime);
+        endif;
+        status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
+    case isS2% = 3 then  'If it's an S2 (target) 'AMDis S2-LO *jao - case is unique to AMDis
+        printlog("AMDis Lo!, current trial is %d", recCurrentTrial%);
+        if success% = 1 then
+            strtmp$ := Print$("HL,%d", recCurrentTrial%);  'H is for Hit
+            SampleText(strtmp$, recPreciseTrialTime);
+        else
+            strtmp$ := Print$("ML,%d", recCurrentTrial%);  'M is for Miss
+            SampleText(strtmp$, recPreciseTrialTime);
+        endif;
+        status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
+    case isS2% = 2 and recExpToRun% = recExpAMDiscButton% then 'If it's a terminal S1 (intended no-response in gonogo) 'AMDis Hi/Lo case *jao
+        printlog("AMDis SAME!, current trial is %d", recCurrentTrial%); 
+        if success% = 1 then 'for HI/LO, success=1 means this trial was rewarded (coinFlipResult%) *jao
+            strtmp$ := Print$("SR,%d", recCurrentTrial%);  'REWARDED SAME trial *jao
+            SampleText(strtmp$, recPreciseTrialTime);
+        else
+            strtmp$ := Print$("SN,%d", recCurrentTrial%);  'NOT REWARDED SAME trial *jao
+            SampleText(strtmp$, recPreciseTrialTime);
+        endif;
+        status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
+    case isS2% = 2 then 'If it's a terminal S1 (intended no-response)  - (SAME/DIFF)
+        if success% = 1 then
+            strtmp$ := Print$("C,%d", recCurrentTrial%);  'C is for Correct Rejection, trial is over (This code is new, all other codes are old)
+            SampleText(strtmp$, recPreciseTrialTime);
+        else
+            strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
+            SampleText(strtmp$, recPreciseTrialTime);
+        endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     else
         RecLogError("StimComplete", "Unknown ttype (" + str$(isS2%) + ")");
@@ -1656,10 +1693,17 @@ func IdleLoop%()
                         ChangeStateTo(stateStartSoundA%);
                     case isS2% = 1 then
                         isTerminalS1% := 0;
-                        ChangeStateTo(stateStartSoundB%);
+                        ChangeStateTo(stateStartSoundB%);  'for AMdis: Hi (S2>S1)
                     case isS2% = 2 then
                         isTerminalS1% := 1;
-                        ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go
+                        ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go; for Hi/Lo case, will be rewarded 50%
+                        if recExpToRun% = recExpAMDiscButton% then
+                            coinFlipResult% := round(rand()); 'simple 50/50 way. might want to create a variable "sameRewardRate" or something.
+                            printlog("coinFlipResult% = /d%", coinFlipResult%); '*jao
+                        endif;
+                    case isS2% = 3 then
+                        isTerminalS1% := 0;
+                        ChangeStateTo(stateStartSoundD%);  'for AMDis: Lo (S2<S1) *jao
                     else
                         RecLogStatus("WaitISI", "Unknown return value from StimComplete");
                         Message("Error in StimComplete%()!!!");
@@ -1848,10 +1892,90 @@ func IdleLoop%()
                 endif                
             endcase            
             
+        'Keep this space open for Sound D - a terminal S3 stimulus! --> here it is! *jao
+        case iState% = stateStartSoundD% then
+            RecLogStatus("TrialSoundD", "Call expt function");
+            if recCEDIsPresent% = 1 then
+                stmp% := PlaySound%(isS2%);
+            else
+                stmp% := 0;  'simulate sound playing if CED is not present
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+            endif;
+            docase
+            case stmp% = 0 then
+                isPlaying% := 1;
+                ChangeStateTo(stateSoundDPlaying%);
+            case stmp% < 0 then
+                RecLogStatus("TrialSoundD", "PlaySound returned negative value.");
+                ChangeStateTo(stateTDTError%);
+            else
+                RecLogStatus("TrialSoundD", "PlaySound returned unknown value (>0).");
+                ChangeStateTo(stateTDTError%);
+            endcase     'exactly the same as stateStartSoundB *jao
+                       
             
+        case iState% = stateSoundDPlaying% then
+            if recCEDIsPresent% = 1 then
+                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            endif;
+            docase
+            case recCEDIsPresent% = 0 then
+                isPlaying% := 0;  'simulate end of stimulus
+            case recPointsPlayed% >= recPlayPoints%  then
+                isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
+                PlayWaveStop();  'stop playing stimulus while we're at it
+            case PWA$ = "" then
+                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
+            endcase;
             
-        'Keep this space open for Sound D - a terminal S3 stimulus!
-            
+            CheckLever%("inResponse2%",0);  'default is no early hit 'switched to Response2 for S3 *jao
+            docase
+            case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+                RecLogStatus("WaitTrialSoundD", "Sound done playing.");
+                ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
+            case recActive% = 0 then
+                'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
+            case recIsGoNoGo% = 1 and inResponse2% = 1 then  'if the sound is still playing, check for early hit (go/no-go) 'Response2=Hit, though this case should never really happen *jao
+                'accept response whether sound should be stopped or not
+                if isEarlyHit% = 0 then
+                    isEarlyHit% := 1;  'this is a hit before the sound has stopped playing
+                    recPreciseTrialTime := recLeverTime;  'time early hit occurred
+                    RecLogStatus("WaitTrialSoundD", "Lever is in response 1 - HIT interrupting S2 ... WAIT! HOW DID WE GET HERE?!");
+                    if recContinueSoundOnS2Interrupt% = 0 then
+                        if recCEDIsPresent% = 1 then
+                            PlayWaveStop();  'stop playing stimulus
+                        endif;
+                        isPlaying% := 0;
+                    endif;
+                endif;
+            case recIsGoNoGo% = 0 and inResponse1% = 1 then 'if the sound is still playing, check for early "miss" (FC) 'Response1=Miss, *jao
+                'accept response whether sound should be stopped or not
+                if isEarlyMiss% = 0 then
+                    isEarlyMiss% := 1;  'this is a miss before the sound has stopped playing
+                    recPreciseTrialTime := recLeverTime;  'time early hit occurred
+                    RecLogStatus("WaitTrialSoundD", "Lever is in response 2 - MISS interrupting S2");
+                    if recContinueSoundOnS2Interrupt% = 0 then
+                        if recCEDIsPresent% = 1 then
+                            PlayWaveStop();  'stop playing stimulus
+                        endif;
+                        isPlaying% := 0;
+                    endif;
+                endif;
+            case recIsGoNoGo% = 0 and inResponse2% = 1 then  'if the sound is still playing, check for early hit (FC) 'Response2=Hit, *jao
+                'accept response whether sound should be stopped or not
+                if isEarlyHit% = 0 then
+                    isEarlyHit% := 1;  'this is a hit before the sound has stopped playing
+                    recPreciseTrialTime := recLeverTime;  'time early hit occurred
+                    RecLogStatus("WaitTrialSoundD", "Lever is in response 1 - HIT interrupting S2");
+                    if recContinueSoundOnS2Interrupt% = 0 then
+                        if recCEDIsPresent% = 1 then
+                            PlayWaveStop();  'stop playing stimulus
+                        endif;
+                        isPlaying% := 0;
+                    endif;
+                endif;
+            endcase;
+    
             
         case iState% = stateTrainingReward% then
             
@@ -1907,7 +2031,36 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
-                'Early FA, interrupted final stimulus before actual response window
+            
+            'AMDis Hi/Lo --> SAME trials early response
+            case isEarlyFA% = 1 or isEarlyCR% = 1 and recExpToRun% = recExpAMDiscButton% then  'AMDis Hi/Lo --> SAME trial, inResponse1% OR 2                 
+                docase
+                case isEarlyCR% = 1 then 'inResponse2%
+                    isEarlyCR% := 0;  'reset variable
+                    RecLogStatus("InResponseWindow", "In response position 2 , SAME trial - went Lo (early)");
+                    'want to keep track of which response happened in output...
+                case isEarlyFA% = 1 then 'inResponse1%
+                    isEarlyFA% := 0;  'reset variable
+                    RecLogStatus("InResponseWindow", "In response position 1 , SAME trial - went Hi (early)");
+                    'want to keep track of which response happened in output...
+                else
+                    printlog("how the hell did we get here?");
+                endcase;
+            
+                'time of early "FA" or "CR" (response) is recorded above ; for either response do:
+                StimComplete%(2, coinFlipResult%);   'terminal S1
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
+                endif;
+                if coinFlipResult% = 1 then
+                    ChangeStateTo(stateHitReward%);
+                else
+                    ChangeStateTo(stateMissTimeout%);
+                endif;
+
+            'Early FA, interrupted final stimulus before actual response window
             case isEarlyFA% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyFA% := 0;  'reset variable
                 'time of early FA is recorded above
@@ -1922,7 +2075,7 @@ func IdleLoop%()
             case isEarlyCR% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyCR% := 0;  'reset variable
                 'time of early hit is recorded above
-                StimComplete%(2, 1);   'terminal S2
+                StimComplete%(2, 1);   'terminal S1
                 if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
@@ -1945,7 +2098,84 @@ func IdleLoop%()
             '    RecLogError("WaitLvrUp", "ERROR (" + str$(stmp%) + ")in recLeverDown()");
             '    Message("Error in recLeverDown()!!!");
             '    ChangeStateTo(stateTDTError%);
-                'Hit in response window    
+            'Hit in response window    
+            
+        'AMDis HI/LO    *jao
+            case inResponse1% = 1 and isS2% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, HIT
+            'isTerminalS1% = 0 then 
+                'SafeSampleKey("R");  'not in Recgen.pls!
+                RecLogStatus("InResponseWindow", "In response position 1 - HIT HI");
+                recPreciseTrialTime := recLeverTime;  'time hit occurred
+                StimComplete%(1, 1);
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M"); 'what is this about?
+                endif;
+                ChangeStateTo(stateHitReward%);
+            'Lo-Hit in response window    
+            case inResponse2% = 1 and isS2% = 3 then 'LO, HIT -implied: and recExpToRun% = recExpAMDiscButton%
+            'isTerminalS1% = 0 then 
+                'SafeSampleKey("R");  'not in Recgen.pls!
+                RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
+                recPreciseTrialTime := recLeverTime;  'time hit occurred
+                StimComplete%(3, 1);
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M"); 'what is this about?
+                endif;
+                ChangeStateTo(stateHitReward%);
+            'Hi-Miss in response window    
+            case inResponse2% = 1 and isS2% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, MISS
+            'isTerminalS1% = 0 then  
+                RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
+                recPreciseTrialTime := recLeverTime;  'time FA occurred
+                StimComplete%(1, 0);  
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
+                endif;
+                ChangeStateTo(stateMissTimeout%);
+            'Lo-MISS in response window    
+            case inResponse1% = 1 and isS2% = 3 and recExpToRun% = recExpAMDiscButton% then 'LO, MISS
+            'isTerminalS1% = 0 then  
+                'SafeSampleKey("R");  'not in Recgen.pls!
+                RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
+                recPreciseTrialTime := recLeverTime;  'time hit occurred
+                StimComplete%(3, 1);   
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
+                endif;
+                ChangeStateTo(stateMissTimeout%);
+            'SAME and in either response window    
+            case isS2% = 2 and recExpToRun% = recExpAMDiscButton% and inResponse1% = 1 or inResponse2% = 1 then 'SAME, either response
+            'isTerminalS1% = 1 then  
+                'SafeSampleKey("R");  'not in Recgen.pls!
+                if inResponse1% = 1 then
+                    RecLogStatus("InResponseWindow", "In response position 1 , SAME trial - went Hi");
+                    'want to keep track of which response happened in output...
+                else 'inResponse2% = 1 
+                    RecLogStatus("InResponseWindow", "In response position 2 , SAME trial - went Lo");
+                    'want to keep track of which response happened in output...
+                endif;
+                recPreciseTrialTime := recLeverTime;  'time response occurred
+                StimComplete%(2, coinFlipResult%);  '**this variable needs to be declared and established somewhere** *jao 
+                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
+                    recTDTLEDOff%();
+                else
+                    SafeSampleKey("M");
+                endif;
+                if coinFlipResult% = 1 then
+                    ChangeStateTo(stateHitReward%);
+                else
+                    ChangeStateTo(stateMissTimeout%);
+                endif;
+
+        'the original code for SAME/DIFF:
             case inResponse1% = 1 and isTerminalS1% = 0 then  'forced choice OR go/no-go
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT");
@@ -1957,7 +2187,7 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
-                'False alarm in response window    
+            'False alarm in response window    
             case inResponse1% = 1 and isTerminalS1% = 1 then  'forced choice OR go/no-go
                 RecLogStatus("InResponseWindow", "In response position 1 - False Alarm on terminal S1");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
@@ -1968,7 +2198,7 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFalsePositive%);
-                'CR in response window    
+            'CR in response window    
             case inResponse2% = 1 and isTerminalS1% = 1 then  'forced choice only
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 2 - Correct Rejection");
@@ -1980,7 +2210,7 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateHitReward%);
-                'Miss in response window    
+            'Miss in response window    
             case inResponse2% = 1 and isTerminalS1% = 0 then  'forced choice only
                 RecLogStatus("InResponseWindow", "In response position 2 - Miss on terminal S2");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
@@ -1991,7 +2221,8 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateFalsePositive%);
-                'Response window is closed, failure to respond on forced choice
+            
+            'Response window is closed, failure to respond on forced choice
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 0 then
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - NO RESPONSE ON FORCED CHOICE");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
@@ -2009,7 +2240,7 @@ func IdleLoop%()
                     ChangeThresh2(doDecPassiveFA%[]);
                 endcase;  
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response
-                'Response window is closed, miss on go/no-go   
+            'Response window is closed, miss on go/no-go   
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 0 then  'go/no-go miss
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
@@ -2020,7 +2251,7 @@ func IdleLoop%()
                     SafeSampleKey("M");
                 endif;
                 ChangeStateTo(stateMissTimeout%);
-                'Response window is closed, correct rejection on go/no-go  
+            'Response window is closed, correct rejection on go/no-go  
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 1 then  'go/no-go CR
                 RecLogStatus("InResponseWindow", "Lever not up - Correct Rejection on terminal S1");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
