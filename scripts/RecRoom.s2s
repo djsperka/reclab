@@ -585,7 +585,9 @@ while recReadyToQuit% = 0 do
                 
             case recExpToRun% = recExpAMDiscButton% then
                 'do Trial List Generation stuff!
-                message("AM DISC is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
+                printlog("attempting to do run AMdis, calling GenTrialsAMDis%()... \n"); '*jao
+                result% := GenTrialsAMDis%();  'Generate trials for AMDis   '*jao
+                'message("AM DISC is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 
             case recExpToRun% = recExpCueingButton% then
                 'do Trial List Generation stuff!
@@ -626,10 +628,6 @@ halt;  'And get out of here!
 'End Code Execution
 '
 '
-
-
-
-
 
 
 
@@ -2610,7 +2608,7 @@ Func RecAMDiscAddExp%()
     ' Generate the dialog
     
     DlgCreate("Cueing Experiment ADD Dialog", 62, 10);
-    DlgString(1,40,20,"a-zA-Z0-9",26,1);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
     DlgText("Name of New Experiment",2,1);
     if createMode% = 0 then
         DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
@@ -2618,8 +2616,8 @@ Func RecAMDiscAddExp%()
         DlgButton(recSelectStimFileButton%,   "  Select Stim File  ", RecSelectStimFile%,2,2);
     endif;
     DlgButton(recSelectTrialsFileButton%, " Select Trials File ", RecSelectTrialsFile%,2,3);
-    DlgString(2,40,20,"",26,2);  'for visual confirmation of selected stim file
-    DlgString(3,40,20,"",26,3);  'for visual confirmation of selected trials file
+    DlgString(2,40,100,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,100,"",26,3);  'for visual confirmation of selected trials file
     
     ' Show the dialog. 
     i%:=DlgShow(mystr$,mystr2$,mystr3$);
@@ -3184,7 +3182,8 @@ func RecVerifyInputFile%(fileIn$)
     var i%;
     var nCh%;  'number of characters
     var lineCount%;
-    
+
+    'printlog("opening file %s \n", fileIn$);
     fh0%:=FileOpen(fileIn$,8,0);
     
     'readsetup(""," ","","","	");
@@ -3193,6 +3192,7 @@ func RecVerifyInputFile%(fileIn$)
     'check for obligatory header line
     numRead% := read(readLine$[0:49]);
     temp$ := readLine$[0];
+        'printlog("reading in... %d %s \n", numRead%, temp$);
     docase
     case temp$ = "S1" then
         printlog("File %s appears to be a Trial file\n",fileIn$);
@@ -3276,7 +3276,6 @@ end
 '===== RecLoadTrialsFile =====
 func RecLoadTrialsFile%(fileLoc$,&totalTrials%)
     
-
     
     var status%;
     var lineCount%;
@@ -3469,7 +3468,8 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
 
     'First, make sure the file won't barf on us
     numRead% := RecVerifyInputFile%(fileLoc$);
-    if numRead% <> 11 then
+    PrintLog("numRead is: %d \n", numRead%);
+    if numRead% <> 11 then 'is this supposed to be 10 or 11? ~jao
         if numRead% = -1 then
             message("Starting over!|Failure to read Tone/Noise/AM generation file!");
         else
@@ -3903,7 +3903,108 @@ end
 '
 '
 
+'===== GenTrialsAMDis =====
+'modeled off of GenTrialsFRA...
+func GenTrialsAMDis%()
+    var status% := 1;
+    var i%;
+    var j%;
+    var k%;
+    var trialrep%;
+    var numS1perTrial%;
+    var nS1%;
+    var nS2%;
 
+    var responseTrial%; '1 if hit/miss, 0 if catch
+
+'global vars set up in RecLoadTrialsFile: 
+'            recTrialS1%
+'            recTrialS2%
+'            recTrialS1Spkr%
+'            recTrialS2Spkr%
+'            recTrialS1DeltadB
+'            recTrialS2DeltadB
+
+   ' ===== Create Trials =====
+    recNTrials% := (recTotalTrials%*recAMDiscRepeatsPerStim%);  'Set global Ntrials
+    nS1% := recNTrials%;
+    nS2% := recNTrials%;
+
+    'Fill recStimList[][] etc. for each trial, 
+k% := 0; 'trial index counter, should increment to total recNTrials%-1
+for trialrep% := 0 to recAMDiscRepeatsPerStim%-1 do 'for number of trial repetitions  
+    for i% := 0 to recTotalTrials%-1 do  'for each trial type in input table, so,i%=line# in stim table
+        recTrialOrder%[k%] := k%;  'Just randomize this after the loop
+    
+        'determine how many S1 repeats to do this time:
+        numS1perTrial% := recMinS1%+Floor(Rand(recVarS1%+1,0)); 'how it's done in GenTrialsSearch%().. not sure why it's not: Rand({recVarS1%,1})
+        printlog("numS1perTrial is %d for trial number %d\n",numS1perTrial%,k%);
+        recTrialTerminalIndex%[k%]  := numS1perTrial%;  'not "+1" due to 0-based indexing *jao: i have no idea what this means!       
+    
+        'what kind of trial is this?  ***this is probably the only part that will change for SPACE!
+        docase  
+        case recIsGoNoGo% = 1 then 'gonogo
+            if recTrialS1%[i%]<>recTrialS2%[i%] then 'case this bitch to separate up/down trials
+                responseTrial% := 1;  'trial is hit/miss (has terminal S2) --> up OR down
+                printlog("this is a CHANGE trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+            else 'they're the same
+                responseTrial% := 0;  'trial is catch (no terminal S2?? ...DONT THINK THIS IS CORRECT) 
+                printlog("this is a CATCH trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+            endif
+            recTrialTerminalIsS2%[k%] := responseTrial%; 'wait, how does this work for up/down? 'I HAVE NO IDEA HOW THIS SHOULD WORK! HELP!     
+        case recIsGoNoGo% = 0 then 'up/down forced choice
+            docase
+            case recTrialS2%[i%] < recTrialS1%[i%]  then 
+                'LO trial
+                printlog("this is a DOWN trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+                recTrialTerminalIsS2%[k%] := 2; 'S2-LO --> StimComplete in RecGoNoGoEng *jao
+            case recTrialS2%[i%] > recTrialS1%[i%] then
+                'HI trial
+                printlog("this is a UP trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+                recTrialTerminalIsS2%[k%] := 1; 'S2-HI --> StimComplete in RecGoNoGoEng *jao
+            case recTrialS2%[i%] = recTrialS1%[i%] then
+                'catch trial --> to be rewarded 50% of the time; trials used to determine HI/LO;UP/DOWN bias
+                printlog("this is a SAME trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+            else
+                printlog("something is fucked. recIsGoNoGo% has not been set. = %d\n",recIsGoNoGo%);
+            endcase;
+            
+        endcase; 
+        
+        'fill the S1 information (for how ever many S1 repeats there are)
+        for j% := 0 to numS1perTrial%-1 do
+            recStimList%[j%][k%] := recTrialS1%[i%]; 'this is stimulus index, all stims considered "unique" (?)
+            recSpeakerList%[j%][k%] := recTrialS1Spkr%[i%];  'And speaker
+            recDeltadBList[j%][k%] := recTrialS1DeltadB[i%];  'And dB
+            recPWAList%[j%][k%] := j%;  'this is PWA to play, just PWA in order
+        next;
+    
+    'and now we're ready for the S2
+        'Note that j% gets incremented one last time to trigger the "exit" of the loop, and thus is now
+        'the correct index to use.  However, since this bothers the crap out of me, I'm explicitly setting it.
+        j% := numS1perTrial%;  'because of zero-based indexing, the number of S1s is the index of the S2
+        recStimList%[j%][k%] := recTrialS2%[i%];  'S2 stimulus for this trial
+        recSpeakerList%[j%][k%] := recTrialS2Spkr%[i%]; 'S2 speaker
+        recDeltadBList[j%][k%] := recTrialS2DeltadB[i%];  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
+        recPWAList%[j%][k%] := j%;  'this is PWA to play, just play in order
+    
+        'And finally the number of unique stims - all stims are treated as unique (i.e. loaded into their own PWA) even if they're technically "not"
+        recNUniqueStims%[k%] := j%+1;  'j% is index of final stimulus, so number of stims (all unique) is +1
+        
+        k% +=1; 'increment trial counter
+    next; 'end loop (i) through trial types in stim file  
+next; 'end trialrep for 
+
+    'Randomize the list order
+    printlog("recTrialOrder% before shuffling %d\n",recTrialOrder%);'[0][k%]);
+    ShuffleList%(recTrialOrder%[0:nS2%]);
+    printlog("recTrialOrder% after shuffling %d\n",recTrialOrder%);'[0][k%]);  
+
+    return status%;
+end
+'===== End GenTrialsAMDis =====
+'
+'
 
 
 '
