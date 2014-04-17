@@ -1576,11 +1576,15 @@ func IdleLoop%()
                 tNextTrial := tNow;
             case tNow - tStateStart >= recDelayIntervalTime then
                 RecLogStatus("DelayInterval", "Delay done.");
-                if recDoJoyTrain% = 1 then '*jao
+                docase
+                case recDoJoyTrain% = 1 then '*jao
                     ChangeStateTo(stateHitReward%); 
+                case recTrialInitReward% <> 0 then 'if not zero (might be -1 from last trial)
+                    recTrialInitReward% :=1; 'set it back to 1
+                    ChangeStateTo(stateTrainingReward%);
                 else
                     ChangeStateTo(stateStartSoundA%);
-                endif '*jao
+                endcase '*jao
             endcase
             
             
@@ -1999,7 +2003,13 @@ func IdleLoop%()
             else
                 RecLogStatus("TrainingReward", "No training reward.");
             endif
-            ChangeStateTo(stateInResponseWindow%);
+            if recTrialInitReward% = 1 then
+                recTrialInitReward% := -1; 'so that after soundA we can pass by this and move forward!! *jao (i feel smart!)
+                printlog("INIT REWARD? recTrainingRewardmL= %f and recTrialInitReward= %d\n", recTrainingRewardmL,recTrialInitReward%);
+                ChangeStateTo(stateStartSoundA%);
+            else
+                ChangeStateTo(stateInResponseWindow%);
+            endif;
             
             
             

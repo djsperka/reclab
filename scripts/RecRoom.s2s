@@ -155,7 +155,7 @@ var recAMDiscStimcalNameGen$[recAMDiscNumExps%];   'Stim file names, generating 
 var recAMDiscTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generating stims
 var recAMDiscExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recAMDiscExpIndexGen%;          'Experiment index, for generating stims, etc.
-
+var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
 
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
@@ -1569,7 +1569,19 @@ func RecJoyTrainDialog%()
 '**look at search dialog for important functional details!!!
     var i%; 'for DlgShow
     var status% := 0;
-    
+    var c1txt% := 3;
+    var c1% := 35; 'not the smart way to do it..
+    var initStr$[7];
+    var s2% := 9;
+
+    initStr$[0] := "Not Allowed";
+    initStr$[1] := "Down";
+    initStr$[2] := "Up";
+    initStr$[3] := "Right";
+    initStr$[4] := "Left";
+    initStr$[5] := "X Axis";
+    initStr$[6] := "Y Axis";
+
     ' Fetch parameters from registry    
     RecJoyTrainGetParams(); 'make this below! 'do i need to do this?
     
@@ -1577,23 +1589,33 @@ func RecJoyTrainDialog%()
     DlgCreate("Joystick training dialog", 0,0, 50,16); '0,0=ctr of scrn; 50,16=size of dlg
     DlgCheck(1, "Give juice for hitting trial start window?");
 
-    DlgGroup("Timing and Rewards",1,2,48,7); 'just text for now to tell ppl where to go to change things
+    DlgGroup("Timing and Rewards",1,2,48,6); 'just text for now to tell ppl where to go to change things
     'i think i can actually set these here (basically copy from those dialogs and then assign those vars below
-    DlgText("Use Timing/Reward Dialog to set (can't do it here!):",2,3); 
-        DlgText("* Hit Reward Duration,mL = amount of juice",3,4); 'msg: amount of juice --> update HIT REWARD in timing and reward dialog!
-        DlgText("* Reward Increment on hits",3,5); 'msg: reward increment on hits --> update in Timing & Reward Dialog!
-        DlgText("* Minimum Onset Delay = hold to get juice",3,6); 'msg: juice delay? --> Minimum onset delay in timing and reward dialog!
-        DlgText("* ????? to Increment Onset Delay",3,7);'**increment delay? --> set max delay (is there already a variable for this?)
+'    DlgText("Use Timing/Reward Dialog to set (can't do it here!):",2,3); 
+       ' DlgText("* Hit Reward Duration,mL = amount of juice",3,4); 'msg: amount of juice --> update HIT REWARD in timing and reward dialog!
+       ' DlgText("* Reward Increment on hits",3,5); 'msg: reward increment on hits --> update in Timing & Reward Dialog!
+       ' DlgText("* Minimum Onset Delay = hold to get juice",3,6); 'msg: juice delay? --> Minimum onset delay in timing and reward dialog!
+        DlgReal(2,4,0,3,c1%,3); DlgText("Hit Reward Duration, mL",c1txt%,3); '#2=recHitRewardmL
+        DlgReal(3,4,0,1,c1%,4); DlgText("Reward Increment on hits, mL",c1txt%,4); '#3=recHitRewardIncmL
+        DlgReal(4,4,0,10,c1%,5); DlgText("Minimum Onset Delay, s",c1txt%,5); '#4=recMinOnsetDelay
+        DlgText("* ??? to Increment Onset Delay",3,6);'**increment delay? --> set max delay (is there already a variable for this?)
+        DlgText("* ??? to Set Max Onset Delay",3,7);'**increment delay? --> set max delay (is there already a variable for this?)
 
-    DlgGroup("Joystick",1,9,48,6);
-    DlgText("Use Joystick/Lever Dialog to set (can't do it here!):",2,10); 
-        DlgText("* Trial Initiation Position",3,11); 'msg: set trial initiation position in Joystick Dialog!
-        DlgText("* Joystick Thresholds and Increments",3,12);  'msg: set joystick increments in Joystick Dialog --> joystick increments!
+    DlgGroup("Joystick",1,s2%,48,6);
+'    DlgText("Use Joystick/Lever Dialog to set (can't do it here!):",2,10); 
+        'DlgText("* Trial Initiation Position",3,11); 'msg: set trial initiation position in Joystick Dialog!
+        'DlgText("* Joystick Thresholds and Increments",3,12);  'msg: set joystick increments in Joystick Dialog --> joystick increments!
+        DlgList(5,20,initStr$[],7,c1%-6,s2%+1); DlgText("Trial Initiation Position",c1txt%,s2%+1); 'recTrialInitPosition%
+        DlgButton(2,"Joystick Thresholds",SetJoystickThresholdDialog%,2,s2%+2);
+        DlgCheck(6,"Do Increments",2,s2%+3); 'recDoIncrements%
+        DlgButton(3,"Joystick Increments",SetJoystickThresholdIncrementDialog%,2,s2%+4); 'recTrialResponsePosition1%
+        DlgButton(4,"Joystick Limits",SetJoystickThresholdLimitDialog%,2,s2%+5); 'recTrialResponsePosition2%
+
 
     DlgAllow(0xffff, 0, RecExpJoyTrnDialogChanged%); 'no idea how this works, but i'm sure i need it!
 
     ' Show the dialog. 
-    i%:=DlgShow(recDoJoyTrain%); 'DlgCheck(1... ??
+i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay, recTrialInitPosition%, recDoIncrements%); 'DlgCheck(1... ??
 
     ' If user checked box and hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1772,7 +1794,7 @@ func RecExpAMDiscDialog%()
         
     
     ' Generate the dialog    
-    DlgCreate("AM Discrimination Dialog",0,0,74,11);
+    DlgCreate("AM Discrimination Dialog",0,0,74,12);
     
     DlgGroup("Stimulus Selection",1,1,72,4);
     DlgCheck(1,"Create Stimuli?",2,2);
@@ -1783,32 +1805,34 @@ func RecExpAMDiscDialog%()
     DlgButton(recAMDiscAddExpButton%, "  Add Experiment  ", RecAMDiscAddExp%,53,3);
     DlgButton(recAMDiscDeleteExpButton%, "Delete Experiment ", RecAMDiscDeleteExp%,53,4);
     
-    DlgGroup("Variables",1,5,72,5);
+    DlgGroup("Variables",1,6,72,5);
     'DlgInteger(4,6,1,20,27,6);  'S1 speaker  'Removing S1 speaker as S1s will be determined by trials in trials file
     'DlgText("Preferred Speaker",8,6);
-    DlgInteger(4,6,1,9,27,6);  'Min S1
-    DlgText("Minimum S1 Presentations",2,6);
-    DlgInteger(5,6,0,8,27,7);  'Var S1
-    DlgText("Variable S1 Presentations",2,7);
-    DlgReal(6,6,0,1,27,8);  'Proportion of catch trials
-    DlgText("Proportion of Catch Trials",2,8);
-    DlgText("(if catch trials are in trials file, set to 0)",2,9);
-    DlgReal(7,6,0,100,65,8);  'dB level
-    DlgText("dB Level",46,8);
-    DlgInteger(8,6,1,100,65,9);  'Repeats
-    DlgText("Repeats per stimulus",46,9);
+    DlgInteger(4,6,1,9,27,7);  'Min S1
+    DlgText("Minimum S1 Presentations",2,7);
+    DlgCheck(9,"Trial initiation reward?",46,7);
+    DlgReal(10,4,0,3,65,8); DlgText("Training Reward, mL",46,8); 
 
-    
+    DlgInteger(5,6,0,8,27,8);  'Var S1
+    DlgText("Variable S1 Presentations",2,8);
+    DlgReal(6,6,0,1,27,9);  'Proportion of catch trials
+    DlgText("Proportion of Catch Trials",2,9);
+    DlgText("(if catch trials are in trials file, set to 0)",2,10);
+    DlgReal(7,6,0,100,65,9);  'dB level
+    DlgText("dB Level",46,9);
+    DlgInteger(8,6,1,100,65,10);  'Repeats
+    DlgText("Repeats per stimulus",46,10);
     
     DlgAllow(0xffff, 0, RecExpAMDiscDialogChanged%);
-    
     
     ' Show the dialog. 
     'i%:=DlgShow(recAMDiscMatGenStim%,recAMDiscExpIndexGen%,recAMDiscExpIndexLoad%,recAMDiscS1Speaker%,recAMDiscMinS1%,recAMDiscVarS1%,
     '            recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%);  
     
     i%:=DlgShow(recAMDiscMatGenStim%,recAMDiscExpIndexGen%,recAMDiscExpIndexLoad%,recAMDiscMinS1%,recAMDiscVarS1%,
-                recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%);  'not setting recAMDiscS1Speaker% in this version
+                recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recTrialInitReward%, recTrainingRewardmL);  'not setting recAMDiscS1Speaker% in this version
+
+    printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1982,7 +2006,7 @@ func RecExpTimingRewardDialog%()
     DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
     
     DlgGroup("Rewards",1,10,trwid%-2,5);
-    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward Duration, mL",c1txt%+20,11);
+    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward Duration, mL",c1txt%+20,11); 'recTrainingRewardmL
     DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward Duration, mL",c1txt%,12);
     DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward Duration, mL",c2txt%,12);
     DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Duration, mL",c1txt%,13);
