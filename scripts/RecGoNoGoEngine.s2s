@@ -698,7 +698,7 @@ func StimComplete%(isS2%, success%)
                     case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
                         status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
                     case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
-                        printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3"); 
+                        printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
                         status% := 3;  'return indicates S2-LO is next
                     else
                         status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
@@ -712,7 +712,7 @@ func StimComplete%(isS2%, success%)
             status% := 0;  'After FA, we will indicate the next stimulus is an S1, as it will be.
         endif
     case isS2% = 1 and recExpToRun% = recExpAMDiscButton% then  'If it's an S2 (target), AMDis S2-HI *jao
-        printlog("AMDis Hi!, current trial is %d", recCurrentTrial%); 
+        printlog("AMDis Hi!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then
             strtmp$ := Print$("HH,%d", recCurrentTrial%);  'H is for Hit
             SampleText(strtmp$, recPreciseTrialTime);
@@ -731,7 +731,7 @@ func StimComplete%(isS2%, success%)
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 3 then  'If it's an S2 (target) 'AMDis S2-LO *jao - case is unique to AMDis
-        printlog("AMDis Lo!, current trial is %d", recCurrentTrial%);
+        printlog("AMDis Lo!, current trial is %d\n", recCurrentTrial%);
         if success% = 1 then
             strtmp$ := Print$("HL,%d", recCurrentTrial%);  'H is for Hit
             SampleText(strtmp$, recPreciseTrialTime);
@@ -741,7 +741,7 @@ func StimComplete%(isS2%, success%)
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 2 and recExpToRun% = recExpAMDiscButton% then 'If it's a terminal S1 (intended no-response in gonogo) 'AMDis Hi/Lo case *jao
-        printlog("AMDis SAME!, current trial is %d", recCurrentTrial%); 
+        printlog("AMDis SAME!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then 'for HI/LO, success=1 means this trial was rewarded (coinFlipResult%) *jao
             strtmp$ := Print$("SR,%d", recCurrentTrial%);  'REWARDED SAME trial *jao
             SampleText(strtmp$, recPreciseTrialTime);
@@ -2162,7 +2162,7 @@ func IdleLoop%()
                 endif;
                 ChangeStateTo(stateMissTimeout%);
             'SAME and in either response window    
-            case isS2% = 2 and recExpToRun% = recExpAMDiscButton% and inResponse1% = 1 or inResponse2% = 1 then 'SAME, either response
+            case isS2% = 2 and recExpToRun% = recExpAMDiscButton% and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
             'isTerminalS1% = 1 then  
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 if inResponse1% = 1 then

@@ -1998,7 +1998,7 @@ func RecExpTimingRewardDialog%()
     DlgReal(3,12,0,10,c1%,4); DlgText("ISI, s",c1txt%,4);
     DlgReal(4,12,0,100,c2%,2); DlgText("Trial Initiation Window, s",c2txt%,2);
     DlgReal(5,12,0,100,c2%,3); DlgText("Response Window, s",c2txt%,3);
-    DlgReal(18,12,0,100,c2%,4); DlgText("Joystick Min Duration, s",c2txt%,4);
+  '  DlgReal(18,12,0,100,c2%,4); DlgText("Joystick Min Duration, s",c2txt%,4); 'this variable doesn't seem to be used anywhere; same as MinOnsetDelay ??
     
     DlgGroup("Time Outs",1,6,trwid%-2,3);
     DlgReal(6,12,0,300,c2%,7); DlgText("Lazy Monkey TO, s",c2txt%,7);
@@ -2022,7 +2022,7 @@ func RecExpTimingRewardDialog%()
     ' Show the dialog. 
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
                 recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
-                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMinJoystickRespTime);
+                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%);',recMinJoystickRespTime);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -2672,7 +2672,7 @@ Func RecAMDiscAddExp%()
             recAMDiscTrialsNameLoad$[k%] := mystr3$;
             'And save them
             RecAMDiscExpListLoadSaveParams(recAMDiscExpNameLoad$[],recAMDiscStimcalNameLoad$[],recAMDiscTrialsNameLoad$[]);
-            status% := 0;  'close the calling dialog        
+            status% := 0;  'close the calling dialog - necessary to refresh list in AMDisDialog
         else
             'reload parameters
             RecAMDiscExpListGenGetParams(recAMDiscExpNameGen$[],recAMDiscStimcalNameGen$[],recAMDiscTrialsNameGen$[]);
@@ -3962,7 +3962,7 @@ for trialrep% := 0 to recAMDiscRepeatsPerStim%-1 do 'for number of trial repetit
     
         'determine how many S1 repeats to do this time:
         numS1perTrial% := recMinS1%+Floor(Rand(recVarS1%+1,0)); 'how it's done in GenTrialsSearch%().. not sure why it's not: Rand({recVarS1%,1})
-        printlog("numS1perTrial is %d for trial number %d\n",numS1perTrial%,k%);
+        'printlog("numS1perTrial is %d for trial number %d\n",numS1perTrial%,k%);
         recTrialTerminalIndex%[k%]  := numS1perTrial%;  'not "+1" due to 0-based indexing *jao: i have no idea what this means!       
     
         'what kind of trial is this?  ***this is probably the only part that will change for SPACE!
@@ -3970,29 +3970,28 @@ for trialrep% := 0 to recAMDiscRepeatsPerStim%-1 do 'for number of trial repetit
         case recIsGoNoGo% = 1 then 'gonogo
             if recTrialS1%[i%]<>recTrialS2%[i%] then 'case this bitch to separate up/down trials
                 responseTrial% := 1;  'trial is hit/miss (has terminal S2) --> up OR down
-                printlog("this is a CHANGE trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+                'printlog("this is a CHANGE trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
             else 'they're the same
                 responseTrial% := 0;  'trial is catch (no terminal S2?? ...DONT THINK THIS IS CORRECT) 
-                printlog("this is a CATCH trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+                'printlog("this is a CATCH trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
             endif
             recTrialTerminalIsS2%[k%] := responseTrial%; 'wait, how does this work for up/down? 'I HAVE NO IDEA HOW THIS SHOULD WORK! HELP!     
         case recIsGoNoGo% = 0 then 'up/down forced choice
             docase
             case recTrialS2%[i%] < recTrialS1%[i%]  then 
                 'LO trial
-                printlog("this is a DOWN trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+                'printlog("this is a DOWN trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
                 recTrialTerminalIsS2%[k%] := 2; 'S2-LO --> StimComplete in RecGoNoGoEng *jao
             case recTrialS2%[i%] > recTrialS1%[i%] then
                 'HI trial
-                printlog("this is a UP trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+                'printlog("this is a UP trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
                 recTrialTerminalIsS2%[k%] := 1; 'S2-HI --> StimComplete in RecGoNoGoEng *jao
             case recTrialS2%[i%] = recTrialS1%[i%] then
                 'catch trial --> to be rewarded 50% of the time; trials used to determine HI/LO;UP/DOWN bias
-                printlog("this is a SAME trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+               ' printlog("this is a SAME trial, S1 = %d and S2 = %d\n",recTrialS1%[i%],recTrialS2%[i%]);
+            endcase;
             else
                 printlog("something is fucked. recIsGoNoGo% has not been set. = %d\n",recIsGoNoGo%);
-            endcase;
-            
         endcase; 
         
         'fill the S1 information (for how ever many S1 repeats there are)
@@ -4020,10 +4019,10 @@ for trialrep% := 0 to recAMDiscRepeatsPerStim%-1 do 'for number of trial repetit
 next; 'end trialrep for 
 
     'Randomize the list order
-    printlog("recTrialOrder% before shuffling %d\n",recTrialOrder%);'[0][k%]);
+'    printlog("recTrialOrder% before shuffling %d\n",recTrialOrder%);'[0][k%]);
     ShuffleList%(recTrialOrder%[0:nS2%]);
-    printlog("recTrialOrder% after shuffling %d\n",recTrialOrder%);'[0][k%]);  
-
+'    printlog("recTrialOrder% after shuffling %d\n",recTrialOrder%);'[0][k%]);  
+    printlog("AMDis trials generated and shuffled successfully! recTrialOrder = %d\n",recTrialOrder%);'[0][k%]);  
     return status%;
 end
 '===== End GenTrialsAMDis =====
