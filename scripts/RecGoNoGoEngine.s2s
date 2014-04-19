@@ -1482,7 +1482,6 @@ func IdleLoop%()
             endif;
             
             
-            
         case iState% = stateCEDBlinking% then
             if tNow < tStartBlink + recTrialInitWindow then
 '                if recCEDIsPresent% = 1  and recActive% = 1 then
