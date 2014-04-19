@@ -850,7 +850,7 @@ func Stop%()
     ' Stop sampling....
     if SampleStatus() <> -1 then
         if useTDTforLever% = 0 then
-            SafeSampleKey("S");  'Kill blink sequence, if one exists
+            SafeSampleKey("S");  'Kill blink sequence, if one exists - when does this happens? think about making it not safe ~jao
         endif;
         if useTDTforJuicer% = 0 then
             SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
@@ -1493,7 +1493,7 @@ func IdleLoop%()
                 CheckLever%("inTrialInit%",1);
                 'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
                 if inTrialInit% = 1 then
-                    SafeSampleKey("S"); 'stop blink sequence immediately
+                    SampleKey("S"); 'stop blink sequence *immediately* - therefore, do not use SafeSampleKey
                     if recFixLED% = 1 then
                         SafeSampleKey("L"); 'turn on LED for fixpt
                     endif;
@@ -1503,7 +1503,7 @@ func IdleLoop%()
                     ChangeStateTo(statePreTrialDelay%);
                 endif;
             else  'this is timeout
-                SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped
+                SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped - this might need to be unSafe'd as well
                 RecLogStatus("WaitTrlInit", "Timeout waiting for trial initiation.");
                 'Decrement, if appropriate
                 'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%); 'old version
