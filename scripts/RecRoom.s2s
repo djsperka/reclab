@@ -1595,7 +1595,7 @@ func RecJoyTrainDialog%()
        ' DlgText("* Hit Reward Duration,mL = amount of juice",3,4); 'msg: amount of juice --> update HIT REWARD in timing and reward dialog!
        ' DlgText("* Reward Increment on hits",3,5); 'msg: reward increment on hits --> update in Timing & Reward Dialog!
        ' DlgText("* Minimum Onset Delay = hold to get juice",3,6); 'msg: juice delay? --> Minimum onset delay in timing and reward dialog!
-        DlgReal(2,4,0,3,c1%,3); DlgText("Hit Reward Duration, mL",c1txt%,3); '#2=recHitRewardmL
+        DlgReal(2,4,0,3,c1%,3); DlgText("Hit Reward, mL",c1txt%,3); '#2=recHitRewardmL
         DlgReal(3,4,0,1,c1%,4); DlgText("Reward Increment on hits, mL",c1txt%,4); '#3=recHitRewardIncmL
         DlgReal(4,4,0,10,c1%,5); DlgText("Minimum Onset Delay, s",c1txt%,5); '#4=recMinOnsetDelay
         DlgText("* ??? to Increment Onset Delay",3,6);'**increment delay? --> set max delay (is there already a variable for this?)
@@ -2006,11 +2006,11 @@ func RecExpTimingRewardDialog%()
     DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
     
     DlgGroup("Rewards",1,10,trwid%-2,5);
-    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward Duration, mL",c1txt%+20,11); 'recTrainingRewardmL
-    DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward Duration, mL",c1txt%,12);
-    DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward Duration, mL",c2txt%,12);
-    DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Duration, mL",c1txt%,13);
-    DlgReal(13,12,0,3,c2%,13); DlgText("Max CR Duration, mL",c2txt%,13);
+    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward, mL",c1txt%+20,11); 'recTrainingRewardmL
+    DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward, mL",c1txt%,12);
+    DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward, mL",c2txt%,12);
+    DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Reward, mL",c1txt%,13);
+    DlgReal(13,12,0,3,c2%,13); DlgText("Max CR Reward, mL",c2txt%,13);
     DlgReal(14,12,0,1,c1%,14); DlgText("Reward Increment on hits, mL",c1txt%,14);
     DlgReal(15,12,0,1,c2%,14); DlgText("Reward Increment Per S1, mL",c2txt%,14);
     

@@ -1866,9 +1866,9 @@ func SetJoystickThresholdLimitDialog%()
     DlgText(Str$(DownThreshOuter),41,15);
     DlgReal(8,8,DownThreshOuter,joystickMaxDegrees,47,15);
     'Side labels
-    DlgText("Minimum",3,8);
+    DlgText("Maximum",3,8); '* 
     DlgText("Thresh",3,9);
-    DlgText("Maximum",3,10);
+    DlgText("Minimum",3,10); '*
     'Middle row first column, left outer
     DlgText("Left Outer",11,7);
     DlgReal(9,8,LeftThreshOuter,joystickMaxDegrees,12,8);
