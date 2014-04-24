@@ -1356,6 +1356,7 @@ func IdleLoop%()
 	var iStatus% := 1;	' this is return value. value of 1 (0) continues (stops) processing
     var stmp%;
     var isS2%;
+    var responseMode%; 'branched from isS2% for Hi/Lo responses, does this have to be global to work?
     var strtmp$;
     var isPlaying%;
     var PWA$;
@@ -1691,6 +1692,7 @@ func IdleLoop%()
                     RecLogStatus("WaitISI", "ISI done.");
                     recPreciseTrialTime := tNow;  'time ISI is complete
                     isS2% := StimComplete%(0, 1);
+                    responseMode% := isS2%; 'branched from isS2% for Hi/Lo responses
                     docase 
                     case isS2% = 0 then
                         ChangeStateTo(stateStartSoundA%);
@@ -2110,7 +2112,7 @@ func IdleLoop%()
             'Hit in response window    
             
         'AMDis HI/LO    *jao
-            case inResponse1% = 1 and isS2% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, HIT
+            case inResponse1% = 1 and responseMode% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, HIT
             'isTerminalS1% = 0 then 
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT HI");
@@ -2123,7 +2125,7 @@ func IdleLoop%()
                 endif;
                 ChangeStateTo(stateHitReward%);
             'Lo-Hit in response window    
-            case inResponse2% = 1 and isS2% = 3 then 'LO, HIT -implied: and recExpToRun% = recExpAMDiscButton%
+            case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and recExpToRun% = recExpAMDiscButton%
             'isTerminalS1% = 0 then 
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
@@ -2136,7 +2138,7 @@ func IdleLoop%()
                 endif;
                 ChangeStateTo(stateHitReward%);
             'Hi-Miss in response window    
-            case inResponse2% = 1 and isS2% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, MISS
+            case inResponse2% = 1 and responseMode% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, MISS
             'isTerminalS1% = 0 then  
                 RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
@@ -2148,7 +2150,7 @@ func IdleLoop%()
                 endif;
                 ChangeStateTo(stateMissTimeout%);
             'Lo-MISS in response window    
-            case inResponse1% = 1 and isS2% = 3 and recExpToRun% = recExpAMDiscButton% then 'LO, MISS
+            case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpAMDiscButton% then 'LO, MISS
             'isTerminalS1% = 0 then  
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
@@ -2161,7 +2163,7 @@ func IdleLoop%()
                 endif;
                 ChangeStateTo(stateMissTimeout%);
             'SAME and in either response window    
-            case isS2% = 2 and recExpToRun% = recExpAMDiscButton% and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
+            case responseMode% = 2 and recExpToRun% = recExpAMDiscButton% and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
             'isTerminalS1% = 1 then  
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 if inResponse1% = 1 then
