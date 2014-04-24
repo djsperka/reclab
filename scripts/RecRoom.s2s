@@ -179,6 +179,7 @@ const recDAC0% := 0;                'Set output channel to DAC 0, don't let this
 var recExptText$ := "";             'text that describes this expt, for a SampleText
 var recRunTimeCall%;                'will be 1 if dialog box is called during run time
 var recWhichDialogCalled%;          'lets us know which dialog to call    
+var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo responses, does this have to be global to work?
     
 'Speaker variables
 const recMaxSpeaker%:=31;           'Maximum number of simultaneous speakers

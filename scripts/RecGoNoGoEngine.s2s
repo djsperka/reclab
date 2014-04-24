@@ -1356,7 +1356,6 @@ func IdleLoop%()
 	var iStatus% := 1;	' this is return value. value of 1 (0) continues (stops) processing
     var stmp%;
     var isS2%;
-    var responseMode%; 'branched from isS2% for Hi/Lo responses, does this have to be global to work?
     var strtmp$;
     var isPlaying%;
     var PWA$;
@@ -1691,8 +1690,10 @@ func IdleLoop%()
                 if tNow - tStateStart > recISI then
                     RecLogStatus("WaitISI", "ISI done.");
                     recPreciseTrialTime := tNow;  'time ISI is complete
+                    responseMode% := -1; 'reset for debugging
                     isS2% := StimComplete%(0, 1);
                     responseMode% := isS2%; 'branched from isS2% for Hi/Lo responses
+                    printlog("***Response mode set! for this trial = %d\n", responseMode%);
                     docase 
                     case isS2% = 0 then
                         ChangeStateTo(stateStartSoundA%);
@@ -2029,7 +2030,9 @@ func IdleLoop%()
                     inResponse1% := 1;  'simulate hit for passive
                 endif;
             endif
-            
+        
+        printlog("***recExpToRun% is %d\n",recExpToRun% ); 
+        
             docase
                 'Early hit, interrupted final stimulus, this is OK   
             case isEarlyHit% = 1 then  'we don't care about the state of the lever; it was already released early
