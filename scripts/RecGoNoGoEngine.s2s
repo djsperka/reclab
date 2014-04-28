@@ -1368,7 +1368,7 @@ func IdleLoop%()
         
         'Get the current time
         if recCEDIsPresent% = 1 then
-            tNow := MaxTime();
+            tNow :=  View(recDataWindowView%).MaxTime();
         else
             tNow += .05;  'simulate 50 ms between loops
         endif
@@ -1468,7 +1468,7 @@ func IdleLoop%()
                         sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
                         sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
                         SafeSampleKey("L");  'Start the flash
-                        tStartBlink := MaxTime();    
+                        tStartBlink :=  View(recDataWindowView%).MaxTime();    
                     else
                         tStartBlink := tNow;
                     endif;

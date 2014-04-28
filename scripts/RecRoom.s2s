@@ -254,6 +254,9 @@ var recLazyMonkeyTO;                'Duration of time-out for not working, secon
 var recMissTO;                      'Duration of time-out for miss, seconds
 var recFalseAlarmTO;                'Duration of time-out for false alarms, seconds
 var recInterruptTO;
+var recMissRepeats%;                'Whether to repeat missed trials '*jao
+var recMissRepeatsMax%;             'Max # times to repeat missed trials
+var recMissRepeatsCounter% := 0;    'Initialize consective miss repeat counter to 0 (this might be useful for staircase training later)
     
 'Joystick variables    
 var recUseJoystick%;                'Do we use the joystick, 1 = yes, 0 = no
@@ -922,7 +925,9 @@ proc RecAMDiscGetParams()
     recAMDiscMatGenStim% := GetIntRegistryValue%(key$, "AMDiscMatGenStim", recAMDiscMatGenStim%);
     recAMDiscExpIndexGen% := GetIntRegistryValue%(key$, "AMDiscExpIndexGen", recAMDiscExpIndexGen%);
     recAMDiscExpIndexLoad% := GetIntRegistryValue%(key$, "AMDiscExpIndexLoad", recAMDiscExpIndexLoad%);   
-    
+    recTrialInitReward% := GetIntRegistryValue%(key$, "TrialInitReward", recTrialInitReward%);
+    recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);  
+
 	return;
 end
 
@@ -950,6 +955,8 @@ proc RecAMDiscSaveParams()
     SetIntRegistryValue(key$, "AMDiscMatGenStim", recAMDiscMatGenStim%);
     SetIntRegistryValue(key$, "AMDiscExpIndexGen", recAMDiscExpIndexGen%);
     SetIntRegistryValue(key$, "AMDiscExpIndexLoad", recAMDiscExpIndexLoad%);
+    SetIntRegistryValue(key$, "TrialInitReward", recTrialInitReward%);
+    SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);  
     
 	return;
 end
@@ -1584,7 +1591,7 @@ func RecJoyTrainDialog%()
     initStr$[6] := "Y Axis";
 
     ' Fetch parameters from registry    
-    RecJoyTrainGetParams(); 'make this below! 'do i need to do this?
+    RecJoyTrainGetParams(); 'make this below!
     
     ' Generate the dialog
     DlgCreate("Joystick training dialog", 0,0, 50,16); '0,0=ctr of scrn; 50,16=size of dlg
@@ -1669,7 +1676,13 @@ func RecJoyTrainGetParams()
     key$:="Reclab\\LeverJoystick";
 
     recDoJoyTrain%:= GetIntRegistryValue%(key$, "DoJoyTrain", recDoJoyTrain%);
-    
+    recMinOnsetDelay := GetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
+    recHitRewardmL := GetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
+	recHitRewardIncmL := GetFloatRegistryValue(key$, "HitRewardIncmL", recHitRewardIncmL);
+    recMinOnsetDelay := GetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
+    recTrialInitPosition% := GetFloatRegistryValue(key$, "TrialInitPosition", recTrialInitPosition%);
+    recDoIncrements% := GetFloatRegistryValue(key$, "DoIncrements", recDoIncrements%);
+
     return;
 
 end; 
@@ -1683,6 +1696,12 @@ func RecJoyTrainSaveParams()
     key$:="Reclab\\LeverJoystick";
 
     SetIntRegistryValue(key$, "DoJoyTrain", recDoJoyTrain%);
+    SetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
+    SetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);   
+    SetFloatRegistryValue(key$, "HitRewardIncmL", recHitRewardIncmL);    
+    SetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
+    SetFloatRegistryValue(key$, "TrialInitPosition", recTrialInitPosition%);
+    SetFloatRegistryValue(key$, "DoIncrements", recDoIncrements%);
     
 	return;
 
@@ -1992,7 +2011,7 @@ func RecExpTimingRewardDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 19);
+    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 20);
     DlgGroup("Timing Parameters",1,1,trwid%-2,4);
     DlgReal(1,12,0,10,c1%,2); DlgText("Minimum Onset Delay, s",c1txt%,2);
     DlgReal(2,12,0,10,c1%,3); DlgText("Variable Onset Delay, s",c1txt%,3);
@@ -2001,29 +2020,31 @@ func RecExpTimingRewardDialog%()
     DlgReal(5,12,0,100,c2%,3); DlgText("Response Window, s",c2txt%,3);
   '  DlgReal(18,12,0,100,c2%,4); DlgText("Joystick Min Duration, s",c2txt%,4); 'this variable doesn't seem to be used anywhere; same as MinOnsetDelay ??
     
-    DlgGroup("Time Outs",1,6,trwid%-2,3);
-    DlgReal(6,12,0,300,c2%,7); DlgText("Lazy Monkey TO, s",c2txt%,7);
+    DlgGroup("Time Outs, etc.",1,6,trwid%-2,4);
+    DlgReal(6,12,0,300,c1%,9); DlgText("Lazy Monkey TO, s",c1txt%,9);
     DlgReal(7,12,0,300,c1%,7); DlgText("Miss TO, s",c1txt%,7);
     DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
+    DlgCheck(18,"Do Miss Repeats?",c2txt%+8,7);
+    DlgInteger(19,12,0,10,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
     
-    DlgGroup("Rewards",1,10,trwid%-2,5);
-    DlgReal(9,12,0,3,c1%+20,11); DlgText("Training Reward, mL",c1txt%+20,11); 'recTrainingRewardmL
-    DlgReal(10,12,0,3,c1%,12); DlgText("Hit Reward, mL",c1txt%,12);
-    DlgReal(11,12,0,3,c2%,12); DlgText("CR Reward, mL",c2txt%,12);
-    DlgReal(12,12,0,3,c1%,13); DlgText("Max Hit Reward, mL",c1txt%,13);
-    DlgReal(13,12,0,3,c2%,13); DlgText("Max CR Reward, mL",c2txt%,13);
-    DlgReal(14,12,0,1,c1%,14); DlgText("Reward Increment on hits, mL",c1txt%,14);
-    DlgReal(15,12,0,1,c2%,14); DlgText("Reward Increment Per S1, mL",c2txt%,14);
+    DlgGroup("Rewards",1,11,trwid%-2,5);
+    DlgReal(9,12,0,3,c1%+20,12); DlgText("Training Reward, mL",c1txt%+20,12); 'recTrainingRewardmL
+    DlgReal(10,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
+    DlgReal(11,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
+    DlgReal(12,12,0,3,c1%,14); DlgText("Max Hit Reward, mL",c1txt%,14);
+    DlgReal(13,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
+    DlgReal(14,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
+    DlgReal(15,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
     
-    DlgGroup("Interrupts",1,16,trwid%-2,2);
-    DlgList(16,20,intStr$[],2,c1%-8,17); DlgText("On S1 Interrupt",c1txt%,17);
-    DlgList(17,20,intStr$[],2,c2%-8,17); DlgText("On S2 Interrupt",c2txt%,17);
+    DlgGroup("Interrupts",1,17,trwid%-2,2);
+    DlgList(16,20,intStr$[],2,c1%-8,18); DlgText("On S1 Interrupt",c1txt%,18);
+    DlgList(17,20,intStr$[],2,c2%-8,18); DlgText("On S2 Interrupt",c2txt%,18);
     
     
     ' Show the dialog. 
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
                 recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
-                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%);',recMinJoystickRespTime);
+                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%);',recMinJoystickRespTime);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -2075,6 +2096,8 @@ proc RecTimingRewardGetParams()
     recMinJoystickRespTime := GetFloatRegistryValue(key$, "MinJoystickRespTime", recMinJoystickRespTime);
     recContinueSoundOnS1Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS1Interrupt", recContinueSoundOnS1Interrupt%);
     recContinueSoundOnS2Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
+    recMissRepeats% := GetIntRegistryValue%(key$, "MissRepeats", recMissRepeats%);
+    recMissRepeatsMax% := GetIntRegistryValue%(key$, "MissRepeatsMax", recMissRepeatsMax%);
     
 	return;
 end
@@ -2114,6 +2137,8 @@ proc RecTimingRewardSaveParams()
     SetFloatRegistryValue(key$, "MinJoystickRespTime", recMinJoystickRespTime);
     SetIntRegistryValue(key$, "ContinueSoundOnS1Interrupt", recContinueSoundOnS1Interrupt%);
     SetIntRegistryValue(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
+    SetIntRegistryValue(key$, "MissRepeats", recMissRepeats%);
+    SetIntRegistryValue(key$, "MissRepeatsMax", recMissRepeatsMax%);
     
 	return;
 end
