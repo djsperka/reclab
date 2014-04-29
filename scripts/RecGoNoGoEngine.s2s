@@ -1078,9 +1078,9 @@ proc ChangeStateTo(stateTo%)
 	iState% := stateTo%;
     nextStateImmed% := 1;  'nothing to wait for
     if recCEDIsPresent% = 1 then
-        tStateStart := MaxTime();
+        tStateStart := View(recDataWindowView%).MaxTime();
     else
-        tStateStart := tNow;
+        tStateStart := View(recDataWindowView%).tNow;
     endif
 end;
 
@@ -1412,7 +1412,7 @@ func IdleLoop%()
             endif;
             
             CheckLever%("inOrigin%",1);  'flush joystick/lever data, default to inOrigin
-            
+            'only original check for pause location....
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
                 if recExpToRun% <> recExpSearchButton% or recSearchLoaded% = 0 then
@@ -1450,110 +1450,173 @@ func IdleLoop%()
             
             
         case iState% = stateWaitForInitiationMovement% then   'this state just decides which state to go to, it's easier than replacing all the instances 
-            if useTDTforLever% = 1 then
-                ChangeStateTo(stateTDTBlink%);
-            else
-                ChangeStateTo(stateStartCEDBlink%);
-            endif;
+            'CHECK FOR PAUSE HERE TOO:
+            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+                'do state stuff here...
+                if useTDTforLever% = 1 then
+                    ChangeStateTo(stateTDTBlink%);
+                else
+                    ChangeStateTo(stateStartCEDBlink%);
+                endif;
+                
+            else  'but if paused, check to see if we have a call out to a dialog box to change values
+                if recRunTimeCall% = 1 then
+                    docase
+                    case recWhichDialogCalled% = 1 then
+                        RecExpTimingRewardDialog%();
+                        ReturnFromDialogCall%();
+                    case recWhichDialogCalled% = 2 then
+                        RecExpLeverJoystickDialog%();  
+                        ReturnFromDialogCall%();
+                    endcase
+                endif
+            endif
+        
             
             
         case iState% = stateStartCEDBlink% then
-            CheckLever%("inOrigin%",1);
-            if inOrigin% = 1 then  'lever must be in origin to start blink
-                if tNow > tNextTrial then
-                    RecLogStatus("WaitTrlInit", "Blink/Wait.");
-                    if recCEDIsPresent% = 1 and recActive% = 1 then
-                        SampleSeqVar(4,1);  'set the flash sequence to on
-                        Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
-                        sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
-                        sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
-                        SafeSampleKey("L");  'Start the flash
-                        tStartBlink :=  View(recDataWindowView%).MaxTime();    
-                    else
-                        tStartBlink := tNow;
+        
+            'CHECK FOR PAUSE HERE TOO:
+            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+                'do state stuff here
+               CheckLever%("inOrigin%",1);
+                if inOrigin% = 1 then  'lever must be in origin to start blink
+                    if tNow > tNextTrial then
+                        RecLogStatus("WaitTrlInit", "Blink/Wait.");
+                        if recCEDIsPresent% = 1 and recActive% = 1 then
+                            SampleSeqVar(4,1);  'set the flash sequence to on
+                            Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
+                            sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
+                            sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
+                            SafeSampleKey("L");  'Start the flash
+                            tStartBlink :=  View(recDataWindowView%).MaxTime();    
+                        else
+                            tStartBlink := tNow;
+                        endif;
+                        ChangeStateTo(stateCEDBlinking%);
                     endif;
-                    ChangeStateTo(stateCEDBlinking%);
+                else
+                    if tNow > recTrialInitWindow + tNextTrial then  'Use trial init window both for getting into origin and starting trial
+                        RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever/joystick into origin.");
+                        ChangeStateTo(stateLazyMonkeyTimeout%);
+                    endif;
                 endif;
-            else
-                if tNow > recTrialInitWindow + tNextTrial then  'Use trial init window both for getting into origin and starting trial
-                    RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever/joystick into origin.");
-                    ChangeStateTo(stateLazyMonkeyTimeout%);
-                endif;
-            endif;
-            
+            else  'but if paused, check to see if we have a call out to a dialog box to change values
+                if recRunTimeCall% = 1 then
+                    docase
+                    case recWhichDialogCalled% = 1 then
+                        RecExpTimingRewardDialog%();
+                        ReturnFromDialogCall%();
+                    case recWhichDialogCalled% = 2 then
+                        RecExpLeverJoystickDialog%();  
+                        ReturnFromDialogCall%();
+                    endcase
+                endif
+            endif
             
         case iState% = stateCEDBlinking% then
-            if tNow < tStartBlink + recTrialInitWindow then
-'                if recCEDIsPresent% = 1  and recActive% = 1 then
-'                    CheckLever%();
-'                else
-'                    inTrialInit% := 1; 'simulate success
-'                endif;
-                CheckLever%("inTrialInit%",1);
-                'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
-                if inTrialInit% = 1 then
-                    SampleKey("S"); 'stop blink sequence *immediately* - therefore, do not use SafeSampleKey
-                    if recFixLED% = 1 then
-                        SafeSampleKey("L"); 'turn on LED for fixpt
-                    endif;
-                    RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
-                    'Increment, if appropriate
-                    ChangeThresh2(doIncTrialInit%[]);
-                    ChangeStateTo(statePreTrialDelay%);
-                endif;
-            else  'this is timeout
-                SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped - this might need to be unSafe'd as well
-                RecLogStatus("WaitTrlInit", "Timeout waiting for trial initiation.");
-                'Decrement, if appropriate
-                'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%); 'old version
-                ChangeThresh2(doDecTrialInit%[]);
-                ChangeStateTo(stateLazyMonkeyTimeout%);
-            endif;
-           
-            
-        case iState% = stateTDTBlink% then
-            CheckLever%("inOrigin%",1);
-            if inOrigin% = 1 then  'lever must be up to start blink
-                if tNow > tNextTrial then
-                    
-                    RecLogStatus("WaitTrlInit", "Blink/Wait.");
-                    
-                    'leave this the same...recBlinkUntilLeverDown%() is special, and I DON'T want to recode it
-                    if recCEDIsPresent% = 1 and recActive% = 1 then
-                        stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
-                        'Will leave LED on once lever is down
-                        if recFixLED% = 0 then
-                            SafeSampleKey("M"); 'turn LED off if we are not using it for fixation
+            'CHECK FOR PAUSE HERE TOO:
+            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+                'do state stuff here
+                 if tNow < tStartBlink + recTrialInitWindow then
+    '                if recCEDIsPresent% = 1  and recActive% = 1 then
+    '                    CheckLever%();
+    '                else
+    '                    inTrialInit% := 1; 'simulate success
+    '                endif;
+                    CheckLever%("inTrialInit%",1);
+                    'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
+                    if inTrialInit% = 1 then
+                        SampleKey("S"); 'stop blink sequence *immediately* - therefore, do not use SafeSampleKey
+                        if recFixLED% = 1 then
+                            SafeSampleKey("L"); 'turn on LED for fixpt
                         endif;
-                    else
-                        stmp% := 1;  'simulate success in lever press
-                    endif
-                    
-                    docase
-                    case stmp% = 1 then
-                        recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
-                        'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
                         RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                         'Increment, if appropriate
                         ChangeThresh2(doIncTrialInit%[]);
                         ChangeStateTo(statePreTrialDelay%);
-                    case stmp% = 0 then
-                        RecLogStatus("WaitTrlInit", "Timeout waiting for lever down.");
-                        'Decrement, if appropriate
-                        'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
-                        ChangeThresh2(doDecTrialInit%[]);
-                        ChangeStateTo(stateLazyMonkeyTimeout%);
-                    else
-                        PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
-                        Message("Error in recBlinkUntilLeverDown!");
-                        ChangeStateTo(stateTDTError%);
+                    endif;
+                 else  'this is timeout
+                    SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped - this might need to be unSafe'd as well
+                    RecLogStatus("WaitTrlInit", "Timeout waiting for trial initiation.");
+                    'Decrement, if appropriate
+                    'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%); 'old version
+                    ChangeThresh2(doDecTrialInit%[]);
+                    ChangeStateTo(stateLazyMonkeyTimeout%);
+                 endif;
+
+            else  'but if paused, check to see if we have a call out to a dialog box to change values
+                if recRunTimeCall% = 1 then
+                    docase
+                    case recWhichDialogCalled% = 1 then
+                        RecExpTimingRewardDialog%();
+                        ReturnFromDialogCall%();
+                    case recWhichDialogCalled% = 2 then
+                        RecExpLeverJoystickDialog%();  
+                        ReturnFromDialogCall%();
                     endcase
-                endif;
-            else
-                RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
-                ChangeStateTo(stateLazyMonkeyTimeout%);
-            endif;
+                endif
+            endif
             
+        case iState% = stateTDTBlink% then
+
+           'CHECK FOR PAUSE HERE TOO:
+            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+                'do state stuff here
+                CheckLever%("inOrigin%",1);
+                if inOrigin% = 1 then  'lever must be up to start blink
+                    if tNow > tNextTrial then
+                        
+                        RecLogStatus("WaitTrlInit", "Blink/Wait.");
+                        
+                        'leave this the same...recBlinkUntilLeverDown%() is special, and I DON'T want to recode it
+                        if recCEDIsPresent% = 1 and recActive% = 1 then
+                            stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
+                            'Will leave LED on once lever is down
+                            if recFixLED% = 0 then
+                                SafeSampleKey("M"); 'turn LED off if we are not using it for fixation
+                            endif;
+                        else
+                            stmp% := 1;  'simulate success in lever press
+                        endif
+                        
+                        docase
+                        case stmp% = 1 then
+                            recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+                            'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
+                            RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
+                            'Increment, if appropriate
+                            ChangeThresh2(doIncTrialInit%[]);
+                            ChangeStateTo(statePreTrialDelay%);
+                        case stmp% = 0 then
+                            RecLogStatus("WaitTrlInit", "Timeout waiting for lever down.");
+                            'Decrement, if appropriate
+                            'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
+                            ChangeThresh2(doDecTrialInit%[]);
+                            ChangeStateTo(stateLazyMonkeyTimeout%);
+                        else
+                            PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
+                            Message("Error in recBlinkUntilLeverDown!");
+                            ChangeStateTo(stateTDTError%);
+                        endcase
+                    endif;
+                else
+                    RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
+                    ChangeStateTo(stateLazyMonkeyTimeout%);
+                endif;
+            
+            else  'but if paused, check to see if we have a call out to a dialog box to change values
+                if recRunTimeCall% = 1 then
+                    docase
+                    case recWhichDialogCalled% = 1 then
+                        RecExpTimingRewardDialog%();
+                        ReturnFromDialogCall%();
+                    case recWhichDialogCalled% = 2 then
+                        RecExpLeverJoystickDialog%();  
+                        ReturnFromDialogCall%();
+                    endcase
+                endif
+            endif
             
         case iState% = stateLazyMonkeyTimeout% then
             CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
@@ -2148,6 +2211,19 @@ func IdleLoop%()
                 else
                     SafeSampleKey("M");
                 endif;
+                if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
+                    'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                    recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
+                    '**increment recMissRepeatsCounter in StateMissTimeout and reset to 0 in StateHitReward**
+                    printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
+                else
+                    printlog("not repeating missed trials \n");
+                endif
+            
+                'for False Positives:
+            'Send current trial to "middle" of remaining trials
+                'SendTrialToMiddle%(recNTrials%,recCurrentTrial%,0,recTrialOrder%[]);  'I want this to be the next trial
+
                 ChangeStateTo(stateMissTimeout%);
             'Lo-MISS in response window    
             case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpAMDiscButton% then 'LO, MISS
@@ -2161,7 +2237,16 @@ func IdleLoop%()
                 else
                     SafeSampleKey("M");
                 endif;
+                if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
+                    'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                    recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
+                    '**increment recMissRepeatsCounter in StateMissTimeout and reset to 0 in StateHitReward**
+                    printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
+                else
+                    printlog("not repeating missed trials \n");
+                endif
                 ChangeStateTo(stateMissTimeout%);
+            
             'SAME and in either response window    
             case responseMode% = 2 and recExpToRun% = recExpAMDiscButton% and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
             'isTerminalS1% = 1 then  
@@ -2249,7 +2334,13 @@ func IdleLoop%()
                     ChangeThresh2(doDecPassiveMiss%[]);
                 case isTerminalS1% = 0 then
                     ChangeThresh2(doDecPassiveFA%[]);
-                endcase;  
+                endcase;
+                'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                recCurrentTrial% := recCurrentTrial% - 1;
+                'Send current trial to "middle" of remaining trials
+                SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
+            
+                RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE");
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response
             'Response window is closed, miss on go/no-go   
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 0 then  'go/no-go miss
@@ -2283,7 +2374,10 @@ func IdleLoop%()
             
             
         case iState% = stateMissTimeout% then
-            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
+        CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
+        recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
+        printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
+
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
@@ -2340,7 +2434,8 @@ func IdleLoop%()
             'Increment, if appropriate
             ChangeThresh2(doIncHit%[]);
             'ChangeThresh(doIncUp%,doIncDown%,doIncLeft%,doIncRight%);
-            
+            recMissRepeatsCounter% := 0; 'reset MissRepeatsCounter to 0, keep track of consecutive Misses
+
             if recHitRewardmL > 0 then
                 RecLogStatus("HitReward", "Giving Hit Reward, size=" + str$(recHitRewardmL) + " mLs");
                 if recCEDIsPresent% = 1 then
