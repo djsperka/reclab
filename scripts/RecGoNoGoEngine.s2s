@@ -2214,8 +2214,10 @@ func IdleLoop%()
                 if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
-                    '**increment recMissRepeatsCounter in StateMissTimeout and reset to 0 in StateHitReward**
+                    '**increment recMissRepeatsCounter HERE and reset to 0 in StateHitReward**
                     printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
+                    recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
+                    printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
                 else
                     printlog("not repeating missed trials \n");
                 endif
@@ -2240,8 +2242,11 @@ func IdleLoop%()
                 if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
-                    '**increment recMissRepeatsCounter in StateMissTimeout and reset to 0 in StateHitReward**
+                    '**increment recMissRepeatsCounter HERE and reset to 0 in StateHitReward**
                     printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
+                    recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
+                    printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
+
                 else
                     printlog("not repeating missed trials \n");
                 endif
@@ -2339,8 +2344,7 @@ func IdleLoop%()
                 recCurrentTrial% := recCurrentTrial% - 1;
                 'Send current trial to "middle" of remaining trials
                 SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
-            
-                RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE");
+                RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response
             'Response window is closed, miss on go/no-go   
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 0 then  'go/no-go miss
@@ -2374,9 +2378,7 @@ func IdleLoop%()
             
             
         case iState% = stateMissTimeout% then
-        CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
-        recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
-        printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
+            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
 
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
