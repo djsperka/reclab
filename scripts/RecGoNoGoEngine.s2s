@@ -2211,22 +2211,18 @@ func IdleLoop%()
                 else
                     SafeSampleKey("M");
                 endif;
-                if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
+                if recMissRepeats% = 1 and recMissRepeatsCounter%+1 <= recMissRepeatsMax% then '+1 to count this trial
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
                     '**increment recMissRepeatsCounter HERE and reset to 0 in StateHitReward**
                     printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
-                    recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
-                    printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
                 else
                     printlog("not repeating missed trials \n");
                 endif
-            
-                'for False Positives:
-            'Send current trial to "middle" of remaining trials
-                'SendTrialToMiddle%(recNTrials%,recCurrentTrial%,0,recTrialOrder%[]);  'I want this to be the next trial
-
+                recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
+                printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
                 ChangeStateTo(stateMissTimeout%);
+            
             'Lo-MISS in response window    
             case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpAMDiscButton% then 'LO, MISS
             'isTerminalS1% = 0 then  
@@ -2239,17 +2235,17 @@ func IdleLoop%()
                 else
                     SafeSampleKey("M");
                 endif;
-                if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
+                if recMissRepeats% = 1 and recMissRepeatsCounter%+1 <= recMissRepeatsMax% then '+1 to count this trial
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
                     '**increment recMissRepeatsCounter HERE and reset to 0 in StateHitReward**
                     printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
-                    recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
-                    printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
-
                 else
                     printlog("not repeating missed trials \n");
                 endif
+                recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
+                printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
+
                 ChangeStateTo(stateMissTimeout%);
             
             'SAME and in either response window    
