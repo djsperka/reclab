@@ -457,7 +457,7 @@ proc InitializeToolbar()
     ToolbarEnable(recStartButton%, 1);
     ToolbarEnable(recPauseButton%, 0);
     ToolbarEnable(recResumeButton%, 0);
-    ToolbarEnable(recSelectNewExptButton%, 0); 'set to 0 because doesn't work until after "Start" anyway
+    ToolbarEnable(recSelectNewExptButton%, 1); 'set to 0 because doesn't work until after "Start" anyway  :( *jao - has to be 1 here to call window
     'ToolbarEnable(recRewardButton%, 1);
     ToolbarEnable(recStopButton%, 0);
     ToolbarEnable(recTimingRewardButton%, 0);
@@ -810,7 +810,7 @@ func Start%()
     ToolbarEnable(recPauseButton%, 1);
     ToolbarEnable(recTimingRewardButton%, 1);
     ToolbarEnable(recJoystickButton%, 1);
-    ToolbarEnable(recSelectNewExptButton%, 1); 'enable it here because I disabled it before
+    ToolbarEnable(recSelectNewExptButton%, 1); 'enable it here because I disabled it before - :( *jao - button doesn't work after Start!
 
     ' Start the sampling.
     docase    
@@ -1772,7 +1772,7 @@ func IdleLoop%()
                     case isS2% = 2 then
                         isTerminalS1% := 1;
                         ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go; for Hi/Lo case, will be rewarded 50%
-                        if recExpToRun% = recExpAMDiscButton% then
+                        if recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% then
                             coinFlipResult% := round(rand()); 'simple 50/50 way. might want to create a variable "sameRewardRate" or something.
                             printlog("coinFlipResult% = /d%", coinFlipResult%); '*jao
                         endif;
@@ -2116,7 +2116,7 @@ func IdleLoop%()
                 ChangeStateTo(stateHitReward%);
             
             'AMDis Hi/Lo --> SAME trials early response
-            case isEarlyFA% = 1 or isEarlyCR% = 1 and recExpToRun% = recExpAMDiscButton% then  'AMDis Hi/Lo --> SAME trial, inResponse1% OR 2                 
+            case isEarlyFA% = 1 or isEarlyCR% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then  'AMDis Hi/Lo --> SAME trial, inResponse1% OR 2                 
                 docase
                 case isEarlyCR% = 1 then 'inResponse2%
                     isEarlyCR% := 0;  'reset variable
@@ -2188,7 +2188,7 @@ func IdleLoop%()
             'Hit in response window    
             
         'AMDis HI/LO    *jao
-            case inResponse1% = 1 and responseMode% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, HIT
+            case inResponse1% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then 'HI, HIT
             'isTerminalS1% = 0 then 
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT HI");
@@ -2216,7 +2216,7 @@ func IdleLoop%()
                 numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
             'Hi-Miss in response window    
-            case inResponse2% = 1 and responseMode% = 1 and recExpToRun% = recExpAMDiscButton% then 'HI, MISS
+            case inResponse2% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then 'HI, MISS
             'isTerminalS1% = 0 then  
                 RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
@@ -2239,7 +2239,7 @@ func IdleLoop%()
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateMissTimeout%);
             'Lo-MISS in response window    
-            case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpAMDiscButton% then 'LO, MISS
+            case inResponse1% = 1 and responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then 'LO, MISS
             'isTerminalS1% = 0 then  
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
@@ -2265,7 +2265,7 @@ func IdleLoop%()
                 ChangeStateTo(stateMissTimeout%);
             
             'SAME and in either response window    
-            case responseMode% = 2 and recExpToRun% = recExpAMDiscButton% and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
+            case responseMode% = 2 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
             'isTerminalS1% = 1 then  
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 if inResponse1% = 1 then
