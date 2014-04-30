@@ -110,11 +110,11 @@ const recStartButton%         := 1;
 const recPauseButton%         := 2;
 const recResumeButton%        := 3;
 const recSelectNewExptButton% := 4;
-const recRewardButton%        := 5;
-const recStopButton%          := 6;
-const recTimingRewardButton%  := 7;
-const recJoystickButton%      := 8;
-const recCalibrationButton%   := 9;
+'const recRewardButton%        := 5; 'REMOVED! use Timing/Reward button instead!
+const recStopButton%          := 5;
+const recTimingRewardButton%  := 6;
+const recJoystickButton%      := 7;
+const recCalibrationButton%   := 8;
 
 
 ' States and state control vars 
@@ -447,7 +447,7 @@ proc InitializeToolbar()
 	ToolbarSet(recPauseButton%, "Pause", Pause%);
 	ToolbarSet(recResumeButton%, "Resume", Resume%);
     ToolbarSet(recSelectNewExptButton%, "New Expt.", PrepToReturnToExptSelectDialog%);
-	ToolbarSet(recRewardButton%, "Reward", Reward%);
+	'ToolbarSet(recRewardButton%, "Reward", Reward%); 'use Timing/Reward button instead!
     ToolbarSet(recStopButton%, "Stop Sampling", Stop%);
     Toolbarset(recTimingRewardButton%, "Timing/Reward", CallTimingReward%);
     Toolbarset(recJoystickButton%, "Joystick", CallJoystick%);
@@ -457,8 +457,8 @@ proc InitializeToolbar()
     ToolbarEnable(recStartButton%, 1);
     ToolbarEnable(recPauseButton%, 0);
     ToolbarEnable(recResumeButton%, 0);
-    ToolbarEnable(recSelectNewExptButton%, 1);
-    ToolbarEnable(recRewardButton%, 1);
+    ToolbarEnable(recSelectNewExptButton%, 0); 'set to 0 because doesn't work until after "Start" anyway
+    'ToolbarEnable(recRewardButton%, 1);
     ToolbarEnable(recStopButton%, 0);
     ToolbarEnable(recTimingRewardButton%, 0);
     ToolbarEnable(recJoystickButton%, 0);
@@ -810,7 +810,8 @@ func Start%()
     ToolbarEnable(recPauseButton%, 1);
     ToolbarEnable(recTimingRewardButton%, 1);
     ToolbarEnable(recJoystickButton%, 1);
-    
+    ToolbarEnable(recSelectNewExptButton%, 1); 'enable it here because I disabled it before
+
     ' Start the sampling.
     docase    
     case recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
@@ -959,7 +960,7 @@ func CallTimingReward%()
     'Don't let nobody do nothing! (start and resume are already disabled)
     ToolbarEnable(recPauseButton%, 0);
     ToolbarEnable(recSelectNewExptButton%, 0);
-    ToolbarEnable(recRewardButton%, 0);
+'    ToolbarEnable(recRewardButton%, 0);
     ToolbarEnable(recStopButton%, 0);
     ToolbarEnable(recTimingRewardButton%, 0);
     ToolbarEnable(recJoystickButton%, 0);
@@ -983,7 +984,7 @@ func CallJoystick%()
     'Don't let nobody do nothing! (start and resume are already disabled)
     ToolbarEnable(recPauseButton%, 0);
     ToolbarEnable(recSelectNewExptButton%, 0);
-    ToolbarEnable(recRewardButton%, 0);
+ '   ToolbarEnable(recRewardButton%, 0);
     ToolbarEnable(recStopButton%, 0);
     ToolbarEnable(recTimingRewardButton%, 0);
     ToolbarEnable(recJoystickButton%, 0);
@@ -1004,7 +1005,7 @@ func ReturnFromDialogCall%()
     'reenable appropriate buttons
     ToolbarEnable(recPauseButton%, 1);
     ToolbarEnable(recSelectNewExptButton%, 1);
-    ToolbarEnable(recRewardButton%, 1);
+'    ToolbarEnable(recRewardButton%, 1);
     ToolbarEnable(recStopButton%, 1);
     ToolbarEnable(recTimingRewardButton%, 1);
     ToolbarEnable(recJoystickButton%, 1);
