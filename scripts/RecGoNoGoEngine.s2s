@@ -175,7 +175,8 @@ var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo re
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
 var numMisses% := 0;
-var numFAs% := 0;
+var numFPs% := 0;
+var numFAs% := 0; 'need a CR counter too... (NOT USED NOW)
 var amountRewarded := 0;
 
 'var channels%[4];
@@ -852,6 +853,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Stop%()
     PrintLog("Stop called\n");
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + "./n");            
     
     recCurrentlySampling% := 0;    
     
@@ -884,6 +886,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func PrepToReturnToExptSelectDialog%()
     RTESDIsPressed% := 1;
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + "./n");            
     return 1;  '<-------  This missing line cost me literally like 50 hours to track down.
 end;
 
@@ -1407,7 +1410,7 @@ func IdleLoop%()
             
             
         case iState% = stateInitializeTrials% then
-            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FAs = " + str$(numFAs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".");            
+            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".");            
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
             ' button anytime, but the actual pause will happen here. --> added a few pause checks, will check in each state up until statePreTrialDelay
@@ -1720,6 +1723,7 @@ func IdleLoop%()
                 if isInterrupt% = 0 then  'only do this for "first" interrupt, if stimulus continues  
                     recPreciseTrialTime := recLeverTime;  'time interrupt occurred
                     RecLogStatus("TrialSoundA", "False Positive Interrupt! Lever is up");
+                    numFPs% += 1;  'increment FP counter
                     isInterrupt% := 1;  'don't institute interrupt procedure twice if stimulus continues to end
                     if recContinueSoundOnS1Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
@@ -1748,6 +1752,7 @@ func IdleLoop%()
             '    ChangeStateTo(stateTDTError%);
             case inTrialInit% <> 1 then
                 RecLogStatus("WaitISI", "False Positive! Lever is up");
+                numFPs% += 1;  'increment FP counter
                 recPreciseTrialTime := recLeverTime;  'time false positive occurred
                 StimComplete%(0, 0);
                 if useTDTforLever% = 1 and recFixLed% = 1 then 'turn off LED
@@ -2362,7 +2367,7 @@ func IdleLoop%()
                 'Send current trial to "middle" of remaining trials
                 SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
-                'numFAs% += 1;  'increment FA counter   'NOTE: NOT SURE WHETHER TO INCREMENT FA COUNTER HERE OR NOT
+                'numFPs% += 1;  'increment FP counter   'NOTE: NOT SURE WHETHER TO INCREMENT FA COUNTER HERE OR NOT
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response --> OR, delete reshuffling above and do FA timeout
             'Response window is closed, miss on go/no-go   
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 0 then  'go/no-go miss
