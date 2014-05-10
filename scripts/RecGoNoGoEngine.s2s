@@ -853,7 +853,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Stop%()
     PrintLog("Stop called\n");
-    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".n");            
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
     
     recCurrentlySampling% := 0;    
     
@@ -886,7 +886,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func PrepToReturnToExptSelectDialog%()
     RTESDIsPressed% := 1;
-    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + "./n");            
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
     return 1;  '<-------  This missing line cost me literally like 50 hours to track down.
 end;
 
