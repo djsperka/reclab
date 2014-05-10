@@ -853,7 +853,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Stop%()
     PrintLog("Stop called\n");
-    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + "./n");            
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".n");            
     
     recCurrentlySampling% := 0;    
     
@@ -1410,7 +1410,10 @@ func IdleLoop%()
             
             
         case iState% = stateInitializeTrials% then
-            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".");            
+        
+            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ";   LastHit(mL) = " + str$(LastHitReward) + 
+                        ",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");                       
+
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
             ' button anytime, but the actual pause will happen here. --> added a few pause checks, will check in each state up until statePreTrialDelay
