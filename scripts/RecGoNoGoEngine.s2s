@@ -170,7 +170,7 @@ var recLeverCodes%[4];
 var startingNewExpt%;  'only used with joystick, marks beginning of experiment so that joystick events in the past are "forgotten"
 var nextStateImmed% := 1;  'when we are changing to a new state, by default we carry to that state immediately instead of waiting for the next idle loop call
 var coinFlipResult%;    'to reward SAME trials for AMDis Hi/Lo *jao
-var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo responses, does this have to be global to work?
+var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo responses, has to be global to work
 
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
@@ -687,6 +687,7 @@ func StimComplete%(isS2%, success%)
     var stimInd%;
     var termInd%;
     var now;
+    var resultCode$;
     
     'Get index of current trial
     stimInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
@@ -695,8 +696,9 @@ func StimComplete%(isS2%, success%)
         if success% = 1 then
             ' Record completed stim here, and update online analysis. 
             ' This will print the same output, e.g. "E,234" for each non-terminal S1 in trial 234, so there may be multiple sampletexts with the same entry
-            strtmp$ := Print$("E,%d", recCurrentTrial%);  'E is for, I dunno, Early Correct Rejection?  (Keeping 'E' from original code)
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "E";
+            'strtmp$ := Print$("E,%d", recCurrentTrial%);  'E is for, I dunno, Early Correct Rejection?  (Keeping 'E' from original code)
+            'SampleText(strtmp$, recPreciseTrialTime);
             
             'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
             recStimCount% += 1;
@@ -715,62 +717,79 @@ func StimComplete%(isS2%, success%)
             endif;
         else 'false alarm on S1
             'trial counter will be decremented in the idle loop
-            strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "F";
+            'strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
+            'SampleText(strtmp$, recPreciseTrialTime);
             status% := 0;  'After FA, we will indicate the next stimulus is an S1, as it will be.
         endif
     case isS2% = 1 and recExpToRun% = recExpAMDiscButton% then  'If it's an S2 (target), AMDis S2-HI *jao
         printlog("AMDis Hi!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then
-            strtmp$ := Print$("HH,%d", recCurrentTrial%);  'H is for Hit
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "HH";
+            'strtmp$ := Print$("HH,%d", recCurrentTrial%);  'H is for Hit
+            'SampleText(strtmp$, recPreciseTrialTime);
         else
-            strtmp$ := Print$("MH,%d", recCurrentTrial%);  'M is for Miss
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "MH";
+            'strtmp$ := Print$("MH,%d", recCurrentTrial%);  'M is for Miss
+            'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 1 then  'If it's an S2 (target) - (SAME/DIFF)
         if success% = 1 then
-            strtmp$ := Print$("H,%d", recCurrentTrial%);  'H is for Hit
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "H";
+            'strtmp$ := Print$("H,%d", recCurrentTrial%);  'H is for Hit
+            'SampleText(strtmp$, recPreciseTrialTime);
         else
-            strtmp$ := Print$("M,%d", recCurrentTrial%);  'M is for Miss
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "M";
+            'strtmp$ := Print$("M,%d", recCurrentTrial%);  'M is for Miss
+            'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 3 then  'If it's an S2 (target) 'AMDis S2-LO *jao - case is unique to AMDis
         printlog("AMDis Lo!, current trial is %d\n", recCurrentTrial%);
         if success% = 1 then
-            strtmp$ := Print$("HL,%d", recCurrentTrial%);  'H is for Hit
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "HL";
+            'strtmp$ := Print$("HL,%d", recCurrentTrial%);  'H is for Hit
+            'SampleText(strtmp$, recPreciseTrialTime);
         else
-            strtmp$ := Print$("ML,%d", recCurrentTrial%);  'M is for Miss
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "ML";
+            'strtmp$ := Print$("ML,%d", recCurrentTrial%);  'M is for Miss
+            'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 2 and recExpToRun% = recExpAMDiscButton% then 'If it's a terminal S1 (intended no-response in gonogo) 'AMDis Hi/Lo case *jao
         printlog("AMDis SAME!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then 'for HI/LO, success=1 means this trial was rewarded (coinFlipResult%) *jao
-            strtmp$ := Print$("SR,%d", recCurrentTrial%);  'REWARDED SAME trial *jao
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "SR";
+            'strtmp$ := Print$("SR,%d", recCurrentTrial%);  'REWARDED SAME trial *jao
+            'SampleText(strtmp$, recPreciseTrialTime);
         else
-            strtmp$ := Print$("SN,%d", recCurrentTrial%);  'NOT REWARDED SAME trial *jao
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "SN";
+            'strtmp$ := Print$("SN,%d", recCurrentTrial%);  'NOT REWARDED SAME trial *jao
+            'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     case isS2% = 2 then 'If it's a terminal S1 (intended no-response)  - (SAME/DIFF)
         if success% = 1 then
-            strtmp$ := Print$("C,%d", recCurrentTrial%);  'C is for Correct Rejection, trial is over (This code is new, all other codes are old)
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "C";
+            'strtmp$ := Print$("C,%d", recCurrentTrial%);  'C is for Correct Rejection, trial is over (This code is new, all other codes are old)
+            'SampleText(strtmp$, recPreciseTrialTime);
         else
-            strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
-            SampleText(strtmp$, recPreciseTrialTime);
+            resultCode$ := "F";
+            'strtmp$ := Print$("F,%d", recCurrentTrial%);  'F is for False Alarm, there is fundamentally no difference between an early FA and a terminal FA - the monkey doesn't know
+            'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
     else
         RecLogError("StimComplete", "Unknown ttype (" + str$(isS2%) + ")");
         status% := -1;
     endcase
+    'do it here instead!
+    strtmp$ := Print$("%s,%d", resultCode$, recCurrentTrial%);
+    SampleText(strtmp$, recPreciseTrialTime);
+    'call BehOutput now! (hijacking this logic, haha!)
+    BehOutput(resultCode$, isS2%);
+
     return status%;
     
     'TODO Figure out this ExtractSpace bit.  Doesn't look like recHBeh%/recHBak% handles are made...
@@ -816,9 +835,11 @@ func Start%()
     ' Start the sampling.
     docase    
     case recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
+        view(recLog%).print("CED is present. About to start sampling.\n");
         SampleStart();
         ToolbarText("Sampling started.");  ' Tell the world about it. 
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
+        view(recLog%).print("Sampling started.\n");
         recCurrentlySampling% := 1;  'don't start sampling again
         TimePerADC := SampleTimePerAdc();  'get AD conversion rate
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
@@ -866,7 +887,9 @@ func Stop%()
             SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
         endif;        
         SampleStop();
-        FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
+        'FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
+        FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr", -1); 'NEW FORMAT! add date automagically! 
+
     endif
 
     ' Returning zero from here or any ToolbarSet() functions causes the 
@@ -886,7 +909,6 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func PrepToReturnToExptSelectDialog%()
     RTESDIsPressed% := 1;
-    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
     return 1;  '<-------  This missing line cost me literally like 50 hours to track down.
 end;
 
@@ -2560,7 +2582,7 @@ func IdleLoop%()
             
             
         case iState% = stateDone% then
-            
+            PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
             if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                 recTDTLEDOff%();
             else
@@ -2830,3 +2852,92 @@ func CheckLever%(varName$,varState%)
     return 0
     
 end;
+
+'-----------  BehOutput(result$, isS2%) -------------------------------------
+' creates and writes to text file output with relevant behavioral variables
+' for each experiment (Space and AMDis so far)
+' probably could be a proc, not a function, but i'll leave it in case I want to add a return value??
+func BehOutput(resultCode$, isS2%)
+'called from StimComplete%
+'resultCode$ is determined in StimComplete% from success% and isS2% is passed forward from IdleLoop%
+'see NameThatStimulus$ (RecRoom) for how to extract stimulus variables!
+
+var fh%; 'file handle
+var exptext$;
+'var playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
+var thisStim%;
+var spkr%;
+
+'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+'other vars to include?
+'Get trial-based attenuation for current stimulus
+'   trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
+'carrier% := recTrialGenGauss%[n%]; '1 if Gaussian, 0 if uniform noise
+thisStim% := recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
+spkr% := recSpeakerList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
+
+
+'determing expt specific strings... etc..
+'this docase also ensures a new file will be created for each experiment or for which vars to add for which expt
+docase
+    case recExpToRun% = recExpAMDiscButton% then
+        exptext$ := "AMDis";
+    case recExpToRun% = recExpSpaceDisButton% then    
+        exptext$ := "SpaceDis";
+    case recExpToRun% = recExpSearchButton% then
+        exptext$ := "Search";
+    case recExpToRun% = recExpFRAButton% then
+        exptext$ := "FRA";
+    case recExpToRun% = recExpJoyTrnButton% then 
+        exptext$ := "JoyTrain";
+    case recExpToRun% = recExpCueingButton% then
+        exptext$ := "Cueing";
+endcase
+
+'just use first 3 chars of monk name/prefix and then append date so format is consistent
+'blockTag$ ensures a new file complete with header file is created for each block - these will be concatenated later during analysis (easiest way to keep track of blocks)
+fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,2); 'or 3 to create if DNE
+'PrintLog("BehOutput: Filename is " + recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt\n");
+'PrintLog("BehOutput: File handle = %d\n", fh%);
+
+if fh%<0 then 'if file does not exist... create it! and stuff
+'OR check for a firstTime or newBlock variable to figure out what to do...
+    fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,3); '3 to create file
+    'file header chunk: expt, monk, date, time info:
+    PrintLog("\nBehOutput: File handle = %d\n", fh%);
+    PrintLog("%s\n", "Stimulus file is" + recSelectedStimFile$);
+    PrintLog("Trials file is %s\n\n",recSelectedTrialsFile$);
+    
+    view(fh%).print(recMonkPrefix$+"\t"+Date$(20,1,3,3," ")+" "+Time$(1,3)+"\t"+exptext$+"Block "+blockTag$+"\n");
+'FORMAT 1  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
+    view(fh%).print("Stimulus file: %s\n",recSelectedStimFile$);
+    view(fh%).print("Trials file: %s\n",recSelectedTrialsFile$);
+    view(fh%).print("Joy Init = %d\nResponse1 = %d\nResponse2 = %d\n", recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%);
+    'header cont... miss repeats and training reward (i.e., is this a training file or real behavior)
+    view(fh%).print("Miss repeats max = %d\ntraining reward = %.2f\n", recMissRepeatsMax%, recTrainingRewardmL);
+    'header for trial by trial info
+    view(fh%).print("Speaker array = %d\n",recNSpeakers%); 
+    'for AMDis and SpaceDis... (case this bitch to add experiment formats)
+    
+'FORMAT 2?  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
+'    view(fh%).print("Stimulus file \tTrials file \t Joy Init \tResponse1 \tResponse2 \tMiss repeats max \ttraining reward \tSpeaker array \n");
+'    view(fh%).print("%s\t%s\t%d\t%d\t%d\t%d\t%f\t%d\n",recSelectedStimFile$,recSelectedTrialsFile$, recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recMissRepeatsMax%,recTrainingRewardmL,recNSpeakers%);
+'
+    view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","RespTime"); 'header for trial vars
+    'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
+endif
+'**TODO: fix the monkprefix problem and then create a new file for each block..
+'solution: add a block number/tag variable?? (the letter that goes at the end of the file name)
+
+'now fill in the data for this trial
+'for AMDis and SpaceDis... (case this bitch to add experiment formats)
+view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,recPreciseTrialTime); 'data!
+'NOTE: output key for "Stype"
+'isS2%+1 = 1 for S1, 2 for S2 (change), 3 for terminal S1 (same - NoGo trial), and 4 for terminal S1 for forced choice
+'for Stype = 4, see resultCode for reward status
+
+'don't forget to close the file!
+fileclose(fh%);
+
+end
+'-----------  end of BehOutput(result$, isS2%) -------------------------------------

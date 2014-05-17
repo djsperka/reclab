@@ -187,7 +187,10 @@ var recSpaceDisExpIndexGen%;          'Experiment index, for generating stims, e
 
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
-var recMonkPrefix$;                 'String to hold monkey prefix, used in naming files - bit of a misnomer, will be used as complete file name
+var recMonkPrefix$;                 'String to hold monkey prefix, used in naming files - bit of a misnomer, will be used as complete file name    
+var blockTag$;                      'filename suffix used to denote new experiments or blocks (a,b,c,d,...) - added to MonkPrefix and Date to create filename
+const recPrintLog$ := "recPrintLog"; 'an autosave printlog for BSOD debugging and whatever else might be useful. date & time printed on each call
+var recLog%;                        'handle for recPrintLog
 const recFileSaveLoc$  := "C:\\Data\\";       'Have to set this...  
 const recCalibLoc$ := "C:\\Data\\Calib\\";           'Have to set this too...
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
@@ -344,7 +347,8 @@ endif;
 'Begin Code Execution
 '================================================================================================
 
-
+recLog% := FileOpen(recFileSaveLoc$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
+view(recLog%).print("running RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 
 'Run initial dialog to determine presence of Matlab/TDT/1401
 'This dialog will be disabled once testing is complete, but the remainder of calls below it should remain
@@ -475,6 +479,9 @@ while recReadyToQuit% = 0 do
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
                 stimOK% := RecLoadStimCalFile%(recAMDiscStimcalNameLoad$[recAMDiscExpIndexLoad%],recNSpeakers%,recTotalStim%);
             endif;
+            recSelectedStimFile$ := recAMDiscStimcalNameLoad$[recAMDiscExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recAMDiscTrialsNameLoad$[recAMDiscExpIndexLoad%]; 'ditto. for BehOutput
+                
             calibOK% := 0;  'Short circuit, this means OK.
                     
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 1 then  'Generating stims
@@ -486,6 +493,9 @@ while recReadyToQuit% = 0 do
             if trialsOK% = 1 then  'Don't bother with loading Stim file if trials file is bad
                 stimOK% := RecLoadStimFile%(recAMDiscStimcalNameGen$[recAMDiscExpIndexGen%],recTotalStim%);
             endif;
+            recSelectedStimFile$ := recAMDiscStimcalNameGen$[recAMDiscExpIndexGen%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recAMDiscTrialsNameGen$[recAMDiscExpIndexGen%]; 'ditto. for BehOutput
+                
             if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
                 'TODO Load calibration file into Matlab's workspace, same details as above in Search
                 if recMatlabIsPresent% = 1 then
@@ -510,6 +520,9 @@ while recReadyToQuit% = 0 do
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
                 stimOK% := RecLoadStimCalFile%(recSpaceDisStimcalNameLoad$[recSpaceDisExpIndexLoad%],recNSpeakers%,recTotalStim%);
             endif;
+            recSelectedStimFile$ := recSpaceDisStimcalNameLoad$[recSpaceDisExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recSpaceDisTrialsNameLoad$[recSpaceDisExpIndexLoad%]; 'ditto. for BehOutput
+                
             calibOK% := 0;  'Short circuit, this means OK.
                     
         case recExpToRun% = recExpSpaceDisButton% and recMatGenStim% = 1 then  'Generating stims
@@ -521,6 +534,9 @@ while recReadyToQuit% = 0 do
             if trialsOK% = 1 then  'Don't bother with loading Stim file if trials file is bad
                 stimOK% := RecLoadStimFile%(recSpaceDisStimcalNameGen$[recSpaceDisExpIndexGen%],recTotalStim%);
             endif;
+            recSelectedStimFile$ := recSpaceDisStimcalNameGen$[recSpaceDisExpIndexGen%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recSpaceDisTrialsNameGen$[recSpaceDisExpIndexGen%]; 'ditto. for BehOutput
+                
             if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
                 'TODO Load calibration file into Matlab's workspace, same details as above in Search
                 if recMatlabIsPresent% = 1 then
@@ -693,11 +709,13 @@ wend;
 if recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
     SafeSampleKey("K");  'Kill reward, just in case
     SampleStop();
-    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
+'    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
+    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr", -1); 'NEW FORMAT! add date automagically! 
+
 endif;
 
 CloseMatlab(matlabOpenSuccess%);  'close Matlab if it is open and we are quitting
-
+fileclose(recLog%); 'close recLog!
 halt;  'And get out of here!
 
 '================================================================================================
@@ -1134,7 +1152,8 @@ func RecExpSelectDialog%()
     DlgCreate("Experiment Selection Dialog",0,0,52,16);
     
     DlgGroup("Experimental Details", 1,1,50,5);
-    DlgString(1,"Monkey Prefix",30,"",0,2);  'currently no "legal" specified, meaning all characters OK
+    DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
+    DlgText("File suffix letter",32,2); DlgString(4,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
     DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,10,0,3); 
     DlgList(3,"Speaker array used",spkArr$[],10,0,4);
     
@@ -1156,7 +1175,7 @@ func RecExpSelectDialog%()
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%);  'no items
+    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%,blockTag$);  'no items
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -3279,7 +3298,6 @@ Func RecSelectStimFile%()
     direc$ := FileName$(0);  'Get full path of selected file
     FileClose(fh0%);  'Just close the file, we're not using it
     DlgValue$(2,direc$);  'Place filename into dialog item 2 of calling dialog
-
 	return status%;  'return 1 so calling dialog doesn't close
     
 end;
