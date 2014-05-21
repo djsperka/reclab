@@ -700,21 +700,21 @@ func StimComplete%(isS2%, success%)
             'strtmp$ := Print$("E,%d", recCurrentTrial%);  'E is for, I dunno, Early Correct Rejection?  (Keeping 'E' from original code)
             'SampleText(strtmp$, recPreciseTrialTime);
             
-            'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
-            recStimCount% += 1;
-            termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
-            if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
-                docase '*jao
-                    case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
-                        status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
-                    case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
-                        printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
-                        status% := 3;  'return indicates S2-LO is next
-                    else
-                        status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
-                endcase;
-                'otherwise, return is 0 indicating non-terminal S1
-            endif;
+'            'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
+'            recStimCount% += 1;
+'            termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
+'            if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
+'                docase '*jao
+'                    case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
+'                        status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
+'                    case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
+'                        printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
+'                        status% := 3;  'return indicates S2-LO is next
+'                    else
+'                        status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
+'                endcase;
+'                'otherwise, return is 0 indicating non-terminal S1
+'            endif;
         else 'false alarm on S1
             'trial counter will be decremented in the idle loop
             resultCode$ := "F";
@@ -787,10 +787,29 @@ func StimComplete%(isS2%, success%)
     'do it here instead!
     strtmp$ := Print$("%s,%d", resultCode$, recCurrentTrial%);
     SampleText(strtmp$, recPreciseTrialTime);
-    'call BehOutput now! (hijacking this logic, haha!)
-    BehOutput(resultCode$, isS2%);
 
-    return status%;
+'call BehOutput now! (hijacking this logic, haha!)
+BehOutput(resultCode$, isS2%);
+
+'increment StimCounter AFTER call to BehOutput!!!
+if isS2% = 0 and success% = 1 then  'stimulus is S1, not terminal
+    'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
+    recStimCount% += 1;
+    termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
+    if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
+        docase '*jao
+        case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
+            status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
+        case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
+            printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
+            status% := 3;  'return indicates S2-LO is next
+        else
+            status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
+        endcase;
+        'otherwise, return is 0 indicating non-terminal S1
+    endif;
+endif;
+return status%;
     
     'TODO Figure out this ExtractSpace bit.  Doesn't look like recHBeh%/recHBak% handles are made...
     'All right, as regards the ExtractSpace stuff: For now, we're going to shelve this in order to
@@ -2875,7 +2894,6 @@ var spkr%;
 'carrier% := recTrialGenGauss%[n%]; '1 if Gaussian, 0 if uniform noise
 thisStim% := recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
 spkr% := recSpeakerList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
-
 
 'determing expt specific strings... etc..
 'this docase also ensures a new file will be created for each experiment or for which vars to add for which expt
