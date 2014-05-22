@@ -2295,7 +2295,7 @@ func IdleLoop%()
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
-                StimComplete%(3, 1);   
+                StimComplete%(3, 0);   'gotcha bitch!
                 if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
                     recTDTLEDOff%();
                 else
@@ -2888,7 +2888,7 @@ var exptext$;
 'var playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
 var thisStim%;
 var spkr%;
-
+var joyResponse%;
 'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
 'other vars to include?
 'Get trial-based attenuation for current stimulus
@@ -2914,6 +2914,17 @@ docase
         exptext$ := "JoyTrain";
     case recExpToRun% = recExpCueingButton% then
         exptext$ := "Cueing";
+endcase
+
+joyResponse% :=0;
+docase
+    case inResponse1% = 1 then
+    joyResponse% :=1;
+    case inResponse2% = 1 then
+    joyResponse% :=2;
+else
+    joyResponse% :=0;
+    PrintLog("fucked up joyResponse ...?\n");
 endcase
 
 'just use first 3 chars of monk name/prefix and then append date so format is consistent
@@ -2945,7 +2956,7 @@ if fh%<0 then 'if file does not exist... create it! and stuff
 '    view(fh%).print("Stimulus file \tTrials file \t Joy Init \tResponse1 \tResponse2 \tMiss repeats max \ttraining reward \tSpeaker array \n");
 '    view(fh%).print("%s\t%s\t%d\t%d\t%d\t%d\t%f\t%d\n",recSelectedStimFile$,recSelectedTrialsFile$, recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recMissRepeatsMax%,recTrainingRewardmL,recNSpeakers%);
 '
-    view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","RespTime"); 'header for trial vars
+    view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","RespTime"); 'header for trial vars
     'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
 endif
 '**TODO: fix the monkprefix problem and then create a new file for each block..
@@ -2953,7 +2964,7 @@ endif
 
 'now fill in the data for this trial
 'for AMDis and SpaceDis... (case this bitch to add experiment formats)
-view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,recPreciseTrialTime); 'data!
+view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,recPreciseTrialTime); 'data!
 'NOTE: output key for "Stype"
 'isS2%+1 = 1 for S1, 2 for S2 (change), 3 for terminal S1 (same - NoGo trial), and 4 for terminal S1 for forced choice
 'for Stype = 4, see resultCode for reward status
