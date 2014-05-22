@@ -722,7 +722,7 @@ func StimComplete%(isS2%, success%)
             'SampleText(strtmp$, recPreciseTrialTime);
             status% := 0;  'After FA, we will indicate the next stimulus is an S1, as it will be.
         endif
-    case isS2% = 1 and recExpToRun% = recExpAMDiscButton% then  'If it's an S2 (target), AMDis S2-HI *jao
+    case isS2% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then  'If it's an S2 (target), AMDis S2-HI *jao
         printlog("AMDis Hi!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then
             resultCode$ := "HH";
@@ -745,7 +745,7 @@ func StimComplete%(isS2%, success%)
             'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
-    case isS2% = 3 then  'If it's an S2 (target) 'AMDis S2-LO *jao - case is unique to AMDis
+    case isS2% = 3 then  'If it's an S2 (target) 'AMDis S2-LO *jao - case is unique to AMDis and SpaceDis
         printlog("AMDis Lo!, current trial is %d\n", recCurrentTrial%);
         if success% = 1 then
             resultCode$ := "HL";
@@ -757,7 +757,7 @@ func StimComplete%(isS2%, success%)
             'SampleText(strtmp$, recPreciseTrialTime);
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
-    case isS2% = 2 and recExpToRun% = recExpAMDiscButton% then 'If it's a terminal S1 (intended no-response in gonogo) 'AMDis Hi/Lo case *jao
+    case isS2% = 2 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then 'If it's a terminal S1 (intended no-response in gonogo) 'AMDis Hi/Lo case *jao
         printlog("AMDis SAME!, current trial is %d\n", recCurrentTrial%); 
         'we want to know if they went up or down!! (and also if rewarded, but need to know behavior too!!
         if success% = 1 then 'for HI/LO, success=1 means this trial was rewarded (coinFlipResult%) *jao
@@ -2253,7 +2253,7 @@ func IdleLoop%()
                 numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
             'Lo-Hit in response window    
-            case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and recExpToRun% = recExpAMDiscButton%
+            case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%)
             'isTerminalS1% = 0 then 
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
@@ -2924,7 +2924,7 @@ docase
     joyResponse% :=2;
 else
     joyResponse% :=0;
-    PrintLog("fucked up joyResponse ...?\n");
+'    PrintLog("fucked up joyResponse ...?\n");
 endcase
 
 'just use first 3 chars of monk name/prefix and then append date so format is consistent
@@ -2956,7 +2956,7 @@ if fh%<0 then 'if file does not exist... create it! and stuff
 '    view(fh%).print("Stimulus file \tTrials file \t Joy Init \tResponse1 \tResponse2 \tMiss repeats max \ttraining reward \tSpeaker array \n");
 '    view(fh%).print("%s\t%s\t%d\t%d\t%d\t%d\t%f\t%d\n",recSelectedStimFile$,recSelectedTrialsFile$, recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recMissRepeatsMax%,recTrainingRewardmL,recNSpeakers%);
 '
-    view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","RespTime"); 'header for trial vars
+    view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","RespTime"); 'header for trial vars
     'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
 endif
 '**TODO: fix the monkprefix problem and then create a new file for each block..
