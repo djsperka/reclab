@@ -865,13 +865,16 @@ func Start%()
         TimePerADC := SampleTimePerAdc();  'get AD conversion rate
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
         SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample
-        SampleText(recExptText$);  'put in the experiment type
+        SampleText(recExptText$+"_"+blockTag$);  'put in the experiment type
         startingNewExpt% := 1;  'should be OK to start here
+    case recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
+        'if already sampling still want some of this stuff to happen!
+        SampleText(recExptText$+"_"+blockTag$);  'put in the experiment type
     case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
         'virtually start sampling
         recCurrentlySampling% := 1;
         printlog("'Sampling' started\n");  ' Tell her about it, tell her everything you feel
-        SampleText(recExptText$);  'put in the experiment type
+        SampleText(recExptText$+"_"+blockTag$);  'put in the experiment type
         startingNewExpt% := 1;  'this allows a reset of joystick event checking
     endcase
     
@@ -2889,6 +2892,7 @@ var exptext$;
 var thisStim%;
 var spkr%;
 var joyResponse%;
+var missReps%;
 'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
 'other vars to include?
 'Get trial-based attenuation for current stimulus
@@ -2927,6 +2931,12 @@ else
 '    PrintLog("fucked up joyResponse ...?\n");
 endcase
 
+if recMissRepeats% = 1;
+    missReps% := recMissRepeatsMax%;
+else 
+    missReps% := 0;
+endif
+
 'just use first 3 chars of monk name/prefix and then append date so format is consistent
 'blockTag$ ensures a new file complete with header file is created for each block - these will be concatenated later during analysis (easiest way to keep track of blocks)
 fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,2); 'or 3 to create if DNE
@@ -2947,7 +2957,7 @@ if fh%<0 then 'if file does not exist... create it! and stuff
     view(fh%).print("Trials file: %s\n",recSelectedTrialsFile$);
     view(fh%).print("Joy Init = %d\nResponse1 = %d\nResponse2 = %d\n", recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%);
     'header cont... miss repeats and training reward (i.e., is this a training file or real behavior)
-    view(fh%).print("Miss repeats max = %d\ntraining reward = %.2f\n", recMissRepeatsMax%, recTrainingRewardmL);
+    view(fh%).print("Miss repeats max = %d\ntraining reward = %.2f\n", missReps%, recTrainingRewardmL);
     'header for trial by trial info
     view(fh%).print("Speaker array = %d\n",recNSpeakers%); 
     'for AMDis and SpaceDis... (case this bitch to add experiment formats)
