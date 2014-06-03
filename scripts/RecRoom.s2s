@@ -2752,6 +2752,7 @@ func RecExpLeverJoystickDialogChanged%(item%)
     
     
     if DlgValue(6) = 1 then  'if it's go/no-go
+        DlgEnable(1,2); 'if we're using the joystick, enbable the init position, etc. 'what will this do???
         DlgValue(3,0); 'set the response position 1 to "center"
         DlgValue(4,7); 'set the response position 2 to "none"
         DlgEnable(0,3); 'and disable these

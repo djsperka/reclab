@@ -245,6 +245,7 @@ func RunGoNoGoEngine%()
     InitializeToolbar();
     ToolbarSet(0, "");  'explicitly set the idle function to nothing - for some reason on second/third/etc. expts. the idle function is kicking in early even though I don't think it should be active yet   
     printlog("Toolbar initialized\n");
+    view(recLog%).print("Toolbar initialized - func RunGoNoGoEngine%.\n");
     Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar; the experiment will be here most of the time
     'once we leave the toolbar, return to calling function
     return recReadyToQuit%;
@@ -2931,7 +2932,7 @@ else
 '    PrintLog("fucked up joyResponse ...?\n");
 endcase
 
-if recMissRepeats% = 1;
+if recMissRepeats% = 1 then
     missReps% := recMissRepeatsMax%;
 else 
     missReps% := 0;
