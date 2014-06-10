@@ -2830,7 +2830,7 @@ end;
 
 'A simple function which points to either recLeverDown%() or DebounceLever%() or ReadJoystick%() as appropriate
 func CheckLever%(varName$,varState%)
-    printlog("CHECKLEVER: varName$ is %s, varState% is %d\n",varName$,varState%);
+    'printlog("CHECKLEVER: varName$ is %s, varState% is %d\n",varName$,varState%);
     'This function no longer returns a value, it merely changes inOrigin%, inTrialInit%, inResponse1%, inResponse2%
     'Major update to CheckLever% - the problem is that there was really no way to move the "experiment" forward
     'in testing mode.  Now CheckLever% REQUIRES two inputs in the form of a variable name (inOrigin%, etc.) and a
@@ -2839,7 +2839,6 @@ func CheckLever%(varName$,varState%)
     if recActive% = 1 and recCEDIsPresent% = 1 then
         docase  'note that in all cases recLeverTime is set within the called function
         case useTDTforLever% = 1 then
-            printlog("CHECKLEVER: useTDTforLever% = 1\n");
             recLeverState% := recLeverDown%();
             inOrigin% := 1-recLeverState%;  'recLeverState% is 0 if not depressed, 1 if depressed
             inTrialInit% := recLeverState%;
@@ -2847,7 +2846,6 @@ func CheckLever%(varName$,varState%)
             inResponse2% := 0;  'there is no response 2 with a lever
             'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal 
         case recUseJoystick% = 0 then
-            printlog("CHECKLEVER: recUseJoystick% = 0\n");
             DebounceLever%(tNow);  'DebounceLever%() is run at the beginning of each idle loop, do it again if necessary before calling 
             inOrigin% := 1-recLeverState%;
             inTrialInit% := recLeverState%;
@@ -2855,31 +2853,30 @@ func CheckLever%(varName$,varState%)
             inResponse2% := 0;  'there is no response 2 with a lever
             'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal
         case recUseJoystick% = 1 then
-            printlog("CHECKLEVER: recUseJoystick% = 1 --> ReadJoystick%() \n");
             ReadJoystick%();  'ReadJoystick calls another function (AssignJoystickVariables) to get
             'joystick position variables, not done here.
         else
             printlog("Unknown value " + Str$(recUseJoystick%) + " for recUseJoystick%, this is probably your problem!\n");        
         endcase
     else
-        printlog("CHECKLEVER: else ... (rec not active AND CED not present \n");
         docase
         case varName$ = "inOrigin%" then
-            inOrigin% := varState%; printlog("CHECKLEVER: ... inOrigin% := varState%; \n");
+            inOrigin% := varState%;
         case varName$ = "inTrialInit%" then
-            inTrialInit% := varState%; printlog("CHECKLEVER: ... inTrialInit% := varState%; \n");
+            inTrialInit% := varState%;
         case varName$ = "inResponse1%" then
-            inResponse1% := varState%; printlog("CHECKLEVER: ... inResponse1% := varState%; \n");
+            inResponse1% := varState%;
         case varName$ = "inResponse2%" then
-            inResponse2% := varState%; printlog("CHECKLEVER: ... inResponse2% := varState%; \n");
+            inResponse2% := varState%;
         else
             printlog("Unknown value " + varName$ + " in debug level of CheckLever% call!\n");
         endcase        
     endif
-    
-   
-    'printlog("inOrigin is %d, inTrialInit is %d, inResponse1 is %d, inResponse2 is %d, and reclevertime is %f\n",inOrigin%,inTrialInit%,inResponse1%,inResponse2%,recLeverTime);
-    return 0
+       
+'   printlog("inOrigin is %d, inTrialInit is %d, inResponse1 is %d, inResponse2 is %d, and reclevertime is %f\n",inOrigin%,inTrialInit%,inResponse1%,inResponse2%,recLeverTime);
+'   these values were all 0 for recGoNoGo =1!
+
+return 0
     
 end;
 
