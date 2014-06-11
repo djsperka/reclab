@@ -197,13 +197,14 @@ func RunGoNoGoEngine%()
 '    channels%[1] := recTrigChannel%;
 '    channels%[2] := recLeverChannel%;
 '    channels%[3] := 30;
-    
+    view(recLog%).print("Begin func RunGoNoGoEngine%.\n");    
     'We do want to start from the start state!
     iState% := stateStart%;
     
     'Set up sampling configuration
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         CreateSampleConfiguration();   'CreateSampleConfiguration() is below     TODO: make sure it is OK, fix up .pls file
+        view(recLog%).print("Sample configuration created - func RunGoNoGoEngine%.\n");
     endif;
     
     
@@ -212,6 +213,7 @@ func RunGoNoGoEngine%()
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then 'don't try to initialize a PlayWaveArea if there's no 1401
         InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
+        view(recLog%).print("PWAs initialized - func RunGoNoGoEngine%.\n");
     endif;
     
     
@@ -219,7 +221,8 @@ func RunGoNoGoEngine%()
     'Positioned after InitializePlayWaveAreas() because PlayWaveAdd() must be called before FileNew()
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         InitializeWindows();           'InitializeWindows() is below, opens one XYwindow and one data sampling window
-        
+        view(recLog%).print("Windows initialized - func RunGoNoGoEngine%.\n");
+       
         'For now, cutting out ExtractSpaceInitialize as ExtractSpace is being shelved at least temporarily.
         'Since ExtractSpaceInitialize's main function is to set up an online view of the data plotted in 
         'recXYWindowView%, this will almost certainly be re-established, perhaps shortly.
@@ -1510,7 +1513,7 @@ func IdleLoop%()
             
             
         case iState% = stateWaitForInitiationMovement% then   'this state just decides which state to go to, it's easier than replacing all the instances 
-            'CHECK FOR PAUSE HERE TOO:
+        'CHECK FOR PAUSE HERE TOO:
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 'do state stuff here...
                 if useTDTforLever% = 1 then
@@ -1535,11 +1538,10 @@ func IdleLoop%()
             
             
         case iState% = stateStartCEDBlink% then
-        
             'CHECK FOR PAUSE HERE TOO:
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 'do state stuff here
-               CheckLever%("inOrigin%",1);
+                CheckLever%("inOrigin%",1);
                 if inOrigin% = 1 then  'lever must be in origin to start blink
                     if tNow > tNextTrial then
                         RecLogStatus("WaitTrlInit", "Blink/Wait.");
