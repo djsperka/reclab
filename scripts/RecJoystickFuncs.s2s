@@ -888,30 +888,31 @@ proc AssignJoystickVariables()
     if recIsGoNoGo% = 1 then 'this is the go/no-go case
         'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialInitPosition,
         '2 if in any other position, 2 will act as FA or miss depending on context
+        'changed from setting recLeverState to directly settinn inOrigin and inTrialInit.. not sure if recLeverState needs to be set for any reason or if this is vestigial ~jao 6/18/14
         docase
         'joystick in center
         case joyPos% = 0 then
-            recLeverState% := 0;
+            inOrigin% := 1; 'recLeverState% := 0;
             recLeverTime := max(XTime,YTime);  'we don't know where it came from
         'joystick in right    
         case joyPos% = 1 and (recTrialInitPosition% = 3 or recTrialInitPosition% = 5) then
-            recLeverState% := 1;
+            inTrialInit% := 1; 'recLeverState% := 1;
             recLeverTime := XTime;
         'joystick in left    
         case joyPos% = 2 and (recTrialInitPosition% = 4 or recTrialInitPosition% = 5) then
-            recLeverState% := 1; 
+            inTrialInit% := 1; 'recLeverState% := 1; 
             recLeverTime := XTime;            
         'joystick in down    
         case joyPos% = 20 and (recTrialInitPosition% = 1 or recTrialInitPosition% = 6) then
-            recLeverState% := 1;
+            inTrialInit% := 1; 'recLeverState% := 1;
             recLeverTime := YTime;
         'joystick in up    
         case joyPos% = 10 and (recTrialInitPosition% = 2 or recTrialInitPosition% = 6) then
-            recLeverState% := 1; 
+            inTrialInit% := 1; 'recLeverState% := 1; 
             recLeverTime := YTime;            
         'joystick in one of the corner positions, or in an inappropriate position for the specified response    
         else
-            recLeverState% := -1;
+            inTrialInit% := 0; 'recLeverState% := -1;
             recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
         endcase
         
