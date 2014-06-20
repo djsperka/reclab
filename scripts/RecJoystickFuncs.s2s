@@ -893,26 +893,32 @@ proc AssignJoystickVariables()
         'joystick in center
         case joyPos% = 0 then
             inOrigin% := 1; 'recLeverState% := 0;
+            inTrialInit% := 0; inResponse1% := 1; 'is this kosher??
             recLeverTime := max(XTime,YTime);  'we don't know where it came from
         'joystick in right    
         case joyPos% = 1 and (recTrialInitPosition% = 3 or recTrialInitPosition% = 5) then
             inTrialInit% := 1; 'recLeverState% := 1;
+            inResponse1% := 0; inOrigin% := 0;
             recLeverTime := XTime;
         'joystick in left    
         case joyPos% = 2 and (recTrialInitPosition% = 4 or recTrialInitPosition% = 5) then
             inTrialInit% := 1; 'recLeverState% := 1; 
+            inResponse1% := 0; inOrigin% := 0;
             recLeverTime := XTime;            
         'joystick in down    
         case joyPos% = 20 and (recTrialInitPosition% = 1 or recTrialInitPosition% = 6) then
             inTrialInit% := 1; 'recLeverState% := 1;
+            inResponse1% := 0; inOrigin% := 0;
             recLeverTime := YTime;
         'joystick in up    
         case joyPos% = 10 and (recTrialInitPosition% = 2 or recTrialInitPosition% = 6) then
             inTrialInit% := 1; 'recLeverState% := 1; 
+            inResponse1% := 0; inOrigin% := 0;
             recLeverTime := YTime;            
         'joystick in one of the corner positions, or in an inappropriate position for the specified response    
         else
             inTrialInit% := 0; 'recLeverState% := -1;
+            inResponse1% := 0; inOrigin% := 0;
             recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
         endcase
         
@@ -921,11 +927,9 @@ proc AssignJoystickVariables()
         'set whether joystick is in origin
         if joyPos% = 0 then 
             inOrigin% := 1;
-            inResponse1% := 1; 'is this kosher??
             recLeverTime := max(XTime,YTime);  'we don't know where it came from
         else
             inOrigin% := 0;
-            inResponse1% := 0; 'is this kosher??
         endif;
         
         'set whether joystick is in trial init position
