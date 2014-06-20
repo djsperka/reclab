@@ -921,9 +921,11 @@ proc AssignJoystickVariables()
         'set whether joystick is in origin
         if joyPos% = 0 then 
             inOrigin% := 1;
+            inResponse1% := 1; 'is this kosher??
             recLeverTime := max(XTime,YTime);  'we don't know where it came from
         else
             inOrigin% := 0;
+            inResponse1% := 0; 'is this kosher??
         endif;
         
         'set whether joystick is in trial init position
