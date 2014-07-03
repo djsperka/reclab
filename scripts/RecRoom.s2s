@@ -99,6 +99,8 @@ var recFRAToneFreqLow:=1000;        'Lower frequency bound of FRA - must give a 
 var recFRAToneFreqHigh:=20000;      'Higher frequency bound of FRA - must give a default value or program will crash with nothing in the registry
 var recFRANRepeats%:=1;             'number of repeats for FRA    
 var recFRAS2dBLevel;                'dB level of S2 stimuli (space curve), should match a level in the Rate-Level Curve
+var recSpaceNRepeats%;
+var recS1AMnoiseReps%;    
 const recRateLeveldBNSteps%:=10;    'Number of dB steps in rate-level curve
 const recFRAdBNSteps%:=10;          'Number of dB steps in FRA curve
 const recFRAFreqNSteps%:=45;        'Number of frequency steps in FRA curve    
@@ -934,6 +936,8 @@ proc RecFRAGetParams()
     recFRAToneFreqLow := GetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
     recFRAToneFreqHigh := GetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
     recFRAS2dBLevel := GetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);  
+    recSpaceNRepeats% := GetFloatRegistryValue(key$, "SpaceNRepeats", recSpaceNRepeats%);  
+    recS1AMnoiseReps% := GetFloatRegistryValue(key$, "recS1AMnoiseReps", recS1AMnoiseReps%);  
     recFRAMinS1% := GetIntRegistryValue%(key$, "FRAMinS1", recFRAMinS1%);
     recFRAVarS1% := GetIntRegistryValue%(key$, "FRAVarS1", recFRAVarS1%);   
     recRateLevelNRepeats% := GetIntRegistryValue%(key$, "RateLevelNRepeats", recRateLevelNRepeats%);
@@ -973,6 +977,8 @@ proc RecFRASaveParams()
     SetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
     SetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
     SetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);   
+    SetFloatRegistryValue(key$, "SpaceNRepeats", recSpaceNRepeats%); 
+    SetFloatRegistryValue(key$, "recS1AMnoiseReps", recS1AMnoiseReps%);  
     SetIntRegistryValue(key$, "FRAMinS1", recFRAMinS1%);
     SetIntRegistryValue(key$, "FRAVarS1", recFRAVarS1%); 
     SetIntRegistryValue(key$, "RateLevelNRepeats", recRateLevelNRepeats%);
@@ -1559,7 +1565,7 @@ end
 'A dialog for the FRA experiment
 
 func RecExpFRADialog%()
-    
+    var fiveInts%[5];
     var i%;
     var status% := 0;  
     var inds%[10];
@@ -1590,9 +1596,9 @@ func RecExpFRADialog%()
     
     
     ' Generate the dialog    
-    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,120,18);
+    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,120,20);
     
-    DlgGroup("S1 Stimuli",1,1,118,14);
+    DlgGroup("S1 Stimuli",1,1,118,15.5);
     DlgInteger(1,6,1,16,22,2);
     DlgText("S1 (preferred) Speaker",2,2);
     DlgInteger(9,6,2,3,44,2);
@@ -1646,21 +1652,32 @@ func RecExpFRADialog%()
     DlgInteger(18,6,10,1000,42,13);
     DlgInteger(19,6,10,1000,52,13);
     DlgInteger(20,6,10,1000,62,13);    
-    
-    
-    DlgGroup("S2 Stimuli",1,15,118,2);
-    DlgReal(8,6,0.001,100,22,16);  'S2 speaker dB level
-    DlgText("S2 (also FM) dB level",3,16);
-    
-    DlgAllow(0xffff, 0, RecExpFRADialogChanged%);
+
+    DlgGroup("S1 AM Noise",2,14,116,2);
+    DlgInteger(22,6,1,50,22,15);  'AM noise, n repeats
+    DlgText("# AM Noise repeats",3,15);
+    DlgText("AM rates = ....",31,15); 'still need to determine - just going to hardcode it in for now
+
+
+    DlgGroup("S2 Stimuli (Space)",1,17,118,2);
+    DlgReal(8,6,0.001,100,22,18);  'S2 speaker dB level
+    DlgText("S2 (also FM) dB level",3,18);
+    DlgInteger(21,6,1,100,47,18);  'S2 # repeats (for Space tuning) - separate from rate-level!
+    DlgText("# Space repeats",31,18);
+    DlgAllow(0xffff, 0, RecExpFRADialogChanged%); 
     
     ' Show the dialog. 
     i%:=DlgShow(recFRAS1Speaker%,recRateLeveldBLow,recRateLeveldBHigh,recFRATonedBLow,recFRATonedBHigh,
                 recFRAToneFreqLow,recFRAToneFreqHigh,recFRAS2dBLevel,recFRAMinS1%,recFRAVarS1%,
                 recRateLevelNRepeats%,recFRANRepeats%,recFRAFMSweepRepeats%,recFRAFMSweepStart%,
-                recFRAFMSweepEnd%,recFRAFMSweepDur1%,recFRAFMSweepDur2%,recFRAFMSweepDur3%,recFRAFMSweepDur4%,
-                recFRAFMSweepDur5%);
-    
+                recFRAFMSweepEnd%,fiveInts%, recSpaceNRepeats%, recS1AMnoiseReps%);
+
+                recFRAFMSweepDur1% := fiveInts%[0];
+                recFRAFMSweepDur2% := fiveInts%[1];
+                recFRAFMSweepDur3% := fiveInts%[2];
+                recFRAFMSweepDur4% := fiveInts%[3];
+                recFRAFMSweepDur5% := fiveInts%[4];
+
     'make sure the dialog values are OK
     docase
     case recRateLeveldBLow = recRateLeveldBHigh then
@@ -1719,6 +1736,84 @@ end;
 '===== End RecExpFRADialog =====
 '
 '
+
+'
+'
+'===== RecExpFRADialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpFRADialogChanged%(item%) 
+    'Quickly build a list of indices that we need
+    var inds%[10];
+    var j%;
+    for j% := 0 to 9 do
+        inds%[j%] := j%;
+    next;
+    
+    docase
+    case item% = 2 or item% = 3 then  'Rate-level dB changed, update values
+        'Update values in variables
+        recRateLeveldBLow := DlgValue(2);
+        recRateLeveldBHigh := DlgValue(3);
+        'Recalculate linear progression, if values are not the same
+        if recRateLeveldBLow <> recRateLeveldBHigh then
+            GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
+        endif;
+        'Update strings
+        recRLList1$ := StringifyProgression2$(5, recRateLeveldBList[0:5], inds%[],1);
+        recRLList2$ := StringifyProgression2$(5, recRateLeveldBList[5:5], inds%[],1);
+        'Update GUI
+        DlgValue$(recRLList1%,recRLList1$);
+        DlgValue$(recRLList2%,recRLList2$);
+    case item% = 4 or item% = 5 then  'FRA tone dB changed, update values
+        'Update values in variables
+        recFRATonedBLow := DlgValue(4);
+        recFRATonedBHigh := DlgValue(5);
+        'Recalculate linear progression, if values are not the same
+        if recFRATonedBLow <> recFRATonedBHigh then
+            GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
+        endif;
+        'Update strings
+        recFRAdBList1$ := StringifyProgression2$(5, recFRAdBList[0:5], inds%[],1);
+        recFRAdBList2$ := StringifyProgression2$(5, recFRAdBList[5:5], inds%[],1);
+        'Update GUI
+        DlgValue$(recFRAdBList1%,recFRAdBList1$);
+        DlgValue$(recFRAdBList2%,recFRAdBList2$);
+    case item% = 6 or item% = 7 then  'FRA tone frequency changed, update values
+        'Update values in variables
+        recFRAToneFreqLow := DlgValue(6);
+        recFRAToneFreqHigh := DlgValue(7);
+        'Recalculate log progression
+        if recFRAToneFreqLow <> recFRAToneFreqHigh then
+            GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);
+        endif;
+        'Update strings
+        recFRAFreqList1$ := StringifyProgression2$(10, recFRAFreqList[0:10], inds%[],0);
+        recFRAFreqList2$ := StringifyProgression2$(10, recFRAFreqList[10:10], inds%[],0);
+        recFRAFreqList3$ := StringifyProgression2$(9, recFRAFreqList[20:9], inds%[],0);
+        recFRAFreqList4$ := StringifyProgression2$(8, recFRAFreqList[29:8], inds%[],0);
+        recFRAFreqList5$ := StringifyProgression2$(8, recFRAFreqList[37:8], inds%[],0);
+        'Update GUI
+        DlgValue$(recFRAFreqList1%,recFRAFreqList1$);
+        DlgValue$(recFRAFreqList2%,recFRAFreqList2$);
+        DlgValue$(recFRAFreqList3%,recFRAFreqList3$);
+        DlgValue$(recFRAFreqList4%,recFRAFreqList4$);
+        DlgValue$(recFRAFreqList5%,recFRAFreqList5$);
+'    case item% = 11 or item% = 12 or item% = 13 or item% = 22 then  'change number of S1 stimulus repeats
+'        nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%);  'that's number of tone pips in FRA plus number of noise bursts in rate-level function
+'        printlog("nS1% = %d\n", nS1%);
+'        nS2% := (recNSpeakers%-1)*recSpaceNRepeats%;  'that's number of noises at speakers not in the S1 position
+'        printlog("nS2% = %d\n", nS2%);
+
+    endcase;
+    
+    return 1;
+end
+
+'===== End RecExpFRADialogChanged =====
+'
+'
+
 
 '===== RecJoyTrainDialog ===== '*jao
 
@@ -1870,77 +1965,6 @@ func GenTrialsJoyTrain%()
     return status%;  'right now, it "can't" fail
 end;
 'end GenTrialsJoyTrain%() '*jao
-
-'
-'
-'===== RecExpFRADialogChanged =====
-
-' This function is initially called with a "0" input
-func RecExpFRADialogChanged%(item%) 
-    'Quickly build a list of indices that we need
-    var inds%[10];
-    var j%;
-    for j% := 0 to 9 do
-        inds%[j%] := j%;
-    next;
-    
-    docase
-    case item% = 2 or item% = 3 then  'Rate-level dB changed, update values
-        'Update values in variables
-        recRateLeveldBLow := DlgValue(2);
-        recRateLeveldBHigh := DlgValue(3);
-        'Recalculate linear progression, if values are not the same
-        if recRateLeveldBLow <> recRateLeveldBHigh then
-            GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
-        endif;
-        'Update strings
-        recRLList1$ := StringifyProgression2$(5, recRateLeveldBList[0:5], inds%[],1);
-        recRLList2$ := StringifyProgression2$(5, recRateLeveldBList[5:5], inds%[],1);
-        'Update GUI
-        DlgValue$(recRLList1%,recRLList1$);
-        DlgValue$(recRLList2%,recRLList2$);
-    case item% = 4 or item% = 5 then  'FRA tone dB changed, update values
-        'Update values in variables
-        recFRATonedBLow := DlgValue(4);
-        recFRATonedBHigh := DlgValue(5);
-        'Recalculate linear progression, if values are not the same
-        if recFRATonedBLow <> recFRATonedBHigh then
-            GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
-        endif;
-        'Update strings
-        recFRAdBList1$ := StringifyProgression2$(5, recFRAdBList[0:5], inds%[],1);
-        recFRAdBList2$ := StringifyProgression2$(5, recFRAdBList[5:5], inds%[],1);
-        'Update GUI
-        DlgValue$(recFRAdBList1%,recFRAdBList1$);
-        DlgValue$(recFRAdBList2%,recFRAdBList2$);
-    case item% = 6 or item% = 7 then  'FRA tone frequency changed, update values
-        'Update values in variables
-        recFRAToneFreqLow := DlgValue(6);
-        recFRAToneFreqHigh := DlgValue(7);
-        'Recalculate log progression
-        if recFRAToneFreqLow <> recFRAToneFreqHigh then
-            GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]);
-        endif;
-        'Update strings
-        recFRAFreqList1$ := StringifyProgression2$(10, recFRAFreqList[0:10], inds%[],0);
-        recFRAFreqList2$ := StringifyProgression2$(10, recFRAFreqList[10:10], inds%[],0);
-        recFRAFreqList3$ := StringifyProgression2$(9, recFRAFreqList[20:9], inds%[],0);
-        recFRAFreqList4$ := StringifyProgression2$(8, recFRAFreqList[29:8], inds%[],0);
-        recFRAFreqList5$ := StringifyProgression2$(8, recFRAFreqList[37:8], inds%[],0);
-        'Update GUI
-        DlgValue$(recFRAFreqList1%,recFRAFreqList1$);
-        DlgValue$(recFRAFreqList2%,recFRAFreqList2$);
-        DlgValue$(recFRAFreqList3%,recFRAFreqList3$);
-        DlgValue$(recFRAFreqList4%,recFRAFreqList4$);
-        DlgValue$(recFRAFreqList5%,recFRAFreqList5$);
-    endcase;
-    
-    return 1;
-end
-
-'===== End RecExpFRADialogChanged =====
-'
-'
 
 
 
@@ -4698,7 +4722,9 @@ func GenTrialsFRA%()
     ' ===== Create Trials =====
     
     nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%);  'that's number of tone pips in FRA plus number of noise bursts in rate-level function
-    nS2% := (recNSpeakers%-1)*recRateLevelNRepeats%;  'that's number of noises at speakers not in the S1 position
+    printlog("nS1% = %d\n", nS1%);
+    nS2% := (recNSpeakers%-1)*recSpaceNRepeats%;  'that's number of noises at speakers not in the S1 position
+    printlog("nS2% = %d\n", nS2%);
     recNTrials% := nS2%;  'Set global Ntrials
     'Average is (now) 3.833 S1 per S2
     DealNumberOfS1s%(nS1%,nS2%,recMinS1%,recMinS1%+recFRAVarS1%-1,numS1perTrial%[]);  'this is OK
