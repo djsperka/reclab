@@ -1,4 +1,7 @@
 ' $Log$
+' Revision 1.3  2016/04/01 23:34:47  devel
+' Force commit of accumulated changes from front rig.
+'
 ' Revision 1.2  2008/04/08 18:53:51  devel
 ' Added data$ dir (hardcoded).
 '
@@ -12,4 +15,4 @@ var bin$, script$, stim$, data$;
 script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder containing this script
 bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
 stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
-data$ := "d:\\data";
+data$ := "c:\\data";

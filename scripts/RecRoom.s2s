@@ -3,7 +3,7 @@
 'after every experiment is complete; spike shapes definitions will carry across experiments; ultimate closure of
 'this script will be done from the experiment selection dialog
 
-
+'this is a comment
 
 '
 '
@@ -70,6 +70,7 @@ var recSearchStimType%;             'Integer index to experiment selection list
 var recSearchToneFreq;              'Frequency of tone
 var recSearchBPLowerLim;            'Lower frequency limit of bandpass noise
 var recSearchBPUpperLim;             'Upper frequency limit of bandpass noise
+var recSearchSpeakerSweepRepeats%;  'Number of repeats of noise per speaker for speaker sweeps
 var recSearchToneSweepRepeats%;     'Number of repeats of tone sweeps
 var recSearchToneSweepLowLim;       'Lower frequency limit of tone sweeps
 var recSearchToneSweepUpperLim;     'Upper frequency limit of tone sweeps
@@ -100,7 +101,9 @@ var recFRAToneFreqHigh:=20000;      'Higher frequency bound of FRA - must give a
 var recFRANRepeats%:=1;             'number of repeats for FRA    
 var recFRAS2dBLevel;                'dB level of S2 stimuli (space curve), should match a level in the Rate-Level Curve
 var recSpaceNRepeats%;
-var recS1AMnoiseReps%;    
+var recS1AMnoiseReps%; 
+const nMTFrates% := 11;
+var MTFrates[nMTFrates%]; 
 const recRateLeveldBNSteps%:=10;    'Number of dB steps in rate-level curve
 const recFRAdBNSteps%:=10;          'Number of dB steps in FRA curve
 const recFRAFreqNSteps%:=45;        'Number of frequency steps in FRA curve    
@@ -117,6 +120,7 @@ var recFRAFreqList2$;
 var recFRAFreqList3$;
 var recFRAFreqList4$;
 var recFRAFreqList5$;
+'var recMTFfreqList$;
 var recSearchToneSweepFreqList$;
 var recRLList1%;                    'Dialog item #, allows update of text
 var recRLList2%;                    'Etc.
@@ -138,7 +142,11 @@ var recFRAFMSweepDur3%;
 var recFRAFMSweepDur4%;
 var recFRAFMSweepDur5%;
 var recFRAFMSweepDur%[5];
-
+var recFRAActive%;
+var recBPnoiseReps%;
+const nBPnoises% := 20;    
+var recBPnoisesLOs%[nBPnoises%];
+var recBPnoisesHIs%[nBPnoises%];
 
 'AM Discrimination Dialog variables
 var recAMDiscS1Speaker%;            'Speaker on which S1 plays, transferred to recS1Speaker% if Search is selected
@@ -152,7 +160,7 @@ var recAMDiscText1%;                'Allows enable/disable (= black/grey) of tex
 var recAMDiscText2%;                'Allows enable/disable (= black/grey) of text item 2
 var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
 var recSelectedTrialsFile$;         'Trials file selected in add/delete
-const recAMDiscNumExps% := 20;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
+const recAMDiscNumExps% := 40;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
 var recAMDiscExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
 var recAMDiscStimcalNameLoad$[recAMDiscNumExps%];   'Stim/Cal file names, loading files
 var recAMDiscTrialsNameLoad$[recAMDiscNumExps%];    'Trials file names, loading files
@@ -176,7 +184,7 @@ var recSpaceDisText1%;                'Allows enable/disable (= black/grey) of t
 var recSpaceDisText2%;                'Allows enable/disable (= black/grey) of text item 2
 'var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
 'var recSelectedTrialsFile$;         'Trials file selected in add/delete
-const recSpaceDisNumExps% := 20;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
+const recSpaceDisNumExps% := 40;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
 var recSpaceDisExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
 var recSpaceDisStimcalNameLoad$[recAMDiscNumExps%];   'Stim/Cal file names, loading files
 var recSpaceDisTrialsNameLoad$[recAMDiscNumExps%];    'Trials file names, loading files
@@ -197,8 +205,9 @@ const recFileSaveLoc$  := "C:\\Data\\";       'Have to set this...
 const recCalibLoc$ := "C:\\Data\\Calib\\";           'Have to set this too...
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
+var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    
 var recReadyToQuit%;                'Set this variable to 1 to escape the experiment loop
-var recdBLevel;                     'Set dB level
+var recDeltadBLevel;                'Set dB level --> was "recdBLevel", changed to deltadB (atten from default of 65) to work with recDeltadBList
 var recActive%;                     'Is experiment active or passive
 var recFixLED%;                     'Use fixation LED?
 var recMatGenStim%;                 'If 1, stim are to be generated by Matlab, if 0, read from file
@@ -222,7 +231,7 @@ var recNSpeakers%;                  'How many speakers are there in the array (u
 'Trial list generation variables
 const recMaxStim%:=1000;            'Maximum number of stimuli, 1000 is probably overlarge
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
-const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas    
+const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
 const recMaxTrial%:=5000;          'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
 var recTotalStim%;                  'Total number of stimuli specified in Stim or Stim/Cal file
 var recMinS1%;                      'Minimum number of S1s
@@ -400,9 +409,15 @@ while recReadyToQuit% = 0 do
     
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
+            view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
         
-        if RecLEDReminderDialog%() = 1 then 'do LED color switch reminders!
-            
+        if recExpToRun% <> recLastExpRun% then
+            RecLEDReminderDialog%(); 'call LED color switch reminder dialog before proceeding
+            view(recLog%).print("RecRoom: RecLEDReminderDialog%()\n");    
+        else 
+            view(recLog%).print("RecRoom: Repeat Expt! RecLEDReminderDialog% skipped\n");    
+        endif; 
+
         calibOK% := -1;  'logic is different for calibOK% because EvalMatlabStatement returns 0/-1 (success/failure)
         trialsOK% := 0;  'reset
         stimOK% := 0;  'reset
@@ -620,7 +635,7 @@ while recReadyToQuit% = 0 do
                     endif;
                 next;
             endif;
-            endif; 'end color reminder dialog, i think
+            'endif; 'end color reminder dialog, i think
         endif;
         
         
@@ -688,9 +703,10 @@ while recReadyToQuit% = 0 do
                 message("CUEING is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 
             endcase            
-            
+            recLastExpRun% := recExpToRun%; 'i think this should go here; remember the experiment that was just run for the next time around
             'Run presentation engine if CED is present or we are debugging
             if recCEDIsPresent% = 1 or recDebug% = 1 then
+                view(recLog%).print("About to call RunGoNoGoEngine%().\n");    
                 recReadyToQuit% := RunGoNoGoEngine%();  'will return 1 on fatal error
             endif;
             
@@ -857,6 +873,7 @@ proc RecSearchGetParams()
     recSearchToneFreq := GetFloatRegistryValue(key$, "SearchToneFreq", recSearchToneFreq);
     recSearchBPLowerLim := GetFloatRegistryValue(key$, "SearchBPLowerLim", recSearchBPLowerLim);
     recSearchBPUpperLim := GetFloatRegistryValue(key$, "SearcBPUpperLim", recSearchBPUpperLim);
+    recSearchSpeakerSweepRepeats% := GetIntRegistryValue%(key$, "recSearchSpeakerSweepRepeats%", recSearchSpeakerSweepRepeats%);
     recSearchToneSweepRepeats% := GetIntRegistryValue%(key$, "SearchToneSweepRepeats", recSearchToneSweepRepeats%);
     recSearchToneSweepLowLim := GetFloatRegistryValue(key$, "SearchToneSweepLowLim", recSearchToneSweepLowLim);
     recSearchToneSweepUpperLim := GetFloatRegistryValue(key$, "SearchToneSweepUpperLim", recSearchToneSweepUpperLim);
@@ -895,6 +912,7 @@ proc RecSearchSaveParams()
     SetFloatRegistryValue(key$, "SearchToneFreq", recSearchToneFreq);
     SetFloatRegistryValue(key$, "SearchBPLowerLim", recSearchBPLowerLim);
     SetFloatRegistryValue(key$, "SearcBPUpperLim", recSearchBPUpperLim);
+    SetIntRegistryValue(key$, "recSearchSpeakerSweepRepeats%", recSearchSpeakerSweepRepeats%);
     SetIntRegistryValue(key$, "SearchToneSweepRepeats", recSearchToneSweepRepeats%);
     SetFloatRegistryValue(key$, "SearchToneSweepLowLim", recSearchToneSweepLowLim);
     SetFloatRegistryValue(key$, "SearchToneSweepUpperLim", recSearchToneSweepUpperLim);
@@ -950,7 +968,7 @@ proc RecFRAGetParams()
     recFRAFMSweepDur3% := GetIntRegistryValue%(key$, "FRAFMSweepDur3", recFRAFMSweepDur3%);
     recFRAFMSweepDur4% := GetIntRegistryValue%(key$, "FRAFMSweepDur4", recFRAFMSweepDur4%);
     recFRAFMSweepDur5% := GetIntRegistryValue%(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
-
+    recFRAActive% := GetIntRegistryValue%(key$, "recFRAActive", recFRAActive%);
 	return;
 end
 
@@ -991,7 +1009,7 @@ proc RecFRASaveParams()
     SetIntRegistryValue(key$, "FRAFMSweepDur3", recFRAFMSweepDur3%);
     SetIntRegistryValue(key$, "FRAFMSweepDur4", recFRAFMSweepDur4%);
     SetIntRegistryValue(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
-    
+    SetIntRegistryValue(key$, "recFRAActive", recFRAActive%);
 	return;
 end
 
@@ -1160,7 +1178,7 @@ func RecExpSelectDialog%()
     DlgGroup("Experimental Details", 1,1,50,5);
     DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
     DlgText("File suffix letter",32,2); DlgString(4,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
-    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,10,0,3); 
+    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,32,0,3); '*jao
     DlgList(3,"Speaker array used",spkArr$[],10,0,4);
     
     DlgGroup("Experiments", 1,7,50,6);
@@ -1262,13 +1280,14 @@ func RecExpSearchDialog%()
         inds%[j%] := j%;
     next;
     
-    const searchListLen% := 5;
+    const searchListLen% := 6;
     var searchList$[searchListLen%];
     searchList$[0] := "Tones";
     searchList$[1] := "Broadband Noise";
     searchList$[2] := "Bandpass Noise";
     searchList$[3] := "Clicks";
     searchList$[4] := "Tone Sweeps";
+    searchList$[5] := "Speaker Sweep (BbN)";
     
     ' Fetch parameters from registry    
     RecSearchGetParams();
@@ -1298,6 +1317,9 @@ func RecExpSearchDialog%()
     DlgReal(4,6,0.001,50000,55,6);  'BP upper limit
     DlgText("Upper Limit, Hz",41,6);
     
+    DlgText("Repeats for speaker sweep:",2,4);
+    DlgInteger(17,3,1,10,27,4);
+
     DlgGroup("Tone Sweep",63,2,27,5);
     DlgInteger(5,6,1,100,83,3);  'Tone sweep repeats
     DlgText("Repeats of each tone",64,3);
@@ -1337,7 +1359,7 @@ func RecExpSearchDialog%()
     i%:=DlgShow(recSearchStimType%,recSearchToneFreq,recSearchBPLowerLim,recSearchBPUpperLim,recSearchToneSweepRepeats%,
                 recSearchToneSweepLowLim,recSearchToneSweepUpperLim,recSearchToneSweepNSteps%,recSearchS1Speaker%,
                 recSearchS2Speaker%,recSearchMinS1%,recSearchVarS1%,recSearchPropCatch,recSearchdBLevel,
-                recSearchActive%,recSearchFixLED%);
+                recSearchActive%,recSearchFixLED%, recSearchSpeakerSweepRepeats%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then 
@@ -1357,12 +1379,12 @@ func RecExpSearchDialog%()
             recMinS1% := recSearchMinS1%;
             recVarS1% := recSearchVarS1%;
             recPropCatch := recSearchPropCatch;
-            recdBLevel := recSearchdBLevel;
+            recDeltadBLevel := 65-recSearchdBLevel;
             recActive% := recSearchActive%;
             recFixLED% := recSearchFixLED%;
-            if recSearchStimType% = 4 then  'adjustment of values - if doing tone sweep, do not have task
+            if recSearchStimType% >= 4 then  'adjustment of values - if doing tone sweep or speaker sweep, do not have task
                 recActive% := 0;
-                recHitRewardmL := 0;  'don't allow rewards for tone sweep
+                recHitRewardmL := 0;  'don't allow rewards for tone sweep or speaker sweep
                 recCRRewardmL := 0;
             endif;
             if recActive% = 0 then 'adjustment of values, if not active, don't have second speaker or catch trials
@@ -1405,8 +1427,8 @@ func RecExpSearchDialog%()
             case recSearchStimType% = 3 then  'for clicks, we won't use anything, just leave a note
                 printlog("Clicks selected from search dialog\n");
             case recSearchStimType% = 4 then  'for tone sweeps
-            'arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
-            arrconst(recTrialDur[0:recSearchToneSweepNSteps%],200);
+                'arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
+                arrconst(recTrialDur[0:recSearchToneSweepNSteps%],200);
                 'get the log progression with the new values
                 GetLogProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);            
                 'GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);
@@ -1416,6 +1438,10 @@ func RecExpSearchDialog%()
                 next
                 printlog("Tone Sweep selected from search dialog, %d repeats\n",recSearchToneSweepRepeats%); 'n repeats of each tone
                 printlog("Tone Sweep Progression is %d Hz\n",recSearchToneSweepFreqList[0:recSearchToneSweepNSteps%]);
+            case recSearchStimType% = 5 then 'for speaker sweeps (broadband noise)
+                arrconst(recTrialGenLowpassHz[0:2],-1);       'A list of lowpass values - if -1, no lowpass, same as highpass means tone
+                arrconst(recTrialGenHighpassHz[0:2],-1);      'Same as above, highpass
+                printlog("Speaker sweep (Broadband noise) selected from search dialog %d repeats\n", recSearchSpeakerSweepRepeats%);                
             endcase
             
         else
@@ -1539,7 +1565,8 @@ func RecExpSearchDialogChanged%(item%)
             recSearchToneSweepFreqList$ := "";
             'Update GUI
             DlgValue$(recSearchToneSweepFreqList%,recSearchToneSweepFreqList$);
-        else
+    else
+        'TODO:check High and Low Freq values before calling GetLogProgression (or make sure there is a valid FreqList)
             GetLogProgression(DlgValue(6), DlgValue(7), DlgValue(8)-1, recSearchToneSweepFreqList[]);   
             'GetLinearProgression(DlgValue(6), DlgValue(7), DlgValue(8)-1, recSearchToneSweepFreqList[]);   
             recSearchToneSweepFreqList$ := StringifyProgression2$(DlgValue(8), recSearchToneSweepFreqList[0:DlgValue(8)], inds%[],0);
@@ -1566,7 +1593,9 @@ end
 
 func RecExpFRADialog%()
     var fiveInts%[5];
+    '    var astring$;
     var i%;
+    var k%;
     var status% := 0;  
     var inds%[10];
     var checkOK% := 1;
@@ -1578,7 +1607,12 @@ func RecExpFRADialog%()
     
     ' Fetch parameters from registry    
     RecFRAGetParams();
-    
+    fiveInts%[0] := recFRAFMSweepDur1%;
+    fiveInts%[1] := recFRAFMSweepDur2%;
+    fiveInts%[2] := recFRAFMSweepDur3%;
+    fiveInts%[3] := recFRAFMSweepDur4%;
+    fiveInts%[4] := recFRAFMSweepDur5%;
+
     ' Initial calculation of dB steps, Freq. steps
     GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
     GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
@@ -1596,9 +1630,9 @@ func RecExpFRADialog%()
     
     
     ' Generate the dialog    
-    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,120,20);
+    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,120,24);
     
-    DlgGroup("S1 Stimuli",1,1,118,15.5);
+    DlgGroup("S1 Stimuli",1,1,118,19);
     DlgInteger(1,6,1,16,22,2);
     DlgText("S1 (preferred) Speaker",2,2);
     DlgInteger(9,6,2,3,44,2);
@@ -1656,21 +1690,43 @@ func RecExpFRADialog%()
     DlgGroup("S1 AM Noise",2,14,116,2);
     DlgInteger(22,6,1,50,22,15);  'AM noise, n repeats
     DlgText("# AM Noise repeats",3,15);
-    DlgText("AM rates = ....",31,15); 'still need to determine - just going to hardcode it in for now
+    MTFrates[0] := 4;
+    MTFrates[1] := 6;
+    MTFrates[2] := 8;
+    MTFrates[3] := 12;
+    MTFrates[4] := 16;
+    MTFrates[5] := 24;
+    MTFrates[6] := 32;
+    MTFrates[7] := 48;
+    MTFrates[8] := 64;
+    MTFrates[9] := 128;
+    MTFrates[10] := 256;
+'    astring$ := "MTFrates = "+ StringifyProgression2$(nMTFrates%,MTFrates[],inds%[],1);
+'DlgText(astring$,31,15); 
+DlgText("AM rates = 4,6,8,12,16,24,32,48,64,128,256",31,15); 'DlgText("AM rates = "+recMTFfreqList$,31,15); 'figure how to do this the correct way!!
+'printlog("MTFrates = %d\n", MTFrates[]);
+'printlog("length nMTFrates = %d\n", len(MTFrates[]));
 
+    DlgGroup("S1 Bandpass Noise",2,16,116,2);
+    DlgInteger(24,6,1,50,22,17);  'AM noise, n repeats
+    DlgText("# BP Noise repeats",3,17);
+    'DlgText("Bandpass noises blah blah blah",31,18); 
 
-    DlgGroup("S2 Stimuli (Space)",1,17,118,2);
-    DlgReal(8,6,0.001,100,22,18);  'S2 speaker dB level
-    DlgText("S2 (also FM) dB level",3,18);
-    DlgInteger(21,6,1,100,47,18);  'S2 # repeats (for Space tuning) - separate from rate-level!
-    DlgText("# Space repeats",31,18);
+    DlgGroup("S2 Stimuli (Space)",1,21,118,2);
+    DlgReal(8,6,0.001,100,26,22);  'S2 speaker dB level
+    DlgText("S2 (FM and AM) dB level",3,22);
+    DlgInteger(21,6,1,100,51,22);  'S2 # repeats (for Space tuning) - separate from rate-level!
+    DlgText("# Space repeats",35,22);
+    DlgCheck(23,"",89,22);  'Monkey does lever task
+    DlgText("Monkey Does Lever Task",65,22);
+
     DlgAllow(0xffff, 0, RecExpFRADialogChanged%); 
     
     ' Show the dialog. 
     i%:=DlgShow(recFRAS1Speaker%,recRateLeveldBLow,recRateLeveldBHigh,recFRATonedBLow,recFRATonedBHigh,
                 recFRAToneFreqLow,recFRAToneFreqHigh,recFRAS2dBLevel,recFRAMinS1%,recFRAVarS1%,
                 recRateLevelNRepeats%,recFRANRepeats%,recFRAFMSweepRepeats%,recFRAFMSweepStart%,
-                recFRAFMSweepEnd%,fiveInts%, recSpaceNRepeats%, recS1AMnoiseReps%);
+                recFRAFMSweepEnd%,fiveInts%, recSpaceNRepeats%, recS1AMnoiseReps%, recFRAActive%, recBPnoiseReps%);
 
                 recFRAFMSweepDur1% := fiveInts%[0];
                 recFRAFMSweepDur2% := fiveInts%[1];
@@ -1697,7 +1753,14 @@ func RecExpFRADialog%()
         GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
         GetLinearProgression(recFRATonedBLow, recFRATonedBHigh, recFRAdBNSteps%-1, recFRAdBList[]);
         GetLogProgression(recFRAToneFreqLow, recFRAToneFreqHigh, recFRAFreqNSteps%-1, recFRAFreqList[]); 
-        
+        'calculate BPnoise intervals
+        recBPnoisesLOs%[0] := 400;
+        recBPnoisesHIs%[0] := recBPnoisesLOs%[0]+recBPnoisesLOs%[0]/2;
+        for k% := 1 to nBPnoises%-1 do
+            recBPnoisesLOs%[k%] := recBPnoisesLOs%[k%-1]+recBPnoisesLOs%[k%-1]/4;
+            recBPnoisesHIs%[k%] := recBPnoisesLOs%[k%]+recBPnoisesLOs%[k%]/2;
+        next;
+    
         'Save parameters
         RecFRASaveParams();
         
@@ -1713,7 +1776,7 @@ func RecExpFRADialog%()
         recMinS1% := recFRAMinS1%;
         recVarS1% := recFRAVarS1%;
         recS1Speaker% := recFRAS1Speaker%;
-        recActive% := 1;
+        recActive% := recFRAActive%;
         recFixLED% := 1;
         recMatGenStim% := 1;  'Always generate stimuli for FRA
         
@@ -2044,7 +2107,7 @@ func RecExpAMDiscDialog%()
             recMinS1% := recAMDiscMinS1%;
             recVarS1% := recAMDiscVarS1%;
             recPropCatch := recAMDiscPropCatch;  'Make sure we need this
-            recdBLevel := recAMDiscdBLevel;
+            recDeltadBLevel := 65-recAMDiscdBLevel;
             recActive% := 1;   'Don't give an option, must be active
             recFixLED% := 1;
             recMatGenStim% := recAMDiscMatGenStim%;
@@ -2179,7 +2242,7 @@ func RecExpSpaceDisDialog%()
             recMinS1% := recSpaceDisMinS1%;
             recVarS1% := recSpaceDisVarS1%;
             recPropCatch := recSpaceDisPropCatch;  'Make sure we need this
-            recdBLevel := recSpaceDisdBLevel;
+            recDeltadBLevel := 65-recSpaceDisdBLevel;
             recActive% := 1;   'Don't give an option, must be active
             recFixLED% := 1;
             recMatGenStim% := recSpaceDisMatGenStim%;
@@ -2906,7 +2969,7 @@ end;
 
 ' Put a vector of numbers into a comma separated string
 ' Note that this version produces numbers rounded to nearest tenth, has space instead of comma separator
-Func StringifyProgression2$(n%, vec[], ind%[], rnd%)
+func StringifyProgression2$(n%, vec[], ind%[], rnd%)
 	var s$;
 	var i%;
 	for i% := 0 to n%-1 do
@@ -2935,7 +2998,7 @@ end;
 'This is a dialog that comes up to allow adding "experiments" to the AMDisc dialog
 'Please note that in order to reset the list box in the calling dialog, we have to actually
 'CLOSE the calling dialog and reopen it.  That's gotta be manual.
-Func RecAMDiscAddExp%()
+func RecAMDiscAddExp%()
     
     var i%;
     var j%;
@@ -3045,7 +3108,7 @@ end;
 '===== RecAMDiscDeleteExp =====
 
 'This is a dialog that comes up to allow deleting "experiments" from the AMDisc dialog
-Func RecAMDiscDeleteExp%()
+func RecAMDiscDeleteExp%()
 
     var i%;
     var j%;
@@ -3124,7 +3187,7 @@ end;
 'This is a dialog that comes up to allow adding "experiments" to the SpaceDis dialog
 'Please note that in order to reset the list box in the calling dialog, we have to actually
 'CLOSE the calling dialog and reopen it.  That's gotta be manual.
-Func RecSpaceDisAddExp%()
+func RecSpaceDisAddExp%()
     
     var i%;
     var j%;
@@ -3234,7 +3297,7 @@ end;
 '===== RecSpaceDisDeleteExp =====
 
 'This is a dialog that comes up to allow deleting "experiments" from the SpaceDis dialog
-Func RecSpaceDisDeleteExp%()
+func RecSpaceDisDeleteExp%()
 
     var i%;
     var j%;
@@ -3312,7 +3375,7 @@ end;
 '
 '===== RecSelectStimFile =====
 
-Func RecSelectStimFile%()
+func RecSelectStimFile%()
 
     var status% := 1;
     var direc$;
@@ -3338,7 +3401,7 @@ end;
 '
 '===== RecSelectTrialsFile =====
 
-Func RecSelectTrialsFile%()
+func RecSelectTrialsFile%()
 
     var status% := 1;
     var direc$;
@@ -3392,7 +3455,27 @@ proc RecAMDiscExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
     expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
     expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    
+    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
+    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
+    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
+    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
+    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
+    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
+    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
+    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
+    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
+    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
+    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
+    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
+    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
+    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
+    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
+    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
+    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
+    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
+    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
+    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
+   
     stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
     stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
     stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
@@ -3413,6 +3496,26 @@ proc RecAMDiscExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
     stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
     stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
+    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
+    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
+    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
+    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
+    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
+    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
+    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
+    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
+    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
+    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
+    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
+    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
+    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
+    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
+    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
+    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
+    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
+    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
+    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
     
     trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
     trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
@@ -3434,6 +3537,26 @@ proc RecAMDiscExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
     trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
     trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
+    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
+    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
+    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
+    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
+    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
+    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
+    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
+    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
+    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
+    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
+    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
+    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
+    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
+    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
+    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
+    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
+    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
+    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
+    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
+    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -3476,7 +3599,27 @@ proc RecAMDiscExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
     expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
     expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    
+    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
+    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
+    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
+    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
+    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
+    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
+    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
+    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
+    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
+    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
+    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
+    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
+    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
+    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
+    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
+    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
+    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
+    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
+    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
+    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
+	
     stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
     stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
     stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
@@ -3497,6 +3640,26 @@ proc RecAMDiscExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
     stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
     stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
+    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
+    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
+    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
+    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
+    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
+    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
+    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
+    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
+    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
+    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
+    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
+    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
+    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
+    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
+    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
+    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
+    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
+    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
+    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
     
     trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
     trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
@@ -3518,7 +3681,27 @@ proc RecAMDiscExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
     trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
     trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-     
+    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
+    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
+    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
+    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
+    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
+    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
+    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
+    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
+    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
+    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
+    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
+    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
+    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
+    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
+    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
+    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
+    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
+    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
+    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
+    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+	
 	return;
 end
 
@@ -3561,6 +3744,26 @@ proc RecAMDiscExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "ExpName17", expName$[17]);
     SetStringRegistryValue(key$, "ExpName18", expName$[18]);
     SetStringRegistryValue(key$, "ExpName19", expName$[19]);
+    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
+    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
+    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
+    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
+    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
+    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
+    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
+    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
+    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
+    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
+    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
+    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
+    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
+    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
+    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
+    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
+    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
+    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
+    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
+    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
     
     SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
     SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
@@ -3582,6 +3785,26 @@ proc RecAMDiscExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
     SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
     SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
+    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
+    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
+    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
+    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
+    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
+    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
+    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
+    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
+    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
+    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
+    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
+    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
+    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
+    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
+    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
+    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
+    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
+    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
+    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
+    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
     
     SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
     SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
@@ -3603,6 +3826,26 @@ proc RecAMDiscExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
     SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
     SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
+    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
+    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
+    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
+    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
+    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
+    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
+    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
+    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
+    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
+    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
+    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
+    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
+    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
+    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
+    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
+    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
+    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
+    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
+    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
+    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -3645,6 +3888,26 @@ proc RecAMDiscExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "ExpName17", expName$[17]);
     SetStringRegistryValue(key$, "ExpName18", expName$[18]);
     SetStringRegistryValue(key$, "ExpName19", expName$[19]);
+    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
+    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
+    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
+    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
+    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
+    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
+    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
+    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
+    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
+    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
+    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
+    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
+    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
+    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
+    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
+    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
+    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
+    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
+    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
+    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
     
     SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
     SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
@@ -3666,6 +3929,26 @@ proc RecAMDiscExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
     SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
     SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
+    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
+    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
+    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
+    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
+    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
+    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
+    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
+    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
+    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
+    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
+    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
+    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
+    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
+    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
+    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
+    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
+    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
+    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
+    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
+    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
     
     SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
     SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
@@ -3687,6 +3970,26 @@ proc RecAMDiscExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
     SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
     SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
+    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
+    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
+    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
+    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
+    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
+    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
+    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
+    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
+    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
+    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
+    SetStringRegistryValue(key$, "TrialsName30", trialsName$[20]);
+    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
+    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
+    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
+    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
+    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
+    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
+    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
+    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
+    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -3728,6 +4031,26 @@ proc RecSpaceDisExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
     expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
     expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
+    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
+    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
+    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
+    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
+    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
+    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
+    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
+    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
+    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
+    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
+    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
+    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
+    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
+    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
+    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
+    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
+    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
+    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
+    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
+    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
     
     stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
     stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
@@ -3749,6 +4072,26 @@ proc RecSpaceDisExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
     stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
     stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
+    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
+    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
+    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
+    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
+    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
+    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
+    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
+    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
+    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
+    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
+    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
+    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
+    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
+    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
+    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
+    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
+    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
+    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
+    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
     
     trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
     trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
@@ -3770,6 +4113,26 @@ proc RecSpaceDisExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
     trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
     trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
+    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
+    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
+    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
+    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
+    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
+    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
+    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
+    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
+    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
+    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
+    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
+    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
+    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
+    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
+    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
+    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
+    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
+    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
+    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
+    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -3812,7 +4175,27 @@ proc RecSpaceDisExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
     expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
     expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    
+	expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
+    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
+    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
+    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
+    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
+    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
+    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
+    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
+    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
+    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
+    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
+    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
+    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
+    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
+    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
+    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
+    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
+    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
+    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
+    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
+     
     stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
     stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
     stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
@@ -3833,6 +4216,26 @@ proc RecSpaceDisExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
     stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
     stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
+    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
+    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
+    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
+    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
+    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
+    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
+    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
+    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
+    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
+    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[30]);
+    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
+    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
+    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
+    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
+    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
+    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
+    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
+    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
+    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
     
     trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
     trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
@@ -3854,6 +4257,26 @@ proc RecSpaceDisExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
     trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
     trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
+    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
+    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
+    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
+    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
+    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
+    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
+    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
+    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
+    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
+    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
+    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
+    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
+    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
+    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
+    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
+    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
+    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
+    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
+    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
+    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -3897,6 +4320,26 @@ proc RecSpaceDisExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "ExpName17", expName$[17]);
     SetStringRegistryValue(key$, "ExpName18", expName$[18]);
     SetStringRegistryValue(key$, "ExpName19", expName$[19]);
+    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
+    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
+    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
+    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
+    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
+    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
+    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
+    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
+    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
+    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
+    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
+    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
+    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
+    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
+    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
+    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
+    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
+    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
+    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
+    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
     
     SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
     SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
@@ -3918,6 +4361,26 @@ proc RecSpaceDisExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
     SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
     SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
+    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
+    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
+    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
+    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
+    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
+    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
+    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
+    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
+    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
+    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
+    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
+    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
+    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
+    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
+    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
+    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
+    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
+    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
+    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
+    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
     
     SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
     SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
@@ -3939,6 +4402,26 @@ proc RecSpaceDisExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
     SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
     SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
+    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
+    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
+    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
+    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
+    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
+    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
+    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
+    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
+    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
+    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
+    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
+    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
+    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
+    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
+    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
+    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
+    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
+    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
+    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
+    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -3981,7 +4464,28 @@ proc RecSpaceDisExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "ExpName17", expName$[17]);
     SetStringRegistryValue(key$, "ExpName18", expName$[18]);
     SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    
+    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
+    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
+    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
+    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
+    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
+    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
+    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
+    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
+    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
+    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
+    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
+    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
+    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
+    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
+    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
+    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
+    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
+    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
+    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
+    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
+	
+
     SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
     SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
     SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
@@ -4002,6 +4506,26 @@ proc RecSpaceDisExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
     SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
     SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
+    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
+    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
+    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
+    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
+    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
+    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
+    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
+    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
+    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
+    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
+    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
+    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
+    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
+    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
+    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
+    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
+    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
+    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
+    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
+    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
     
     SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
     SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
@@ -4023,6 +4547,26 @@ proc RecSpaceDisExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
     SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
     SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
     SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
+    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
+    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
+    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
+    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
+    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
+    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
+    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
+    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
+    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
+    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
+    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
+    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
+    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
+    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
+    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
+    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
+    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
+    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
+    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
+    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -4444,6 +4988,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise";
         endif;
+  'PrintLog("recStimCount% = %d \n", recStimCount%); '*jao debugging
         seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenLowpassHz[n%] = recTrialGenHighpassHz[n%] then 'tone
         if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
@@ -4505,87 +5050,126 @@ end
 '
 '===== GenTrialsSearch =====
 func GenTrialsSearch%()
-    'Note that normally I would want to put this function in triallistgen.s2s.  However, due to the
-    'large number of variables that it will rely on, I don't think I can pass them all in 256 characters,
-    'so instead I'm keeping it here, where all the variables are global and certain to exist (and where it
-    'won't break triallistgen.s2s for other experiments
-    var i%;
-    var j%;
-    var status% := 1;
-    var nS%;  'number of S1 stimuli
-    var nR%;  'number of repeats, for tone sweep
-    var nT%;  'number of tones, for tone sweep
-    var nCyc%;  'number of cycles per "trial" if there are more than 20 individual tones in a tone sweep 
-    var currTone%;  'current tone (PWA), if there are more than 20 individual tones in a tone sweep
-    
-    nR% := recSearchToneSweepRepeats%;  'shorthand
-    nT% := recSearchToneSweepNSteps%;  'shorthand again
-    
-    
-    'Tone sweeps have to be different!  No S2 for those.
-    for i% := 0 to recNTrials%-1 do
-        nS% := recMinS1% + Floor(Rand(recVarS1%+1,0));  'using Floor with an offset of 1 because the range of Rand is 0 -> .999... 
-        recTrialOrder%[i%] := i%;  'set initial trial order
-        docase
-        case recSearchStimType% = 4 and (nT%*nR% <= recMaxStimPerTrial%) then 'for tone sweeps, simple version where all trials are identical
-            for j% := 0 to nT%-1 do  'for each tone in the tone sweep
-                recStimList%[j%][i%] := j%;  'fill Stim list with indices of the sweep tones, from low to high (freqs already set by dialog box)
-                arrconst(recPWAList%[j%*nR%:nR%][i%],j%);  'fill PWA list with nR% copies of tone
-            next;
-            arrconst(recSpeakerList%[0:nT%][i%],recS1Speaker%);  'only one speaker
-            recNUniqueStims%[i%] := nT%;
-            arrconst(recDeltadBList[0:nT%*nR%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
-            recTrialTerminalIndex%[i%] := (nT%*nR%)-1;  'it's an index, subtract 1
-            recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
-                        
-        case recSearchStimType% = 4 and (nT%*nR% > recMaxStimPerTrial%) then 'complicated version of tone sweeps, if there are more than 20 tones in a sweep
-            for j% := 0 to nT%-1 do  'for each tone in the tone sweep
-                recStimList%[j%][i%] := j%;  'fill Stim list with indices of the sweep tones, from low to high (freqs already set by dialog box)
-            next; 
-            arrconst(recSpeakerList%[0:nT%][i%],recS1Speaker%);  'only one speaker            
-            recNUniqueStims%[i%] := nT%;
-            
-            nCyc% := floor(recMaxStimPerTrial%/nR%);  'divide max stims by number of repeats to see how many repeats can fit
-            for j% := 0 to nCyc%-1 do
-                arrconst(recPWAList%[j%*nR%:nR%][i%],currTone%);  'fill PWA list with nR% copies of tone
-                currTone% += 1;
-                if currTone% = nT% then  'wrap currTone% when necessary
-                    currTone% := 0;
-                endif;
-            next;
-            arrconst(recDeltadBList[0:nCyc%*nR%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
-            recTrialTerminalIndex%[i%] := (nCyc%*nR%)-1;  'it's an index, subtract 1
-            recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
-                        
-        case recActive% = 0 or recPropCatch >= Rand() then  'if passive or catch, do not put in an S2
-            recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus
-            recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the only stimulus
-            recNUniqueStims%[i%] := 1;  'only one unique stimulus
-            arrconst(recPWAList%[0:nS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
-            arrconst(recDeltadBList[0:nS%][i%],0);  'do not set any delta dB, may change if Gregg wants roving
-            recTrialTerminalIndex%[i%] := nS%-1;  'it's an index, subtract 1
-            recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
-            'printlog("Nontarget/Catch trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
-            
-        else 'put in an S2
-            recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus
-            recStimList%[1][i%] := 0;  'Set second value in recStimList% to zero, there is only one stimulus
-            recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the S1
-            recSpeakerList%[1][i%] := recS2Speaker%;  'Set speaker for the S2
-            recNUniqueStims%[i%] := 2;  'two unique stimuli (due to calib on different speaker), fill two PWAs
-            arrconst(recPWAList%[0:nS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
-            recPWAList%[nS%][i%] := 1;  'And fill the final slot in the PWA list with 1, the S2 stimulus
-            arrconst(recDeltadBList[0:nS%+1][i%],0);  'do not set any delta dB, may change if Gregg wants roving
-            recTrialTerminalIndex%[i%] := nS%;  'it's an index, subtract 1 ( = nS%+1-1)
-            'printlog("Target trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
-            recTrialTerminalIsS2%[i%] := 1;  'last stimulus is an S2
-            
-        endcase;        
-    next; 
-    if recSearchStimType% <> 4 then
-        ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep
-    endif;
-    return status%;  'right now, it "can't" fail
+'Note that normally I would want to put this function in triallistgen.s2s.  However, due to the
+'large number of variables that it will rely on, I don't think I can pass them all in 256 characters,
+'so instead I'm keeping it here, where all the variables are global and certain to exist (and where it
+'won't break triallistgen.s2s for other experiments
+var i%;
+var j%;
+var status% := 1;
+var nS%;  'number of S1 stimuli 
+var nRS%; 'number of repeats for speaker sweep
+var nR%;  'number of repeats, for tone sweep 
+var nT%;  'number of tones, for tone sweep
+var nCyc%;  'number of cycles per "trial" if there are more than 20 individual tones in a tone sweep 
+var currTone%;  'current tone (PWA), if there are more than 20 individual tones in a tone sweep
+var nSpkr%; '# speakers in current array (needed or is this already a global?)
+var nCycS%;  'number of cycles per "trial" for speaker sweep 
+var currSpkr%;  'current speaker (PWA), for speaker sweep
+var speakerSweepList%[recNSpeakers%*recSearchToneSweepRepeats%];
+
+nR% := recSearchToneSweepRepeats%;  'shorthand
+nT% := recSearchToneSweepNSteps%;  'shorthand again
+nRS% := recSearchSpeakerSweepRepeats%;
+
+nSpkr% := recNSpeakers%; 'shorthand again. speaker sweep! '10 for debugging purposes
+if recDebug% = 1 then
+   nSpkr% := 10; '10 for debugging purposes to equal recMaxTrial
+endif;
+currSpkr% := 1; 'start with speaker 1
+
+'Tone sweeps have to be different!  No S2 for those.
+for i% := 0 to recNTrials%-1 do
+    nS% := recMinS1% + Floor(Rand(recVarS1%+1,0));  'using Floor with an offset of 1 because the range of Rand is 0 -> .999... 
+    recTrialOrder%[i%] := i%;  'set initial trial order
+    docase
+    case recSearchStimType% = 4 and (nT%*nR% <= recMaxStimPerTrial%) then 'for tone sweeps, simple version where all trials are identical
+        for j% := 0 to nT%-1 do  'for each tone in the tone sweep
+            recStimList%[j%][i%] := j%;  'fill Stim list with indices of the sweep tones, from low to high (freqs already set by dialog box)
+            arrconst(recPWAList%[j%*nR%:nR%][i%],j%);  'fill PWA list with nR% copies of tone
+                        'PrintLog("recPWAList is now: d% \n", recPWAList%); 'temprary! for dbugging
+
+        next;
+        arrconst(recSpeakerList%[0:nT%][i%],recS1Speaker%);  'only one speaker
+        recNUniqueStims%[i%] := nT%;
+        arrconst(recDeltadBList[0:nT%*nR%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
+        recTrialTerminalIndex%[i%] := (nT%*nR%)-1;  'it's an index, subtract 1
+        recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
+        
+    case recSearchStimType% = 4 and (nT%*nR% > recMaxStimPerTrial%) then 'complicated version of tone sweeps, if there are more than 20 tones in a sweep
+        for j% := 0 to nT%-1 do  'for each tone in the tone sweep
+            recStimList%[j%][i%] := j%;  'fill Stim list with indices of the sweep tones, from low to high (freqs already set by dialog box)
+        next; 
+        arrconst(recSpeakerList%[0:nT%][i%],recS1Speaker%);  'only one speaker            
+        recNUniqueStims%[i%] := nT%;
+        
+        nCyc% := floor(recMaxStimPerTrial%/nR%);  'divide max stims by number of repeats to see how many repeats can fit
+        for j% := 0 to nCyc%-1 do
+            arrconst(recPWAList%[j%*nR%:nR%][i%],currTone%);  'fill PWA list with nR% copies of tone
+            currTone% += 1;
+            if currTone% = nT% then  'wrap currTone% when necessary
+                currTone% := 0;
+            endif;
+        next;
+        arrconst(recDeltadBList[0:nCyc%*nR%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
+        recTrialTerminalIndex%[i%] := (nCyc%*nR%)-1;  'it's an index, subtract 1
+        recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
+        
+    case recSearchStimType% = 5 then 'speaker sweep with broadband noise
+        'this is the do all speakers in one trial method (as in tone sweep)
+'        for j% := 1 to nSpkr% do  'for each Speaker
+'            ArrConst(speakerSweepList%[j%-1][i%],j%);  'fill Speaker list with speaker #
+'            PrintLog("recSpeakerList is now: %d \n", recSpeakerList%);
+''            arrconst(recPWAList%[j%*nR%:nR%][i%],j%);  'fill PWA list with nR% copies of noise (hijack tone repeats variable for now)
+''            'PrintLog("recPWAList is now: %d \n", recPWAList%);
+'        next;
+        recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus        
+        recNUniqueStims%[i%] := 1; 'nSpkr%; not nspkr, only 1 b/c all noise??        
+        'this is the one speaker per trial method:
+        ArrConst(recSpeakerList%[0:nRS%][i%], currSpkr%);
+'       PrintLog("recSpeakerList%[0:nR%][i%] = %d \n", recSpeakerList%[0:nR%][i%]);
+        currSpkr% +=1; 'increment speaker number for next trial   
+        if currSpkr% > nSpkr% then  'reset to 1 if last speaker in array
+            currSpkr% := 1;
+        endif;
+        
+        arrconst(recPWAList%[0:nRS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
+        arrconst(recDeltadBList[0:nRS%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
+'        arrconst(recDeltadBList[0:nSpkr%*nR%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
+        recTrialTerminalIndex%[i%] := nRS%-1;  'it's an index, subtract 1
+        'recTrialTerminalIndex%[i%] := (nSpkr%*nR%)-1;  'it's an index, subtract 1
+        recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
+        
+    case (recActive% = 0 or recPropCatch >= Rand()) and recSearchStimType% < 5 then  'if passive or catch, do not put in an S2
+        recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus
+        recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the only stimulus
+        recNUniqueStims%[i%] := 1;  'only one unique stimulus
+        arrconst(recPWAList%[0:nS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
+        arrconst(recDeltadBList[0:nS%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
+        recTrialTerminalIndex%[i%] := nS%-1;  'it's an index, subtract 1
+        recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
+        'printlog("Nontarget/Catch trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
+
+       
+    else 'put in an S2
+        recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus
+        recStimList%[1][i%] := 0;  'Set second value in recStimList% to zero, there is only one stimulus
+        recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the S1
+        recSpeakerList%[1][i%] := recS2Speaker%;  'Set speaker for the S2
+        recNUniqueStims%[i%] := 2;  'two unique stimuli (due to calib on different speaker), fill two PWAs
+        arrconst(recPWAList%[0:nS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
+        recPWAList%[nS%][i%] := 1;  'And fill the final slot in the PWA list with 1, the S2 stimulus
+        arrconst(recDeltadBList[0:nS%+1][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
+        recTrialTerminalIndex%[i%] := nS%;  'it's an index, subtract 1 ( = nS%+1-1)
+        'printlog("Target trial, recTrialTerminalIndex% is %d\n",recTrialTerminalIndex%[i%]);
+        recTrialTerminalIsS2%[i%] := 1;  'last stimulus is an S2
+        
+    endcase;        
+next; 
+if recSearchStimType% < 4 then 'just <, not <>; don't want to shuffle for speaker sweep (=5) either
+    ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep
+endif;
+return status%;  'right now, it "can't" fail
 end
 '===== End GenTrialsSearch =====
 '
@@ -4617,7 +5201,6 @@ func GenTrialsFRA%()
     var whichS2Speaker%[recMaxTrial%];  'only one S2 per trial, so this is big enough
     var count%;
     
-    
     '===== Create Stimuli =====
     
     'For creating stimuli, there will be only one noise stimulus and a ton of tone pips/FM, so we'll
@@ -4636,14 +5219,17 @@ func GenTrialsFRA%()
     recTrialGenLowpassHz[0] := -1;
     recTrialGenHighpassHz[0] := -1;
     recTrialGenIsSweep%[0] := 0;
-    
-    'Fill whichS1StimInd%[] and whichS1DeltadB[] for the rate-level noises
+'        printlog("stim index = 0\t"); ' check stim! 
+'        printlog("Rate-level (noise)\n");
+'    'Fill whichS1StimInd%[] and whichS1DeltadB[] for the rate-level noises
     count% := 0;  'reset, though it's the first time used
     for i% := 0 to recRateLeveldBNSteps%-1 do
         for j% := 0 to recRateLevelNRepeats%-1 do
             whichS1StimInd%[count%] := 0;  'always is stimulus 0
             whichS1DeltadB[count%] := 65-recRateLeveldBList[i%];  'delta dB is additional atten, default stims will play at 65
-            count% += 1;
+'                printlog("count = %d\t", count%); ' check stimlist! 
+'                printlog("Rate-level %d\n", whichS1DeltadB[count%]);
+            count% += 1;        
         next;
     next;
     
@@ -4667,9 +5253,13 @@ func GenTrialsFRA%()
             for k% := 0 to recFRANRepeats%-1 do  'recFRANRepeats% will probably be 1, that's OK as for i% := 0 to 0 executes once as expected
                 whichS1StimInd%[count%] := i%;  'i% holds the stim index of the current tone
                 whichS1DeltadB[count%] := 65-recFRAdBList[j%];  'recFRAdBList[j%] holds the dB of the current tone, delta dB is additional atten, default stims will play at 65
+'                printlog("count = %d\t", count%); ' check stimlist! 
+'                printlog("Tone pip: %d\n", whichS1DeltadB[count%]);
                 count% += 1;
             next;
         next;
+'        printlog("stim index = %d\t", i%); ' check stim! 
+'        printlog("Tone pip: %d\n", recFRAFreqList[i%-1]);
     next;
 
     
@@ -4706,9 +5296,64 @@ func GenTrialsFRA%()
         for j% := 0 to recFRAFMSweepRepeats%-1 do
             whichS1StimInd%[count%] := i%+nTonePips%;  'i%+nTonePips% holds the stim index of the current FM sweep
             whichS1DeltadB[count%] := 65-recFRAS2dBLevel;  'recFRAS2dBLevel holds the dB of the tone sweeps as well as the S2s, delta dB is additional atten, default stims will play at 65
+'                printlog("count = %d\t", count%); ' check stimlist! 
+'                printlog("FMsweeps: %d\n", recTrialDur[i%+nTonePips%]);
             count% += 1;
         next;
+'        printlog("stim index = %d\t", i%+nTonePips%); ' check stim! 
+'        printlog("FM sweep: %d\n", recFRAFMSweep%[ind%]);
+   next;
+
+'Set trial variables for AMnoise...
+for i% := 0 to nMTFrates%-1 do
+    'AM Noise generation variables - same as AMdisc
+    j% := i%+nTonePips%+nFMSweeps%+1; 'use j% now as trial index instead of i%
+    recTrialDur[j%] := 500;
+    recTrialGenRampMS[j%] := 5;  
+    recTrialGenAMFreqHz[j%] := MTFrates[i%];
+    recTrialGenAMDepthPct[j%] := 100; '100% depth
+    recTrialGenAMPhaseDeg[j%] := 0;
+    recTrialGenTonePhaseDeg[j%] := 0;
+    recTrialGenGauss%[j%] := 1;  'use gaussian noise
+    recTrialGenSeed%[j%] := 0;  'This makes it unfrozen, need to make sure we're recording the seed
+    recTrialGenLowpassHz[j%] := -1;
+    recTrialGenHighpassHz[j%] := -1;
+    recTrialGenIsSweep%[j%] := 0;
+    for k% := 1 to recS1AMnoiseReps% do
+        'fill repeats & increment count...
+        whichS1StimInd%[count%] := j%;  'j% holds the stim index of the current AM
+        whichS1DeltadB[count%] := 0;  'default stims will play at 65
+'                printlog("count = %d\t", count%); ' check stimlist! 
+'                printlog("AM noise: %d\n", MTFrates[i%]);
+        count% += 1;
     next;
+'    printlog("stim index = %d\t", j%); ' check stim! this is going to be a long list
+'    printlog("AM noise: this rate = %d\t", MTFrates[i%]);
+'    printlog("AM noise: duration = %d\n", recTrialDur[j%]);
+next;
+
+'Adding bandpass noise!
+for i% := 0 to nBPnoises%-1 do
+    'BP noise generations variables
+    j% := i%+nTonePips%+nFMSweeps%+nMTFrates%+1;
+    recTrialDur[j%] := 200;
+    recTrialGenRampMS[j%] := 2;  'short ramp
+    recTrialGenAMFreqHz[j%] := 0;
+    recTrialGenAMDepthPct[j%] := 0;
+    recTrialGenAMPhaseDeg[j%] := 0;
+    recTrialGenTonePhaseDeg[j%] := 0;
+    recTrialGenGauss%[j%] := 1;  'use gaussian noise
+    recTrialGenSeed%[j%] := 0;  'This makes it unfrozen, need to make sure we're recording the seed
+    recTrialGenLowpassHz[j%] := recBPnoisesLOs%[i%];
+    recTrialGenHighpassHz[j%] := recBPnoisesHIs%[i%];
+    recTrialGenIsSweep%[0] := 0;
+    for k% := 1 to recBPnoiseReps% do
+        'fill repeats & increment count...
+        whichS1StimInd%[count%] := j%;  'j% holds the stim index of the current BP
+        whichS1DeltadB[count%] := 0;  'default stims will play at 65
+        count% += 1;
+    next;
+next;    
     
     'Fill an S1Shuffle variable with the indices of S1 trials
     for i% := 0 to count%-2 do  'count-2 because it is incremented one last time above and not decremented
@@ -4720,8 +5365,8 @@ func GenTrialsFRA%()
     
     
     ' ===== Create Trials =====
-    
-    nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%);  'that's number of tone pips in FRA plus number of noise bursts in rate-level function
+    '#S1s = number of tone pips in FRA plus number of noise bursts in rate-level function + number of AM noises in MTFs
+    nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%)+(nMTFrates%*recS1AMnoiseReps%)+(nBPnoises%*recBPnoiseReps%);  
     printlog("nS1% = %d\n", nS1%);
     nS2% := (recNSpeakers%-1)*recSpaceNRepeats%;  'that's number of noises at speakers not in the S1 position
     printlog("nS2% = %d\n", nS2%);
@@ -4735,7 +5380,7 @@ func GenTrialsFRA%()
     count% := 0;  'reset
     for i% := 1 to recNSpeakers% do  'this is right, we go through all speakers
         if i% <> recS1Speaker% then  'don't use the S1 speaker of course
-            for j% := 1 to recRateLevelNRepeats% do
+            for j% := 1 to recSpaceNRepeats% do 'recRateLevelNRepeats% do - separated from S2-Space count!
                 whichS2Speaker%[count%] := i%;
                 count% += 1;
             next;
@@ -4793,6 +5438,7 @@ func GenTrialsDis%(recExpToRun%)
     var nS2%;
     var RepeatsPerStim%;
     var responseTrial%; '1 if hit/miss, 0 if catch
+    const dBrove% := 5; 'Rand(dBrove%,0) = 0,1,2,3,4 dB ; set to 0 to turn roving off
 
 'global vars set up in RecLoadTrialsFile: 
 '            recTrialS1%
@@ -4819,6 +5465,7 @@ endcase
 k% := 0; 'trial index counter, should increment to total recNTrials%-1
 for trialrep% := 0 to RepeatsPerStim%-1 do 'for number of trial repetitions  
     for i% := 0 to recTotalTrials%-1 do  'for each trial type in input table, so,i%=line# in stim table
+        
         recTrialOrder%[k%] := k%;  'Just randomize this after the loop
         'printlog("k is %d and recTrialOrder is now %d\n",k%,recTrialOrder%);'[0][k%]); 
         'determine how many S1 repeats to do this time:
@@ -4884,7 +5531,8 @@ for trialrep% := 0 to RepeatsPerStim%-1 do 'for number of trial repetitions
         for j% := 0 to numS1perTrial%-1 do
             recStimList%[j%][k%] := recTrialS1%[i%]; 'this is stimulus index, all stims considered "unique" (?)
             recSpeakerList%[j%][k%] := recTrialS1Spkr%[i%];  'And speaker
-            recDeltadBList[j%][k%] := recTrialS1DeltadB[i%];  'And dB
+            'recDeltadBList[j%][k%] := recTrialS1DeltadB[i%];  'And dB 'this is the value from the input tables
+            recDeltadBList[j%][k%] := recDeltadBLevel+Rand(dBrove%,0); 'this is the value from the GUI - use this instead! (different for each monkey)
             recPWAList%[j%][k%] := j%;  'this is PWA to play, just PWA in order
         next;
     
@@ -4894,7 +5542,8 @@ for trialrep% := 0 to RepeatsPerStim%-1 do 'for number of trial repetitions
         j% := numS1perTrial%;  'because of zero-based indexing, the number of S1s is the index of the S2
         recStimList%[j%][k%] := recTrialS2%[i%];  'S2 stimulus for this trial
         recSpeakerList%[j%][k%] := recTrialS2Spkr%[i%]; 'S2 speaker
-        recDeltadBList[j%][k%] := recTrialS2DeltadB[i%];  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
+        'recDeltadBList[j%][k%] := recTrialS2DeltadB[i%];  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
+        recDeltadBList[j%][k%] := recDeltadBLevel+Rand(dBrove%,0); 'value from GUI, use this intead (different for each monkey)
         recPWAList%[j%][k%] := j%;  'this is PWA to play, just play in order
     
         'And finally the number of unique stims - all stims are treated as unique (i.e. loaded into their own PWA) even if they're technically "not"
@@ -4971,9 +5620,9 @@ endcase
 
     ' Generate the dialog
     DlgCreate("LED Switch Reminder!");', 25, 10);
-    DlgText("You are running " + exptext$ + "!", 1,1);
-    DlgText("LED color is " + expcolor$, 1,2);
-    DlgCheck(1, "Have you switched the LED?",1,3);
+    DlgText("You are running " + exptext$ + "!", 3,1);
+    DlgText("LED color is " + expcolor$, 5,2);
+    DlgText("***check the speaker cable too! ***",1,4);
 
     ' Show the dialog. 
     i%:=DlgShow(shite%);

@@ -10,7 +10,7 @@ var recRewardMs%;
 var recChanTM%;
 
 var i%;
-const nRepeats% := 2;
+const nRepeats% := 100;
 var dur[nRepeats%];
 var on;
 var off;
