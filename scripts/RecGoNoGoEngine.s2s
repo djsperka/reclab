@@ -31,18 +31,23 @@ const configJoyXChannel% := 34;       ' Channel for JoystickX 4-->40
 const configJoyYChannel% := 35;       ' Channel for JoystickY 5-->41
 const recDAC0Channel% := 36;          ' DAC0 output should be tee'd and input to ADC port 6 ; 1-->46
 const recTrigChannel% := 37;          ' Channel for trigger recording (teed from trig input!) 2-->42
+const configStimCopyChannel1% := 50;
+const configStimCopyChannel2% := 51;
 
 'electrode channel, port & number variables (because you cant make a const array)
 const maxTrodes% := 32; '29;'30; 'max # of electrodes we can record is 30, limited by available Ports; 29 for now b/c of stupid textmark constraint
 var recTrodePosition%[maxTrodes%];'
 var recTrodeChannel%[maxTrodes%];
 var recTrodePort%[maxTrodes%];
+var maxTrodesThisExpt%;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
 
 ' ports
 const recTriggerPort% := 0; 'qwhy????
 const recLeverPort% := 1; 'does not need to be distinct from joystick because they will never be used at the same time
 const configJoyXPort% := 0;  'A2D port (changed from 2 to 0)
 const configJoyYPort% := 1;  'A2D port (changed from 3 to 1)
+const configStimCopyPort1% := 6;  'per Conor, Reclab will NOT be using multi-contact probes and stimulation together, we can plug into front, if we use stim reward, max channels will be 4, won't interfere
+const configStimCopyPort2% := 7;
 
 ' memory channels
 var recMemChanLeverDebounce%;
@@ -161,9 +166,10 @@ const stateSoundCPlaying%                     := 25;
 const stateCRReward%                          := 26;
 const stateStartCEDBlink%                     := 27;
 const stateCEDBlinking%                       := 28;
-const stateTDTBlink%                          := 29;
+'const stateTDTBlink%                          := 29;
 const stateStartSoundD%                       := 30;
 const stateSoundDPlaying%                     := 31;
+const stateFalseAlarmAudiogram%               := 32;
 
 var recDelayIntervalTime         := 0;
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
@@ -299,13 +305,13 @@ var trodeNum%;
 
 'TrodePorts will not change! same as TrodeChans, unless TrodeChannels changes/becomes configurable 
 'recTrodePort% := [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]; 
-for i% := 1 to 28 do 'maxTrodes = 30, limited by available Ports
+'for i% := 1 to 28 do 'maxTrodes = 30, limited by available Ports
+for i% := 1 to maxTrodesThisExpt% do 'maxTrodes = 30, limited by available Ports  updated by jj 9/5/2016 to allow for two stimulation inputs at the end
     index% := i%-1; 'index starts at 0
     portNum% := i%+1; 'first electrode is on Port 2
     recTrodePort%[index%] := portNum%;
     recTrodePosition%[index%] := portNum%; 'this way all the numbers are the same! easyPeasy!
     recTrodeChannel%[index%] := portNum%;
-
 next;
 
 '***THIS IS IMPORTANT *** ELECTRODE NAMES ARE SET HERE
@@ -494,7 +500,15 @@ endif
 'Note that the sample rate is strange (28 kHz).  These are exactly the Usrey lab conventions, so whatevs.
 'Actual sampling rate may vary! (constrained by hardware)
 
-
+    'set up stimulation copy ports
+    if recRewardType% > 0 then
+        SampleWaveform(configStimCopyChannel1%,configStimCopyPort1%,5000);
+        SampleWaveform(configStimCopyChannel2%,configStimCopyPort2%,5000);
+    endif;
+    
+    
+    
+    
 ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
     ' The second arg groups channels with same ideal rates together so they all get same 
     ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
@@ -784,6 +798,7 @@ Func PlaySound%(isS2%)
     var isS2$;
     var thisStim%;  'this is the index of the physical stimulus (re: stim file list or stim properties list)
     var thisPWAIndex%;  'this is the PWA it will be found in on this trial
+    var maxdB;
         
     'Get index of current trial
     playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
@@ -819,7 +834,28 @@ Func PlaySound%(isS2%)
     trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
     
     'Get total attenuation
-    atten := calatten + trlatten;
+    printlog("cal atten is %f and current db is %f\n",calatten,recAudiogramCurrentdB);
+    if recExpToRun% = recExpAudiogramButton% then
+        atten := 65 + calatten - recAudiogramCurrentdB;
+    else
+        atten := calatten + trlatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
+    endif;
+    
+    'It is possible that due to the maximum intensity of the stimulus that the requested attenuation
+    '(particularly in the audiogram) could be negative.  If so, we are screwed.  Set atten to 0 and point
+    'this out to the user
+    if atten < 0 then
+        atten := 0;
+        maxdB := 65 + calatten;
+        if recExpToRun% = recExpAudiogramButton% then
+            recAudiogramCurrentdB := maxdB;  'reset requested dB on audiogram to max allowed
+            message("dB requested is above maximum possible for this stim, has been set to %f",maxdB);
+        else
+            message("Requested attenuation was negative, has been reset to 0!");
+        endif;
+    endif;
+    
+        
     
     'Set some attenuation (30 db) during testing, just for the sake of our ears.
     'Once reclab_panstim starts returning a value here, we're in business
@@ -1035,31 +1071,39 @@ func StimComplete%(isS2%, success%)
         status% := -1;
     endcase
     'do it here instead!
-    strtmp$ := Print$("%s,%d", resultCode$, recCurrentTrial%);
+    if recExpToRun% = recExpAudiogramButton% then
+        strtmp$ := Print$("%s,%d,%f",resultCode$, recCurrentTrial%, recAudiogramPreviousdB);  'use previous dB, current dB is already updated
+    else
+        strtmp$ := Print$("%s,%d", resultCode$, recCurrentTrial%);
+    endif;
+    
     SampleText(strtmp$, recPreciseTrialTime);
 
-'call BehOutput now! (hijacking this logic, haha!)
-BehOutput(resultCode$, isS2%);
-
-'increment StimCounter AFTER call to BehOutput!!!
-if isS2% = 0 and success% = 1 then  'stimulus is S1, not terminal
-    'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
-    recStimCount% += 1;
-    termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
-    if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
-        docase '*jao
-        case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
-            status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
-        case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
-            printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
-            status% := 3;  'return indicates S2-LO is next
-        else
-            status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
-        endcase;
-        'otherwise, return is 0 indicating non-terminal S1
+    'call BehOutput now! (hijacking this logic, haha!)
+    if recLogThisResult% = 1 then  'this value will be 1 and not be changed if we are not doing an audiogram - so basically always log, unless audiogram, in which case maybe log
+        BehOutput(resultCode$, isS2%);
     endif;
-endif;
-return status%;
+    
+    
+    'increment StimCounter AFTER call to BehOutput!!!
+    if isS2% = 0 and success% = 1 then  'stimulus is S1, not terminal
+        'Increment within-trial stimulus counter, if we've played all the S1s, return 1 if playing the S2 or 2 if playing a terminal S1
+        recStimCount% += 1;
+        termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
+        if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
+            docase '*jao
+            case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
+                status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
+            case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
+                printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
+                status% := 3;  'return indicates S2-LO is next
+            else
+                status% := 2;  'return indicates terminal S1 is next 'For AMDis(now Hi/Lo) this would-be-catch trial will be rewarded 50% *jao
+            endcase;
+            'otherwise, return is 0 indicating non-terminal S1
+        endif;
+    endif;
+    return status%;
     
     'TODO Figure out this ExtractSpace bit.  Doesn't look like recHBeh%/recHBak% handles are made...
     'All right, as regards the ExtractSpace stuff: For now, we're going to shelve this in order to
@@ -1069,12 +1113,12 @@ return status%;
     'necessary.  If such output files are needed, we can make them, but for now we'll leave it out and
     'later determine what is necessary.
     'if recCEDIsPresent% = 1 then
-        'now := MaxTime();
-        'First 4 arguments kosher, checking remaining.  Now last 4 OK.  Args 5-7 are unassigned.
-        'ExtractSpace(recTLastProcessed, now, recDataWindowView%, recXYWindowView%, recHBeh%, recHBak%, recChanWM%, recChanTM%, recTrigChannel%, recLeverChannel%, recNSpeakers%);
-        'recTLastProcessed := now;
+    'now := MaxTime();
+    'First 4 arguments kosher, checking remaining.  Now last 4 OK.  Args 5-7 are unassigned.
+    'ExtractSpace(recTLastProcessed, now, recDataWindowView%, recXYWindowView%, recHBeh%, recHBak%, recChanWM%, recChanTM%, recTrigChannel%, recLeverChannel%, recNSpeakers%);
+    'recTLastProcessed := now;
     'endif
-            
+    
     'I'm kind of assuming this went with ExtractSpace
     'UpdateOnlineAnalysis();  'It was commented out when I found it.    
     
@@ -1153,12 +1197,8 @@ func Stop%()
     
     ' Stop sampling....
     if SampleStatus() <> -1 then
-        if useTDTforLever% = 0 then
-            SafeSampleKey("S");  'Kill blink sequence, if one exists - when does this happens? think about making it not safe ~jao
-        endif;
-        if useTDTforJuicer% = 0 then
-            SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
-        endif;        
+        SafeSampleKey("S");  'Kill blink sequence, if one exists - when does this happens? think about making it not safe ~jao
+        SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
         SampleStop();
         'FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
         FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr", -1); 'NEW FORMAT! add date automagically! 
@@ -1327,44 +1367,8 @@ func Reward%()
     var temp%;
     var s;
     
-    stmp% := recReward%(recRewardMs%,useTDTforJuicer%);  'for TDT or CED
+    stmp% := recReward%(recRewardMs%,recJuiceToStimDelay%,recCurrentRewardType%,0);
     
-    'If we're using the TDT, we really ought to check for succesful completion before moving forward (CED has SafeSampleKey)
-    if useTDTforJuicer% = 1 then
-        'have to wait for juicer to stop, keep looking for TDT return on serial port until then.
-        stmp% := -1;  'by default, assume failure
-        s := recRewardMs%;  'get non-integer version of reward duration
-        s := (s/1000) + 0.2;  'convert to seconds of expected reward, give 200 ms of slop
-        if SampleStatus() = 2 then  'if we are currently sampling, use MaxTime()
-            tStart := View(recDataWindowView%).MaxTime();  'this is the time that the reward command was sent, roughly
-            while tNow < tStart + s do  'integer < float operation is OK
-                temp% := readTDTReply%(data%[]);
-                if temp% = -1 then 'if TDT has not yet put data onto the serial port
-                    tNow := View(recDataWindowView%).MaxTime();  'fill tNow with current clock time
-                    yield(.01);
-                else
-                    tNow := tStart + s + 1000;  'that'll break the loop
-                    stmp% := 0;
-                endif;
-            wend;
-        else 'This could happen because the reward button is enabled pre-sampling, but it's very rough (in seconds)
-            'Please note that this function WILL FAIL if the reward delivery begins before midnight and ends after midnight.
-            var tStart%;
-            var tNow%;
-            TimeDate(tStart%); 'get current clock time in seconds
-            tStart := tStart%;  'get non-integer version
-            while tNow% < tStart + s do  'integer < float operation is OK
-                temp% := readTDTReply%(data%[]);
-                if temp% = -1 then 'if TDT has not yet put data onto the serial port
-                    TimeDate(tNow%);  'fill tNow% with current clock time
-                    yield(.01);
-                else
-                    tNow% := tStart + s + 1000;  'that'll break the loop, tStart + s will be floored but no biggie
-                    stmp% := 0;
-                endif;
-            wend;
-        endif;    
-    endif;
     return stmp%;  'return 0 on success
 end
 
@@ -1386,7 +1390,7 @@ proc ChangeStateTo(stateTo%)
     if recCEDIsPresent% = 1 then
         tStateStart := View(recDataWindowView%).MaxTime();
     else
-        tStateStart := View(recDataWindowView%).tNow;
+        tStateStart := tNow;
     endif
 end;
 
@@ -1537,11 +1541,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 Stop%();
                 return -1;
             case recMatGenStim% = 1 and recSearchStimType% <> 3 then  'Generate stimuli using Matlab - even something CED can do like tones.  Just easier to be consistent.
@@ -1571,11 +1571,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                        recTDTLEDOff%();
-                    else
-                        SafeSampleKey("M");
-                    endif;
+                    SafeSampleKey("M");
                     Stop%();
                     return -1;
                 endif;
@@ -1666,6 +1662,7 @@ func IdleLoop%()
     var isPlaying%;
     var PWA$;
     var s$;
+    var temprnd;  'a temporary variable to hold a Rand, used for changing reward type
 
 
     nextStateImmed% := 1;  'obviously we run the damn thing the FIRST time through each idle loop
@@ -1719,16 +1716,22 @@ func IdleLoop%()
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
             endif;
             
+ 
             CheckLever%("inOrigin%",1);  'flush joystick/lever data, default to inOrigin
             'only original check for pause location....
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
-                if recExpToRun% <> recExpSearchButton% or recSearchLoaded% = 0 then
+                docase
+                case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then
                     stmp% := PrepareNextTrial%(0); 'load PWAs, should gracefully pass through in debug mode as well
-                    recSearchLoaded% := 1;  'only load PWAs once for search
-                else
+                case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 0 then    
+                    stmp% := PrepareNextTrial%(1);  'don't load PWAs for repeated audiogram stimuli
+                case recExpToRun% = recExpSearchButton% and recSearchLoaded% = 1 then
                     stmp% := PrepareNextTrial%(1);  'don't load PWAs for search trials after #1
-                endif;
+                else
+                    stmp% := PrepareNextTrial%(0); 'load PWAs, should gracefully pass through in debug mode as well
+                    recSearchLoaded% := 1;  'only allow loading PWAs once for search                  
+                endcase;
                 
                 docase
                 case stmp% = 0 then
@@ -1740,6 +1743,12 @@ func IdleLoop%()
                     ChangeStateTo(stateCodingError%);
                 else
                     recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful load of new trial.
+                    docase
+                    case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then 
+                        recAudiogramStartNewTrial% := 0;  'the increment above has been accepted, don't let it increment again until new frequency is needed
+                    case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 0 then
+                        recCurrentTrial% -= 1;  'if we are not starting a new trial on audiogram, undo increment of trial counter
+                    endcase;
                     RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
                     ChangeStateTo(stateWaitForInitiationMovement%);
                 endcase
@@ -1760,12 +1769,52 @@ func IdleLoop%()
         case iState% = stateWaitForInitiationMovement% then   'this state just decides which state to go to, it's easier than replacing all the instances 
         'CHECK FOR PAUSE HERE TOO:
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+                
+                'If necessary, change the reward type on this trial (recRewardType 0/1 does not change)
+                'Note that this step is done here rather than stateInitializeTrials because all relevant results
+                'go through this state (miss, various FA, lazy monkey), but lazy monkey does NOT go through stateInitializeTrials
+                docase  
+                case recRewardType% = 3 and recChangeRewardType% = 1 then 'cycle through reward types
+                    recChangeRewardType% := 0;  'Reset, don't change again until necessary
+                    recCurrentRewardType% += 1;  'increment current reward type
+                    if recCurrentRewardType% = 3 then 'legal values are [0 1 2], if 3, cycle to 0
+                        recCurrentRewardType% := 0;
+                    endif;
+                case recRewardType% = 4 then 'and recChangeRewardType% = 1 then 'select random reward type based on values set in dialog
+                    'recChangeRewardType% := 0;  'Reset, don't change again until necessary
+                    temprnd := Rand(100,0);  'get rand, values in dialog are in terms of percentage
+                    docase
+                    case temprnd < recPctJuice% then
+                        recCurrentRewardType% := 0;  'set juice
+                    case temprnd > recPctJuice% and temprnd < (recPctJuice%+recPctStimulation%) then
+                        recCurrentRewardType% := 1;  'set stimulation
+                    else
+                        recCurrentRewardType% := 2;  'set juice + stimulation
+                    endcase   
+                case recRewardType% = 5 then
+                    temprnd := Rand(100,0);  'get rand, values in dialog are in terms of percentage
+                    docase
+                    case temprnd < recPctStimulation% then
+                        recCurrentRewardType% := 2;  'set juice + stimulation
+                    else
+                        recCurrentRewardType% := 0;  'set juice only
+                    endcase
+                endcase
+                
+                
+                docase
+                case recCurrentRewardType% = 0 then
+                    SampleText("Trial #" + str$(recCurrentTrial%) + ", Juice reward", tNow);
+                case recCurrentRewardType% = 1 then
+                    SampleText("Trial #" + str$(recCurrentTrial%) + ", Stim reward", tNow);
+                case recCurrentRewardType% = 2 then
+                    SampleText("Trial #" + str$(recCurrentTrial%) + ", Juice+Stim reward", tNow);
+                endcase
+                
+                
+                
                 'do state stuff here...
-                if useTDTforLever% = 1 then
-                    ChangeStateTo(stateTDTBlink%);
-                else
-                    ChangeStateTo(stateStartCEDBlink%);
-                endif;
+                ChangeStateTo(stateStartCEDBlink%);
                 
             else  'but if paused, check to see if we have a call out to a dialog box to change values
                 if recRunTimeCall% = 1 then
@@ -1841,6 +1890,8 @@ func IdleLoop%()
                         RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                         'Increment, if appropriate
                         ChangeThresh2(doIncTrialInit%[]);
+                        'Calculate new delay interval time
+                        recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
                         ChangeStateTo(statePreTrialDelay%);
                     endif;
                  else  'this is timeout
@@ -1865,70 +1916,71 @@ func IdleLoop%()
                 endif
             endif
             
-        case iState% = stateTDTBlink% then
-
-           'CHECK FOR PAUSE HERE TOO:
-            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
-                'do state stuff here
-                CheckLever%("inOrigin%",1);
-                if inOrigin% = 1 then  'lever must be up to start blink
-                    if tNow > tNextTrial then
-                        
-                        RecLogStatus("WaitTrlInit", "Blink/Wait.");
-                        
-                        'leave this the same...recBlinkUntilLeverDown%() is special, and I DON'T want to recode it
-                        if recCEDIsPresent% = 1 and recActive% = 1 then
-                            stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
-                            'Will leave LED on once lever is down
-                            if recFixLED% = 0 then
-                                SafeSampleKey("M"); 'turn LED off if we are not using it for fixation
-                            endif;
-                        else
-                            stmp% := 1;  'simulate success in lever press
-                        endif
-                        
-                        docase
-                        case stmp% = 1 then
-                            recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
-                            'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
-                            RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
-                            'Increment, if appropriate
-                            ChangeThresh2(doIncTrialInit%[]);
-                            ChangeStateTo(statePreTrialDelay%);
-                        case stmp% = 0 then
-                            RecLogStatus("WaitTrlInit", "Timeout waiting for lever down.");
-                            'Decrement, if appropriate
-                            'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
-                            ChangeThresh2(doDecTrialInit%[]);
-                            ChangeStateTo(stateLazyMonkeyTimeout%);
-                        else
-                            PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
-                            Message("Error in recBlinkUntilLeverDown!");
-                            ChangeStateTo(stateTDTError%);
-                        endcase
-                    endif;
-                else
-                    RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
-                    ChangeStateTo(stateLazyMonkeyTimeout%);
-                endif;
-            
-            else  'but if paused, check to see if we have a call out to a dialog box to change values
-                if recRunTimeCall% = 1 then
-                    docase
-                    case recWhichDialogCalled% = 1 then
-                        RecExpTimingRewardDialog%();
-                        ReturnFromDialogCall%();
-                    case recWhichDialogCalled% = 2 then
-                        RecExpLeverJoystickDialog%();  
-                        ReturnFromDialogCall%();
-                    endcase
-                endif
-            endif
-            
+'        case iState% = stateTDTBlink% then
+'
+'           'CHECK FOR PAUSE HERE TOO:
+'            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+'                'do state stuff here
+'                CheckLever%("inOrigin%",1);
+'                if inOrigin% = 1 then  'lever must be up to start blink
+'                    if tNow > tNextTrial then
+'                        
+'                        RecLogStatus("WaitTrlInit", "Blink/Wait.");
+'                        
+'                        'leave this the same...recBlinkUntilLeverDown%() is special, and I DON'T want to recode it
+'                        if recCEDIsPresent% = 1 and recActive% = 1 then
+'                            stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
+'                            'Will leave LED on once lever is down
+'                            if recFixLED% = 0 then
+'                                SafeSampleKey("M"); 'turn LED off if we are not using it for fixation
+'                            endif;
+'                        else
+'                            stmp% := 1;  'simulate success in lever press
+'                        endif
+'                        
+'                        docase
+'                        case stmp% = 1 then
+'                            recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+'                            'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
+'                            RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
+'                            'Increment, if appropriate
+'                            ChangeThresh2(doIncTrialInit%[]);
+'                            ChangeStateTo(statePreTrialDelay%);
+'                        case stmp% = 0 then
+'                            RecLogStatus("WaitTrlInit", "Timeout waiting for lever down.");
+'                            'Decrement, if appropriate
+'                            'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
+'                            ChangeThresh2(doDecTrialInit%[]);
+'                            ChangeStateTo(stateLazyMonkeyTimeout%);
+'                        else
+'                            PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
+'                            Message("Error in recBlinkUntilLeverDown!");
+'                            ChangeStateTo(stateTDTError%);
+'                        endcase
+'                    endif;
+'                else
+'                    RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
+'                    ChangeStateTo(stateLazyMonkeyTimeout%);
+'                endif;
+'            
+'            else  'but if paused, check to see if we have a call out to a dialog box to change values
+'                if recRunTimeCall% = 1 then
+'                    docase
+'                    case recWhichDialogCalled% = 1 then
+'                        RecExpTimingRewardDialog%();
+'                        ReturnFromDialogCall%();
+'                    case recWhichDialogCalled% = 2 then
+'                        RecExpLeverJoystickDialog%();  
+'                        ReturnFromDialogCall%();
+'                    endcase
+'                endif
+'            endif
+'            
         case iState% = stateLazyMonkeyTimeout% then
             CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
             if tNow - tStateStart > recLazyMonkeyTO then
                 RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
+                recChangeRewardType% := 1;  'will change reward type after lazy timeout, if other conditions are met 
                 ChangeStateTo(stateWaitForInitiationMovement%);  'restart as if we had just finished loading
                 tNextTrial := tNow;
             endif
@@ -1938,8 +1990,14 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             CheckLever%("inTrialInit%",1);
-            docase          
+            docase  
+            case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 and recExpToRun% = recExpAudiogramButton% then 
+                'for the Audiogram experiment, we need to treat this NOT as a slip
+                RecLogStatus("DelayInterval", "False Alarm during delay.");
+                ChangeStateTo(stateFalseAlarmAudiogram%); 
+                SafeSampleKey("M");  'turn off LED
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
+                'for all other experiments we are generous and treat this as a slip
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
                 tNextTrial := tNow;
@@ -1951,6 +2009,9 @@ func IdleLoop%()
                 case recTrialInitReward% <> 0 then 'if not zero (might be -1 from last trial)
                     recTrialInitReward% :=1; 'set it back to 1
                     ChangeStateTo(stateTrainingReward%);
+                case recExpToRun% = recExpAudiogramButton% then
+                    isS2% := 1;  'all audiogram stimuli deserve a response
+                    ChangeStateTo(stateStartSoundB%);  'for audiogram, there is only one sound, we want a response, so let's just call it sound B
                 else
                     ChangeStateTo(stateStartSoundA%);
                 endcase '*jao
@@ -2004,11 +2065,7 @@ func IdleLoop%()
                 if isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
-                    if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                        recTDTLEDOff%();
-                    else
-                        SafeSampleKey("M");
-                    endif;
+                    SafeSampleKey("M");
                     ChangeStateTo(stateFAInterrupt%);  'on FA interrupt, reshuffle entire stim sequence in later
                 else
                     ChangeStateTo(stateISIDelay%);
@@ -2052,11 +2109,7 @@ func IdleLoop%()
                 numFPs% += 1;  'increment FP counter
                 recPreciseTrialTime := recLeverTime;  'time false positive occurred
                 StimComplete%(0, 0);
-                if useTDTforLever% = 1 and recFixLed% = 1 then 'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
                 if tNow - tStateStart > recISI then
@@ -2362,7 +2415,7 @@ func IdleLoop%()
                 amountRewarded += recTrainingRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
-                    if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
+                    if recCEDIsPresent% then
                         stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
@@ -2408,12 +2461,11 @@ func IdleLoop%()
             case isEarlyHit% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyHit% := 0;  'reset variable
                 'time of early hit is recorded above
-                StimComplete%(1, 1);
-                if useTDTforLever% = 1 and recFixLed% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
+                SafeSampleKey("M");
+                if recExpToRun% = recExpAudiogramButton% then
+                    UpdateAudiogram(1);  'hit, make audiogram stimulus quieter, etc.
                 endif;
+                StimComplete%(1, 1);  'must come after UpdateAudiogram()
                 numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
             
@@ -2434,11 +2486,7 @@ func IdleLoop%()
             
                 'time of early "FA" or "CR" (response) is recorded above ; for either response do:
                 StimComplete%(2, coinFlipResult%);   'terminal S1
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
                 if coinFlipResult% = 1 then
                     ChangeStateTo(stateHitReward%);
@@ -2451,11 +2499,7 @@ func IdleLoop%()
                 isEarlyFA% := 0;  'reset variable
                 'time of early FA is recorded above
                 StimComplete%(2, 0);  'terminal S1
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 numFAs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
             'Early CR, interrupted final stimulus, this is OK   
@@ -2463,11 +2507,7 @@ func IdleLoop%()
                 isEarlyCR% := 0;  'reset variable
                 'time of early hit is recorded above
                 StimComplete%(2, 1);   'terminal S1
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 'CR counter?
                 ChangeStateTo(stateHitReward%);
             'Early Miss, interrupted final stimulus before actual response window
@@ -2475,11 +2515,7 @@ func IdleLoop%()
                 isEarlyMiss% := 0;  'reset variable
                 'time of early FA is recorded above
                 StimComplete%(1, 0);
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateFalsePositive%);
             'Error in RecLeverDown%()...not much point checking for this as most will be joystick and it never triggered anyway
@@ -2496,11 +2532,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT HI");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(1, 1);
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M"); 'what is this about?
-                endif;
+                SafeSampleKey("M"); 'what is this about?
                 numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
             'Lo-Hit in response window    
@@ -2510,11 +2542,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(3, 1);
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M"); 'what is this about?
-                endif;
+                SafeSampleKey("M"); 'what is this about?
                 numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
             'Hi-Miss in response window    
@@ -2523,11 +2551,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);  
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
@@ -2547,11 +2571,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(3, 0);   'gotcha bitch!
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
@@ -2579,11 +2599,7 @@ func IdleLoop%()
                 endif;
                 recPreciseTrialTime := recLeverTime;  'time response occurred
                 StimComplete%(2, coinFlipResult%);  '**this variable needs to be declared and established somewhere** *jao 
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
                 if coinFlipResult% = 1 then
                     ChangeStateTo(stateHitReward%);
@@ -2596,12 +2612,11 @@ func IdleLoop%()
                 'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
-                StimComplete%(1, 1);
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
+                SafeSampleKey("M");
+                if recExpToRun% = recExpAudiogramButton% then
+                    UpdateAudiogram(1);  'hit, make audiogram stimulus quieter, etc.
                 endif;
+                StimComplete%(1, 1);  'must come after UpdateAudiogram()
                 numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
             'False alarm in response window    
@@ -2609,11 +2624,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - False Alarm on terminal S1");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(2, 0);  'terminal S1
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 numFAs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
             'CR in response window    
@@ -2622,11 +2633,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - Correct Rejection");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(2, 1);    'terminal S1
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 'CR counter?
                 ChangeStateTo(stateHitReward%);
             'Miss in response window    
@@ -2634,11 +2641,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - Miss on terminal S2");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateFalsePositive%); 'should this be MissTimeout?? - reshuffle trial?
             
@@ -2647,11 +2650,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - NO RESPONSE ON FORCED CHOICE");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
                 StimComplete%(isTerminalS1%+1, 0);  'this covers whether it is terminal S1 or not
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 'Decrement joystick thresholds if appropriate
                 docase  'doing a case statement here because I think there might be "isTerminalS1% == 2" down the road
                 case isTerminalS1% = 1 then
@@ -2670,24 +2669,23 @@ func IdleLoop%()
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 0 then  'go/no-go miss
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
-                StimComplete%(1, 0);
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
+                numMisses% += 1;  'increment MISS counter
+                if recExpToRun% = recExpAudiogramButton% then
+                    UpdateAudiogram(-1);  'miss, make audiogram stimulus louder, etc.
+                    'Calculate new delay interval time
+                    recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+                    ChangeStateTo(statePreTrialDelay%);  'for the audiogram, misses are expected, just change state to pre-trial delay and do not turn off LED
                 else
                     SafeSampleKey("M");
+                    ChangeStateTo(stateMissTimeout%);
                 endif;
-                numMisses% += 1;  'increment MISS counter
-                ChangeStateTo(stateMissTimeout%);
+                StimComplete%(1, 0);  'must come after UpdateAudiogram()
             'Response window is closed, correct rejection on go/no-go  
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 1 then  'go/no-go CR
                 RecLogStatus("InResponseWindow", "Lever not up - Correct Rejection on terminal S1");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 StimComplete%(2, 1);  'terminal S1
-                if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                    recTDTLEDOff%();
-                else
-                    SafeSampleKey("M");
-                endif;
+                SafeSampleKey("M");
                 'CR counter?
                 ChangeStateTo(stateCRReward%);  
                 'Otherwise, the response window is still open and the lever is still down    
@@ -2695,7 +2693,7 @@ func IdleLoop%()
                 'Nothing, just a comment                
             endcase
             'We can aggressively wait for the response if the RT is important, just uncomment below (is RT even recorded?)
-            nextStateImmed% := 1; 
+            nextStateImmed% := 0;   'or don't, testing
             
             
             
@@ -2705,6 +2703,7 @@ func IdleLoop%()
             thisHitReward := 0; 'reset thisreward
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
+                recChangeRewardType% := 1;  'will change reward type after miss, if other conditions are met 
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
                 tNextTrial := tNow;  'ready to go
             endif
@@ -2719,6 +2718,7 @@ func IdleLoop%()
             thisHitReward := 0; 'reset thisreward
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
+                recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
                 'ChangeStateTo(stateWaitForInitiationMovement%);  'was stateInitializeTrials% but we want to repeat the stimulus
                 'ChangeStateTo(stateInitializeTrials%);  'No, actually, I don't think we do want to repeat the stimulus
                 'ACTUALLY - we want to shuffle this back in, since there's no diff between a false positive on the final
@@ -2737,12 +2737,29 @@ func IdleLoop%()
             endif
             
             
+        case iState% = stateFalseAlarmAudiogram% then 
+            'this state is used to give a FA timeout for a response not corresponding to a stimulus
+            'we do not want to reset any of the audiogram values here, just restart on the same stimulus at
+            'the same intensity and same staircase state as before
+            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
+            if tNow - tStateStart > recFalseAlarmTO then
+                RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
+                recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
+                
+                'Do not decrement current trial index.  
+                'recCurrentTrial% := recCurrentTrial% - 1;
+                
+                ChangeStateTo(stateInitializeTrials%); 
+                tNextTrial := tNow;  'ready to go
+            endif            
+            
             
         case iState% = stateFAInterrupt% then
             'this state is used to repeat a FA interrupted stimulus, so that the S2 gets played
             CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
+                recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
                 
                 'Decrement current trial index (which was incremented above in stateInitializeTrials)
                 recCurrentTrial% := recCurrentTrial% - 1;
@@ -2762,7 +2779,7 @@ func IdleLoop%()
             ChangeThresh2(doIncHit%[]);
             'ChangeThresh(doIncUp%,doIncDown%,doIncLeft%,doIncRight%);
             recMissRepeatsCounter% := 0; 'reset MissRepeatsCounter to 0, keep track of consecutive Misses
-
+            
             if recHitRewardmL > 0 then
                 'do reward increment stuff (note: if no increment then adding 0 every time will do nothing)
                 if thisHitReward = 0 then 'it was reset! (or this is the first trial)
@@ -2782,7 +2799,7 @@ func IdleLoop%()
                     recRewardMs := recRewardMs%;  'we need a float version for later math
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$, tNow);
-                    if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
+                    if recCEDIsPresent% then
                         stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
@@ -2794,27 +2811,15 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     else
                         ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
-                        if useTDTforJuicer% = 0 then
-                            tNextTrial := tNow + (recRewardMs/1000);
-                        else
-                            tNextTrial := tNow; 'the TDT delay is built in, ready to go
-                        endif;
+                        tNextTrial := tNow + (recRewardMs/1000);
                     endif;
                 else
                     ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
-                    if useTDTforJuicer% = 0 then
-                        tNextTrial := tNow + (recRewardMs/1000);
-                    else
-                        tNextTrial := tNow; 'the TDT delay is built in, ready to go
-                    endif;
+                    tNextTrial := tNow; 'the TDT delay is built in, ready to go
                 endif
             else
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
-                if useTDTforJuicer% = 0 then
-                    tNextTrial := tNow + (recRewardMs/1000);
-                else
-                    tNextTrial := tNow; 'the TDT delay is built in, ready to go
-                endif;
+                tNextTrial := tNow; 'the TDT delay is built in, ready to go
             endif;
             
             
@@ -2831,7 +2836,7 @@ func IdleLoop%()
                     recRewardMs% := ConvertmLToSeconds(recCRRewardmL)*1000;
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$, tNow);
-                    if (recTDTIsPresent% and useTDTforJuicer% = 1) or (recCEDIsPresent% and useTDTforJuicer% = 0) then
+                    if recCEDIsPresent% then
                         stmp% := Reward%();
                     else
                         stmp% := 0;  'simulate success in reward if debugging
@@ -2845,21 +2850,11 @@ func IdleLoop%()
                 endif
             endif
             ChangeStateTo(stateInitializeTrials%);  'move to next trial when reward is done
-            if useTDTforJuicer% = 0 then
-                tNextTrial := tNow + (recRewardMs/1000);
-            else
-                tNextTrial := tNow; 'the TDT delay is built in, ready to go
-            endif;            
-            
-            
+            tNextTrial := tNow + (recRewardMs/1000);
             
         case iState% = stateDone% then
             PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
-            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                recTDTLEDOff%();
-            else
-                SafeSampleKey("M");
-            endif;
+            SafeSampleKey("M");
             RecLogStatus("Done", "");
             iStatus% := 0;
             recReadyToQuit% := 0;
@@ -2875,11 +2870,7 @@ func IdleLoop%()
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                recTDTLEDOff%();
-            else
-                SafeSampleKey("M");
-            endif;
+            SafeSampleKey("M");
             iStatus% := 0;
             Stop%();
             
@@ -2893,11 +2884,7 @@ func IdleLoop%()
             RecLogStatus("A coding Error has occurred!", "");
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                recTDTLEDOff%();
-            else
-                SafeSampleKey("M");
-            endif;
+            SafeSampleKey("M");
             Stop%();
             
             
@@ -2908,11 +2895,7 @@ func IdleLoop%()
             Message("Unknown state (%d)!", iState%);
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            if useTDTforLever% = 1 and recFixLED% = 1 then  'turn off LED
-                recTDTLEDOff%();
-            else
-                SafeSampleKey("M");
-            endif;
+            SafeSampleKey("M");
             Stop%();          
         endcase
 
@@ -3085,13 +3068,6 @@ func CheckLever%(varName$,varState%)
     'the CED and TDT are not present, otherwise, the program assumes you're actually trying to run it.
     if recActive% = 1 and recCEDIsPresent% = 1 then
         docase  'note that in all cases recLeverTime is set within the called function
-        case useTDTforLever% = 1 then
-            recLeverState% := recLeverDown%();
-            inOrigin% := 1-recLeverState%;  'recLeverState% is 0 if not depressed, 1 if depressed
-            inTrialInit% := recLeverState%;
-            inResponse1% := inOrigin%;  'for a lever, response 1 position is the origin (not pressed)
-            inResponse2% := 0;  'there is no response 2 with a lever
-            'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal 
         case recUseJoystick% = 0 then
             DebounceLever%(tNow);  'DebounceLever%() is run at the beginning of each idle loop, do it again if necessary before calling 
             inOrigin% := 1-recLeverState%;
@@ -3132,30 +3108,30 @@ end;
 ' for each experiment (Space and AMDis so far)
 ' probably could be a proc, not a function, but i'll leave it in case I want to add a return value??
 func BehOutput(resultCode$, isS2%)
-'called from StimComplete%
-'resultCode$ is determined in StimComplete% from success% and isS2% is passed forward from IdleLoop%
-'see NameThatStimulus$ (RecRoom) for how to extract stimulus variables!
-
-var fh%; 'file handle
-var exptext$;
-'var playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
-var thisStim%;
-var spkr%;
-var joyResponse%;
-var missReps%;
-'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
-'other vars to include?
-'Get trial-based attenuation for current stimulus
-'   trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
-'carrier% := recTrialGenGauss%[n%]; '1 if Gaussian, 0 if uniform noise
-thisStim% := recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
-spkr% := recSpeakerList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
-
-PrintLog("***thisStim = %d and thisSpeaker = %d\n",thisStim%,spkr%);
-printlog("**Stim should be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
-'determing expt specific strings... etc..
-'this docase also ensures a new file will be created for each experiment or for which vars to add for which expt
-docase
+    'called from StimComplete%
+    'resultCode$ is determined in StimComplete% from success% and isS2% is passed forward from IdleLoop%
+    'see NameThatStimulus$ (RecRoom) for how to extract stimulus variables!
+    
+    var fh%; 'file handle
+    var exptext$;
+    'var playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
+    var thisStim%;
+    var spkr%;
+    var joyResponse%;
+    var missReps%;
+    'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+    'other vars to include?
+    'Get trial-based attenuation for current stimulus
+    '   trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
+    'carrier% := recTrialGenGauss%[n%]; '1 if Gaussian, 0 if uniform noise
+    thisStim% := recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
+    spkr% := recSpeakerList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
+    
+    PrintLog("***thisStim = %d and thisSpeaker = %d\n",thisStim%,spkr%);
+    printlog("**Stim should be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+    'determing expt specific strings... etc..
+    'this docase also ensures a new file will be created for each experiment or for which vars to add for which expt
+    docase
     case recExpToRun% = recExpAMDiscButton% then
         exptext$ := "AMDis";
     case recExpToRun% = recExpSpaceDisButton% then    
@@ -3168,69 +3144,150 @@ docase
         exptext$ := "JoyTrain";
     case recExpToRun% = recExpCueingButton% then
         exptext$ := "Cueing";
-endcase
-
-joyResponse% :=0;
-docase
-    case inResponse1% = 1 then
-    joyResponse% :=1;
-    case inResponse2% = 1 then
-    joyResponse% :=2;
-else
+    case recExpToRun% = recExpAudiogramButton% then
+        exptext$ := "Audiogram";    
+    endcase
+    
     joyResponse% :=0;
-'    PrintLog("fucked up joyResponse ...?\n");
-endcase
-
-if recMissRepeats% = 1 then
-    missReps% := recMissRepeatsMax%;
-else 
-    missReps% := 0;
-endif
-
-'just use first 3 chars of monk name/prefix and then append date so format is consistent
-'blockTag$ ensures a new file complete with header file is created for each block - these will be concatenated later during analysis (easiest way to keep track of blocks)
-fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,2); 'or 3 to create if DNE
-'PrintLog("BehOutput: Filename is " + recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt\n");
-'PrintLog("BehOutput: File handle = %d\n", fh%);
-
-if fh%<0 then 'if file does not exist... create it! and stuff
-'OR check for a firstTime or newBlock variable to figure out what to do...
-    fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,3); '3 to create file
-    'file header chunk: expt, monk, date, time info:
-    PrintLog("\nBehOutput: File handle = %d\n", fh%);
-    PrintLog("%s\n", "Stimulus file is" + recSelectedStimFile$);
-    PrintLog("Trials file is %s\n\n",recSelectedTrialsFile$);
+    docase
+    case inResponse1% = 1 then
+        joyResponse% :=1;
+    case inResponse2% = 1 then
+        joyResponse% :=2;
+    else
+        joyResponse% :=0;
+        '    PrintLog("fucked up joyResponse ...?\n");
+    endcase
     
-    view(fh%).print(recMonkPrefix$+"\t"+Date$(20,1,3,3," ")+" "+Time$(1,3)+"\t"+exptext$+"Block "+blockTag$+"\n");
-'FORMAT 1  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
-    view(fh%).print("Stimulus file: %s\n",recSelectedStimFile$);
-    view(fh%).print("Trials file: %s\n",recSelectedTrialsFile$);
-    view(fh%).print("Joy Init = %d\nResponse1 = %d\nResponse2 = %d\n", recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%);
-    'header cont... miss repeats and training reward (i.e., is this a training file or real behavior)
-    view(fh%).print("Miss repeats max = %d\ntraining reward = %.2f\n", missReps%, recTrainingRewardmL);
-    'header for trial by trial info
-    view(fh%).print("Speaker array = %d\n",recNSpeakers%); 
-    'for AMDis and SpaceDis... (case this bitch to add experiment formats)
+    if recMissRepeats% = 1 then
+        missReps% := recMissRepeatsMax%;
+    else 
+        missReps% := 0;
+    endif
     
-'FORMAT 2?  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
-'    view(fh%).print("Stimulus file \tTrials file \t Joy Init \tResponse1 \tResponse2 \tMiss repeats max \ttraining reward \tSpeaker array \n");
-'    view(fh%).print("%s\t%s\t%d\t%d\t%d\t%d\t%f\t%d\n",recSelectedStimFile$,recSelectedTrialsFile$, recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recMissRepeatsMax%,recTrainingRewardmL,recNSpeakers%);
-'
-    view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","RespTime"); 'header for trial vars
-    'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
-endif
-'**TODO: fix the monkprefix problem and then create a new file for each block..
-'solution: add a block number/tag variable?? (the letter that goes at the end of the file name)
-
-'now fill in the data for this trial
-'for AMDis and SpaceDis... (case this bitch to add experiment formats)
-view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,recPreciseTrialTime); 'data!
-'NOTE: output key for "Stype"
-'isS2%+1 = 1 for S1, 2 for S2 (change), 3 for terminal S1 (same - NoGo trial), and 4 for terminal S1 for forced choice
-'for Stype = 4, see resultCode for reward status
-
-'don't forget to close the file!
-fileclose(fh%);
+    'just use first 3 chars of monk name/prefix and then append date so format is consistent
+    'blockTag$ ensures a new file complete with header file is created for each block - these will be concatenated later during analysis (easiest way to keep track of blocks)
+    fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,2); 'or 3 to create if DNE
+    'PrintLog("BehOutput: Filename is " + recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt\n");
+    'PrintLog("BehOutput: File handle = %d\n", fh%);
+    
+    if fh%<0 then 'if file does not exist... create it! and stuff
+        'OR check for a firstTime or newBlock variable to figure out what to do...
+        fh%:=FileOpen(recFileSaveLoc$ + recMonkPrefix$ +"_"+ Date$(2,2,3,3,"-")+ blockTag$ +"_"+ exptext$ + ".txt",8,3); '3 to create file
+        'file header chunk: expt, monk, date, time info:
+        PrintLog("\nBehOutput: File handle = %d\n", fh%);
+        PrintLog("%s\n", "Stimulus file is" + recSelectedStimFile$);
+        PrintLog("Trials file is %s\n\n",recSelectedTrialsFile$);
+        
+        view(fh%).print(recMonkPrefix$+"\t"+Date$(20,1,3,3," ")+" "+Time$(1,3)+"\t"+exptext$+"Block "+blockTag$+"\n");
+        'FORMAT 1  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
+        view(fh%).print("Stimulus file: %s\n",recSelectedStimFile$);
+        view(fh%).print("Trials file: %s\n",recSelectedTrialsFile$);
+        view(fh%).print("Joy Init = %d\nResponse1 = %d\nResponse2 = %d\n", recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%);
+        'header cont... miss repeats and training reward (i.e., is this a training file or real behavior)
+        view(fh%).print("Miss repeats max = %d\ntraining reward = %.2f\n", missReps%, recTrainingRewardmL);
+        'header for trial by trial info
+        view(fh%).print("Speaker array = %d\n",recNSpeakers%); 
+        'for AMDis and SpaceDis... (case this bitch to add experiment formats)
+        
+        'FORMAT 2?  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
+        '    view(fh%).print("Stimulus file \tTrials file \t Joy Init \tResponse1 \tResponse2 \tMiss repeats max \ttraining reward \tSpeaker array \n");
+        '    view(fh%).print("%s\t%s\t%d\t%d\t%d\t%d\t%f\t%d\n",recSelectedStimFile$,recSelectedTrialsFile$, recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%,recMissRepeatsMax%,recTrainingRewardmL,recNSpeakers%);
+        '
+        
+        'For now, there is only one format of log file, but we will need at least one more for Audiogram -jj
+        docase
+        case recExpToRun% = recExpAudiogramButton% then
+            view(fh%).print("\n%s\t%s\t%s\t%s\n","Spkr","Freq","dB","Result"); 'header for trial vars
+        else 'in all other cases, this is what Jackie has right now - case statement can be easily updated in the future
+            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","RespTime"); 'header for trial vars
+            'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
+        endcase
+    endif
+    '**TODO: fix the monkprefix problem and then create a new file for each block..
+    'solution: add a block number/tag variable?? (the letter that goes at the end of the file name)
+    
+    'now fill in the data for this trial
+    'for AMDis and SpaceDis... (case this bitch to add experiment formats)(casing this bitch -jj)
+    docase
+    case recExpToRun% = recExpAudiogramButton% then
+        view(fh%).print("%d\t%d\t%f\t%s\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$);
+    else
+        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,recPreciseTrialTime); 'data!
+    endcase
+    'NOTE: output key for "Stype"
+    'isS2%+1 = 1 for S1, 2 for S2 (change), 3 for terminal S1 (same - NoGo trial), and 4 for terminal S1 for forced choice
+    'for Stype = 4, see resultCode for reward status
+    
+    'don't forget to close the file!
+    fileclose(fh%);
 
 end
 '-----------  end of BehOutput(result$, isS2%) -------------------------------------
+
+
+
+'A function to update the logic variables for the audiogram
+proc UpdateAudiogram(AGresult%)
+    'AGresult% will be 1 following a hit and -1 following a miss
+    
+    recAudiogramPreviousdB := recAudiogramCurrentdB; 'hold value of most recent dB, will be used for logging
+    
+    docase
+    case AGresult% = 1 and recAudiogramCurrentDirection% = 1 then
+        'This is a hit while getting louder
+        'This is a reversal (countable, loggable)
+        recAudiogramCurrentDirection% := 0;  'reverse the direction
+        recAudiogramCurrentdB := recAudiogramCurrentdB - recAudiogramQuieterdBStep;  'update atten, make stim quieter (note: due to reversal cannot be on initial direction)
+        recAudiogramCurrentReversals% += 1;  'increment number of reversals
+        recLogThisResult% := 1;  'always log this result
+        recAudiogramIsInitialDirection% := 0;  'there has been a reversal, we are not in the initial direction
+    case AGresult% = 1 and recAudiogramCurrentDirection% = 0 then
+        'This is a hit while getting quieter
+        'This is not a reversal
+        if recAudiogramIsInitialDirection% = 1 then
+            recAudiogramCurrentdB := recAudiogramCurrentdB - recAudiogramInitialdBStep;  'update atten, make stim quieter using large value
+        else
+            recAudiogramCurrentdB := recAudiogramCurrentdB - recAudiogramQuieterdBStep;  'update atten, make stim quieter using normal value
+        endif;
+        if recAudiogramOnlyLogReversals% = 0 then
+            recLogThisResult% := 1;  'log this result
+        else
+            recLogThisResult% := 0;  'do not log this result
+        endif;
+    case AGresult% = -1 and recAudiogramCurrentDirection% = 1 then
+        'This is a miss while getting louder
+        'This is not a reversal
+        if recAudiogramIsInitialDirection% = 1 then
+            recAudiogramCurrentdB := recAudiogramCurrentdB + recAudiogramInitialdBStep;  'update atten, make stim louder using large value
+        else
+            recAudiogramCurrentdB := recAudiogramCurrentdB + recAudiogramLouderdBStep;  'update atten, make stim louder using normal value
+        endif;
+        if recAudiogramOnlyLogReversals% = 0 then
+            recLogThisResult% := 1;  'log this result
+        else
+            recLogThisResult% := 0;  'do not log this result
+        endif;
+    case AGresult% = -1 and recAudiogramCurrentDirection% = 0 then
+        'This is a miss while getting quieter
+        'This is a reversal (loggable, but not countable - does not count towards total number of reversals)  
+        recAudiogramCurrentDirection% := 1;  'reverse the direction 
+        recAudiogramCurrentdB := recAudiogramCurrentdB + recAudiogramLouderdBStep;  'update atten, make stim louder (note: due to reversal cannot be on initial direction)
+        recLogThisResult% := 1;  'always log this result
+        recAudiogramIsInitialDirection% := 0;  'there has been a reversal, we are not in the initial direction
+    endcase
+    
+    'If we have reached the correct number of reversals, reset for next frequency of audiogram
+    if recAudiogramCurrentReversals% = recAudiogramNReversals% then
+        recAudiogramCurrentDirection% := recAudiogramInitialDirection%;  'reset to original direction
+        recAudiogramIsInitialDirection% := 1;  'reset this as well
+        recAudiogramCurrentReversals% := 0; 
+        recAudiogramStartNewTrial% := 1;
+        recAudiogramCurrentdB := recAudiogramStartdB; 'reset initial dB value
+    else
+        'recAudiogramStartNewTrial% := 0;  'this would be redundant, this is properly zeroed right after the increment in stateinitializetrials
+    endif
+
+    
+    
+end

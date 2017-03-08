@@ -59,6 +59,7 @@ var recExpJoyTrnButton%:=12; '*jao
 var recExpSpaceDisButton%:=13; '*jao 
 var recSpaceDisAddExpButton%:=14; 'more buttons!
 var recSpaceDisDeleteExpButton%:=15;  'moar buttons!!
+var recExpAudiogramButton%:=16;  'maori buttons!!!!    
 
 
 'Selection Dialog variables
@@ -147,6 +148,42 @@ var recBPnoiseReps%;
 const nBPnoises% := 20;    
 var recBPnoisesLOs%[nBPnoises%];
 var recBPnoisesHIs%[nBPnoises%];
+    
+'Audiogram dialog variables
+var recAudiogramS1Speaker%;  
+var recAudiogramToneFreqLow:=1000;   'Lower frequency bound of audiogram - must give a default value or program will crash with nothing in the registry
+var recAudiogramToneFreqHigh:=20000; 'Higher frequency bound of audiogram - must give a default value or program will crash with nothing in the registry
+var recAudiogramNFreqs%:=45;   'Max Number of frequencies in audiogram, unlike FRA this value can be smaller 
+var recAudiogramFreqList[45];   'List of frequency steps in audiogram    
+var recAudiogramFreqList1$;
+var recAudiogramFreqList2$;
+var recAudiogramFreqList3$;
+var recAudiogramFreqList4$;
+var recAudiogramFreqList5$;  
+var recAudiogramFreqList1%;
+var recAudiogramFreqList2%;
+var recAudiogramFreqList3%;
+var recAudiogramFreqList4%;
+var recAudiogramFreqList5%;    
+var recAudiogramNReversals%;
+var recAudiogramOnlyLogReversals%;
+var recAudiogramStartdB;
+var recAudiogramInitialDirection%;  '1 = up, 0 = down
+var recAudiogramInitialdBStep;
+var recAudiogramLouderdBStep;
+var recAudiogramQuieterdBStep;
+'Audiogram logic variables    
+var recAudiogramCurrentReversals%;     
+var recAudiogramCurrentdB; 
+var recAudiogramPreviousdB;
+var recAudiogramStartNewTrial% := 1;  'on first presentation, do increment trial counter
+var recAudiogramCurrentDirection%;  '1 = up, 0 = down
+var recAudiogramIsInitialDirection% := 1;   'audiogram will start on the initial direction 
+'var recAudiogramLastResult%;    '1 = last result hit, -1 = last result miss, 0 = no results yet    
+    
+    
+    
+    
 
 'AM Discrimination Dialog variables
 var recAMDiscS1Speaker%;            'Speaker on which S1 plays, transferred to recS1Speaker% if Search is selected
@@ -203,6 +240,8 @@ const recPrintLog$ := "recPrintLog"; 'an autosave printlog for BSOD debugging an
 var recLog%;                        'handle for recPrintLog
 const recFileSaveLoc$  := "C:\\Data\\";       'Have to set this...  
 const recCalibLoc$ := "C:\\Data\\Calib\\";           'Have to set this too...
+const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2016\\testTextFiles\\";       'Have to set this...  
+const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2016\\testTextFiles\\";           'Have to set this too...   
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    
@@ -220,7 +259,8 @@ const recMaxStimLengthSec:=1;       'Set maximum length of each individual stimu
 const recDAC0% := 0;                'Set output channel to DAC 0, don't let this change
 var recExptText$ := "";             'text that describes this expt, for a SampleText
 var recRunTimeCall%;                'will be 1 if dialog box is called during run time
-var recWhichDialogCalled%;          'lets us know which dialog to call    
+var recWhichDialogCalled%;          'lets us know which dialog to call   
+var recLogThisResult% := 1;         'by default, log every result, Audiogram (perhaps other exps later) will update this on a trial-by-trial basis and only log what is requested
     
 'Speaker variables
 const recMaxSpeaker%:=31;           'Maximum number of simultaneous speakers
@@ -232,7 +272,7 @@ var recNSpeakers%;                  'How many speakers are there in the array (u
 const recMaxStim%:=1000;            'Maximum number of stimuli, 1000 is probably overlarge
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
-const recMaxTrial%:=5000;          'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
+const recMaxTrial%:=5000;           'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
 var recTotalStim%;                  'Total number of stimuli specified in Stim or Stim/Cal file
 var recMinS1%;                      'Minimum number of S1s
 var recVarS1%;                      'Variable number of S1s
@@ -325,10 +365,15 @@ var recRewardMs;                    'float version
 'var recS1RewardInc;                 'Reward increment per S1 stimulus, seconds (additional reward on each trial per S1)
 var recHitRewardIncmL;              'Reward increment per hit, milliliters (both hit and CR rewards, will stop at max, will reset on miss/FA)
 var recS1RewardIncmL;               'Reward increment per S1 stimulus, milliliters (additional reward on each trial per S1)
-var useTDTforJuicer% := 0;          'if 1, use TDT for juicer, just hardcode this 
-var useTDTforLever% := 0;           'if 1, lever is plugged into TDT, just hardcode this, lever and LED must be on same device
 var lastHitReward; 'holds last hit reward given so that it can be incremented
 var thisHitReward; 'initialize to base level
+var recRewardType%;                 '0 = juice, 1 = Stimulation, 2 = cycle through on error, 3 = select via probability on error
+var recCurrentRewardType%;          'Type of reward this trial, 0 = juice, 1 = stim, 2 = both
+var recPctJuice%;                   'percentage of time variable reward will be juice    
+var recPctStimulation%;             'percentage of time variable reward will be a Stimulation    
+var recJuiceToStimDelay%;           'ms delay between (nominal) juice reward and stimulation reward, can attempt to deliver both at "same" time
+var recChangeRewardType% := 1;      'Do we change reward type before this trial?  Do change on first trial, or after error    
+    
     
 'Interrupts
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
@@ -359,6 +404,7 @@ endif;
 '================================================================================================
 
 recLog% := FileOpen(recFileSaveLoc$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
+'recLog% := FileOpen(recFileSaveLocKershaw$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
 view(recLog%).print("running RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 
 'Run initial dialog to determine presence of Matlab/TDT/1401
@@ -409,7 +455,7 @@ while recReadyToQuit% = 0 do
     
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
-            view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
+        view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
         
         if recExpToRun% <> recLastExpRun% then
             RecLEDReminderDialog%(); 'call LED color switch reminder dialog before proceeding
@@ -468,6 +514,8 @@ while recReadyToQuit% = 0 do
                     calibOK% := 0; 
                 endif;
             endif;
+            
+            
         case recExpToRun% = recExpJoyTrnButton% then '*jao
             recExptText$ := "Running Joy Train " + recExptText$;
             trialsOK% := 2;  'Short circuit, no trials file to load
@@ -591,6 +639,30 @@ while recReadyToQuit% = 0 do
             else
                 message("Matlab is not open, but you have selected a scenario that requires Matlab!");
             endif;
+            
+        case recExpToRun% = recExpAudiogramButton% then  'For Audiogram, all stimuli are generated
+            
+            recExptText$ := "Running Audiogram ";  
+            trialsOK% := 2;  'Short circuit, no trials file to load
+            stimOK% := 1;  'Short circuit, no stim file to load
+            'TODO Load calibration file into Matlab's workspace, same details as above in Search
+            if recMatlabIsPresent% = 1 then
+                if recCalibIsPresent% = 1 then
+                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                    calibOK% := EvalMatlabStatement%(statement$);
+                else
+                    printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                    calibOK% := 0;
+                endif;    
+            else
+                message("Matlab is not open, but you have selected a scenario that requires Matlab!");
+                if recCEDIsPresent% = 0 then  'if both are not present, this must be a testing scenario - let it go forward
+                    calibOK% := 0; 
+                endif;
+            endif;
+            
+            
+            
         endcase;
         
         calibOK% += 1;  'Just getting this into my "standard" 1-is-OK, 0-is-not-OK schema.
@@ -655,8 +727,7 @@ while recReadyToQuit% = 0 do
             
         else
         
-            'TODO Run experiment-specific trial list generation
-            'Not yet implemented
+            'Run experiment-specific trial list generation
             'Do this prior to running the experiment for all exps
             'Note that recNTrials% will need to be set in all cases; it will need to be arbitrarily huge for Search
             docase 
@@ -701,6 +772,11 @@ while recReadyToQuit% = 0 do
             case recExpToRun% = recExpCueingButton% then
                 'do Trial List Generation stuff!
                 message("CUEING is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
+                
+            case recExpToRun% = recExpAudiogramButton% then
+                'do Trial List Generation stuff!
+                'message("AUDIOGRAM is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
+                result% := GenTrialsAudiogram%();  'Generate trials for Audiogram.  Return result of 1 if OK, 0 if not.
                 
             endcase            
             recLastExpRun% := recExpToRun%; 'i think this should go here; remember the experiment that was just run for the next time around
@@ -793,12 +869,6 @@ func RecDebugDialog%()
     else
         status% := 0;
     endif
-    
-    if useTDTforLever% = 1 and recTDTIsPresent% = 0 then 'uh-oh, this won't work!
-        Printlog("TDT is supposed to be used for lever, but TDT is not present!  Quitting!\n");
-        Message("TDT is supposed to be used for lever, but TDT is not present!  Quitting!");
-        status% := 0;
-    endif;
     
 	return status%;
    
@@ -1178,7 +1248,7 @@ func RecExpSelectDialog%()
     DlgGroup("Experimental Details", 1,1,50,5);
     DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
     DlgText("File suffix letter",32,2); DlgString(4,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
-    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,32,0,3); '*jao
+    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,32,0,3); '*jao  JJ sez: note that for stimulation reward, the max is 4, not 32.  But we can't really enforce this because reward type is set up in a later dialog
     DlgList(3,"Speaker array used",spkArr$[],10,0,4);
     
     DlgGroup("Experiments", 1,7,50,6);
@@ -1190,7 +1260,7 @@ func RecExpSelectDialog%()
     DlgButton(recExpSpaceDisButton%, "         Space Disc         ", RecExpSpaceDisDialog%, 26, 9);
     DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 10);
     DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 10); 'will go under FRA button '*jao
-
+    DlgButton(recExpAudiogramButton%, "        Audiogram        ", RecAudiogramDialog%, 2, 11);  
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 5);
@@ -2032,6 +2102,338 @@ end;
 
 
 
+
+
+'===== RecAudiogramDialog ===== '-jj, all audiogram code
+
+func RecAudiogramDialog%()
+'**look at search dialog for important functional details!!!
+    var i%; 'for DlgShow
+    var status% := 0;
+    
+    var trwid% := 100;  'total dialog width, not sure what 'tr' means at this point, carried over
+    var ewid% := 6;  'entry width
+    var c1txt% := 2;  'column 1 text position
+    var c1%;  'column 1 position
+    c1% := c1txt%+22;
+    var c2txt% := 36;
+    var c2%;
+    c2% := c2txt%+22;
+    var c3txt% := 70;
+    var c3%;
+    c3% := c3txt%+22;
+    
+    'StringifyProgression2$ just needs a set of indices, they don't really do anything else
+    var inds%[10];
+    var j%;
+    for j% := 0 to 9 do
+        inds%[j%] := j%;
+    next;
+    var tempCount%;
+    
+    
+
+    ' Fetch parameters from registry    
+    RecAudiogramGetParams(); 
+    
+    ' Initial calculation of frequency steps
+    if (recAudiogramToneFreqLow <> recAudiogramToneFreqHigh) and recAudiogramNFreqs% > 1 then
+        GetLogProgression(recAudiogramToneFreqLow, recAudiogramToneFreqHigh, recAudiogramNFreqs%-1, recAudiogramFreqList[]); 
+    else
+        recAudiogramFreqList[0] := recAudiogramToneFreqLow;
+    endif
+        
+    ' Followed by initial stringification, yikes.  Now loooooooong.
+    tempCount% := recAudiogramNFreqs%;
+    if tempCount% >= 10 then
+        recAudiogramFreqList1$ := StringifyProgression2$(10, recAudiogramFreqList[0:10], inds%[],0);
+    else
+        recAudiogramFreqList1$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[0:tempCount%], inds%[],0);
+    endif;
+    tempCount% := tempCount% - 10;
+    docase
+    case tempCount% <= 0 then
+        recAudiogramFreqList2$ := "";
+    case tempCount% >= 10 then
+        recAudiogramFreqList2$ := StringifyProgression2$(10, recAudiogramFreqList[10:10], inds%[],0);
+    else
+        recAudiogramFreqList2$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[10:tempCount%], inds%[],0);
+    endcase;
+    tempCount% := tempCount% - 10;
+    docase
+    case tempCount% <= 0 then
+        recAudiogramFreqList3$ := "";
+    case tempCount% >= 9 then
+        recAudiogramFreqList3$ := StringifyProgression2$(9, recAudiogramFreqList[20:9], inds%[],0);
+    else
+        recAudiogramFreqList3$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[20:tempCount%], inds%[],0);
+    endcase;
+    tempCount% := tempCount% - 9;
+    docase
+    case tempCount% <= 0 then
+        recAudiogramFreqList4$ := "";
+    case tempCount% >= 8 then
+        recAudiogramFreqList4$ := StringifyProgression2$(8, recAudiogramFreqList[29:8], inds%[],0);
+    else
+        recAudiogramFreqList4$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[29:tempCount%], inds%[],0);
+    endcase;
+    tempCount% := tempCount% - 8;
+    docase
+    case tempCount% <= 0 then
+        recAudiogramFreqList5$ := "";
+    case tempCount% >= 8 then
+        recAudiogramFreqList5$ := StringifyProgression2$(8, recAudiogramFreqList[37:8], inds%[],0);
+    else
+        recAudiogramFreqList5$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[37:tempCount%], inds%[],0);
+    endcase;
+
+    
+    ' Generate the dialog
+    DlgCreate("Audiogram dialog", 0,0,trwid%,19); '0,0=ctr of scrn; 50,16=size of dlg
+    DlgGroup("Timing and Rewards",1,1,trwid%-2,4); 'just text for now to tell ppl where to go to change things
+    DlgInteger(1,ewid%,1,16,c1%,2);  DlgText("S1 Speaker",c1txt%,2);
+    DlgReal(2,ewid%,0,3,c2%,2); DlgText("Hit Reward, mL",c2txt%,2);
+    
+    DlgReal(3,ewid%,0,20,c1%,3); DlgText("Minimum Onset Delay, s",c1txt%,3);
+    DlgReal(4,ewid%,0,20,c2%,3); DlgText("Variable Onset Delay, s",c2txt%,3);
+    DlgReal(5,ewid%,0,10,c3%,3); DlgText("Response Window, s",c3txt%,3);
+    
+    DlgReal(6,ewid%,0,100,c1%,4); DlgText("Trial Initiation Window, s",c1txt%,4);
+    DlgReal(7,ewid%,0,300,c2%,4); DlgText("False Alarm TO, s",c2txt%,4);
+    DlgReal(8,ewid%,0,300,c3%,4); DlgText("Lazy Monkey TO, s",c3txt%,4);
+    
+    
+    DlgGroup("Frequencies",1,5,trwid%-2,8);
+    DlgInteger(9,ewid%,1,45,c1%,6); DlgText("# Frequenices",c1txt%,6);
+    DlgReal(10,ewid%,0.001,40000,c2%,6);  DlgText("Minimum Frequency",c2txt%,6);
+    DlgReal(11,ewid%,0.002,50000,c3%,6);  DlgText("Maximum Frequency",c3txt%,6);
+    DlgText("List of Selected Freqs (rounded to nearest Hz):",c1txt%,7);
+    recAudiogramFreqList1% := DlgText(recAudiogramFreqList1$,c1txt%,8,58);  'must set width of text boxes or it is based on
+    recAudiogramFreqList2% := DlgText(recAudiogramFreqList2$,c1txt%,9,58);  'original text and updates can cause some
+    recAudiogramFreqList3% := DlgText(recAudiogramFreqList3$,c1txt%,10,58);  'values to be "invisible" - also done for dB
+    recAudiogramFreqList4% := DlgText(recAudiogramFreqList4$,c1txt%,11,58);  'values above (tone and rate-level) but probably
+    recAudiogramFreqList5% := DlgText(recAudiogramFreqList5$,c1txt%,12,58);  'not crucial there.
+    
+    DlgGroup("Reversals and dB",1,13,trwid%-2,4);
+    DlgInteger(12,ewid%,1,200,c1%,14);  DlgText("Number of Reversals",c1txt%,14);
+    DlgCheck(13,"",c2%,14);  DlgText("Only Log Reversals",c2txt%,14);
+    DlgReal(14,ewid%,.1,120,c1%,15);  DlgText("Start dB Level",c1txt%,15);
+    DlgCheck(15,"",c2%,15);  DlgText("Initial Step is LOUDER",c2txt%,15);
+    DlgReal(16,ewid%,.1,40,c1%,16);  DlgText("Initial dB Step",c1txt%,16);
+    DlgReal(17,ewid%,.1,40,c2%,16);  DlgText("Louder dB Step",c2txt%,16);
+    DlgReal(18,ewid%,.1,40,c3%,16);  DlgText("Quieter dB Step",c3txt%,16);
+    
+
+
+    DlgAllow(0xffff, 0, RecExpAudiogramDialogChanged%); 
+
+    ' Show the dialog
+    i% := DlgShow(recAudiogramS1Speaker%,recHitRewardmL,recMinOnsetDelay,recVarOnsetDelay,recResponseWindow,
+                  recTrialInitWindow,recFalseAlarmTO,recLazyMonkeyTO,recAudiogramNFreqs%,recAudiogramToneFreqLow,
+                  recAudiogramToneFreqHigh,recAudiogramNReversals%,recAudiogramOnlyLogReversals%,recAudiogramStartdB,
+                  recAudiogramInitialDirection%,recAudiogramInitialdBStep,recAudiogramLouderdBStep,recAudiogramQuieterdBStep);  
+     
+    
+    ' If user checked box and hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecAudiogramSaveParams(); 
+        
+        'Force experiment to be go/no-go (will still need to consult with Engine to make sure this will be OK but nothing else appears to be necessary in RecRoom)
+        recIsGoNoGo% := 1;
+        
+        'Do not allow reward incrementing for audiogram
+        recHitRewardIncmL := 0;
+        
+        'Assign S1 Speaker...note that other variables aren't assigned like this
+        recS1Speaker% := recAudiogramS1Speaker%;
+        
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
+        DlgValue$(-1,"Run Audiogram"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
+        recExpToRun% := recExpAudiogramButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        recAudiogramCurrentdB := recAudiogramStartdB;
+        recMatGenStim% := 1;  'Always generate stimuli for Audiogram
+        recActive% := 1; 
+    
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+
+end; 'end func
+'end RecAudiogramDialog 
+
+'===== RecAudiogramDialogChanged ===== 
+
+func RecExpAudiogramDialogChanged%(item%)
+    
+    'Quickly build a list of indices that we need
+    var inds%[10];
+    var j%;
+    for j% := 0 to 9 do
+        inds%[j%] := j%;
+    next;
+    var tempCount%;
+    
+    docase
+    case item% = 9 or item% = 10 or item% = 11 then  'frequencies or # of frequencies changed, update values
+        'Update values in variables
+        recAudiogramNFreqs% := DlgValue(9);
+        recAudiogramToneFreqLow := DlgValue(10);
+        recAudiogramToneFreqHigh := DlgValue(11);
+        'Recalculate log progression
+        if (recAudiogramToneFreqLow <> recAudiogramToneFreqHigh) and recAudiogramNFreqs% > 1 then
+            GetLogProgression(recAudiogramToneFreqLow, recAudiogramToneFreqHigh, recAudiogramNFreqs%-1, recAudiogramFreqList[]); 
+        else
+            recAudiogramFreqList[0] := recAudiogramToneFreqLow;
+            DlgValue(9,1);
+            recAudiogramNFreqs% := 1;
+        endif
+        'Update strings
+        tempCount% := recAudiogramNFreqs%;
+        if tempCount% >= 10 then
+            recAudiogramFreqList1$ := StringifyProgression2$(10, recAudiogramFreqList[0:10], inds%[],0);
+        else
+            recAudiogramFreqList1$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[0:tempCount%], inds%[],0);
+        endif;
+        tempCount% := tempCount% - 10;
+        docase
+        case tempCount% <= 0 then
+            recAudiogramFreqList2$ := "";
+        case tempCount% >= 10 then
+            recAudiogramFreqList2$ := StringifyProgression2$(10, recAudiogramFreqList[10:10], inds%[],0);
+        else
+            recAudiogramFreqList2$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[10:tempCount%], inds%[],0);
+        endcase;
+        tempCount% := tempCount% - 10;
+        docase
+        case tempCount% <= 0 then
+            recAudiogramFreqList3$ := "";
+        case tempCount% >= 9 then
+            recAudiogramFreqList3$ := StringifyProgression2$(9, recAudiogramFreqList[20:9], inds%[],0);
+        else
+            recAudiogramFreqList3$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[20:tempCount%], inds%[],0);
+        endcase;
+        tempCount% := tempCount% - 9;
+        docase
+        case tempCount% <= 0 then
+            recAudiogramFreqList4$ := "";
+        case tempCount% >= 8 then
+            recAudiogramFreqList4$ := StringifyProgression2$(8, recAudiogramFreqList[29:8], inds%[],0);
+        else
+            recAudiogramFreqList4$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[29:tempCount%], inds%[],0);
+        endcase;
+        tempCount% := tempCount% - 8;
+        docase
+        case tempCount% <= 0 then
+            recAudiogramFreqList5$ := "";
+        case tempCount% >= 8 then
+            recAudiogramFreqList5$ := StringifyProgression2$(8, recAudiogramFreqList[37:8], inds%[],0);
+        else
+            recAudiogramFreqList5$ := StringifyProgression2$(tempCount%, recAudiogramFreqList[37:tempCount%], inds%[],0);
+        endcase;
+        'Update GUI
+        DlgValue$(recAudiogramFreqList1%,recAudiogramFreqList1$);
+        DlgValue$(recAudiogramFreqList2%,recAudiogramFreqList2$);
+        DlgValue$(recAudiogramFreqList3%,recAudiogramFreqList3$);
+        DlgValue$(recAudiogramFreqList4%,recAudiogramFreqList4$);
+        DlgValue$(recAudiogramFreqList5%,recAudiogramFreqList5$);
+        
+    endcase;
+    
+    
+    
+    return 1;
+
+
+end;
+'end RecExpAudiogramDialogChanged%()
+
+
+'===== RecAudiogramGetParams ===== 
+
+func RecAudiogramGetParams()
+	var key$;
+    key$:="Reclab\\Audiogram";
+    'for the audiogram we want to pull a few parameters that are going to override params from the standard
+    'timing/reward dialog box, but not OVERWRITE them.  Audiogram will likely be done rarely and it will
+    'have its own set of default values.
+    
+    recAudiogramS1Speaker% := GetIntRegistryValue%(key$, "AGSpeaker", recAudiogramS1Speaker%);
+    recHitRewardmL := GetFloatRegistryValue(key$, "AGHitRewardmL", recHitRewardmL);
+    recMinOnsetDelay := GetFloatRegistryValue(key$, "AGMinOnsetDelay", recMinOnsetDelay);
+    recVarOnsetDelay := GetFloatRegistryValue(key$, "AGVarOnsetDelay", recVarOnsetDelay);
+    recResponseWindow := GetFloatRegistryValue(key$, "AGResponseWindow", recResponseWindow);
+    recTrialInitWindow := GetFloatRegistryValue(key$, "AGTrialInitWindow", recTrialInitWindow);
+    recFalseAlarmTO := GetFloatRegistryValue(key$, "AGFalseAlarmTO", recFalseAlarmTO);
+    recLazyMonkeyTO := GetFloatRegistryValue(key$, "AGLazyMonkeyTO", recLazyMonkeyTO);
+    recAudiogramToneFreqLow := GetFloatRegistryValue(key$, "AGToneFreqLow", recAudiogramToneFreqLow);
+    recAudiogramToneFreqHigh := GetFloatRegistryValue(key$, "AGToneFreqHigh", recAudiogramToneFreqHigh);
+    recAudiogramNFreqs% := GetIntRegistryValue%(key$, "AGFreqNSteps", recAudiogramNFreqs%);
+    recAudiogramNReversals% := GetIntRegistryValue%(key$, "AGNReversals", recAudiogramNReversals%);
+    recAudiogramOnlyLogReversals% := GetIntRegistryValue%(key$, "AGOnlyLogReversals", recAudiogramOnlyLogReversals%);
+    recAudiogramStartdB := GetFloatRegistryValue(key$, "AGStartdB", recAudiogramStartdB);
+    recAudiogramInitialDirection% := GetIntRegistryValue%(key$, "AGInitialDirection", recAudiogramInitialDirection%);
+    recAudiogramInitialdBStep := GetFloatRegistryValue(key$, "AGInitialdBStep", recAudiogramInitialdBStep);
+    recAudiogramLouderdBStep := GetFloatRegistryValue(key$, "AGLouderdBStep", recAudiogramLouderdBStep);
+    recAudiogramQuieterdBStep := GetFloatRegistryValue(key$, "AGQuieterdBStep", recAudiogramQuieterdBStep);
+
+    return;
+
+end; 
+'end  RecAudiogramGetParams(); 
+
+
+'===== RecAudiogramSaveParams ===== 
+
+func RecAudiogramSaveParams()
+	var key$;
+    key$:="Reclab\\Audiogram";
+
+    SetIntRegistryValue(key$, "AGSpeaker", recAudiogramS1Speaker%);
+    SetFloatRegistryValue(key$, "AGHitRewardmL", recHitRewardmL);
+    SetFloatRegistryValue(key$, "AGMinOnsetDelay", recMinOnsetDelay);
+    SetFloatRegistryValue(key$, "AGVarOnsetDelay", recVarOnsetDelay);
+    SetFloatRegistryValue(key$, "AGResponseWindow", recResponseWindow);
+    SetFloatRegistryValue(key$, "AGTrialInitWindow", recTrialInitWindow);
+    SetFloatRegistryValue(key$, "AGFalseAlarmTO", recFalseAlarmTO);
+    SetFloatRegistryValue(key$, "AGLazyMonkeyTO", recLazyMonkeyTO);
+    SetFloatRegistryValue(key$, "AGToneFreqLow", recAudiogramToneFreqLow);
+    SetFloatRegistryValue(key$, "AGToneFreqHigh", recAudiogramToneFreqHigh);
+    SetIntRegistryValue(key$, "AGFreqNSteps", recAudiogramNFreqs%);
+    SetIntRegistryValue(key$, "AGNReversals", recAudiogramNReversals%);
+    SetIntRegistryValue(key$, "AGOnlyLogReversals", recAudiogramOnlyLogReversals%);
+    SetFloatRegistryValue(key$, "AGStartdB", recAudiogramStartdB);
+    SetIntRegistryValue(key$, "AGInitialDirection", recAudiogramInitialDirection%);
+    SetFloatRegistryValue(key$, "AGInitialdBStep", recAudiogramInitialdBStep);
+    SetFloatRegistryValue(key$, "AGLouderdBStep", recAudiogramLouderdBStep);
+    SetFloatRegistryValue(key$, "AGQuieterdBStep", recAudiogramQuieterdBStep);
+
+    
+	return;
+
+end; 
+'end  RecAudiogramSaveParams(); 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 '
 '
 '===== RecExpAMDiscDialog =====
@@ -2351,6 +2753,7 @@ end;
 func RecExpTimingRewardDialog%()
     
     var i%;
+    var dummy%;
     var status% := 0;
     'var trwid% := 42;
     var trwid% := 84;
@@ -2363,18 +2766,52 @@ func RecExpTimingRewardDialog%()
     var c2txt%;
     c2txt% := trwid%-40;
     
+    var rewardType$[6];
+    rewardType$[0] := "Juice Only";
+    rewardType$[1] := "Stimulation Only";
+    rewardType$[2] := "Juice+Stim";
+    rewardType$[3] := "Cycle J/Stim/J+Stim";
+    rewardType$[4] := "Set probabilities";
+    rewardType$[5] := "Juice + Stim(sometimes)";
+    
     intStr$[0] := "Stop Sound";
     intStr$[1] := "Complete Sound";
+
     
     ' Fetch parameters from registry , only if not a runtime call
     if recRunTimeCall% = 0 then   
         RecTimingRewardGetParams();   'RecTimingRewardGetParams() is below 
     endif;
     
+    'Set up container for reals so we can have more than 20 elements in the dialog
+    var sevenReals[7];
+    sevenReals[0] := recTrainingRewardmL;
+    sevenReals[1] := recHitRewardmL;
+    sevenReals[2] := recCRRewardmL;
+    sevenReals[3] := recMaxHitRewardmL;
+    sevenReals[4] := recMaxCRRewardmL;
+    sevenReals[5] := recHitRewardIncmL;
+    sevenReals[6] := recS1RewardIncmL;
+    
+    'This will tell us how much is neither juice nor Stimulation
+    var pctBoth%;
+    pctBoth% := 100 - recPctJuice% - recPctStimulation%;
+    
+    
+    ' Because the Audiogram experiment reassigns some of the values from this dialog, if this
+    ' dialog is selected AFTER the audiogram dialog is selected, disable "OK" and force audiogram
+    ' dialog to be selected again.
+    if recExpToRun% = recExpAudiogramButton% then
+        DlgValue$(-1,"Reselect Audiogram"); 'to rename OK button 
+        recExpSelectDialogAllowOK% := 0;  'Prepare to disable OK button
+        recExpSelectDialogChanged%(-1);  'Disables "OK" button, -1 is sham input
+        'I'd like to point out how cool this is.
+    endif;
+    
     
     ' Generate the dialog
     
-    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 20);
+    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 22);
     DlgGroup("Timing Parameters",1,1,trwid%-2,4);
     DlgReal(1,12,0,10,c1%,2); DlgText("Minimum Onset Delay, s",c1txt%,2);
     DlgReal(2,12,0,10,c1%,3); DlgText("Variable Onset Delay, s",c1txt%,3);
@@ -2390,7 +2827,7 @@ func RecExpTimingRewardDialog%()
     DlgCheck(18,"Do Miss Repeats?",c2txt%+8,7);
     DlgInteger(19,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
     
-    DlgGroup("Rewards",1,11,trwid%-2,5);
+    DlgGroup("Rewards",1,11,trwid%-2,7);
     DlgReal(9,12,0,3,c1%+20,12); DlgText("Training Reward, mL",c1txt%+20,12); 'recTrainingRewardmL
     DlgReal(10,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
     DlgReal(11,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
@@ -2398,19 +2835,68 @@ func RecExpTimingRewardDialog%()
     DlgReal(13,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
     DlgReal(14,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
     DlgReal(15,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
+    DlgList(20,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);
+    DlgInteger(21,12,0,100,c1%-15,17); DlgText("Pct Juice",c1txt%,17);  'note that these are on a three-per line and use different values
+    DlgInteger(22,12,0,100,c1%+15,17); DlgText("Pct Stimulation",c1%+1,17);
+    DlgLabel(23,"Pct Juice+Stimulation = "+Str$(pctBoth%),c1%+29,17);
+    DlgInteger(24,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
     
-    DlgGroup("Interrupts",1,17,trwid%-2,2);
-    DlgList(16,20,intStr$[],2,c1%-8,18); DlgText("On S1 Interrupt",c1txt%,18);
-    DlgList(17,20,intStr$[],2,c2%-8,18); DlgText("On S2 Interrupt",c2txt%,18);
+    DlgGroup("Interrupts",1,19,trwid%-2,2);
+    DlgList(16,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
+    DlgList(17,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
     
+    DlgAllow(0xffff, 0, RecExpTimingRewardDialogChanged%);
     
     ' Show the dialog. 
+'    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
+'                recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
+'                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, recRewardType%);',recMinJoystickRespTime);
+    
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
-                recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
-                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%);',recMinJoystickRespTime);
+                sevenReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
+                recRewardType%,recPctJuice%,recPctStimulation%,dummy%,recJuiceToStimDelay%);
+    
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
+        'unpack sevenReals
+        recTrainingRewardmL := sevenReals[0];
+        recHitRewardmL := sevenReals[1];
+        recCRRewardmL := sevenReals[2];
+        recMaxHitRewardmL := sevenReals[3];
+        recMaxCRRewardmL := sevenReals[4];
+        recHitRewardIncmL := sevenReals[5];
+        recS1RewardIncmL := sevenReals[6];
+        
+        'make sure that probability values are valid
+        if recRewardType% = 4 then
+            if recPctJuice% + recPctStimulation% > 100 then
+                message("The percentage of Juice + Stimulation is greater than 100!  Reverting to 'cycled' reward! \nPlease re-try dialog!");
+                recRewardType% := 3;
+            endif;
+        endif;
+        
+        'set first reward type randomly if cycling (this will actually be cycled before the first trial, but it gets us a random start point
+        'also, set reward type permanently if not changing
+        docase
+        case recRewardType% = 3 then
+            recCurrentRewardType% := Floor(Rand(3,0));  'will give [0, 1, 2] for [juice, stim, both]
+        case recRewardType% = 2 then 
+            recCurrentRewardType% := 2;  'if juice + stim, set to juice + stim
+        case recRewardType% = 1 then
+            recCurrentRewardType% := 1;  'if only stim, set to stim
+        case recRewardType% = 0 then
+            recCurrentRewardType% := 0;  'if only juice, set to juice
+        endcase;
+        
+        'set maximum number of electrodes allowed, based on whether we need stimulation ports
+        if recRewardType% > 0 then 'if stimulating
+            maxTrodesThisExpt% := 4;  'per Conor, Reclab will NOT be using multi-contact probes and stimulation together
+        else
+            maxTrodesThisExpt% := 28;  
+        endif;
+        
+        
         if recRunTimeCall% = 0 then 'only save parameters if it's a non-run-time call, run-time calls are often for late-session adjustments and shouldn't start the next session
             RecTimingRewardSaveParams();   'RecTimingRewardSaveParams() is below 
         endif;
@@ -2427,6 +2913,55 @@ end;
 '===== End RecExpTimingRewardDialog =====
 '
 '
+
+
+
+'
+'
+'===== RecExpTimingRewardDialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpTimingRewardDialogChanged%(item%) 
+    
+    docase
+    case DlgValue(20) = 4 then  'if setting probabilities of juice, etc.
+        DlgEnable(1,21); 'Enable juice probability
+        DlgEnable(1,22); 'Enable stim probability
+        DlgEnable(1,23); 'Enable juice+stim probability label
+    case DlgValue(20) = 5 then 'if setting juice + stim, but it's always juice
+        DlgEnable(0,21); 'Disable juice probability
+        DlgEnable(1,22); 'Enable stim probability
+        DlgEnable(0,23); 'Disable juice+stim probability label
+    else
+        DlgEnable(0,21); 'Disable juice probability
+        DlgEnable(0,22); 'Disable stim probability
+        DlgEnable(0,23); 'Disable juice+stim probability label
+    endcase;
+    
+    if DlgValue(20) = 0 then 'if only juice
+        DlgEnable(0,24); 'Disable stim delay
+    else
+        DlgEnable(1,24); 'Enable stim delay
+    endif;
+    
+    
+    
+    'update value in text label
+    if item% = 21 or item% = 22 then
+        printlog("val should be %s\n",Str$(100-DlgValue(21)-DlgValue(22)));
+        DlgValue$(23,"Pct Juice+Stimulation = "+Str$(100-DlgValue(21)-DlgValue(22)));
+    endif;
+    
+    return 1;
+end
+
+'===== End RecExpTimingRewardDialogChanged =====
+'
+'
+
+
+
+
 
 
 
@@ -2461,6 +2996,11 @@ proc RecTimingRewardGetParams()
     recContinueSoundOnS2Interrupt% := GetIntRegistryValue%(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
     recMissRepeats% := GetIntRegistryValue%(key$, "MissRepeats", recMissRepeats%);
     recMissRepeatsMax% := GetIntRegistryValue%(key$, "MissRepeatsMax", recMissRepeatsMax%);
+    recRewardType% := GetIntRegistryValue%(key$, "RewardType", recRewardType%);
+    recPctJuice% := GetIntRegistryValue%(key$, "PctJuice", recPctJuice%);
+    recPctStimulation% := GetIntRegistryValue%(key$, "PctStimulation", recPctStimulation%);
+    recJuiceToStimDelay% := GetIntRegistryValue%(key$, "JuiceToStimDelay", recJuiceToStimDelay%);
+    
     
 	return;
 end
@@ -2502,6 +3042,10 @@ proc RecTimingRewardSaveParams()
     SetIntRegistryValue(key$, "ContinueSoundOnS2Interrupt", recContinueSoundOnS2Interrupt%);
     SetIntRegistryValue(key$, "MissRepeats", recMissRepeats%);
     SetIntRegistryValue(key$, "MissRepeatsMax", recMissRepeatsMax%);
+    SetIntRegistryValue(key$, "RewardType", recRewardType%);
+    SetIntRegistryValue(key$, "PctJuice", recPctJuice%);
+    SetIntRegistryValue(key$, "PctStimulation", recPctStimulation%);
+    SetIntRegistryValue(key$, "JuiceToStimDelay", recJuiceToStimDelay%);
     
 	return;
 end
@@ -5180,6 +5724,62 @@ end
 
 '
 '
+'===== GenTrialsAudiogram =====
+func GenTrialsAudiogram%()
+    'this should be relatively simple, we're just making one trial for each tone, the staircase will be handled by the idle loop    
+    var i%;
+    var status% := 1;
+    
+    recNTrials% := recAudiogramNFreqs%;  'one trial for each tone
+    
+    'recAudiogramNFreqs%,recAudiogramToneFreqLow,recAudiogramToneFreqHigh,recAudiogramFreqList[]  'values are already calculated  
+    
+    'loop through each trial
+    for i% := 0 to recNTrials%-1 do
+        
+        'set initial trial order, for now this will not be changed
+        recTrialOrder%[i%] := i%;     
+        
+        'set stim list, speaker list, etc.
+        recStimList%[0][i%] := i%;  'fill stim list with indices from 0 to n-1, we will do trials in order
+        recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the S1
+        recNUniqueStims%[i%] := 1;  'one unique stimulus, fill one PWA
+        recPWAList%[0][i%] := 0;  'we will use PWA 0
+        recDeltadBList[0][i%] := 0;  'do not set any delta dB, may change if Gregg wants roving
+        recTrialTerminalIndex%[i%] := 0;
+        recTrialTerminalIsS2%[i%] := 1;  'last stimulus is an S2 
+        
+        'write parameters for the generated stimulus
+        recTrialDur[i%] := 200;  'Jackie says always 200 ms for audiogram
+        recTrialGenRampMS[i%] := 2;  'short ramp
+        recTrialGenAMFreqHz[i%] := 0;
+        recTrialGenAMDepthPct[i%] := 0;
+        recTrialGenAMPhaseDeg[i%] := 0;
+        recTrialGenTonePhaseDeg[i%] := 0;
+        recTrialGenGauss%[i%] := 0;  
+        recTrialGenSeed%[i%] := 0; 
+        recTrialGenLowpassHz[i%] := recAudiogramFreqList[i%];
+        recTrialGenHighpassHz[i%] := recAudiogramFreqList[i%];
+        recTrialGenIsSweep%[i%] := 0;       
+              
+    next; 
+    
+    return status%;  'right now, it "can't" fail
+end
+'===== End GenTrialsAudiogram =====
+'
+'
+
+
+
+
+
+
+
+
+
+'
+'
 '===== GenTrialsFRA =====
 func GenTrialsFRA%()
     var status% := 1;
@@ -5616,6 +6216,9 @@ docase
     case recExpToRun% = recExpCueingButton% then
         exptext$ := "Cueing";
         expcolor$ := "RED or YELLOW";
+    case recExpToRun% = recExpAudiogramButton% then 
+        exptext$ := "Audiogram";
+        expcolor$ := "GREEN";
 endcase
 
     ' Generate the dialog
