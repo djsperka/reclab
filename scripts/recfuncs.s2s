@@ -4,7 +4,64 @@
 ' are more practical for experimental needs. 
 
 
-#include "tdt.s2s"
+'#include "tdt.s2s"
+#include "RegistryUtils.s2s"
+
+' device codes for PA4 and PM1
+const xbPA4DEVCODE% := 0x01;
+const xbPM1DEVCODE% := 0x0F;
+
+' xbdrv command numbers. All are same as found in xbdrv.h, with "xbcmd" prefix and "_" removed
+' because spike2 doesn't like them. 
+const xbcmdSNOP%				:=	0x00;
+const xbcmdVERREQUEST%		:= 0x06;
+const xbcmdXTRIG%				:= 0x07;
+const xbcmdIDENTREQUEST%	:= 0x08;
+const xbcmdHOSTRTR%			:= 0x09;
+const xbcmdARBERR%			:= 0xC0;
+const xbcmdHOSTERR%			:= 0xC1;
+const xbcmdERRACK%			:= 0xC2;
+const xbcmdSLAVEACK%			:= 0xC3;
+const xbcmdHARDRST%			:= 0xC5;
+const xbcmdSLAVEERR%			:= 0xC6;
+const xbcmdBAUDLOCK%			:= 0xCA;
+const xbcmdARBACK%			:= 0xCB;
+const xbcmdARBID%				:= 0xCC;
+const xbcmdARBRST%			:= 0xCD;
+const xbcmdGTRIG%				:= 0xD2;
+const xbcmdLTRIG%				:= 0xD3;
+const xbcmdARBVERREQ%		:= 0xD4;
+
+const xbcmdPA4ATT%			:= 0x20;
+
+const xbcmdPM1CLEAR%        := 0x11;
+const xbcmdPM1CONFIG%        := 0x12;
+const xbcmdPM1SPKON%        := 0x13;
+const xbcmdPM1SPKOFF%        := 0x14;
+const xbcmdPM1MODE%        := 0x15;
+
+const PM1STEREO%            := 0;
+const PM1MONO%              := 1;
+const PM1COMMON%            := 0;
+const PM1EXCLUSIVE%         := 1;
+
+const xbTIMEOUT%				:= 100;
+const xbMAXTRYS%				:= 3;
+
+
+' In XB parlance, these are "XBUS Location Numbers", or 4*(rack number) + (position number)
+' reclab has 2 racks (0, 1)
+var xlnPA4% := -1;    ' PA4 device
+var xlnPM1% := -1;    ' PM1 device
+
+
+var recTDTCOMPort% := 3;
+var recTDTBaud% := 38400;
+var recTDTBits% := 8;
+var recTDTParity% := 0;
+var recTDTStopBit% := 1;
+recTDTCOMPort% := GetIntRegistryValue%("Reclab", "UseComPort", recTDTCOMPort%);
+
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -17,7 +74,7 @@
 
 func recAtten%(atten)
     
-    return tdtPA4Atten%(1, atten);
+    return PA4Atten%(atten);
     
 end
 
@@ -33,7 +90,7 @@ end
 
 func recSpeaker%(spk%)
     
-    return tdtPM1Spkon%(1, spk%);
+    return PM1Spkon%(spk%);
     
 end
 
@@ -48,37 +105,76 @@ end
 ' Returns 0 on success, 1 or -1 otherwise, -1 means failure to communicate, 1 means unexpected value
 ' returned from TDT server.
 '
+' djs eliminated tdt funcitonality - always use CED. INput argument useTDT% is ignored.
+'
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-func recReward%(ms%,useTDT%)
-    var msFactor := 1;  'don't know what this might be yet, in ms/unit
-    var ms2%;
-    if useTDT% = 1 then
-        'translate ms% into approximate ms value
-        ms2% := ms%/msFactor;
-        return tdtRewardNoWait%(ms2%); 'always returns 0
-    else
-        DeliverRewardCED(ms%);
-        return 0;  'there's not really a success check here, so return success
-    endif;
+func recReward%(ms%,ms2%,type%,useTDT%)
+    docase
+    case type% = 0 then
+        DeliverRewardCEDJuice(ms%);
+    case type% = 1 then
+        DeliverRewardCEDStim(ms2%);
+    case type% = 2 then
+        DeliverRewardCEDJuiceAndStim(ms%,ms2%);
+    endcase
     
+    
+    return 0;  'there's not really a success check here, so return success
 end
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' DeliverRewardCED
+' DeliverRewardCEDJuice
 '
-' Sends TTL pulse of desired duration to Crist juider from CED 
+' Sends TTL pulse of desired duration to Crist juicer from CED 
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-proc DeliverRewardCED(iMS%)
+proc DeliverRewardCEDJuice(iMS%)
     SampleSeqVar(1, iMS%);  'putting this before to give a bit of time in case there's no delay before SafeSampleKey
-    PrintLog("Reward %d\n", iMS%);
+    PrintLog("Juice Reward %d\n", iMS%);
     SafeSampleKey("R");
-    'Yield(); YieldSystem(iMS%/1000.0);
     return;
 end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' DeliverRewardCEDStim
+'
+' Sends TTL pulse of 1 ms duration to Stimulator from CED, with appropriate delay
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc DeliverRewardCEDStim(iMS%)
+    SampleSeqVar(9, iMS%);  'put in delay in ms
+    PrintLog("Stim Reward, delay %d\n",iMS%);
+    SafeSampleKey("Z");  'for "Z"ap!
+    return;
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' DeliverRewardCEDJuiceAndStim
+'
+' Sends TTL pulse of desired duration to Crist juicer and pulse of 1 ms duration to Stimulator from CED 
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc DeliverRewardCEDJuiceAndStim(iMS%,jMS%)
+    SampleSeqVar(1, iMS%);  'putting this before to give a bit of time in case there's no delay before SafeSampleKey
+    SampleSeqVar(9, jMS%);  'put in delay in ms
+    'fill seqvar 10 with difference
+    if iMS% > jMS% then
+        SampleSeqVar(10,iMS%-jMS%);
+    else
+        SampleSeqVar(10,jMS%-iMS%);
+    endif;
+    PrintLog("Juice Reward %d, Stim Reward Delay %d\n",iMS%,jMS%);
+    SafeSampleKey("Y");  'Y was open
+    return;
+end
+
 
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -102,151 +198,6 @@ Proc SafeSampleKey(s$)
 end
 
 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' recLeverDown%()
-'
-' Returns 1 (0) if lever is held down (not held down). Returns -1 if an error occurred
-' reading the TDT PI2. Assumes that the PI2 bit 5 is always set (0x10 = 16), and that bit 6
-' is also set (0x30 = 48) when the lever circuit is closed (lever down). 
-'
-' Above assumptions have been removed, now only assumes lever is attached to PI2 port 6, which
-' will indicate a decimal 32 (binary 00100000) when the lever is depressed.  Thus, port settings
-' xx1xxxxx will indicate lever press and xx0xxxxx will indicate no lever press
-'
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-func recLeverDown%()
-    var pii% := 0;
-    var status% := 0;
-    var down% := 0;
-    
-    ' read PI2
-    status% := tdtPI2Read%(1, pii%);
-    if status% = 0 then
-        'if pii% = 48 then status% := 1; endif;
-        'The above line makes assumptions about ALL non-lever ports, the below lines
-        'make no assumptions about any non-lever ports.
-        if isBitSet%(pii%,6) = 1 then 
-            status% := 1; 
-            'JSJ taking out over-verbosity
-            'PrintLog("recLeverDown: Lever is depressed\n");
-        else
-            'JSJ taking out over-verbosity
-            'PrintLog("recLeverDown: Lever is not depressed\n");
-        endif;
-    else
-        PrintLog("Error in recLeverDown: Unexpected tdtPI2Read status %d\n", status%);
-        status% := -1;
-    endif
-    return status%;
-end
-
-
-'recTDTLEDOn%() - because it's easier to remember than the correct setting for the setbit function
-func recTDTLEDOn%()
-    
-    return tdtPI2Setbit%(1, 2);
-    
-end
-
-
-'recTDTLEDOff%() - because it's easier to remember than the correct setting for the clrbit function
-func recTDTLEDOff%()
-    
-    return tdtPI2Clrbit%(1, 2);
-    
-end
-
-
-' recBlinkUntilLeverDown%(yieldTime, maxTime)
-'
-' Causes LED (PI2 bit 2 = 0x2) to blink until the lever is down. LED is held on/off 
-' for approximately the time (in seconds) in yieldTime (subject to the spike2 function 
-' Yield() and Windows clock). Seems to work well with yieldTime=0.5, though I doubt that
-' the blinking is very uniform. 
-' 
-' if maxBlinkTime <= 0, this will go on forever until the lever is pressed. If maxTime is 
-' greater than 0, however, we quit if the lever has not been pressed in (approximately)
-' that amount of time. The time is not measured, we merely increment a counter by 
-' yieldTime every time there is a Yield(). Since Yield() is not that accurate, the actual
-' time measurement is only approximate. 
-'
-' Updated to change the total duration to be based on MaxTime().  Keeping Yield for the blink
-' duration as for quick blinks it may be preferable to waiting for the OS to get control and
-' then give it back.
-' 
-' Returns 1 when lever is down. Returns -1 if an error occurred. Returns 0 if maxTime>0 
-' and the lever is not pressed in that time. Sets LED ON upon exiting if lever is down, 
-' sets LED OFF upon exiting if lever is up. 
-'TODO: I think we can do this better.  Consult PresEngine for blinking stuff
-'Certainly if we want to use the CED for the LED control, we'd have to update this.
-
-func recBlinkUntilLeverDown%(yieldTime, maxBlinkTime)
-    var status%:= 0;
-    var s%;
-    var idone% := 0;
-    var t% := 1;
-    var startTime;
-    startTime := MaxTime();
-    'var approxTime := 0;
-    
-    if yieldTime < 0 then yieldTime := 0; endif
-    
-    'while idone% = 0 and (maxBlinkTime <= 0 or (maxBlinkTime > 0 and approxTime < maxBlinkTime)) do  'not sure why we don't just look at the actual time
-    while idone% = 0 and (maxBlinkTime <= 0 or (MaxTime()-startTime < maxBlinkTime)) do  'the MaxTime() version will only work if we are sampling, but when would we NOT be?
-        
-        if t% = 1 then
-            's% := tdtPI2Setbit%(1, 2);
-            s% := recTDTLEDOn%();
-            if s% <> 0 then
-                PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2Setbit%()\n");
-                return -1;
-            endif
-        else
-            's% := tdtPI2Clrbit%(1, 2);
-            s% := recTDTLEDOff%();
-            if s% < 0 then
-                PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2ClrBit%()\n");
-                return -1;
-            endif
-        endif
-        t% := 1 - t%;   ' toggles t% between 1 and 0. 
-        
-        ' Check the lever
-        s% := recLeverDown%();
-        if s% < 0 then
-            PrintLog("recBlinkUntilLeverDown%(): Error in recLeverDown%()\n");
-            return -1;
-        else
-            if s% = 1 then 
-                idone% := 1; 
-            else
-                Yield(yieldTime);
-            endif
-        endif
-        'approxTime := approxTime + yieldTime;
-    wend
-    
-    if idone% = 1 then
-        's% := tdtPI2Setbit%(1, 2);
-        s% := recTDTLEDOn%();
-        if s% <> 0 then
-            PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2Setbit%()\n");
-            return -1;
-        endif
-    else  'if period times out, turn LED off
-        s% := recTDTLEDOff%();
-        if s% <> 0 then
-            PrintLog("recBlinkUntilLeverDown%(): Error in tdtPI2Clrbit%()\n");
-            return -1;
-        endif
-    endif
-    
-    return idone%;
-end
-
-
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' recInitTDT%()
@@ -259,39 +210,78 @@ end
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recInitTDT%()
-    var status%:=0;
-    var i%;
+    var status%;
     
-    if tdtSerial(1, 0) < 0 then
-        Message("Error in tdtSerial. Check serial line.");
-        return -1;
-    else
-        printLog("Serial open OK\n");
+    PrintLog("Initializing TDT.\n");
+    PrintLog("Open serial connection on port %d (baud %d bits %d parity %d stopbit %d\n", recTDTCOMPort%, recTDTBaud%, recTDTBits%, recTDTParity%, recTDTStopBit%);
+    status% := SerialOpen(recTDTCOMPort%, recTDTBaud%, recTDTBits%, recTDTParity%, recTDTStopBit%);
+    PrintLog("SerialOpen returned " + str$(status%) + "\n");
+    
+    if status% = 0 then
+        xbFlush();
+
+        ' Now look for devices
+        var pn% := 0; 
+        var rn% := 0;
+        var dev%;
+        for rn% := 1 to 2 do
+            for pn% := 0 to 3 do
+                'PrintLog("Check for device at " + str$(rn%) + "," + str$(pn%) + "\n");
+                dev% := XBGetDeviceCode%(rn%, pn%);
+                docase
+                case dev% = xbPA4DEVCODE% then
+                    xlnPA4% := xbGetXLN%(rn%, pn%);
+                    PrintLog("Found PA4 at rack %d port %d xln %x\n", rn%, pn%, xlnPA4%);
+                case dev% = xbPM1DEVCODE% then
+                    xlnPM1% := xbGetXLN%(rn%, pn%);
+                    PrintLog("Found PM1 at rack %d port %d xln %x\n", rn%, pn%, xlnPM1%);
+                endcase
+            next;
+        next;
+    
+        if xlnPA4% < 0 or xlnPM1% < 0 then
+            status% := -9;
+        else
+            status% := 0;
+        endif
     endif
+    return status%;
     
-    status% := tdtPING%();
-    printLog("ping status " + str$(status%) + "\n");
-    if status% <> 0 then
-        Message("Cannot ping TDT server. Check that TDTSERV is running.");
-        return -1;
-    endif
-    
-    ' Initialize tdt stuff
-    
-    tdtPI2Clear%(1);
-    tdtPI2Outs%(1, 207);
-    tdtPI2Logic%(1, 0x00, 0x20);
-    tdtPI2OutsX%(1, 1);
-    tdtPI2OutsX%(1, 2);
-    tdtPI2writeX%(1, 1, 0);
-    tdtPI2WriteX%(1, 2, 0);
-    tdtPM1Clear%(1);
-    tdtPM1Config%(1, 1);
-    tdtPM1Mode%(1, 1);
-    tdtPA4Atten%(1, 30);
-    
-    return 0;
 end
+
+'    var status%:=0;
+'    var i%;
+'    
+'    if tdtSerial(1, 0) < 0 then
+'        Message("Error in tdtSerial. Check serial line.");
+'        return -1;
+'    else
+'        printLog("Serial open OK\n");
+'    endif
+'    
+'    status% := tdtPING%();
+'    printLog("ping status " + str$(status%) + "\n");
+'    if status% <> 0 then
+'        Message("Cannot ping TDT server. Check that TDTSERV is running.");
+'        return -1;
+'    endif
+'    
+'    ' Initialize tdt stuff
+'    
+'    tdtPI2Clear%(1);
+'    tdtPI2Outs%(1, 207);
+'    tdtPI2Logic%(1, 0x00, 0x20);
+'    tdtPI2OutsX%(1, 1);
+'    tdtPI2OutsX%(1, 2);
+'    tdtPI2writeX%(1, 1, 0);
+'    tdtPI2WriteX%(1, 2, 0);
+'    tdtPM1Clear%(1);
+'    tdtPM1Config%(1, 1);
+'    tdtPM1Mode%(1, 1);
+'    tdtPA4Atten%(1, 30);
+'    
+'    return 0;
+'end
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -312,40 +302,249 @@ end
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
-func isBitSet%(value%,bit%)
-    const maxlen% := 31;  'integer overflow after 2^30, so we only need 31 slots (0 to 30)
-    var bits%[maxlen%];
-    var temp%;
-    var i%;
-    var keepgoing% := 1;
+'func isBitSet%(value%,bit%)
+'    const maxlen% := 31;  'integer overflow after 2^30, so we only need 31 slots (0 to 30)
+'    var bits%[maxlen%];
+'    var temp%;
+'    var i%;
+'    var keepgoing% := 1;
+'
+'    'There doesn't look to be an easy way of generating powers of 2, so...
+'    while keepgoing% = 1 do
+'        temp% := pow(2,i%);
+'        if temp% >= value% then
+'            keepgoing% := 0;
+'        else
+'            i% += 1;
+'        endif;
+'    wend;
+'    
+'    'now, go backwards, finding powers of 2
+'    keepgoing% := 1;
+'    while keepgoing% = 1 do
+'        temp% := pow(2,i%);
+'        if value% >= temp% then
+'            bits%[i%] := 1;
+'            value% := value%-temp%;
+'        endif
+'        if value% = 0 then
+'            keepgoing% := 0;
+'        endif;
+'        i% := i%-1;
+'    wend;
+'    
+'    return bits%[bit%-1];
+'end
+'
+'
 
-    'There doesn't look to be an easy way of generating powers of 2, so...
-    while keepgoing% = 1 do
-        temp% := pow(2,i%);
-        if temp% >= value% then
-            keepgoing% := 0;
-        else
-            i% += 1;
-        endif;
-    wend;
+
+func xbFlush()
+	var i%;
+	var cmd%;
+	var count%;
+	var status%;
+	var v%;
+
+	cmd% := xbcmdERRACK%;
+	for i% := 1 to 20 do
+		SerialWrite(recTDTCOMPort%, cmd%);
+	next;
+	cmd% := xbcmdSNOP%;
+	for i% := 1 to 20 do
+		SerialWrite(recTDTCOMPort%, cmd%);
+	next;
+
+	count% := 1000;
+	repeat
+		count% -= 1;
+		status% := SerialRead(recTDTCOMPort%, v%);
+	until count% = 0 or status% = 0;
+
+	if count% = 0 then
+		PrintLog("Error - unable to flush serial line!\n");
+		return -1;
+	else
+		return 0;
+	endif
+end
+
+func xbShortForm%(xln%, cmd%)
+	var i%;
+	var s% := 0;
+	var v%;
+	var trys% := 0;
+    var status% := 0;
+
+	' attempt to send command up to xbMAXTRYS times
+	repeat
+
+		trys% += 1;
+
+		' send xln
+		status% := SerialWrite(recTDTCOMPort%, (xln% band 0x7f));
+
+		' send number of bytes to be sent, with an extra bit (0x40) set.
+		' Number of bytes is the number of command bytes + 1 
+		status% := SerialWrite(recTDTCOMPort%, cmd%);
+
+		' Wait for SLAVE_ACK
+		status% := SerialRead(recTDTCOMPort%, v%);
+
+	until trys% = xbMAXTRYS% or v% = xbcmdSLAVEACK%;
+
+	if v% = xbcmdSLAVEACK% then
+		return 0;
+	else
+		return 1;
+	endif
     
-    'now, go backwards, finding powers of 2
-    keepgoing% := 1;
-    while keepgoing% = 1 do
-        temp% := pow(2,i%);
-        if value% >= temp% then
-            bits%[i%] := 1;
-            value% := value%-temp%;
-        endif
-        if value% = 0 then
-            keepgoing% := 0;
-        endif;
-        i% := i%-1;
-    wend;
+end
+
+func xbStandForm%(xln%, c%[], n%)
+	var i%;
+	var s% := 0;
+	var v%;
+	var trys% := 0;
+    var status% := 0;
+
+	if n% > 63 then
+		PrintLog("Too many characters for standard form command (" + str$(n%) + "\n");
+		return -1;
+	endif
+
+	' attempt to send command up to xbMAXTRYS times
+	repeat
+
+		trys% += 1;
+
+		' send xln
+		status% := SerialWrite(recTDTCOMPort%, (xln% band 0x7f));
+		PrintLog("write xln status=" + str$(status%) + "\n");
+
+		' send number of bytes to be sent, with an extra bit (0x40) set.
+		' Number of bytes is the number of command bytes + 1 
+		v% := ((n%+1) bor 0x40);
+		status% := SerialWrite(recTDTCOMPort%, (n%+1 bor 0x40));
+		PrintLog("write n status=" + str$(status%) + "\n");
+
+		' send command bytes and checksum
+		for i% := 0 to (n%-1) do
+			s% += c%[i%];				' checksum
+			status% := SerialWrite(recTDTCOMPort%, c%[i%]);
+			PrintLog("write (" + str$(i%) + ") status=" + str$(status%) + "\n");
+		next
+		status% := SerialWrite(recTDTCOMPort%, s%);
+		PrintLog("write checksum status=" + str$(status%) + "\n");
+
+		' Wait for SLAVE_ACK
+		status% := SerialRead(recTDTCOMPort%, v%);
+		PrintLog("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
+
+	until trys% = xbMAXTRYS% or v% = xbcmdSLAVEACK%;
+
+	if v% = xbcmdSLAVEACK% then
+		return 0;
+	else
+		return 1;
+	endif
+end
+
+
+func xbGetXLN%(rn%, pn%)
+	return rn% * 4 + pn%;
+end
+
+
+func PA4atten%(atten)
+
+	var cmd%[3];
+	const len% := 3;
+	var v%;
+
+	cmd%[0] := xbcmdPA4ATT%;
+	v% := atten*10 + 0.05;
+	cmd%[1] := v% / 256;
+	cmd%[2] := v% mod 256;
     
-    return bits%[bit%-1];
+    PrintLog("Set atten to %f %x %x %x\n", atten, cmd%[0], cmd%[1], cmd%[2]);
+    
+	return xbStandForm%(xlnPA4%, cmd%, len%);
+
 end
 
 
 
+func PM1spkon%(sn%)
+
+	var cmd%[2];
+	const len% := 2;
+
+	cmd%[0] := xbcmdPM1SPKON%;
+    cmd%[1] := sn%-1;
+    
+	return xbStandForm%(xlnPM1%, cmd%, len%);
+
+end
+
+func PM1spkoff%(sn%)
+
+	var cmd%[2];
+	const len% := 2;
+
+	cmd%[0] := xbcmdPM1SPKOFF%;
+    cmd%[1] := sn%-1;
+    
+	return xbStandForm%(xlnPM1%, cmd%, len%);
+
+end
+
+func PM1config%(config%)
+
+	var cmd%[2];
+	const len% := 2;
+
+	cmd%[0] := xbcmdPM1CONFIG%;
+    cmd%[1] := config%;
+    
+	return xbStandForm%(xlnPM1%, cmd%, len%);
+
+end
+
+func PM1clear%(xln%)
+
+	return xbShortForm%(xlnPM1%, xbcmdPM1CLEAR%);
+
+end
+
+
+func XBGetDeviceCode%(rackNum%, positionNum%)
+	var xln%;
+	var status%;
+	var data%;
+    var i%;
+
+	' send xln then the IDENT_REQUEST command
+	xln%  := xbGetXLN%(rackNum%,  positionNum%);
+	status% := SerialWrite(recTDTCOMPort%, xln%);
+	status% := SerialWrite(recTDTCOMPort%, xbcmdIDENTREQUEST%);
+
+	' send 40 SNOPs
+	' I guess this is a way of waiting for a reply?
+	for i% := 1 to 40 do
+		SerialWrite(recTDTCOMPort%, xbcmdSNOP%);
+	next;
+
+	data% := 0;
+	status% := SerialRead(recTDTCOMPort%, data%);
+
+	docase
+    case status% = 0 then
+        data% := -1;    ' read time out
+	case status% < 0 then 
+		data% := -2;	' error condition
+	endcase;
+
+	return data%;
+end
 
