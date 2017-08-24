@@ -105,18 +105,21 @@ end
 ' Returns 0 on success, 1 or -1 otherwise, -1 means failure to communicate, 1 means unexpected value
 ' returned from TDT server.
 '
-' djs eliminated tdt funcitonality - always use CED. INput argument useTDT% is ignored.
+' djs eliminated tdt functionality - always use CED. INput argument useTDT% is ignored.
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recReward%(ms%,ms2%,type%,useTDT%)
-    docase
+	docase
     case type% = 0 then
         DeliverRewardCEDJuice(ms%);
+		PrintLog("Juice only, type=0 \n"); '*jao 5/8/17
     case type% = 1 then
         DeliverRewardCEDStim(ms2%);
+		PrintLog("Stim only, type=1 \n"); '*jao 5/8/17 
     case type% = 2 then
         DeliverRewardCEDJuiceAndStim(ms%,ms2%);
+		PrintLog("Juice AND Stim, type=2 \n"); '*jao 5/8/17
     endcase
     
     
