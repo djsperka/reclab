@@ -238,10 +238,20 @@ var recMonkPrefix$;                 'String to hold monkey prefix, used in namin
 var blockTag$;                      'filename suffix used to denote new experiments or blocks (a,b,c,d,...) - added to MonkPrefix and Date to create filename
 const recPrintLog$ := "recPrintLog"; 'an autosave printlog for BSOD debugging and whatever else might be useful. date & time printed on each call
 var recLog%;                        'handle for recPrintLog
-const recFileSaveLoc$  := "C:\\Data\\";       'Have to set this...  
-const recCalibLoc$ := "C:\\Data\\Calib\\";           'Have to set this too...
-const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2016\\testTextFiles\\";       'Have to set this...  
-const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2016\\testTextFiles\\";           'Have to set this too...   
+    
+'Determine which drive has the CED stuff on it - it's different on different machines
+var recDrivePath$;
+recDrivePath$ := GetDrivePath$();
+if recDrivePath$ = "quit" then
+    halt;
+endif;    
+    
+var recFileSaveLoc$;    
+recFileSaveLoc$  := recDrivePath$ + "Data\\";       'Have to set this...  
+var recCalibLoc$;    
+recCalibLoc$ := recDrivePath$ + "Data\\Calib\\";           'Have to set this too...
+'const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2016\\testTextFiles\\";       'Have to set this...  
+'const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2016\\testTextFiles\\";           'Have to set this too...   
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    
@@ -1836,8 +1846,19 @@ DlgText("AM rates = 4,6,8,12,16,24,32,48,64,128,256",31,15); 'DlgText("AM rates 
         
         'Reset dialog OK button text on Select dialog, and note which experiment to run
         DlgValue$(-1,"Run FRA");
-        DlgValue(3,2);  'force NSpeakers to the 16-speaker array on the main dialog
-        DlgEnable(0,3); 'and don't let this value be changed
+        
+        'There doesn't appear to be, at this time, a compelling reason to actually limit this
+        'to the 16-speaker array.  Dominique is trying to run this, as a "practice" in the 
+        'small booth which only has a 15-speaker array, and this appears to be causing all
+        'sorts of problems when the 16-speaker array is assigned by force.  Since the code
+        'that creates the FRA stimuli is flexible enough to use the number of speakers requested,
+        'I **THINK** everything should be hunky-dory if we just let it run on the 15-speaker
+        'array.  My suspicion is that since the 15-speaker array is not 360-degrees that it was
+        'probably considered unsuitable for the FRA, and perhaps it still ought to be, but this
+        'is just for "practice" and we should let it happen.  -jj 8/2/17
+        'DlgValue(3,2);  'force NSpeakers to the 16-speaker array on the main dialog
+        'DlgEnable(0,3); 'and don't let this value be changed
+        
         recExpToRun% := recExpFRAButton%; 
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
@@ -6246,3 +6267,54 @@ end;
 '
 
 
+
+'===== GetDrivePath$ =====
+
+func GetDrivePath$()
+
+'GetDrivePath$() is a simple function which checks the directory structure of the current machine
+'and attempts to determine which drive has the expected CED directory structure.  If the CED directory
+'structure does not exist, important things like sequencer files and configuration files (or other
+'expected files/directories) will not be found (duh!)
+'
+'The return value is the drive path in the format: "D:\\"
+    
+'Note that this function has been adapted from a similar function written for the Sutter Lab, but that it 
+'does not do as thorough of a look - here we assume known possible directories rather than loop through
+'all hypothetical drives    
+    
+var ExistPath;
+var DrivePath$ := "quit";  'just a default setting, can be read to quit 
+var i%;
+var i$;
+
+    
+docase 
+case FilePathSet("D:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Big Booth" as of 8/16/17
+    DrivePath$ := "D:\\";                'If this folder exists, safe to say it's the right one
+    return DrivePath$;
+case FilePathSet("E:\\Data\\") = 0 then  'This is a future catch for the possible installation of an E: drive on either rig
+    DrivePath$ := "E:\\";                'As of 8/16/17 no E: drive exists, but if one did, and it had a Data\\ folder, it would be the right drive 
+    return DrivePath$;
+case FilePathSet("C:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Small Booth" as of 8/16/17
+    DrivePath$ := "C:\\";                'Note that this folder ALSO exists on the "Big Booth" but is no longer used (hence D: earlier in the CASE statement)
+    return DrivePath$;    
+case FilePathSet("E:\\Core Grant\\reclab2016\\testTextFiles\\") = 0 then  'This allows tsting on Kershaw, the above three paths do not exist on Kershaw
+    DrivePath$ := "E:\\Core Grant\\reclab2016\\testTextFiles\\";
+    return DrivePath$;     
+endcase
+    
+    
+    
+'if we get here, the directory structure was not found 
+message("The expected CED directory structure does not appear to be on this machine!");
+printlog("Crash/Quit imminent due to failure to find expected CED directory structure on this machine!\n");
+return DrivePath$  'in this case, the return value is "quit"
+
+
+end
+
+
+'===== End GetDrivePath$ =====
+'
+'

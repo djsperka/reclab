@@ -1725,6 +1725,7 @@ func IdleLoop%()
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then
                     stmp% := PrepareNextTrial%(0); 'load PWAs, should gracefully pass through in debug mode as well
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 0 then    
+                    recCurrentTrial% -= 1;  'if current trial (in human units) is same as last trial, PrepareNextTrial will exit.  Decrement, will reincrement upon return. -jj 8/21/17
                     stmp% := PrepareNextTrial%(1);  'don't load PWAs for repeated audiogram stimuli
                 case recExpToRun% = recExpSearchButton% and recSearchLoaded% = 1 then
                     stmp% := PrepareNextTrial%(1);  'don't load PWAs for search trials after #1
@@ -1747,7 +1748,7 @@ func IdleLoop%()
                     case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then 
                         recAudiogramStartNewTrial% := 0;  'the increment above has been accepted, don't let it increment again until new frequency is needed
                     case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 0 then
-                        recCurrentTrial% -= 1;  'if we are not starting a new trial on audiogram, undo increment of trial counter
+                        'recCurrentTrial% -= 1;  'if we are not starting a new trial on audiogram, undo increment of trial counter (now more correctly done earlier -jj 8/21/17)
                     endcase;
                     RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
                     ChangeStateTo(stateWaitForInitiationMovement%);
