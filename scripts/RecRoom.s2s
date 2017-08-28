@@ -241,7 +241,8 @@ var recLog%;                        'handle for recPrintLog
     
 'Determine which drive has the CED stuff on it - it's different on different machines
 var recDrivePath$;
-recDrivePath$ := GetDrivePath$();
+    recDrivePath$ := GetDrivePath$();
+    printlog("Drive path is %s\n",recDrivePath$);
 if recDrivePath$ = "quit" then
     halt;
 endif;    

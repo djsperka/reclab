@@ -1489,7 +1489,10 @@ func PrepareNextTrial%(dontLoadPWAs%)
     if recCurrentTrial% >= recNTrials% then
         return 0;  'end the sequence
     endif;
-    
+
+    'Printlog current trial
+    printlog("Current trial is %d\n",recCurrentTrial%);
+
     ' Get index of current trial
     thisTrial% :=  recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
     
