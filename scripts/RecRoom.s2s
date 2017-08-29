@@ -656,6 +656,14 @@ while recReadyToQuit% = 0 do
             recExptText$ := "Running Audiogram ";  
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
+            
+            'The following two settings are obligatory for Audiogram - these had been set in Audiogram dialog but subsequent calls of Timing/Reward were counterfeiting them.
+            recIsGoNoGo% := 1;  'Force experiment to be go/no-go 
+            recHitRewardIncmL := 0;  'Do not allow reward incrementing for audiogram
+            
+            'Also, set this explicitly every time, OK for first run, but on subsequent runs, has to be reset
+            recAudiogramStartNewTrial% := 1;
+            
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
