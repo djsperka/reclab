@@ -215,7 +215,7 @@ func ReadJoystick%()
     var tempx;
     var tempy;
     var trash%[4];
-    
+    var tempEventTime;
     
     
     view(recDataWindowView%);
@@ -330,6 +330,7 @@ func ReadJoystick%()
             TimesArrayRO[Len(TimesArrayRO)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsRO%;
+            NumEventsRO% := Len(TimesArrayRO)-1;
         else
             TimesArrayRO[NumEventsRO%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -342,6 +343,7 @@ func ReadJoystick%()
             TimesArrayLO[Len(TimesArrayLO)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsLO%;
+            NumEventsLO% := Len(TimesArrayLO)-1;
         else
             TimesArrayLO[NumEventsLO%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -354,6 +356,7 @@ func ReadJoystick%()
             TimesArrayUO[Len(TimesArrayUO)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsUO%;
+            NumEventsUO% := Len(TimesArrayUO)-1;
         else
             TimesArrayUO[NumEventsUO%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -366,6 +369,7 @@ func ReadJoystick%()
             TimesArrayDO[Len(TimesArrayDO)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsDO%;
+            NumEventsDO% := Len(TimesArrayDO)-1;
         else
             TimesArrayDO[NumEventsDO%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -378,6 +382,7 @@ func ReadJoystick%()
             TimesArrayRI[Len(TimesArrayRI)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsRI%;
+            NumEventsRI% := Len(TimesArrayRI)-1;
         else
             TimesArrayRI[NumEventsRI%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -390,6 +395,7 @@ func ReadJoystick%()
             TimesArrayLI[Len(TimesArrayLI)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsLI%;
+            NumEventsLI% := Len(TimesArrayLI)-1;
         else
             TimesArrayLI[NumEventsLI%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -402,6 +408,7 @@ func ReadJoystick%()
             TimesArrayUI[Len(TimesArrayUI)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsUI%;
+            NumEventsUI% := Len(TimesArrayUI)-1;
         else
             TimesArrayUI[NumEventsUI%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -414,6 +421,7 @@ func ReadJoystick%()
             TimesArrayDI[Len(TimesArrayDI)-1] := 99999999;  'If the value is too large, just change the last value
             'NumFoundTooBigIndex% += 1;  'and remember this, report it at the end.
             'TooBigIndexValue% := NumEventsDI%;
+            NumEventsDI% := Len(TimesArrayDI)-1;
         else
             TimesArrayDI[NumEventsDI%] := 99999999;  'The index value is OK, do what we expect
         endif;
@@ -676,7 +684,12 @@ func ReadJoystick%()
             'endif;
         endif;
     next;
-    
+
+    'Attempt to fix over-999 error (one of several) - allow last event time to include "not real events"
+    'It would appear that we may be duplicating not-real events, which contributes to the problem
+    if EventCount% > 0 then
+        HoldLastEventTime := temp;  'if the above FOR ran, temp will hold the last event, real or not.   
+    endif;
     
     'Put events in memory channel if they exist and change LeverInitTime/LeverResponseTime/LeverInit%/LeverResponse%	
     if RealEventCount% > 0 then	
@@ -785,6 +798,11 @@ func ReadJoystick%()
                 endif;
             endif;
             LastPos% := JoystickAfter%[ii%];  'Update LastPos%
+            if TimesArrayAll[ii%] > Now then 'This is a hack to try to prevent the script from putting in a memory item at a too-large time
+                tempEventTime := TimesArrayAll[ii%-1]+tic;  'don't know what to use, this should in principle keep it at about the right time
+            else
+                tempEventTime := TimesArrayAll[ii%];
+            endif;
             view(recDataWindowView%).MemSetItem(MemChanJoystick%,0,TimesArrayAll[ii%],LeverCodes%[],LeverString$);
         printlog("Move is %s\n",LeverString$);
         next;
@@ -814,11 +832,11 @@ func ReadJoystick%()
         endcase;
         
         'update LastEventTime to that of the last real event
-        if XTime > YTime then
-            HoldLastEventTime := XTime;
-        else
-            HoldLastEventTime := YTime;
-        endif;
+'        if XTime > YTime then
+'            HoldLastEventTime := XTime;
+'        else
+'            HoldLastEventTime := YTime;
+'        endif;
         printlog("And time of %s was %f\n",LeverString$,HoldLastEventTime);
     else  'if there are no real events
         if Now - HoldLastEventTime > 10 then 'if there have been no "real" events in the last 10 seconds
