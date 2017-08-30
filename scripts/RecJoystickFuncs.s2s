@@ -1259,6 +1259,8 @@ func CalibrateJoystick%()
     var currentY;
     var ii%;
     var jview%;
+    var oldXOffset;
+    var oldYOffset;
     
     'need a dialog to determine whether joystick is human or monkey so we can keep both
     var jt%;  'joystick type
@@ -1274,7 +1276,10 @@ func CalibrateJoystick%()
     if ii% = 1 then
         'get the current offsets, joystickXOffset and joystickYOffset
         GetJoystickOffsets(jt%);  
-        
+    
+        oldXOffset := joystickXOffset;  'These values are for reporting the change in offset to the user
+        oldYOffset := joystickYOffset;
+    
         'here we need code to start sampling with two joystick channels and get the values of the current
         'position, which won't be exactly 0 in either the X or Y direction into currentX, currentY
         'create joystick channels
@@ -1312,6 +1317,10 @@ func CalibrateJoystick%()
     
         'Save the new offset values
         SaveJoystickOffsets(jt%);
+    
+        'Report the old and new offset values
+        printlog("Joystick calibration performed, old X,Y offset values were %f,%f, new X,Y offset values are %f,%f\n",oldXOffset,oldYOffset,joystickXOffset,joystickYOffset);
+        message("Joystick calibration performed\nOld X,Y offset values were %f,%f\nNew X,Y offset values are %f,%f",oldXOffset,oldYOffset,joystickXOffset,joystickYOffset);
     endif;
     
     
