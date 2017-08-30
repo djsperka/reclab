@@ -1257,7 +1257,7 @@ end
 func CalibrateJoystick%()
     var currentX;
     var currentY;
-    var ii%;
+    var ii%:=1;
     var jview%;
     var oldXOffset;
     var oldYOffset;
