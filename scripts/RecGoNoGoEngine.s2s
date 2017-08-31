@@ -1163,6 +1163,7 @@ func Start%()
     case recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
         'if already sampling still want some of this stuff to happen!
         SampleText(recExptText$+"_"+blockTag$);  'put in the experiment type
+        startingNewExpt% := 1;  'this allows a reset of joystick event checking
     case recCEDIsPresent% = 0 and recCurrentlySampling% = 0 then
         'virtually start sampling
         recCurrentlySampling% := 1;
