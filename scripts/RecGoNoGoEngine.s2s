@@ -849,9 +849,13 @@ Func PlaySound%(isS2%)
         maxdB := 65 + calatten;
         if recExpToRun% = recExpAudiogramButton% then
             recAudiogramCurrentdB := maxdB;  'reset requested dB on audiogram to max allowed
-            message("dB requested is above maximum possible for this stim, has been set to %f",maxdB);
+            'Removing message box because it is causing issues with experimentation
+            'message("dB requested is above maximum possible for this stim, has been set to %f",maxdB);
+            printlog("dB requested is above maximum possible for this stim (%s), has been set to %f",NameThatStimulus$(thisStim%),maxdB);
         else
-            message("Requested attenuation was negative, has been reset to 0!");
+            'Removing message box because it is causing issues with experimentation
+            'message("Requested attenuation was negative, has been reset to 0!");
+            printlog("Requested attenuation (%f dB) was negative for this stimulus (%s), has been reset to 0!",calatten + trlatten,NameThatStimulus$(thisStim%));
         endif;
     endif;
     
