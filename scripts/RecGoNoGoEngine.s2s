@@ -1851,7 +1851,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 and recActive% = 1 then
                             SampleSeqVar(4,1);  'set the flash sequence to on
                             Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
-                            sampleseqvar(5,(recTrialInitWindow*1000)/(500*2));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
+                            sampleseqvar(5,ceil((recTrialInitWindow*1000)/(500*2)));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
                             sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
                             SafeSampleKey("L");  'Start the flash
                             tStartBlink :=  View(recDataWindowView%).MaxTime();    
