@@ -39,7 +39,7 @@ const maxTrodes% := 32; '29;'30; 'max # of electrodes we can record is 30, limit
 var recTrodePosition%[maxTrodes%];'
 var recTrodeChannel%[maxTrodes%];
 var recTrodePort%[maxTrodes%];
-var maxTrodesThisExpt%;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
+var maxTrodesThisExpt% := 4;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
 
 ' ports
 const recTriggerPort% := 0; 'qwhy????
