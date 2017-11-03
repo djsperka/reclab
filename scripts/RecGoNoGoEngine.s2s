@@ -1244,6 +1244,8 @@ func ReturnToExptSelectDialog%()
     recSearchLoaded% := 0;  'Need to reset recSearchLoaded, or load will be skipped even for non-search scenarios
     RTESDIsPressed% := 0;
     recExptText$ := "";
+    recIsPaused% := 0;      ' djs - if pause, then hit "new expt", this must be set back to zero or the idle loop
+                            ' will still think you're paused!
     
     'Unset the idle function, so things don't start moving immediately when the Toolbar is next called
     'ToolbarSet(0, "");
