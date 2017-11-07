@@ -1613,23 +1613,23 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 
                 docase
                 case matGetStimOK% < 0 then 'error
-                    message("There has been an error in getting stimulus data from Matlab!  Quitting!");
-                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    SafeSampleKey("M");
-                    Stop%();
-                    return -1;
+                    message("There has been an error in getting stimulus data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");
+                    'Stop%();
+                    'return -1;
                 case matGetAttenOK% < 0 then 'error
-                    message("There has been an error in getting atten data from Matlab!  Quitting!");
-                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    SafeSampleKey("M");
-                    Stop%();
-                    return -1;
+                    message("There has been an error in getting atten data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");
+                    'Stop%();
+                    'return -1;
                 case matGetSeedOK% < 0 then 'error
-                    message("There has been an error in getting seed data from Matlab!  Quitting!");
-                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    SafeSampleKey("M");
-                    Stop%();
-                    return -1;
+                    message("There has been an error in getting seed data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");
+                    'Stop%();
+                    'return -1;
                 endcase;
                 
                 'printlog("gen values are %d\n",recStimTransfer%[4000:50]);   
@@ -1670,12 +1670,12 @@ func PrepareNextTrial%(dontLoadPWAs%)
             if recCEDIsPresent% = 1 then
                 playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransfer%[]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
                 if playWaveCopyOK% < 0 then 'error
-                    message("There has been an error in PlayWaveCopy!  Check Log File!  Quitting!");
+                    message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
-                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    SafeSampleKey("M");
-                    Stop%();
-                    return -1;
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");
+                    'Stop%();
+                    'return -1;
                 endif;
             endif;
             
