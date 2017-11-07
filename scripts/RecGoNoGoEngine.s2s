@@ -1489,6 +1489,10 @@ func PrepareNextTrial%(dontLoadPWAs%)
     var statement$;
     var pwChar$;
     var matPutOK% := 0;
+    var matGetStimOK%;
+    var matGetAttenOK%;
+    var matGetSeedOK%;
+    var playWaveCopyOK%;
     var ok% := 1;  'by default, return 1 (success)
 
     
@@ -1603,10 +1607,31 @@ func PrepareNextTrial%(dontLoadPWAs%)
             
             
                 'Get the stimulus and the seed back from Matlab
-                GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
-                GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
-                GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
-            
+                matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
+                matGetAttenOK% := GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
+                matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
+                
+                docase
+                case matGetStimOK% < 0 then 'error
+                    message("There has been an error in getting stimulus data from Matlab!  Quitting!");
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SafeSampleKey("M");
+                    Stop%();
+                    return -1;
+                case matGetAttenOK% < 0 then 'error
+                    message("There has been an error in getting atten data from Matlab!  Quitting!");
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SafeSampleKey("M");
+                    Stop%();
+                    return -1;
+                case matGetSeedOK% < 0 then 'error
+                    message("There has been an error in getting seed data from Matlab!  Quitting!");
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SafeSampleKey("M");
+                    Stop%();
+                    return -1;
+                endcase;
+                
                 'printlog("gen values are %d\n",recStimTransfer%[4000:50]);   
             
                 'Note that loading the filter coefficients for each speaker on each call would be a time-waster.
@@ -1643,7 +1668,15 @@ func PrepareNextTrial%(dontLoadPWAs%)
             
             'Finally, place the stimulus into the appropriate Play Wave Area
             if recCEDIsPresent% = 1 then
-                PlayWaveCopy(pwChar$, recStimTransfer%[]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
+                playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransfer%[]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
+                if playWaveCopyOK% < 0 then 'error
+                    message("There has been an error in PlayWaveCopy!  Check Log File!  Quitting!");
+                    printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SafeSampleKey("M");
+                    Stop%();
+                    return -1;
+                endif;
             endif;
             
         next;
@@ -1669,7 +1702,7 @@ func IdleLoop%()
     var stmp%;
     var isS2%;
     var strtmp$;
-    var isPlaying%;
+    'var isPlaying%;  'removed, will be handled by PlayWaveStatus$ call
     var PWA$;
     var s$;
     var temprnd;  'a temporary variable to hold a Rand, used for changing reward type
@@ -2042,7 +2075,7 @@ func IdleLoop%()
             
             docase
             case stmp% = 0 then
-                isPlaying% := 1;
+                'isPlaying% := 1;
                 ChangeStateTo(stateSoundAPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundA", "PlaySound returned negative value.");
@@ -2056,23 +2089,45 @@ func IdleLoop%()
             
         case iState% = stateSoundAPlaying% then
             
+            'Note that we are now checking the PlayWaveStatus instead of relying on the variable isPlaying%, which
+            'has been removed.  In principle the isPlaying% method should work, but there are some strange issues 
+            'that suggest tomfoolery with the PlayWaveAreas that *might* be caused by a PlayWaveStop() command, which
+            'is simply assumed to work, instead failing.  The solution as designed is, while any sound is playing, to
+            'first check the PlayWaveStatus in order to get the number of points played.  If the number of points
+            'played is greater than the number of points in the stimulus, we are presumed to be in a blank space at
+            'the end of a long PWA, and we call a PlayWaveStop.  Then, regardless of the number of points returned, 
+            'we check the PlayWaveStatus again.  If the stimulus is in fact no longer playing, we move forward,
+            'otherwise we wait for the stimulus to be stopped as reported by PlayWaveStatus.  Previously, after a 
+            'PlayWaveStop was called, isPlaying% was set to zero, but no explicit check that the stimulus had stopped
+            'playing was in fact done.  That check is now explicit.
+            
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
             
             docase
-            case recCEDIsPresent% = 0 then
-                isPlaying% := 0;  'simulate end of stimulus
+            'case recCEDIsPresent% = 0 then
+            '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
-                isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
+            '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
                 PlayWaveStop();  'stop playing stimulus while we're at it
-            case PWA$ = "" then
-                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
+            'case PWA$ = "" then
+            '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
+            
+            'Moved below previous docase (was above) after disabling isPlaying%
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
+            endif;
             
             CheckLever%("inTrialInit%",1);
             docase
-            case isPlaying% = 0 then  'use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            'case isPlaying% = 0 then  'use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            case PWA$ = "" then
                 if isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
@@ -2094,7 +2149,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;                
             endcase
@@ -2165,7 +2220,7 @@ func IdleLoop%()
             endif;
             docase
             case stmp% = 0 then
-                isPlaying% := 1;
+            '    isPlaying% := 1;
                 ChangeStateTo(stateSoundBPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundB", "PlaySound returned negative value.");
@@ -2178,22 +2233,34 @@ func IdleLoop%()
             
             
         case iState% = stateSoundBPlaying% then
-            if recCEDIsPresent% = 1 then
+            
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
+            
             docase
-            case recCEDIsPresent% = 0 then
-                isPlaying% := 0;  'simulate end of stimulus
+            'case recCEDIsPresent% = 0 then
+            '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
-                isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
+            '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
                 PlayWaveStop();  'stop playing stimulus while we're at it
-            case PWA$ = "" then
-                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
+            'case PWA$ = "" then
+            '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
+            
+            'Moved below previous docase (was above) after disabling isPlaying%
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
+            endif;
             
             CheckLever%("inResponse1%",0);  'default is no early hit
             docase
-            case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            'case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            case PWA$ = "" then   
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
                 ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
             case recActive% = 0 then
@@ -2208,7 +2275,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;
             case recIsGoNoGo% = 0 and inResponse2% = 1 then 'if the sound is still playing, check for early "miss" (FC)
@@ -2221,7 +2288,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;
             case recIsGoNoGo% = 0 and inResponse1% = 1 then  'if the sound is still playing, check for early hit (FC)
@@ -2234,7 +2301,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;
             endcase;
@@ -2252,7 +2319,7 @@ func IdleLoop%()
             endif;  
             docase
             case stmp% = 0 then
-                isPlaying% := 1;
+            '    isPlaying% := 1;
                 ChangeStateTo(stateSoundCPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundC", "PlaySound returned negative value.");
@@ -2267,23 +2334,33 @@ func IdleLoop%()
         case iState% = stateSoundCPlaying% then
             'here there really is no difference between terminal S1 ("nontarget") and target trials, we deal with the difference
             'in stateInResponseWindow% (at least if there's no interrupt of the stimulus
-            
-            if recCEDIsPresent% = 1 then
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
+            
             docase
-            case recCEDIsPresent% = 0 then
-                isPlaying% := 0;  'simulate end of stimulus
+            'case recCEDIsPresent% = 0 then
+            '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
-                isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
+            '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
                 PlayWaveStop();  'stop playing stimulus while we're at it
-            case PWA$ = "" then
-                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
+            'case PWA$ = "" then
+            '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
+            
+            'Moved below previous docase (was above) after disabling isPlaying%
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
+            endif;
             
             CheckLever%("inResponse1%",1);  'default no false alarm
             docase
-            case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            'case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            case PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundC", "Sound done playing.");
                 if isEarlyFA% = 1 then
                     ChangeStateTo(stateInResponseWindow%);  'this will just shunt to the FA penalty, but it keeps the logic consistent
@@ -2302,7 +2379,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif
                 endif
             case recIsGoNoGo% = 0 and inResponse2% = 1 then 'if the sound is still playing, check for early CR (FC)
@@ -2315,7 +2392,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif
                 endif
             case recIsGoNoGo% = 0 and inResponse1% = 1 then 'if the sound is still playing, check for early FA (FC)
@@ -2328,7 +2405,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif
                 endif                
             endcase            
@@ -2344,7 +2421,7 @@ func IdleLoop%()
             endif;
             docase
             case stmp% = 0 then
-                isPlaying% := 1;
+            '    isPlaying% := 1;
                 ChangeStateTo(stateSoundDPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundD", "PlaySound returned negative value.");
@@ -2356,22 +2433,33 @@ func IdleLoop%()
                        
             
         case iState% = stateSoundDPlaying% then
-            if recCEDIsPresent% = 1 then
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
-            endif;
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
+            endif;            
+            
             docase
-            case recCEDIsPresent% = 0 then
-                isPlaying% := 0;  'simulate end of stimulus
+            'case recCEDIsPresent% = 0 then
+            '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
-                isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
+            '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
                 PlayWaveStop();  'stop playing stimulus while we're at it
-            case PWA$ = "" then
-                isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
+            'case PWA$ = "" then
+            '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
+            
+            'Moved below previous docase (was above) after disabling isPlaying%
+            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+            else
+                PWA$ := "";  'if CED is absent simulate end of stimulus
+            endif;
             
             CheckLever%("inResponse2%",0);  'default is no early hit 'switched to Response2 for S3 *jao
             docase
-            case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            'case isPlaying% = 0 then  'trying to use isPlaying rather than PlayWaveStatus because the PWA may be longer than the stimulus
+            case PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundD", "Sound done playing.");
                 ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
             case recActive% = 0 then
@@ -2386,7 +2474,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;
             case recIsGoNoGo% = 0 and inResponse1% = 1 then 'if the sound is still playing, check for early "miss" (FC) 'Response1=Miss, *jao
@@ -2399,7 +2487,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;
             case recIsGoNoGo% = 0 and inResponse2% = 1 then  'if the sound is still playing, check for early hit (FC) 'Response2=Hit, *jao
@@ -2412,7 +2500,7 @@ func IdleLoop%()
                         if recCEDIsPresent% = 1 then
                             PlayWaveStop();  'stop playing stimulus
                         endif;
-                        isPlaying% := 0;
+            '            isPlaying% := 0;
                     endif;
                 endif;
             endcase;
