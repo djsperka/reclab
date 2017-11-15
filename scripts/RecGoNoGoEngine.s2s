@@ -2112,7 +2112,7 @@ func IdleLoop%()
             '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
             '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
-                PlayWaveStop();  'stop playing stimulus while we're at it
+                PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             'case PWA$ = "" then
             '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
@@ -2147,7 +2147,7 @@ func IdleLoop%()
                     isInterrupt% := 1;  'don't institute interrupt procedure twice if stimulus continues to end
                     if recContinueSoundOnS1Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -2245,7 +2245,7 @@ func IdleLoop%()
             '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
             '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
-                PlayWaveStop();  'stop playing stimulus while we're at it
+                PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             'case PWA$ = "" then
             '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
@@ -2273,7 +2273,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundB", "Lever is in response 1 - HIT interrupting S2");
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -2286,7 +2286,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundB", "Lever is in response 2 - MISS interrupting S2");
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -2299,7 +2299,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundB", "Lever is in response 1 - HIT interrupting S2");
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -2345,7 +2345,7 @@ func IdleLoop%()
             '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
             '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
-                PlayWaveStop();  'stop playing stimulus while we're at it
+                PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             'case PWA$ = "" then
             '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
@@ -2377,7 +2377,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
                     if recContinueSoundOnS1Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif
@@ -2390,7 +2390,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
                     if recContinueSoundOnS1Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif
@@ -2403,7 +2403,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
                     if recContinueSoundOnS1Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif
@@ -2444,7 +2444,7 @@ func IdleLoop%()
             '    isPlaying% := 0;  'simulate end of stimulus
             case recPointsPlayed% >= recPlayPoints%  then
             '    isPlaying% := 0;  'Stimulus is not currently playing if it's in blank space following stimulus
-                PlayWaveStop();  'stop playing stimulus while we're at it
+                PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             'case PWA$ = "" then
             '    isPlaying% := 0;  'Stimulus is not currently playing if PWA has stopped
             endcase;
@@ -2472,7 +2472,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundD", "Lever is in response 1 - HIT interrupting S2 ... WAIT! HOW DID WE GET HERE?!");
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -2485,7 +2485,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundD", "Lever is in response 2 - MISS interrupting S2");
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -2498,7 +2498,7 @@ func IdleLoop%()
                     RecLogStatus("WaitTrialSoundD", "Lever is in response 1 - HIT interrupting S2");
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
-                            PlayWaveStop();  'stop playing stimulus
+                            PlayWaveStopWithErrorCheck();  'stop playing stimulus
                         endif;
             '            isPlaying% := 0;
                     endif;
@@ -3389,4 +3389,27 @@ proc UpdateAudiogram(AGresult%)
 
     
     
+end
+
+
+
+proc PlayWaveStopWithErrorCheck()
+    'This proc will call PlayWaveStop and check the return, informing the user of any error therein
+    'A simple function, but since I want to call it a bunch of times...
+    var PWSErr%;
+    var ErrTxt$;
+    
+    PWSErr% := PlayWaveStop();
+    
+    docase
+    case PWSErr% = 0 then
+        ErrTxt$ := "PlayWaveStop was called but CED believes the stimulus is not playing";
+        sampleText(ErrTxt$,tNow);
+        printlog("Error: %s at time %f\n",ErrTxt$,tNow);
+    case PWSErr% < 0 then
+        ErrTxt$ := "PlayWaveStop has returned the following error: " + Error$(PWSErr%);
+        sampleText(ErrTxt$,tNow);
+        printlog("Error: %s at time %f\n",ErrTxt$,tNow);
+    endcase
+        
 end
