@@ -821,7 +821,15 @@ wend;
 ' Stop sampling....
 if recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
     SafeSampleKey("K");  'Kill reward, just in case
-    SampleStop();
+    var retVal%;
+    retval% := SampleStop();
+    printlog("SampleStop returned %d\n",retVal%);
+    view(recLog%).print("SampleStop returned %d\n",retVal%);
+    if retVal% < 0 then
+        printlog("Samplestop error is %s\n",Error$(retVal%));
+        view(recLog%).print("Samplestop error is %s\n",Error$(retVal%));
+    endif;
+    
 '    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
     FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr", -1); 'NEW FORMAT! add date automagically! 
 
