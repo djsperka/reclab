@@ -2523,8 +2523,10 @@ func IdleLoop%()
                 amountRewarded += recTrainingRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
+                    recRewardMs := recRewardMs%;  'we need a float version for later math
                     if recCEDIsPresent% then
                         stmp% := Reward%();
+                        Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
@@ -2909,6 +2911,7 @@ func IdleLoop%()
                     SampleText(s$, tNow);
                     if recCEDIsPresent% then
                         stmp% := Reward%();
+                        Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
@@ -2942,10 +2945,12 @@ func IdleLoop%()
                 amountRewarded += recCRRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := ConvertmLToSeconds(recCRRewardmL)*1000;
+                    recRewardMs := recRewardMs%;  'we need a float version for later math
                     s$ := Print$("Reward,%f,%d", tNow, recRewardMs%);
                     SampleText(s$, tNow);
                     if recCEDIsPresent% then
                         stmp% := Reward%();
+                        Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
