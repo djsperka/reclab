@@ -830,6 +830,7 @@ if recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
         view(recLog%).print("Samplestop error is %s\n",Error$(retVal%));
     endif;
     
+    View(recDataWindowView%);  'Explicitly set view
 '    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
     FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr", -1); 'NEW FORMAT! add date automagically! 
 
