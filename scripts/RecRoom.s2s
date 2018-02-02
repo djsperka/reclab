@@ -6308,6 +6308,9 @@ var i$;
 
     
 docase 
+case FilePathSet("I:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Big Booth" as of 10/26/17
+    DrivePath$ := "I:\\";                'If this folder exists, safe to say it's the right one
+    return DrivePath$;                   'Note that this is what the data drive became after upgrading the big booth to Windows 10 
 case FilePathSet("D:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Big Booth" as of 8/16/17
     DrivePath$ := "D:\\";                'If this folder exists, safe to say it's the right one
     return DrivePath$;
