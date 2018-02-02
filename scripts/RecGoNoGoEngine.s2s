@@ -190,6 +190,7 @@ var startingNewExpt%;  'only used with joystick, marks beginning of experiment s
 var nextStateImmed% := 1;  'when we are changing to a new state, by default we carry to that state immediately instead of waiting for the next idle loop call
 var coinFlipResult%;    'to reward SAME trials for AMDis Hi/Lo *jao
 var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo responses, has to be global to work
+var recStimOn;
 
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
@@ -1899,7 +1900,8 @@ func IdleLoop%()
                             sampleseqvar(5,ceil((recTrialInitWindow*1000)/(500*2)));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
                             sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
                             SafeSampleKey("L");  'Start the flash
-                            tStartBlink :=  View(recDataWindowView%).MaxTime();    
+                            tStartBlink :=  View(recDataWindowView%).MaxTime(); 
+                            RecLogStatus("Testing", "Trial initiation window should end at " + str$(tStartBlink + recTrialInitWindow));
                         else
                             tStartBlink := tNow;
                         endif;
@@ -2077,7 +2079,8 @@ func IdleLoop%()
             
             RecLogStatus("TrialSoundA", "Call expt function");
             if recCEDIsPresent% = 1 then
-                stmp% := PlaySound%(isS2%);  
+                stmp% := PlaySound%(isS2%); 
+                recStimOn := StimOn;
             else
                 stmp% := 0;  'simulate playing sound if no CED
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -2224,6 +2227,7 @@ func IdleLoop%()
             RecLogStatus("TrialSoundB", "Call expt function");
             if recCEDIsPresent% = 1 then
                 stmp% := PlaySound%(isS2%);
+                recStimOn := StimOn;
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -2323,6 +2327,7 @@ func IdleLoop%()
             RecLogStatus("TrialSoundC", "Call expt function");
             if recCEDIsPresent% = 1 then
                 stmp% := PlaySound%(isS2%);
+                recStimOn := StimOn;
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -2425,6 +2430,7 @@ func IdleLoop%()
             RecLogStatus("TrialSoundD", "Call expt function");
             if recCEDIsPresent% = 1 then
                 stmp% := PlaySound%(isS2%);
+                recStimOn := StimOn;
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -3303,6 +3309,7 @@ func BehOutput(resultCode$, isS2%)
         'header for trial by trial info
         view(fh%).print("Speaker array = %d\n",recNSpeakers%); 
         'for AMDis and SpaceDis... (case this bitch to add experiment formats)
+        view(fh%).print("Response window = %f\n", recResponseWindow);
         
         'FORMAT 2?  'file header chunk cont..: trials file & stim file if AMDis or Space (or Cueing) and Speaker Array used
         '    view(fh%).print("Stimulus file \tTrials file \t Joy Init \tResponse1 \tResponse2 \tMiss repeats max \ttraining reward \tSpeaker array \n");
@@ -3312,9 +3319,9 @@ func BehOutput(resultCode$, isS2%)
         'For now, there is only one format of log file, but we will need at least one more for Audiogram -jj
         docase
         case recExpToRun% = recExpAudiogramButton% then
-            view(fh%).print("\n%s\t%s\t%s\t%s\n","Spkr","Freq","dB","Result"); 'header for trial vars
+            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\n","Spkr","Freq","dB","Result","StimOnset","LeverTime"); 'header for trial vars
         else 'in all other cases, this is what Jackie has right now - case statement can be easily updated in the future
-            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","RespTime"); 'header for trial vars
+            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","StimOnset","LeverTime"); 'header for trial vars
             'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
         endcase
     endif
@@ -3325,9 +3332,9 @@ func BehOutput(resultCode$, isS2%)
     'for AMDis and SpaceDis... (case this bitch to add experiment formats)(casing this bitch -jj)
     docase
     case recExpToRun% = recExpAudiogramButton% then
-        view(fh%).print("%d\t%d\t%f\t%s\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$);
+        view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$,recStimOn,recLeverTime);
     else
-        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,recPreciseTrialTime); 'data!
+        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,recStimOn,recLeverTime); 'data!
     endcase
     'NOTE: output key for "Stype"
     'isS2%+1 = 1 for S1, 2 for S2 (change), 3 for terminal S1 (same - NoGo trial), and 4 for terminal S1 for forced choice
