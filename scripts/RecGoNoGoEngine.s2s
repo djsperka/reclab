@@ -172,6 +172,7 @@ const stateSoundDPlaying%                     := 31;
 const stateFalseAlarmAudiogram%               := 32;
 
 var recDelayIntervalTime         := 0;
+var recDelayIntervalInterrupt%   := 0;  'was there an interrupt in the delay interval?
 var tNow:=0;		' latest time for which there are values recorded. Used in IdleLoop%
 var tStartBlink;    ' used in idle loop
 var tLast:=-1;		' last time we checked for a trigger. 
@@ -1943,11 +1944,13 @@ func IdleLoop%()
                         if recFixLED% = 1 then
                             SafeSampleKey("L"); 'turn on LED for fixpt
                         endif;
-                        RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                         'Increment, if appropriate
                         ChangeThresh2(doIncTrialInit%[]);
-                        'Calculate new delay interval time
-                        recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+                        'Calculate new delay interval time, unless there was an interrupt in the last one, in that case keep it
+                        if recDelayIntervalInterrupt% = 0 then
+                            recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
+                        endif;
+                        RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
                         ChangeStateTo(statePreTrialDelay%);
                     endif;
                  else  'this is timeout
@@ -2052,13 +2055,16 @@ func IdleLoop%()
                 RecLogStatus("DelayInterval", "False Alarm during delay.");
                 ChangeStateTo(stateFalseAlarmAudiogram%); 
                 SafeSampleKey("M");  'turn off LED
+                recDelayIntervalInterrupt% := 1;
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 'for all other experiments we are generous and treat this as a slip
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
                 tNextTrial := tNow;
+                recDelayIntervalInterrupt% := 1;
             case tNow - tStateStart >= recDelayIntervalTime then
                 RecLogStatus("DelayInterval", "Delay done.");
+                recDelayIntervalInterrupt% := 0;
                 docase
                 case recDoJoyTrain% = 1 then '*jao
                     ChangeStateTo(stateHitReward%); 
