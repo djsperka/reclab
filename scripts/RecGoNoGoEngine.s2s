@@ -1910,8 +1910,12 @@ func IdleLoop%()
                     endif;
                 else
                     if tNow > recTrialInitWindow + tNextTrial then  'Use trial init window both for getting into origin and starting trial
-                        RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever/joystick into origin.");
-                        ChangeStateTo(stateLazyMonkeyTimeout%);
+                        '''Lazy monkey timeout excised!  Uncomment to reinstate!
+'                        RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever/joystick into origin.");
+'                        ChangeStateTo(stateLazyMonkeyTimeout%);                        
+                        RecLogStatus("PreBlinkPeriod", "Waiting for joystick in origin, still waiting, NOT going to timeout");
+                        tNextTrial := tNow;  'reset tNextTrial so this does not repeat EVERY loop
+                        
                     endif;
                 endif;
             else  'but if paused, check to see if we have a call out to a dialog box to change values
@@ -1955,11 +1959,17 @@ func IdleLoop%()
                     endif;
                  else  'this is timeout
                     SafeSampleKey("S"); 'stop blink sequence immediately, though it should already be stopped - this might need to be unSafe'd as well
-                    RecLogStatus("WaitTrlInit", "Timeout waiting for trial initiation.");
+                    '''Lazy monkey timeout excised!  Uncomment to reinstate!
+'                    RecLogStatus("WaitTrlInit", "Timeout waiting for trial initiation.");
+                    RecLogStatus("WaitTrlInit", "Still waiting for trial initiation, restarting blink.");
+                    
                     'Decrement, if appropriate
                     'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%); 'old version
                     ChangeThresh2(doDecTrialInit%[]);
-                    ChangeStateTo(stateLazyMonkeyTimeout%);
+                    
+                    '''Lazy monkey timeout excised!  Uncomment to reinstate!
+'                    ChangeStateTo(stateLazyMonkeyTimeout%);
+                    ChangeStateTo(stateWaitForInitiationMovement%);
                  endif;
 
             else  'but if paused, check to see if we have a call out to a dialog box to change values
@@ -2036,13 +2046,16 @@ func IdleLoop%()
 '            endif
 '            
         case iState% = stateLazyMonkeyTimeout% then
-            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
-            if tNow - tStateStart > recLazyMonkeyTO then
-                RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
-                recChangeRewardType% := 1;  'will change reward type after lazy timeout, if other conditions are met 
-                ChangeStateTo(stateWaitForInitiationMovement%);  'restart as if we had just finished loading
-                tNextTrial := tNow;
-            endif
+            '''Lazy monkey timeout excised!  Uncomment to reinstate!
+'            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
+'            if tNow - tStateStart > recLazyMonkeyTO then
+'                RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
+'                recChangeRewardType% := 1;  'will change reward type after lazy timeout, if other conditions are met 
+'                ChangeStateTo(stateWaitForInitiationMovement%);  'restart as if we had just finished loading
+'                tNextTrial := tNow;
+'            endif
+            ChangeStateTo(StateWaitForInitiationMovement%);  'we should not enter this state
+            RecLogStatus("LazyMonkeyTimeout","Entered Lazy Monkey Timeout!  This should currently be disabled, so WTF?!?");
             
             
             
