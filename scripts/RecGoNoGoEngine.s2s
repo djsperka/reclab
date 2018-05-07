@@ -1442,7 +1442,7 @@ end
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc RecLogStatusSpecificTime(stateName$, msg$, tNow)
     'if recDebug% = 1 then
-        PrintLog("S:    " + stateName$ + "  Tstart: " + str$(t\Now) + " " + msg$ + "\n");
+        PrintLog("S:    " + stateName$ + "  Tstart: " + str$(tNow) + " " + msg$ + "\n");
     'endif
 end
 
