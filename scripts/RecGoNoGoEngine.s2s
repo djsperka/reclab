@@ -2937,7 +2937,7 @@ func IdleLoop%()
                     SampleText(s$, tNow);
                     if recCEDIsPresent% then
                         stmp% := Reward%();
-                        Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
+                        'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
                     else
                         stmp% := 0;  'simulate success in reward if debugging
                     endif;
@@ -3198,12 +3198,12 @@ end;
 
 
 'A simple function which points to either recLeverDown%() or DebounceLever%() or ReadJoystick%() as appropriate
-func CheckLever%(varName$,varState%)
-    'printlog("CHECKLEVER: varName$ is %s, varState% is %d\n",varName$,varState%);
+func CheckLever%(varName$,varDefault%)
+    'printlog("CHECKLEVER: varName$ is %s, varState% is %d\n",varName$,varDefault%);
     'This function no longer returns a value, it merely changes inOrigin%, inTrialInit%, inResponse1%, inResponse2%
     'Major update to CheckLever% - the problem is that there was really no way to move the "experiment" forward
     'in testing mode.  Now CheckLever% REQUIRES two inputs in the form of a variable name (inOrigin%, etc.) and a
-    'state to set that variable to which will allow the state logic to step forward.  This will only happen if BOTH
+    'default to set that variable to which will allow the state logic to step forward.  This will only happen if BOTH
     'the CED and TDT are not present, otherwise, the program assumes you're actually trying to run it.
     if recActive% = 1 and recCEDIsPresent% = 1 then
         docase  'note that in all cases recLeverTime is set within the called function
@@ -3223,13 +3223,13 @@ func CheckLever%(varName$,varState%)
     else
         docase
         case varName$ = "inOrigin%" then
-            inOrigin% := varState%;
+            inOrigin% := varDefault%;
         case varName$ = "inTrialInit%" then
-            inTrialInit% := varState%;
+            inTrialInit% := varDefault%;
         case varName$ = "inResponse1%" then
-            inResponse1% := varState%;
+            inResponse1% := varDefault%;
         case varName$ = "inResponse2%" then
-            inResponse2% := varState%;
+            inResponse2% := varDefault%;
         else
             printlog("Unknown value " + varName$ + " in debug level of CheckLever% call!\n");
         endcase        
