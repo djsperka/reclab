@@ -1433,6 +1433,20 @@ end
 
 
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' RecLogStatusSpecificTime
+' 
+' Utility to write msg to log window.  Will use specified time rather than tStareStart
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc RecLogStatusSpecificTime(stateName$, msg$, tNow)
+    'if recDebug% = 1 then
+        PrintLog("S:    " + stateName$ + "  Tstart: " + str$(t\Now) + " " + msg$ + "\n");
+    'endif
+end
+
+
 
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -1894,7 +1908,7 @@ func IdleLoop%()
                 CheckLever%("inOrigin%",1);
                 if inOrigin% = 1 then  'lever must be in origin to start blink
                     if tNow > tNextTrial then
-                        RecLogStatus("WaitTrlInit", "Blink/Wait.");
+                        RecLogStatusSpecificTime("WaitTrlInit", "Blink/Wait.",tNow);
                         if recCEDIsPresent% = 1 and recActive% = 1 then
                             SampleSeqVar(4,1);  'set the flash sequence to on
                             Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
@@ -1902,7 +1916,7 @@ func IdleLoop%()
                             sampleseqvar(8,1);  'Set Flash-Allow variable to 1, this allows flashing
                             SafeSampleKey("L");  'Start the flash
                             tStartBlink :=  View(recDataWindowView%).MaxTime(); 
-                            RecLogStatus("Testing", "Trial initiation window should end at " + str$(tStartBlink + recTrialInitWindow));
+                            RecLogStatusSpecificTime("Testing", "Trial initiation window should end at " + str$(tStartBlink + recTrialInitWindow),tNow);
                         else
                             tStartBlink := tNow;
                         endif;
@@ -1913,7 +1927,7 @@ func IdleLoop%()
                         '''Lazy monkey timeout excised!  Uncomment to reinstate!
 '                        RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever/joystick into origin.");
 '                        ChangeStateTo(stateLazyMonkeyTimeout%);                        
-                        RecLogStatus("PreBlinkPeriod", "Waiting for joystick in origin, still waiting, NOT going to timeout");
+                        RecLogStatusSpecificTime("PreBlinkPeriod", "Waiting for joystick in origin, still waiting, NOT going to timeout",tNow);
                         tNextTrial := tNow;  'reset tNextTrial so this does not repeat EVERY loop
                         
                     endif;
