@@ -5775,6 +5775,8 @@ func GenTrialsAudiogram%()
     var status% := 1;
     
     recNTrials% := recAudiogramNFreqs%;  'one trial for each tone
+    recTrainingRewardmL := 0;  'hard code training reward to OFF
+    recTrialInitReward% := 0;  'hard code init reward to OFF
     
     'recAudiogramNFreqs%,recAudiogramToneFreqLow,recAudiogramToneFreqHigh,recAudiogramFreqList[]  'values are already calculated  
     
@@ -6325,8 +6327,8 @@ case FilePathSet("E:\\Data\\") = 0 then  'This is a future catch for the possibl
 case FilePathSet("C:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Small Booth" as of 8/16/17
     DrivePath$ := "C:\\";                'Note that this folder ALSO exists on the "Big Booth" but is no longer used (hence D: earlier in the CASE statement)
     return DrivePath$;    
-case FilePathSet("E:\\Core Grant\\reclab2016\\testTextFiles\\") = 0 then  'This allows tsting on Kershaw, the above three paths do not exist on Kershaw
-    DrivePath$ := "E:\\Core Grant\\reclab2016\\testTextFiles\\";
+case FilePathSet("E:\\Core Grant\\reclab2017\\testTextFiles\\") = 0 then  'This allows tsting on Kershaw, the above three paths do not exist on Kershaw
+    DrivePath$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";
     return DrivePath$;     
 endcase
     
