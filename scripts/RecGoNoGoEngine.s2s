@@ -1277,6 +1277,10 @@ end
 func Pause%()
     PrintLog("Pause called\n");
     recIsPaused% := 1;
+    if iState% = stateCEDBlinking% then  'If we call a pause while CED is blinking, we need to step back a state and restart that blink when we leave the pause
+        SampleKey("S");  'Stop flash sequence if we are flashing
+        ChangeStateTo(stateStartCEDBlink%);  'Allow restart of flash sequence when we exit Pause if we were flashing
+    endif;
     ToolbarEnable(recResumeButton%, 1);
     ToolbarEnable(recPauseButton%, 0);
     return 1;
@@ -1312,6 +1316,10 @@ end
 func CallTimingReward%()
     PrintLog("Pause called to bring up Timing/Reward Dialog\n");
     recIsPaused% := 1;
+    if iState% = stateCEDBlinking% then  'If we call a pause while CED is blinking, we need to step back a state and restart that blink when we leave the pause
+        SampleKey("S");  'Stop flash sequence if we are flashing
+        ChangeStateTo(stateStartCEDBlink%);  'Allow restart of flash sequence when we exit Pause if we were flashing
+    endif;
     recRunTimeCall% := 1;
     recWhichDialogCalled% := 1;  '1 is for timing/reward
     'Don't let nobody do nothing! (start and resume are already disabled)
@@ -1336,6 +1344,10 @@ end
 func CallJoystick%()
     PrintLog("Pause called to bring up Joystick Properties Dialog\n");
     recIsPaused% := 1;
+    if iState% = stateCEDBlinking% then  'If we call a pause while CED is blinking, we need to step back a state and restart that blink when we leave the pause
+        SampleKey("S");  'Stop flash sequence if we are flashing
+        ChangeStateTo(stateStartCEDBlink%);  'Allow restart of flash sequence when we exit Pause if we were flashing
+    endif;
     recRunTimeCall% := 1;
     recWhichDialogCalled% := 2;  '2 is for joystick
     'Don't let nobody do nothing! (start and resume are already disabled)
@@ -1837,7 +1849,7 @@ func IdleLoop%()
             
             
         case iState% = stateWaitForInitiationMovement% then   'this state just decides which state to go to, it's easier than replacing all the instances 
-        'CHECK FOR PAUSE HERE TOO:
+            'CHECK FOR PAUSE HERE TOO:
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
                 'If necessary, change the reward type on this trial (recRewardType 0/1 does not change)
@@ -2086,6 +2098,7 @@ func IdleLoop%()
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 'for all other experiments we are generous and treat this as a slip
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
+                SafeSampleKey("M");  'turn off LED
                 ChangeStateTo(stateWaitForInitiationMovement%);  'no interrupt penalty, it's probably a slip, just start over
                 tNextTrial := tNow;
                 recDelayIntervalInterrupt% := 1;
@@ -2094,6 +2107,7 @@ func IdleLoop%()
                 recDelayIntervalInterrupt% := 0;
                 docase
                 case recDoJoyTrain% = 1 then '*jao
+                    SafeSampleKey("M");  'turn off LED
                     ChangeStateTo(stateHitReward%); 
                 case recTrialInitReward% <> 0 then 'if not zero (might be -1 from last trial)
                     recTrialInitReward% :=1; 'set it back to 1

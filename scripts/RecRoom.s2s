@@ -2279,6 +2279,9 @@ func RecAudiogramDialog%()
 	if i% = 1 then
         RecAudiogramSaveParams(); 
         
+        'Assign fixation LED
+        recFixLED% := 1;
+        
         'Force experiment to be go/no-go (will still need to consult with Engine to make sure this will be OK but nothing else appears to be necessary in RecRoom)
         recIsGoNoGo% := 1;
         
