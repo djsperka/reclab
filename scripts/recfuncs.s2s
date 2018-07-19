@@ -423,26 +423,26 @@ func xbStandForm%(xln%, c%[], n%)
 
 		' send xln
 		status% := SerialWrite(recTDTCOMPort%, (xln% band 0x7f));
-		PrintLog("write xln status=" + str$(status%) + "\n");
+		'PrintLog("write xln status=" + str$(status%) + "\n");
 
 		' send number of bytes to be sent, with an extra bit (0x40) set.
 		' Number of bytes is the number of command bytes + 1 
 		v% := ((n%+1) bor 0x40);
 		status% := SerialWrite(recTDTCOMPort%, (n%+1 bor 0x40));
-		PrintLog("write n status=" + str$(status%) + "\n");
+		'PrintLog("write n status=" + str$(status%) + "\n");
 
 		' send command bytes and checksum
 		for i% := 0 to (n%-1) do
 			s% += c%[i%];				' checksum
 			status% := SerialWrite(recTDTCOMPort%, c%[i%]);
-			PrintLog("write (" + str$(i%) + ") status=" + str$(status%) + "\n");
+			'PrintLog("write (" + str$(i%) + ") status=" + str$(status%) + "\n");
 		next
 		status% := SerialWrite(recTDTCOMPort%, s%);
-		PrintLog("write checksum status=" + str$(status%) + "\n");
+		'PrintLog("write checksum status=" + str$(status%) + "\n");
 
 		' Wait for SLAVE_ACK
 		status% := SerialRead(recTDTCOMPort%, v%);
-		PrintLog("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
+		'PrintLog("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
 
 	until trys% = xbMAXTRYS% or v% = xbcmdSLAVEACK%;
 
@@ -472,7 +472,10 @@ func PA4atten%(atten)
     
     PrintLog("Set atten to %f %x %x %x\n", atten, cmd%[0], cmd%[1], cmd%[2]);
     
-	return xbStandForm%(xlnPA4%, cmd%, len%);
+  	return xbStandForm%(xlnPA4%, cmd%, len%);
+    
+'    PrintLog("Skipping setting attenuation for amplifier debug purposes");
+'    return 0;
 
 end
 
