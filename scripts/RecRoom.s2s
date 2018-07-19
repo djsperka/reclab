@@ -1437,7 +1437,13 @@ func RecExpSearchDialog%()
     DlgText("S1 Speaker",41,10);
     DlgInteger(10,6,0,20,83,10);  'S2 speaker
     DlgText("S2 Speaker",64,10);
-    DlgInteger(11,6,0,19,55,11);  'Min S1
+    
+    ' djs 7/19/2018 Change min allowed value to 2 here. 
+    ' Program logic converts this to an index, and tests the value of the stim index AFTER it has been incremented. 
+    ' The test is equality, so if the var here is 1, the index is 0, and the first time the test is performed 
+    ' (see RecGoNoGoEngine.s2s, line 1098)
+    
+    DlgInteger(11,6,2,19,55,11);  'Min S1
     DlgText("Minimum S1 Presentations",30,11);
     DlgInteger(12,6,0,19,55,12);  'Var S1
     DlgText("Variable S1 Presentations",30,12);
