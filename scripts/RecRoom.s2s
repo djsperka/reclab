@@ -6303,55 +6303,6 @@ end;
 
 
 '===== GetDrivePath$ =====
-
-func GetDrivePath$()
-
-'GetDrivePath$() is a simple function which checks the directory structure of the current machine
-'and attempts to determine which drive has the expected CED directory structure.  If the CED directory
-'structure does not exist, important things like sequencer files and configuration files (or other
-'expected files/directories) will not be found (duh!)
-'
-'The return value is the drive path in the format: "D:\\"
-    
-'Note that this function has been adapted from a similar function written for the Sutter Lab, but that it 
-'does not do as thorough of a look - here we assume known possible directories rather than loop through
-'all hypothetical drives    
-    
-var ExistPath;
-var DrivePath$ := "quit";  'just a default setting, can be read to quit 
-var i%;
-var i$;
-
-    
-docase 
-case FilePathSet("I:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Big Booth" as of 10/26/17
-    DrivePath$ := "I:\\";                'If this folder exists, safe to say it's the right one
-    return DrivePath$;                   'Note that this is what the data drive became after upgrading the big booth to Windows 10 
-case FilePathSet("D:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Big Booth" as of 8/16/17
-    DrivePath$ := "D:\\";                'If this folder exists, safe to say it's the right one
-    return DrivePath$;
-case FilePathSet("E:\\Data\\") = 0 then  'This is a future catch for the possible installation of an E: drive on either rig
-    DrivePath$ := "E:\\";                'As of 8/16/17 no E: drive exists, but if one did, and it had a Data\\ folder, it would be the right drive 
-    return DrivePath$;
-case FilePathSet("C:\\Data\\") = 0 then  'This is the expected drive for the rig on the Recanzone "Small Booth" as of 8/16/17
-    DrivePath$ := "C:\\";                'Note that this folder ALSO exists on the "Big Booth" but is no longer used (hence D: earlier in the CASE statement)
-    return DrivePath$;    
-case FilePathSet("E:\\Core Grant\\reclab2017\\testTextFiles\\") = 0 then  'This allows tsting on Kershaw, the above three paths do not exist on Kershaw
-    DrivePath$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";
-    return DrivePath$;     
-endcase
-    
-    
-    
-'if we get here, the directory structure was not found 
-message("The expected CED directory structure does not appear to be on this machine!");
-printlog("Crash/Quit imminent due to failure to find expected CED directory structure on this machine!\n");
-return DrivePath$  'in this case, the return value is "quit"
-
-
-end
-
-
-'===== End GetDrivePath$ =====
+' moved to filesystemvars.s2s 12-11-2018 djs
 '
 '
