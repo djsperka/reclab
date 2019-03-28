@@ -1,0 +1,88 @@
+#include "recfuncs.s2s"
+#include "LogUtilities.s2s"
+#include "filesystemvars.s2s"
+
+
+var fileHandle;
+var ms% := 120000;  ' 2 minutes
+
+' Cannot run while sampling:
+if SampleStatus() > -1 then
+    Message("Cannot drain while sampling in progress. Please stop sampling and try again.");
+    halt;
+endif
+
+View(App(8)).WindowVisible(0);	'Hide the standard sample bar
+ToolbarVisible(1);
+ToolbarSet(1, "Open Valve", OpenValve%);
+ToolbarSet(2, "Close Valve", CloseValve%);
+ToolbarSet(3, "Set drain time", SetTime%);
+ToolbarSet(4, "Exit", Exit%);
+
+ToolbarEnable(1, 1);
+ToolbarEnable(2, 0);
+ToolbarEnable(3, 1);
+ToolbarEnable(4, 1);
+
+
+SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
+SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
+SampleAutoFile(0);     'set auto-filing state to "off"
+SampleSequencer(script$ + "recgen.pls");
+
+fileHandle := FileNew(0);
+LogInfo("File open status " + str$(fileHandle));
+
+SampleStart(0);
+
+Toolbar(MyToolbarText$(), 0xffff);
+LogInfo("Exited toolbar...");
+View(fileHandle);
+FileClose(0, -1);
+halt;
+
+func MyToolbarText$()
+    var s$;
+    s$ := Print$("Open/Close valve before exiting. Drain time set to %d seconds.", ms%/1000);
+    return s$;
+end
+
+
+func OpenValve%()
+    LogInfo("Open valve for " + str$(ms%) + " ms.");
+    recReward%(ms%, 0, 0, 0);
+    ToolbarEnable(1, 0);
+    ToolbarEnable(2, 1);
+    ToolbarEnable(3, 0);
+    ToolbarEnable(4, 1);
+    return 1;
+end
+
+func CloseValve%()
+    LogInfo("Close valve sample status " + str$(SampleStatus()));
+    SafeSampleKey("K");
+    ToolbarEnable(1, 1);
+    ToolbarEnable(2, 0);
+    ToolbarEnable(3, 1);
+    ToolbarEnable(4, 1);
+    return 1;
+end
+
+func SetTime%()
+    var seconds%;
+    seconds% := ms%/1000;
+    DlgCreate("Set drain time");
+    DlgInteger(1, "Drain time (s)", 1, 600);
+    if DlgShow(seconds%) = 1 then
+        ms% := seconds% * 1000;
+        ToolbarText(MyToolbarText$());
+    endif
+    return 1;
+end
+
+
+
+func Exit%()
+    SampleStop();
+    return 0;
+end
