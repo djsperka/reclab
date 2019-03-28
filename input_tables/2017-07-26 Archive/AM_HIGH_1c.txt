@@ -1,0 +1,2 @@
+S1	S2	Spkr1	Spkr1	DdB1	DdB2
+3	9	15	15	20	20

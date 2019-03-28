@@ -1,4 +1,4 @@
-' $Id$
+' $Id: recfuncs.s2s,v 1.21 2018/12/04 18:53:45 devel Exp $
 
 ' Recfuncs are convenience functions to hide the calls to the TDT server behind calls that 
 ' are more practical for experimental needs. 
@@ -77,6 +77,23 @@ func recAtten%(atten)
     return PA4Atten%(atten);
     
 end
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' recAttenByID
+'
+' Set attenuation to the value supplied, on the PA4 device found at the rack/position number given. 
+' Returns 0 on success, nonzero on error (see tdtPA4Atten%). 
+'
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func recAttenById%(atten, rackNumber%, positionNumber%)
+    
+    return PA4AttenByID%(atten, rackNumber%, positionNumber%);
+    
+end
+
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -229,7 +246,7 @@ func recInitTDT%()
         var dev%;
         for rn% := 1 to 2 do
             for pn% := 0 to 3 do
-                'PrintLog("Check for device at " + str$(rn%) + "," + str$(pn%) + "\n");
+                PrintLog("Check for device at " + str$(rn%) + "," + str$(pn%) + "\n");
                 dev% := XBGetDeviceCode%(rn%, pn%);
                 docase
                 case dev% = xbPA4DEVCODE% then
@@ -238,6 +255,8 @@ func recInitTDT%()
                 case dev% = xbPM1DEVCODE% then
                     xlnPM1% := xbGetXLN%(rn%, pn%);
                     PrintLog("Found PM1 at rack %d port %d xln %x\n", rn%, pn%, xlnPM1%);
+                else
+                    PrintLog("Device id returned %x\n", dev%);
                 endcase
             next;
         next;
@@ -479,6 +498,26 @@ func PA4atten%(atten)
 
 end
 
+
+func PA4attenByID%(atten, rackNumber%, positionNumber%)
+
+	var cmd%[3];
+	const len% := 3;
+	var v%;
+
+	cmd%[0] := xbcmdPA4ATT%;
+	v% := atten*10 + 0.05;
+	cmd%[1] := v% / 256;
+	cmd%[2] := v% mod 256;
+    
+    PrintLog("Set atten on rack/pos %d/%d to %f %x %x %x\n", rackNumber%, positionNumber%, atten, cmd%[0], cmd%[1], cmd%[2]);
+    
+  	return xbStandForm%(xbGetXLN%(rackNumber%, positionNumber%), cmd%, len%);
+    
+'    PrintLog("Skipping setting attenuation for amplifier debug purposes");
+'    return 0;
+
+end
 
 
 func PM1spkon%(sn%)
