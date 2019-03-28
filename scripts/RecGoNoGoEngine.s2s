@@ -447,7 +447,7 @@ PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
     '31 is keyboard input also
     
     ' Record DAC0 (sound output) only on debug, it will inflate the file sizes...
-    if recDebug% = 1 then
+    if recSoundRecording% = 1 then
         SampleWaveform(recDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
         SampleTitle$(recDAC0Channel%, "DAC0");
         SampleComment$(recDAC0Channel%, "DAC0");
@@ -591,7 +591,7 @@ end
 '    recChanTM% := 30;  'That's the TextMark channel
 '    
 '    ' Record DAC0 (sound output) only on debug, it will inflate the file sizes...
-'    if recDebug% = 1 then
+'    if recSoundRecording% = 1 then
 '        SampleWaveform(recDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
 '        SampleTitle$(recDAC0Channel%, "DAC0");
 '        SampleComment$(recDAC0Channel%, "DAC0");

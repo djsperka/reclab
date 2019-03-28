@@ -40,7 +40,8 @@ var recTDTIsPresent%:=1;            'Is TDT present? Default to 1 (yes), default
 var recCEDIsPresent%:=1;            'Is CED 1401 present? Default to 1 (yes), default will apply after debug period
 var matlabOpenSuccess%:=-1;         'Was Matlab opened successfully?  Default to -1 (no matlab open)
 var recCalibIsPresent%:=1;          'Is the calibration file present?  Default to 1 (yes), default will apply after debug period    
-var recDebug%:=1;                   'Write debug log statements and record sound output?
+var recDebug%:=1;                   'Write debug log statements? 
+var recSoundRecording%;             'Record sound output?
 var dummyVar%;                      'For placeholder GUIs, just lets me have a checkbox setting SOMETHING
 
 
@@ -876,10 +877,11 @@ func RecDebugDialog%()
     DlgCheck(2, "TDT is present");
     DlgCheck(3, "CED 1401 is present");
     DlgCheck(4, "Calibration file is present");
-    DlgCheck(5, "Do Sound Recording and Debug Logging");
+    DlgCheck(5, "Do Sound Recording");
+    DlgCheck(6, "Do Debug Logging");
     
     ' Show the dialog. 
-    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recDebug%);
+    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -921,6 +923,7 @@ proc RecDebugGetParams()
     recTDTIsPresent% := GetIntRegistryValue%(key$, "TDTIsPresent", recTDTIsPresent%);
     recCEDIsPresent% := GetIntRegistryValue%(key$, "CEDIsPresent", recCEDIsPresent%);
     recCalibIsPresent% := GetIntRegistryValue%(key$, "CalibIsPresent", recCalibIsPresent%);
+    recSoundRecording% := GetIntRegistryValue%(key$, "SoundRecording", recSoundRecording%);
     recDebug% := GetIntRegistryValue%(key$, "Debug", recDebug%);
     
 	return;
@@ -946,6 +949,7 @@ proc RecDebugSaveParams()
     SetIntRegistryValue(key$, "TDTIsPresent", recTDTIsPresent%); 
     SetIntRegistryValue(key$, "CEDIsPresent", recCEDIsPresent%); 
     SetIntRegistryValue(key$, "CalibIsPresent", recCalibIsPresent%); 
+    SetIntRegistryValue(key$, "SoundRecording", recSoundRecording%);
     SetIntRegistryValue(key$, "Debug", recDebug%); 
     
 	return;
