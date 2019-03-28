@@ -1,18 +1,49 @@
-' $Log$
-' Revision 1.3  2016/04/01 23:34:47  devel
-' Force commit of accumulated changes from front rig.
-'
-' Revision 1.2  2008/04/08 18:53:51  devel
-' Added data$ dir (hardcoded).
-'
-' Revision 1.1  2008-03-07 20:17:53  devel
-' Initial add.
-'
-
 ' filesystemvars.s2s - defines variables script$, bin$, stim$. Dirs are defined
 ' WITHOUT trailing slash. 
-var bin$, script$, stim$, data$;
+
+' File system reference vars. Each var is a directory path, WITHOUT the trailing slash. 
+var bin$, script$, stim$, calib$, inputtables$;
 script$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2);	' folder containing this script
 bin$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\bin";	' Location of executables is ..\bin, relative to script dir
-stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";	' Location of stimuli is ..\stim, relative to script dir
-data$ := "c:\\data";
+stim$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\stim";
+calib$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\calib";
+inputtables$ := View(App(3)).FileName$(1) + View(App(3)).FileName$(2) + "..\\input_tables";
+
+var mykey$:="Reclab\\Data";
+var dataPathRoot$;
+Profile(mykey$, "PathRoot", "C:\\", dataPathRoot$);
+
+func GetDrivePath$()
+return dataPathRoot$;
+end
+
+func GetDataPath$()
+return GetDrivePath$() + "\\Data";
+end
+
+func GetStimPath$()
+return stim$;
+end
+
+
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+'	Get Current configuration START
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+
+func GetRigName$()
+	var key$;
+	var s$;
+	key$:="Reclab";
+	Profile(key$, "RigName", "default", s$);
+	return s$;
+end;
+
+func GetLocalCalibPath$()
+var p$;
+p$ := calib$ + "\\" + GetRigName$();
+return p$;
+end

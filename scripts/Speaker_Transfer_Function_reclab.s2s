@@ -5,6 +5,7 @@
 'set FSD to 100, set Frequency Weighting to A, plug AC out to ADC0
 #include "RegistryUtils.s2s"
 #include "recfuncs.s2s"
+#include "filesystemvars.s2s"
 var rigPort%;                       'port number for this rig that is held in the registry
 var keyGlob$;                       'registry key, "Glob" to make it different from local key$s
 
@@ -16,8 +17,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
 
 'First off, get the drive path
 var DrivePath$;
-'DrivePath$ := GetDrivePath$();
-DrivePath$ := "C:\\";  'hard-code drive path    
+DrivePath$ := GetDrivePath$();
 
 var ConfigFileName$;
 ConfigFileName$ := DrivePath$ + "Users\\reclab\\Desktop\\work\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
