@@ -60,7 +60,7 @@ end
 
 func CloseValve%()
     LogInfo("Close valve sample status " + str$(SampleStatus()));
-    SafeSampleKey("K");
+    SampleKey("K");  'Use SampleKey and not SafeSampleKey to allow actual cutoff in middle
     ToolbarEnable(1, 1);
     ToolbarEnable(2, 0);
     ToolbarEnable(3, 1);
