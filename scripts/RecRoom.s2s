@@ -6035,6 +6035,7 @@ end
 'For now it returns the number of columns read, without regard to whether there are strings/numbers in
 'any particular location.  As of now, the number of columns should be diagnostic of what type of file is
 'being read, but this may change in the future.
+'Updated to return a sensible error if file is not found! 4/8/2019 -jj
 func RecVerifyInputFile%(fileIn$)
     
     var fh0%;
@@ -6051,6 +6052,20 @@ func RecVerifyInputFile%(fileIn$)
 
     'printlog("opening file %s \n", fileIn$);
     fh0%:=FileOpen(fileIn$,8,0);
+    
+    'Check for existence of file - nonexistence had previously thrown a "file does not have header line" error...!
+    docase
+    case fh0% = -1518 then
+        printlog("File %s does not exist!  Failure to read!\n",fileIn$);
+        message("Starting over!|File %s does not exist!",fileIn$);
+        return -1;
+    case fh0% < 0 then
+        printlog("Unknown error in opening file %s!  Failure to read!\n",fileIn$);
+        printlog("Error may be: %s\n",Error$(fh0%));
+        message("Starting over!|Unknown error in opening file %s, check log for further details!",fileIn$);
+        return -1;
+    endcase
+    
     
     'readsetup(""," ","","","	");
     readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
