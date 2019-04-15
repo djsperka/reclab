@@ -3357,7 +3357,9 @@ func IdleLoop%()
                 'Decrement current trial index (which was incremented above in stateInitializeTrials)
                 recCurrentTrial% := recCurrentTrial% - 1;
                 'Send current trial to "middle" of remaining trials
-                SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
+                if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                    SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
+                endif;
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
                 'numFPs% += 1;  'increment FP counter   'NOTE: NOT SURE WHETHER TO INCREMENT FA COUNTER HERE OR NOT
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response --> OR, delete reshuffling above and do FA timeout
@@ -3426,7 +3428,9 @@ func IdleLoop%()
                 recCurrentTrial% := recCurrentTrial% - 1;
                 
                 'Send current trial to "middle" of remaining trials
-                SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
+                if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                    SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
+                endif;
                 
                 ChangeStateTo(stateInitializeTrials%); 
                 tNextTrial := tNow;  'ready to go
@@ -3461,7 +3465,9 @@ func IdleLoop%()
                 recCurrentTrial% := recCurrentTrial% - 1;
                 
                 'Send current trial to "middle" of remaining trials
-                SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
+                if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                    SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
+                endif;
                 
                 ChangeStateTo(stateInitializeTrials%); 
                 tNextTrial := tNow;  'ready to go
