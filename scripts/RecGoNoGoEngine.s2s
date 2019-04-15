@@ -3354,10 +3354,10 @@ func IdleLoop%()
                 case isTerminalS1% = 0 then
                     ChangeThresh2(doDecPassiveFA%[]);
                 endcase;
-                'Decrement current trial index (which was incremented above in stateInitializeTrials)
-                recCurrentTrial% := recCurrentTrial% - 1;
-                'Send current trial to "middle" of remaining trials
                 if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                    'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                    recCurrentTrial% := recCurrentTrial% - 1;
+                    'Send current trial to "middle" of remaining trials
                     SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
                 endif;
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
@@ -3423,12 +3423,11 @@ func IdleLoop%()
                 'stimulus and one on a prior stimulus.  Note that in the future there may be human experiments where this
                 'distinction is valid, so I'm keeping it in.  In that event (only vaguely planned) I think the best way will
                 'be to branch inside this logic state.
-                
-                'Decrement current trial index (which was incremented above in stateInitializeTrials)
-                recCurrentTrial% := recCurrentTrial% - 1;
-                
-                'Send current trial to "middle" of remaining trials
+
                 if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                    'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                    recCurrentTrial% := recCurrentTrial% - 1;
+                    'Send current trial to "middle" of remaining trials
                     SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
                 endif;
                 
@@ -3461,11 +3460,10 @@ func IdleLoop%()
                 RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
                 recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
                 
-                'Decrement current trial index (which was incremented above in stateInitializeTrials)
-                recCurrentTrial% := recCurrentTrial% - 1;
-                
-                'Send current trial to "middle" of remaining trials
                 if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                    'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                    recCurrentTrial% := recCurrentTrial% - 1;
+                    'Send current trial to "middle" of remaining trials
                     SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
                 endif;
                 
