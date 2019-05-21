@@ -555,8 +555,10 @@ while recReadyToQuit% = 0 do
             'Get stimfile and trials file lists
             RecFRAExpListLoadGetParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
             'Load trials file, stim/cal file
+            view(recLog%).print("Stimfile is " + recFRATrialsNameLoad$[recFRAExpIndexLoad%]);
             trialsOK% := RecLoadTrialsFile%(recFRATrialsNameLoad$[recFRAExpIndexLoad%],recTotalTrials%);
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
+                view(recLog%).print("Trials file is " + recFRAStimcalNameLoad$[recFRAExpIndexLoad%]);
                 stimOK% := RecLoadStimCalFile%(recFRAStimcalNameLoad$[recFRAExpIndexLoad%],recNSpeakers%,recTotalStim%);
             endif;
             recSelectedStimFile$ := recFRAStimcalNameLoad$[recFRAExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
@@ -4850,7 +4852,8 @@ end
 'without a ton of manual work
 
 proc RecFRAExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
-	var key$;
+var key$;
+var i%;
     key$:="Reclab\\FRAExpListLoadParam";
 
     PrintLog("RecFRAExpListLoadGetParams\n");
@@ -4894,89 +4897,95 @@ proc RecFRAExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
     expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
     expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-   
-    stimcalName$[0] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
+
+for i% := 0 to 39 do
+    stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName" + Str$(i%), stimcalName$[i%]);
+    trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName" + Str$(i%), trialsName$[i%]);
+next;
+
+
+    'stimcalName$[0] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
+    'stimcalName$[1] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
+    'stimcalName$[2] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
+    'stimcalName$[3] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
+    'stimcalName$[4] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
+    'stimcalName$[5] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
+    'stimcalName$[6] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
 '    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[7] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
-    stimcalName$[31] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
+    'stimcalName$[7] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
+    'stimcalName$[8] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
+    'stimcalName$[9] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
+    'stimcalName$[10] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
+    'stimcalName$[11] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
+    'stimcalName$[12] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
+    'stimcalName$[13] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
+    'stimcalName$[14] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
+    'stimcalName$[15] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
+    'stimcalName$[16] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
+    'stimcalName$[17] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
+    'stimcalName$[18] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
+    'stimcalName$[19] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
+    'stimcalName$[20] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
+    'stimcalName$[21] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
+    'stimcalName$[22] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
+    'stimcalName$[23] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
+    'stimcalName$[24] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
+    'stimcalName$[25] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
+    'stimcalName$[26] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
+    'stimcalName$[27] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
+    'stimcalName$[28] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
+    'stimcalName$[29] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
+    'stimcalName$[30] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
+    'stimcalName$[31] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
+    'stimcalName$[32] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
+    'stimcalName$[33] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
+    'stimcalName$[34] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
+    'stimcalName$[35] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
+    'stimcalName$[36] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
+    'stimcalName$[37] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
+    'stimcalName$[38] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
+    'stimcalName$[39] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
     
-    trialsName$[0] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+    'trialsName$[0] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
+    'trialsName$[1] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
+    'trialsName$[2] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
+    'trialsName$[3] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
+    'trialsName$[4] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
+    'trialsName$[5] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
+    'trialsName$[6] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
+    'trialsName$[7] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
+    'trialsName$[8] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
+    'trialsName$[9] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
+    'trialsName$[10] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
+    'trialsName$[11] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
+    'trialsName$[12] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
+    'trialsName$[13] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
+    'trialsName$[14] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
+    'trialsName$[15] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
+    'trialsName$[16] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
+    'trialsName$[17] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
+    'trialsName$[18] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
+    'trialsName$[19] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
+    'trialsName$[20] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
+    'trialsName$[21] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
+    'trialsName$[22] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
+    'trialsName$[23] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
+    'trialsName$[24] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
+    'trialsName$[25] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
+    'trialsName$[26] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
+    'trialsName$[27] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
+    'trialsName$[28] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
+    'trialsName$[29] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
+    'trialsName$[30] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
+    'trialsName$[31] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
+    'trialsName$[32] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
+    'trialsName$[33] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
+    'trialsName$[34] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
+    'trialsName$[35] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
+    'trialsName$[36] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
+    'trialsName$[37] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
+    'trialsName$[38] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
+    'trialsName$[39] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
