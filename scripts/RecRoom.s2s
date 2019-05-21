@@ -60,14 +60,19 @@ var recExpJoyTrnButton%:=12; '*jao
 var recExpSpaceDisButton%:=13; '*jao 
 var recSpaceDisAddExpButton%:=14; 'more buttons!
 var recSpaceDisDeleteExpButton%:=15;  'moar buttons!!
-var recExpAudiogramButton%:=16;  'maori buttons!!!!    
-var recFRAAddExpButton%:=17;
-var recFRADeleteExpButton%:=18;    
+var recExpAudiogramButton%:=16;  'maori buttons!!!! 
+var recExpHumanFCButton%:=17;    
+var recExpHumanFCAddExpButton%:=18;
+var recExpHumanFCDeleteExpButton%:=19;
+var recFRAAddExpButton%:=20;
+var recFRADeleteExpButton%:=21;    
+var recSelectStimDistractorFileButton%:=22;    
     
 
 'Selection Dialog variables
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
 var recSpeakerArrayIndex%;          'Allows selection of a speaker array via dialog list
+var recSpeakerArrayIndex2%;         'Allows selection of another speaker array via dialog list (to assign which PA4 if there are two)    
 var recDoNotShuffle%;               'Allows non-shuffle of trial order
 
 'Search Dialog variables
@@ -161,6 +166,7 @@ var recFRATrialsNameLoad$[recFRANumExps%];    'Trials file names, loading files
 var recFRAExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recFRAExpIndexGen%;          'Experiment index, for generating stims, etc. 
 var recFRARepeatsPerStim% := 1;       'Number of repeats for each stimulus defined in the trials file   
+var recHumanFCRepeatsPerStim% := 1;    
 var recRepeatsPerStim%;       'Number of repeats for each stimulus defined in the trials file    
 var recFRAText2%;    
 var recFRALoadStim% := 1;
@@ -213,6 +219,7 @@ var recAMDiscMatGenStim%;           'If 1, generate stimuli with matlab, if 0 re
 var recAMDiscText1%;                'Allows enable/disable (= black/grey) of text item 1
 var recAMDiscText2%;                'Allows enable/disable (= black/grey) of text item 2
 var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
+var recSelectedStimDistractorFile$;    
 var recSelectedTrialsFile$;         'Trials file selected in add/delete
 const recAMDiscNumExps% := 40;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
 var recAMDiscExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
@@ -249,7 +256,16 @@ var recSpaceDisTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generat
 var recSpaceDisExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recSpaceDisExpIndexGen%;          'Experiment index, for generating stims, etc.
 'var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
-
+    
+    
+'Human Forced Choice Dialog variables
+const recHumanFCNumExps% := 40;
+var recHumanFCExpNameLoad$[recHumanFCNumExps%];
+var recHumanFCStimcalNameLoad$[recHumanFCNumExps%];
+var recHumanFCStimcalDistractorNameLoad$[recHumanFCNumExps%];
+var recHumanFCTrialsNameLoad$[recHumanFCNumExps%];
+var recHumanFCExpIndexLoad%;
+    
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
 var recMonkPrefix$;                 'String to hold monkey prefix, used in naming files - bit of a misnomer, will be used as complete file name    
@@ -269,8 +285,8 @@ var recFileSaveLoc$;
 recFileSaveLoc$  := recDrivePath$ + "Data\\";       'Have to set this...  
 var recCalibLoc$;    
 recCalibLoc$ := recDrivePath$ + "Data\\Calib\\";           'Have to set this too...
-'const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2017\\testTextFiles\\";       'Have to set this...  
-'const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";           'Have to set this too...   
+const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2017\\testTextFiles\\";       'Have to set this...  
+const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";           'Have to set this too...   
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    
@@ -293,23 +309,33 @@ var recWhichDialogCalled%;          'lets us know which dialog to call
 var recLogThisResult% := 1;         'by default, log every result, Audiogram (perhaps other exps later) will update this on a trial-by-trial basis and only log what is requested
     
 'Speaker variables
-const recMaxSpeaker%:=31;           'Maximum number of simultaneous speakers
+const recMaxSpeaker%:=31;           'Maximum number of simultaneous speakers (31 is not currently implemented)
 var recS1Speaker%;                  'Speaker on which S1 plays
 var recS2Speaker%;                  'Speaker on which S2 plays
-var recNSpeakers%;                  'How many speakers are there in the array (usually 15, 16, or 31)   
-
+var recNSpeakers%;                  'How many speakers are there in the array (usually 15 or 16)  
+var arrayPA4ID%;                    'What is the PA4 ID for the PA4 connected to the array?    
+var standalonePA4ID%;               'What is the PA4 ID for the PA4 connected to the standalone speaker?    
+    
 'Trial list generation variables
 const recMaxStim%:=1000;            'Maximum number of stimuli, 1000 is probably overlarge
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
 const recMaxTrial%:=5000;           'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
 var recTotalStim%;                  'Total number of stimuli specified in Stim or Stim/Cal file
+var recTotalDistractorStim%;        'Total number of stimuli specified in distractor version of Stim/Cal file    
 var recMinS1%;                      'Minimum number of S1s
 var recVarS1%;                      'Variable number of S1s
 var recPropCatch;                   'Proportion of catch trials
-var recTrialLoadLoc$[recMaxStim%];  'Disk location of files to load, stim/cal file
-var recTrialDur[recMaxStim%];       'Duration of each stimulus, in ms, stim/cal OR stim file
+var recTrialLoadLoc$[recMaxStim%];            'Disk location of files to load, stim/cal file
+var recTrialLoadLocDistractor$[recMaxStim%];  'Disk location of files to load, stim/cal file, distractors
+var recTrialDur[recMaxStim%];       '          Duration of each stimulus, in ms, stim/cal OR stim file
+var recTrialDurDistractor[recMaxStim%];       'Duration of each stimulus, in ms, stim/cal OR stim file, distractors
+var recTrialMF[recMaxStim%];                  'Modulation frequency of each stimulus    
+var recTrialMFDistractor[recMaxStim%];        'Modulation frequency of each stimulus, distractors
+var recTrialCarrier$[recMaxStim%];            'Carrier type of each stimulus
+var recTrialCarrierDistractor$[recMaxStim%];  'Carrier type of each stimulus, distractors 
 var recTrialStimCal[recMaxStim%][recMaxSpeaker%];    'A calibration matrix, used for stim/cal when loading
+var recTrialStimCalDistractor[recMaxStim%][recMaxSpeaker%];    'A calibration matrix, used for stim/cal when loading, distractors
 var recTrialGenLowpassHz[recMaxStim%];               'A list of lowpass values - if -1, no lowpass, same as highpass means tone
 var recTrialGenHighpassHz[recMaxStim%];              'Same as above, highpass
 var recTrialGenIsSweep%[recMaxStim%];                'If 1, Lo/Hi Hz values will correspond to FM sweep instead of BP noise limits
@@ -321,15 +347,21 @@ var recTrialGenGauss%[recMaxStim%];                  'If 1 create Gaussian noise
 var recTrialGenRampMS[recMaxStim%];                  'Duration in ms of front/back ramp, ramp is 1-Cos^2
 var recTrialGenSeed%[recMaxStim%];                   'Seed for random number generator, 0 = unspecified, will make own random number
                                                          'Please note that the concept of using the RNG to get a seed for the RNG is hilarious, but not redundant in this case.
+      
+    
     
 var recGeneratedAtten[recMaxPWA%];  'for calibration of generated stims  
     
-var recTrialS1%[recMaxTrial%];      'Index corresponding to S1 stimulus (index to recTrialLoadLoc$ or recTrialGen...)
-var recTrialS2%[recMaxTrial%];      'Index corresponding to S2 stimulus
-var recTrialS1Spkr%[recMaxTrial%];  'Index corresponding to S1 speaker
-var recTrialS2Spkr%[recMaxTrial%];  'Index corresponding to S2 speaker
-var recTrialS1DeltadB[recMaxTrial%];'Allows a single trial's S1 to be different from default intensity, currently a hypothetical ability
-var recTrialS2DeltadB[recMaxTrial%];'Allows a single trial's S2 to be different from default intensity, currently a hypothetical ability    
+var recTrialS1%[recMaxTrial%];                'Index corresponding to S1 stimulus (index to recTrialLoadLoc$ or recTrialGen...)
+var recTrialS2%[recMaxTrial%];                'Index corresponding to S2 stimulus
+var recTrialS1Spkr%[recMaxTrial%];            'Index corresponding to S1 speaker
+var recTrialS2Spkr%[recMaxTrial%];            'Index corresponding to S2 speaker
+var recTrialS1DeltadB[recMaxTrial%];          'Allows a single trial's S1 to be different from default intensity
+var recTrialS2DeltadB[recMaxTrial%];          'Allows a single trial's S2 to be different from default intensity   
+var recTrialDistractor%[recMaxTrial%];        'Index corresponding to distractor stimulus 
+var recTrialDistractorSpkr%[recMaxTrial%];    'Index corresponding to distractor speaker
+var recTrialDistractorDeltadB[recMaxTrial%];  'Allows a single trial's distractor to be different from default intensity     
+    
 var recPlayPoints%;                 'Holds the number of points to play for each stimulus    
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
 const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus, must be a constant   
@@ -357,6 +389,12 @@ var rec2StimList%[recMaxTrial%][2]; 'first dimension: trial number, second dimen
 var rec2SpeakerList%[recMaxTrial%][2]; 'same format as 2stimlist
 var rec2DeltadBList[recMaxTrial%][2];
 var recFRAReward%[recMaxTrial%];    
+    
+    
+'Human Forced Choice specific trial list variables
+var recDistractorStimList%[recMaxTrial%];
+var recDistractorSpeakerList%[recMaxTrial%];
+var recDistractorDeltadBList[recMaxTrial%];
     
     
 'Timing Parameters
@@ -440,9 +478,7 @@ endif;
 'Begin Code Execution
 '================================================================================================
 
-recLog% := FileOpen(recFileSaveLoc$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
-'recLog% := FileOpen(recFileSaveLocKershaw$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
-view(recLog%).print("running RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
+
 
 'Run initial dialog to determine presence of Matlab/TDT/1401
 'This dialog will be disabled once testing is complete, but the remainder of calls below it should remain
@@ -450,6 +486,15 @@ if RecDebugDialog%() <> 1 then
     LogError("NoState", "RecDebugDialog% was cancelled!");
     halt;
 endif;
+
+'Open RecLog, use "Kershaw" location (now "Seager", but directory is the same) in lobby, RecLab location in RecLab
+'(Minor Note: This used to happen before the RecDebugDialog, but now comes after since RecDebug% isn't filled yet)
+if recDebug% = 2 then
+    recLog% := FileOpen(recFileSaveLocKershaw$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
+else
+    recLog% := FileOpen(recFileSaveLoc$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
+endif;
+view(recLog%).print("running RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 
 
 'Open a Matlab instantiation, if present
@@ -509,7 +554,7 @@ while recReadyToQuit% = 0 do
         'For generated stimuli, load calibration file to Matlab here
         docase
         case recExpToRun% = recExpSearchButton% then  'For Search, all stimuli are generated
-            recExptText$ := "Running Search " + recExptText$;
+            recExptText$ := "Running Search " + recExptText$;  'the Search dialog puts a stimulus type in recExptText$ before we get here, this is the only expt that does that (thus far)
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace
@@ -533,7 +578,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 0 then  'FRA
-            recExptText$ := "Running FRA ";  '+ recExptText$???
+            recExptText$ := "Running FRA "; 
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'TODO Load calibration file into Matlab's workspace, same details as above in Search
@@ -553,7 +598,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then  'FRA pulling stimuli from input table
-            recExptText$ := "Running FRA ";  '+ recExptText$???
+            recExptText$ := "Running FRA ";
             'Get stimfile and trials file lists
             RecFRAExpListLoadGetParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -568,7 +613,7 @@ while recReadyToQuit% = 0 do
             
             
         case recExpToRun% = recExpJoyTrnButton% then '*jao
-            recExptText$ := "Running Joy Train " + recExptText$;
+            recExptText$ := "Running Joy Train ";
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'Load calibration file into Matlab's workspace, same details as above in Search
@@ -587,7 +632,7 @@ while recReadyToQuit% = 0 do
                 endif;
             endif; '*jao            
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 0 then  'Loading stims
-            recExptText$ := "Running AMDisc "; '+ recExptText$???
+            recExptText$ := "Running AMDisc "; 
             'Get stimfile and trials file lists
             RecAMDiscExpListLoadGetParams(recAMDiscExpNameLoad$[],recAMDiscStimcalNameLoad$[],recAMDiscTrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -601,7 +646,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
                     
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 1 then  'Generating stims
-            recExptText$ := "Running AMDisc "; '+ recExptText$???
+            recExptText$ := "Running AMDisc "; 
             'Get stimfile and trials file lists
             RecAMDiscExpListGenGetParams(recAMDiscExpNameGen$[],recAMDiscStimcalNameGen$[],recAMDiscTrialsNameGen$[]);
             'Load trials file, stim file, cal file
@@ -628,7 +673,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpSpaceDisButton% and recMatGenStim% = 0 then  'Loading stims
-            recExptText$ := "Running SpaceDis "; '+ recExptText$???
+            recExptText$ := "Running SpaceDis "; 
             'Get stimfile and trials file lists
             RecSpaceDisExpListLoadGetParams(recSpaceDisExpNameLoad$[],recSpaceDisStimcalNameLoad$[],recSpaceDisTrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -642,7 +687,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
                     
         case recExpToRun% = recExpSpaceDisButton% and recMatGenStim% = 1 then  'Generating stims
-            recExptText$ := "Running SpaceDis "; '+ recExptText$???
+            recExptText$ := "Running SpaceDis "; 
             'Get stimfile and trials file lists
             RecSpaceDisExpListGenGetParams(recSpaceDisExpNameGen$[],recSpaceDisStimcalNameGen$[],recSpaceDisTrialsNameGen$[]);
             'Load trials file, stim file, cal file
@@ -669,7 +714,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
-            recExptText$ := "Running Cueing "; '+ recExptText$???
+            recExptText$ := "Running Cueing "; 
             'Not Yet Iimplemented
             'Copy from load version of AM Disc when cueing is ready
             calibOK% := 0;  'Short circuit, this means OK.
@@ -721,6 +766,27 @@ while recReadyToQuit% = 0 do
             endif;
             
             
+        case recExpToRun% = recExpHumanFCButton% then  'For Human Forced Choice, at least for now, all stimuli are generated
+            recExptText$ := "Running Human Forced Choice "; 
+            
+            'Get stimfile and trials file lists
+            RecHumanFCExpListLoadGetParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
+            'Load trials file, stim/cal file
+            trialsOK% := RecLoadTrialsFile9%(recHumanFCTrialsNameLoad$[recHumanFCExpIndexLoad%],recTotalTrials%);
+            if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
+                stimOK% := RecLoadStimCalDistractorFile%(recHumanFCStimcalDistractorNameLoad$[recHumanFCExpIndexLoad%],recNSpeakers%,recTotalDistractorStim%);
+                if stimOK% = 1 then  'Don't bother with loading S1/S2 Stim/Cal file if distractor one is bad
+                    stimOK% := RecLoadStimCalMFCarrierFile%(recHumanFCStimcalNameLoad$[recHumanFCExpIndexLoad%],1,recTotalStim%);  'here, there is only 1 S1/S2 speaker, at least for now
+                else
+                    stimOK% := -1;  'This is an indicator that the distractor file read failed, as opposed to S1/S2
+                endif;
+            endif;
+            recSelectedStimFile$ := recHumanFCStimcalNameLoad$[recHumanFCExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedStimDistractorFile$ := recHumanFCStimcalDistractorNameLoad$[recHumanFCExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recHumanFCTrialsNameLoad$[recHumanFCExpIndexLoad%]; 'ditto. for BehOutput
+                
+            calibOK% := 0;  'Short circuit, this means OK.
+                        
             
         endcase;
         
@@ -741,13 +807,40 @@ while recReadyToQuit% = 0 do
             
             'Make sure that the trials file does not specify more speakers than are present in the selected speaker array
             'Use recTrialDur[], recTrialS1Spkr%[], recTrialS2Spkr%[]
-            if max(recTrialS1Spkr%[max(recTrialS1Spkr%)],recTrialS2Spkr%[max(recTrialS2Spkr%)]) <= recNSpeakers% then
+            var tempSpeakerCount%;
+            if recExpToRun% = recExpHumanFCButton% then  'For this experiment, the arrays are "switched", the S1/S2 stimuli are on the standalone speaker and the distractors are on the array
+                tempSpeakerCount% := 1;
+            else
+                tempSpeakerCount% := recNSpeakers%;
+            endif;
+            if max(recTrialS1Spkr%[max(recTrialS1Spkr%)],recTrialS2Spkr%[max(recTrialS2Spkr%)]) <= tempSpeakerCount% then
                 printlog("All speakers in trials file are present in array!\n");
             else
-                printlog("Maximum speaker in trials file is %d but there are only %d speakers in the specified speaker array!\n",max(recTrialS1Spkr%[max(recTrialS1Spkr%)],recTrialS2Spkr%[max(recTrialS2Spkr%)]),recNSpeakers%);
+                printlog("Maximum speaker in trials file is %d but there are only %d speakers in the specified speaker array!\n",max(recTrialS1Spkr%[max(recTrialS1Spkr%)],recTrialS2Spkr%[max(recTrialS2Spkr%)]),tempSpeakerCount%);
                 message("Starting Over!|Trials File specifies illegal speaker number!");
                 trialsOK% := -1;
             endif;
+            
+            'Additional checks for HumanFC experiment
+            if recExpToRun% = recExpHumanFCButton% then
+                'Make sure that the trials file does not specify more distractor stimuli than are present in the Distractor Stim or Stim/Cal file
+                if recTrialDistractor%[max(recTrialDistractor%)] <= recTotalDistractorStim% then
+                    printlog("All distractor stimuli in trials file are accounted for in Distractor Stim or Stim/Cal file!\n");
+                else
+                    printlog("Maximum distractor stimulus in trials file is %d but not only %d stimuli are specified in Distractor Stim or Stim/Cal file!\n",recTrialDistractor%[max(recTrialDistractor%)],recTotalDistractorStim%);
+                    message("Starting Over!|Trials File specifies illegal stimulus number!");
+                    trialsOK% := -1;
+                endif;
+                if recTrialDistractorSpkr%[max(recTrialDistractorSpkr%)] <= recNSpeakers% then
+                    printlog("All distractor speakers in trials file are present in array!\n");
+                else
+                    printlog("Maximum distractor speaker in trials file is %d but there are only %d speakers in the specified speaker array!\n",recTrialDistractorSpkr%[max(recTrialDistractorSpkr%)],recNSpeakers%);
+                    message("Starting Over!|Trials File specifies illegal speaker number!");
+                    trialsOK% := -1;
+                endif;
+            endif;
+            
+            
             
             'Make sure that all the stimuli in the Stim file actually exist, if loading
             if recMatGenStim% = 0 then
@@ -765,8 +858,23 @@ while recReadyToQuit% = 0 do
                         fileclose();  'Close fhglob%, currently open file
                     endif;
                 next;
+                if recExpToRun% = recExpHumanFCButton% then  'Check distractors too
+                    tempglob% := 0;
+                    for iglob%:=0 to recTotalDistractorStim%-1 do
+                        if tempglob% = 0 then  'this is because we can't break - and we don't want like 100 messages if all 100 stims don't exist
+                            fhglob%:=fileopen(recTrialLoadLocDistractor$[iglob%],9,0);
+                            if fhglob%<0 then
+                                message("Warning Message | Failed to load at least one distractor stimulus waveform!");
+                                printlog("Stim waveform %s failed to load!\n",recTrialLoadLocDistractor$[iglob%]);
+                                trialsOK% := -1;
+                                'Can't BREAK prior to Spike2 v. 7.0!
+                                tempglob% := 1;
+                            endif;
+                            fileclose();  'Close fhglob%, currently open file
+                        endif;
+                    next;
+                endif;
             endif;
-            'endif; 'end color reminder dialog, i think
         endif;
         
         
@@ -781,6 +889,9 @@ while recReadyToQuit% = 0 do
         case stimOK% = 0 then
             message("Failed to load stim/stimcal file!");
             
+        case stimOK% = -1 then
+            message("Failed to load distractor stim/stimcal file!");    
+            
         case calibOK% = 0 then
             message("Failed to load calibration file to Matlab workspace!");
             
@@ -794,7 +905,7 @@ while recReadyToQuit% = 0 do
                 'do Trial List Generation stuff!
                 recSearchLoaded% := 0;  'reset variable to allow PWAs to be loaded only once for SEARCH
                 recNTrials% := recMaxTrial%;  'Allow Search to run until experimenter stops it or the variable runs out
-                if recDebug% = 1 then
+                if recDebug% > 0 then
                     recNTrials% := 10; 'testing
                 endif;
                 result% := GenTrialsSearch%();  'Generate trials for search.  Return result of 1 if OK, 0 if not.
@@ -817,7 +928,7 @@ while recReadyToQuit% = 0 do
                 'do Trial List Generation stuff!
                 recSearchLoaded% := 0;  'reset variable to allow PWAs to be loaded only once for SEARCH, or JoyTrain, because all the trials are the same!
                 recNTrials% := recMaxTrial%;  'Allow Search to run until experimenter stops it or the variable runs out
-                if recDebug% = 1 then
+                if recDebug% > 0 then
                     recNTrials% := 10; 'testing
                 endif;
                 result% := GenTrialsJoyTrain%();  'Generate trials for JoyTrain
@@ -842,10 +953,14 @@ while recReadyToQuit% = 0 do
                 'message("AUDIOGRAM is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 result% := GenTrialsAudiogram%();  'Generate trials for Audiogram.  Return result of 1 if OK, 0 if not.
                 
+            case recExpToRun% = recExpHumanFCButton% then
+                'do Trial List Generation stuff!
+                result% := GenTrialsHumanFC%();  'Generate trials for HumanFC.  Return result of 1 if OK, 0 if not.
+                
             endcase            
             recLastExpRun% := recExpToRun%; 'i think this should go here; remember the experiment that was just run for the next time around
             'Run presentation engine if CED is present or we are debugging
-            if recCEDIsPresent% = 1 or recDebug% = 1 then
+            if recCEDIsPresent% = 1 or recDebug% > 0 then
                 view(recLog%).print("About to call RunGoNoGoEngine%().\n");    
                 recReadyToQuit% := RunGoNoGoEngine%();  'will return 1 on fatal error
             endif;
@@ -910,6 +1025,11 @@ func RecDebugDialog%()
     
     var i%;
     var status% := 0;
+    var debugLoc$[3];
+    
+    debugLoc$[0] := "No Debug Logging";
+    debugLoc$[1] := "Debug Logging, Rec Lab";
+    debugLoc$[2] := "Debug Logging, Jeff in lobby";
     
     ' Fetch parameters from registry    
     RecDebugGetParams();   'RecDebugGetParams() is below    
@@ -922,7 +1042,8 @@ func RecDebugDialog%()
     DlgCheck(3, "CED 1401 is present");
     DlgCheck(4, "Calibration file is present");
     DlgCheck(5, "Do Sound Recording");
-    DlgCheck(6, "Do Debug Logging");
+    'DlgCheck(6, "Do Debug Logging");
+    DlgList(6,30,debugLoc$[],3);
     
     ' Show the dialog. 
     i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%);
@@ -1194,7 +1315,7 @@ proc RecFRALoadGetParams()
 	return;
 end
 
-'===== End RecAMDiscGetParams =====
+'===== End RecFRALoadGetParams =====
 '
 '
 
@@ -1320,6 +1441,44 @@ end
 '
 
 
+'
+'===== recHumanFCLoadSaveParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecHumanFCLoadSaveParams()
+	var key$;
+    key$:="Reclab\\HumanFCParam";
+    
+    SetIntRegistryValue(key$, "HumanFCExpIndexLoad", recHumanFCExpIndexLoad%); 
+    SetIntRegistryValue(key$, "HumanFCRepeatsPerStim", recHumanFCRepeatsPerStim%);
+    
+	return;
+end
+
+'===== End RecHumanFCLoadSaveParams =====
+'
+'
+'
+'===== RecHumanFCLoadGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecHumanFCLoadGetParams()
+	var key$;
+    key$:="Reclab\\HumanFCParam";
+    
+    recHumanFCExpIndexLoad% := GetIntRegistryValue%(key$, "HumanFCExpIndexLoad", recHumanFCExpIndexLoad%); 
+    recHumanFCRepeatsPerStim% := GetIntRegistryValue%(key$, "HumanFCRepeatsPerStim", recHumanFCRepeatsPerStim%);    
+    
+	return;
+end
+
+'===== End RecHumanFCLoadGetParams =====
+'
+'
+
+
+
+
 
 '
 '
@@ -1334,10 +1493,10 @@ func RecExpSelectDialog%()
     var status% := 0;  
     var spkArr$[4];
     var levText$;
-    spkArr$[0] := "None Selected";
+    spkArr$[0] := "None";
     spkArr$[1] := "15";
     spkArr$[2] := "16";
-    spkArr$[3] := "11";
+    spkArr$[3] := "Standalone";
     
     recExpSelectDialogAllowOK% := 0;  'Disable OK button to start, force selection of experiment
     
@@ -1356,48 +1515,80 @@ func RecExpSelectDialog%()
     
     DlgCreate("Experiment Selection Dialog",0,0,52,16);
     
-    DlgGroup("Experimental Details", 1,1,50,5);
+    DlgGroup("Experimental Details", 1,1,50,6);
     DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
-    DlgText("File suffix letter",32,2); DlgString(4,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
+    DlgText("File suffix letter",32,2); DlgString(5,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
     DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,32,0,3); '*jao  JJ sez: note that for stimulation reward, the max is 4, not 32.  But we can't really enforce this because reward type is set up in a later dialog
-    DlgList(3,"Speaker array used",spkArr$[],10,0,4);
+    DlgList(3,"Speaker array, first (left) PA4",spkArr$[],10,0,4);
+    DlgList(4,"Speaker array, second (right) PA4",spkArr$[],10,0,5);
     
     DlgGroup("Experiments", 1,7,50,6);
     DlgButton(0,"         Quit         ");
     DlgButton(1,"          OK          ");
-    DlgButton(recExpSearchButton%, "             Search             ", RecExpSearchDialog%, 2, 8);
-    DlgButton(recExpFRAButton%,    "FRA/Rate-level/Space", RecExpFRADialog%, 2, 9);
+    DlgButton(recExpSearchButton%, "              Search              ", RecExpSearchDialog%, 2, 8);
+    DlgButton(recExpFRAButton%,    "  FRA/Rate-level/Space  ", RecExpFRADialog%, 2, 9);
     DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 8);
-    DlgButton(recExpSpaceDisButton%, "         Space Disc         ", RecExpSpaceDisDialog%, 26, 9);
+    DlgButton(recExpSpaceDisButton%, "          Space Disc          ", RecExpSpaceDisDialog%, 26, 9);
     DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 10);
     DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 10); 'will go under FRA button '*jao
-    DlgButton(recExpAudiogramButton%, "        Audiogram        ", RecAudiogramDialog%, 2, 11);  
+    DlgButton(recExpAudiogramButton%, "           Audiogram           ", RecAudiogramDialog%, 2, 11);  
+    DlgButton(recExpHumanFCButton%, " Human Forced Choice ", RecExpHumanFCDialog%, 26, 11);
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
-    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 5);
-    DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 5);
+    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 6);
+    DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 6);
     
-    DlgCheck(5,"Do Not Shuffle Stimuli",2,13);
+    DlgCheck(6,"Do Not Shuffle Stimuli",2,13);
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%,blockTag$,recDoNotShuffle%);  'no items
+    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recDoNotShuffle%);  'no items
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        'Assign speaker number
+        
+        'Assign speaker number, old single PA4 version
+'        docase
+'        case recSpeakerArrayIndex% = 1 then
+'            recNSpeakers% := 15;
+'        case recSpeakerArrayIndex% = 2 then
+'            recNSpeakers% := 16;
+'        case recSpeakerArrayIndex% = 3 then
+'            recNSpeakers% := 11;  %11-speaker array does not actually exist
+'        endcase;
+        
+        'Assign speaker number and PA4 variables.  This is more complicated since the addition of a second PA4.
+        'Speaker number has to be either 15 or 16, we do not have any scenarios which currently allow ONLY the
+        'standalone speaker, nor any that allow two arrays, so recNSpeakers% applies to the main array, of which
+        'there must be exactly one.
         docase
-        case recSpeakerArrayIndex% = 1 then
+        case recSpeakerArrayIndex% = 1 or recSpeakerArrayIndex2% = 1 then  'both cannot be 1 due to the DlgAllow function
             recNSpeakers% := 15;
-        case recSpeakerArrayIndex% = 2 then
-            recNSpeakers% := 16;
-        case recSpeakerArrayIndex% = 3 then
-            recNSpeakers% := 11;  
+        case recSpeakerArrayIndex% = 2 or recSpeakerArrayIndex2% = 2 then  'both cannot be 2 due to the DlgAllow function
+            recNSpeakers% := 16; 
         endcase;
-            
-        'For the love of all that is holy DO NOT DO THIS!
-        'recMonkPrefix$ := recFileSaveLoc$ + recMonkPrefix$;
+        
+        'Assign PA4 variables
+        docase
+        case recSpeakerArrayIndex% = 1 or recSpeakerArrayIndex% = 2 then
+            arrayPA4ID% := xlnFirstPA4%;
+        case recSpeakerArrayIndex2% = 1 or recSpeakerArrayIndex2% = 2 then
+            arrayPA4ID% := xlnSecondPA4%;
+        else
+            message("Whoa! There does not appear to be an array selected and you should not have gotten this far!");
+            halt;
+        endcase
+        
+        docase 
+        case recSpeakerArrayIndex% = 3 then
+            standalonePA4ID% := xlnFirstPA4%;
+        case recSpeakerArrayIndex2% = 3 then
+            standalonePA4ID% := xlnSecondPA4%;
+        else
+            standalonePA4ID% := -1;  'No standalone PA4
+        endcase
+        'So now we have assigned recNSpeakers% to work as it always has, and two PA4IDs to be used when calling RecAttenByID%()
         
         status% := 1;
     else
@@ -1422,9 +1613,24 @@ end;
 ' This function is initially called with a "0" input
 func RecExpSelectDialogChanged%(item%) 
     var levText$;
+    var speakersOK% := 0;
+    
+    'Identifying legal speaker setups
+    'Basically, at least one must be an array, they can't both be arrays
+    docase
+    case (DlgValue(3) = 1 or DlgValue(3) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3) then
+        speakersOK% := 1;
+    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(3) = 0 or DlgValue(3) = 3) then
+        speakersOK% := 1;    
+    endcase
+    'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
+    
+    
     'This disables the "OK" button (though it will have different labels) until an experiment is selected
-    'AND a file name is chosen AND a number of electrodes is entered
-    if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 and DlgValue(3) > 0 then
+    'AND a file name is chosen AND a number of electrodes is entered AND the speaker array selection is legal
+    
+    'if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 and DlgValue(3) > 0 then
+    if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 and speakersOK% = 1 then
         DlgEnable(1,-1);  'enable "OK" 
     else
         DlgEnable(0,-1);  'Otherwise disable "OK"
@@ -2737,7 +2943,7 @@ end
 '
 '===== RecExpSpaceDisDialog =====
 
-'A dialog for the AMDisc experiment
+'A dialog for the SpaceDis experiment
 
 func RecExpSpaceDisDialog%()
     
@@ -2906,6 +3112,59 @@ end;
 '===== End RecExpCueingDialog =====
 '
 '
+
+
+'
+'
+'===== RecExpHumanFCDialog =====
+
+'A dialog for the Human Forced Choice experiment(s?)
+
+func RecExpHumanFCDialog%()
+    
+    var i%;
+    var status% := 0;
+    
+    ' Fetch parameters from registry    
+    RecHumanFCLoadGetParams();
+    RecHumanFCExpListLoadGetParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
+        
+    
+    ' Generate the dialog    
+    DlgCreate("Human Forced Choice Dialog",0,0,74,14);
+    
+    DlgGroup("Stimulus Selection",1,1,72,4);
+    DlgList(1,27,recHumanFCExpNameLoad$[],recHumanFCNumExps%,24,4);
+    recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,4);  'recExpHumanFCAddExpButton%
+    DlgButton(recExpHumanFCAddExpButton%, "  Add Experiment  ", RecHumanFCAddExp%,53,3);
+    DlgButton(recExpHumanFCDeleteExpButton%, "Delete Experiment ", RecHumanFCDeleteExp%,53,4);
+    
+    DlgInteger(2,"Repeats Per Stim",1,1000,18,6);
+    'DlgAllow(0xffff, 0, RecExpHumanFCDialogChanged%);   'don't think we'll need this
+    
+    
+    i%:=DlgShow(recHumanFCExpIndexLoad%,recHumanFCRepeatsPerStim%);   'Yes, that's it!
+
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        RecHumanFCLoadSaveParams();        
+        
+        DlgValue$(-1,"Run HumanFC"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
+        recExpToRun% := recExpHumanFCButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+   
+end;
+
+
 
 
 
@@ -4240,6 +4499,152 @@ end;
 
 '
 '
+'===== RecHumanFCAddExp =====
+
+'This is a dialog that comes up to allow adding "experiments" to the HumanFC dialog
+'Please note that in order to reset the list box in the calling dialog, we have to actually
+'CLOSE the calling dialog and reopen it.  That's gotta be manual.
+func RecHumanFCAddExp%()
+    
+    var i%;
+    var j%;
+    var k%;
+    var status% := 0;
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+    var mystr4$;
+    
+    
+    ' Fetch parameters from registry    
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Human FC Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    DlgButton(recSelectStimFileButton%,   "S1/S2 Stim/Cal File", RecSelectStimFile%,2,2);
+    DlgButton(recSelectTrialsFileButton%, "    Trials File   ", RecSelectTrialsFile%,2,3);
+    DlgButton(recSelectStimDistractorFileButton%,   "Distractor Stim/Cal File", RecSelectStimFile2%,2,4);
+    DlgString(2,40,100,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,100,"",26,3);  'for visual confirmation of selected distractor stim file
+    DlgString(4,40,100,"",26,4);  'for visual confirmation of selected trials file
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$,mystr4$);
+    
+    ' If user hit OK then add new experiment 
+	if i% = 1 then
+        'reload parameters
+        RecHumanFCExpListLoadGetParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
+        'find first empty slot
+        j% := 0;
+        k% := -1;
+        while j% < recHumanFCNumExps% do
+            if recHumanFCExpNameLoad$[j%] = "" then
+                k% := j%;  'k% holds index of first empty slot
+                j% := recHumanFCNumExps%;
+            endif;
+            j%+=1;
+        wend
+        'Return if all slots are full
+        if k% = -1 then
+            Message("All " + Str$(recHumanFCNumExps%) + " slots are full!  You must delete an experiment!");
+            return 1;
+        endif;
+        'Otherwise place values 
+        recHumanFCExpNameLoad$[k%] := mystr$;
+        recHumanFCStimcalNameLoad$[k%] := mystr2$;
+        recHumanFCTrialsNameLoad$[k%] := mystr3$;
+        recHumanFCStimcalDistractorNameLoad$[k%] := mystr4$;
+        'And save them
+        RecHumanFCExpListLoadSaveParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in HumanFCDialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecHumanFCAddExp =====
+'
+'
+
+
+
+'
+'
+'===== RecHumanFCDeleteExp =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the AMDisc dialog
+func RecHumanFCDeleteExp%()
+
+    var i%;
+    var j%;
+    var status% := 0;
+    var mystr$[recHumanFCNumExps%];
+    var mystr1$[recHumanFCNumExps%];
+    var mystr2$[recHumanFCNumExps%];
+    var mystr3$[recHumanFCNumExps%];
+    
+    var sli%;
+
+    
+    ' Fetch parameters from registry     
+    RecHumanFCExpListLoadGetParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Cueing Experiment DELETE Dialog", 62, 10);
+    DlgText("Select Experiment to Delete",2,1);
+    DlgList(1,27,mystr$,recHumanFCNumExps%,28,1);
+
+    ' Show the dialog. 
+    i%:=DlgShow(sli%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Remove experiment that has been selected and move everything up one
+        if sli% < recHumanFCNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recHumanFCNumExps%-2 do
+                mystr$[j%] := mystr$[j%+1];
+                mystr1$[j%] := mystr1$[j%+1];
+                mystr2$[j%] := mystr2$[j%+1];
+                mystr3$[j%] := mystr3$[j%+1];
+            next;
+        endif;
+        'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+        mystr$[recHumanFCNumExps%-1] := "";
+        mystr1$[recHumanFCNumExps%-1] := "";
+        mystr2$[recHumanFCNumExps%-1] := "";
+        mystr3$[recHumanFCNumExps%-1] := "";
+        
+        'Save the new values
+        RecHumanFCExpListLoadSaveParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+        
+        status% := 0;  'Close the calling dialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecHumanFCDeleteExp =====
+'
+'
+
+
+
+
+
+'
+'
 '===== RecSelectStimFile =====
 
 func RecSelectStimFile%()
@@ -4261,6 +4666,29 @@ end;
 '
 '
 
+
+'
+'
+'===== RecSelectStimFile2 =====
+
+func RecSelectStimFile2%()
+
+    var status% := 1;
+    var direc$;
+    var fh0%;
+    
+    direc$ := FilePath$();  'get current directory
+    fh0%:=FileOpen(direc$+"*.txt",1,0,"Please select a stimulus file");  'Find a stim file
+    direc$ := FileName$(0);  'Get full path of selected file
+    FileClose(fh0%);  'Just close the file, we're not using it
+    DlgValue$(4,direc$);  'Place filename into dialog item 2 of calling dialog
+	return status%;  'return 1 so calling dialog doesn't close
+    
+end;
+
+'===== End RecSelectStimFile =====
+'
+'
 
 
 
@@ -4296,134 +4724,16 @@ end;
 '===== RecAMDiscExpListLoadGetParams =====
 
 'Fetch experiment lists from the registry for AMDisc, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecAMDiscExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\AMDiscExpListLoadParam";
     
-    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
-    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
-    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
-    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
-    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
-    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
-    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
-    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
-    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
-    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
-    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
-    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
-    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
-    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
-    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
-    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
-    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
-    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
-    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
-    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
-    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
-    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
-    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
-    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
-    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
-    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
-    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
-    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
-    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
-    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
-    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
-    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
-    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
-    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
-    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
-    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
-    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
-    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
-    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-   
-    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
-    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
-    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
-    
-    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recAMDiscNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -4440,134 +4750,16 @@ end
 '===== RecAMDiscExpListGenGetParams =====
 
 'Fetch experiment lists from the registry for AMDisc, generating stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecAMDiscExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\AMDiscExpListGenParam";
     
-    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
-    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
-    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
-    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
-    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
-    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
-    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
-    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
-    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
-    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
-    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
-    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
-    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
-    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
-    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
-    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
-    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
-    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
-    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
-    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
-    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
-    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
-    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
-    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
-    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
-    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
-    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
-    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
-    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
-    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
-    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
-    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
-    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
-    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
-    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
-    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
-    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
-    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
-    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-	
-    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
-    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
-    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
-    
-    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recAMDiscNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
 	
 	return;
 end
@@ -4585,134 +4777,16 @@ end
 '===== RecAMDiscExpListLoadSaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecAMDiscExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\AMDiscExpListLoadParam";
     
-    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
-    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
-    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
-    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
-    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
-    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
-    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
-    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
-    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
-    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
-    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
-    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
-    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
-    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
-    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
-    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
-    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
-    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
-    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
-    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
-    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
-    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
-    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
-    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
-    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
-    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
-    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
-    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
-    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
-    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
-    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
-    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
-    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
-    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
-    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
-    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
-    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
-    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
-    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
-    
-    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
-    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
-    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
-    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
-    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
-    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
-    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
-    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
-    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
-    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
-    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
-    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
-    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
-    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
-    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
-    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
-    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
-    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
-    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
-    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
-    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
-    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
-    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
-    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
-    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
-    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
-    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
-    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
-    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
-    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
-    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
-    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
-    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
-    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
-    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
-    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
-    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
-    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
-    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
-    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
-    
-    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
-    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
-    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
-    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
-    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
-    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
-    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
-    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
-    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
-    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
-    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
-    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
-    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
-    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
-    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
-    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
-    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
-    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
-    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
-    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
-    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
-    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
-    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
-    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
-    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
-    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
-    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
-    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
-    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
-    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
-    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
-    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
-    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
-    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
-    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
-    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
-    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
-    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
-    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recAMDiscNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -4729,134 +4803,16 @@ end
 '===== RecAMDiscExpListGenSaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecAMDiscExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\AMDiscExpListGenParam";
     
-    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
-    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
-    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
-    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
-    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
-    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
-    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
-    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
-    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
-    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
-    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
-    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
-    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
-    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
-    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
-    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
-    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
-    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
-    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
-    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
-    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
-    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
-    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
-    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
-    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
-    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
-    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
-    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
-    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
-    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
-    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
-    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
-    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
-    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
-    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
-    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
-    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
-    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
-    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
-    
-    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
-    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
-    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
-    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
-    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
-    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
-    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
-    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
-    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
-    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
-    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
-    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
-    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
-    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
-    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
-    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
-    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
-    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
-    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
-    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
-    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
-    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
-    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
-    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
-    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
-    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
-    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
-    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
-    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
-    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
-    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
-    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
-    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
-    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
-    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
-    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
-    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
-    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
-    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
-    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
-    
-    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
-    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
-    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
-    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
-    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
-    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
-    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
-    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
-    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
-    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
-    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
-    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
-    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
-    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
-    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
-    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
-    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
-    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
-    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
-    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
-    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
-    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
-    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
-    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
-    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
-    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
-    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
-    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
-    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
-    SetStringRegistryValue(key$, "TrialsName30", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
-    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
-    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
-    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
-    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
-    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
-    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
-    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
-    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recAMDiscNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -4868,144 +4824,29 @@ end
 
 
 
-
-
 '
 '
 '===== RecFRAExpListLoadGetParams =====
 
 'Fetch experiment lists from the registry for AMDisc, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
-
 proc RecFRAExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\FRAExpListLoadParam";
+    
+    'Note that the file locations for StimCal and Trials files are not the normal default path
+    'Note that this really doesn't seem like a sensible thing to do, given that the function that
+    'selects the file location via the GUI saves a full-path, not partial-path location in the variable
+    'that is being saved in the registry.  This path concatenation should probably be done away with
+    'ASARP, with the caveat that apparently all the currently defined FRA experiments will have to be
+    're-done in the dialog box.
+    for i% := 0 to recFRANumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
 
     PrintLog("RecFRAExpListLoadGetParams\n");
-    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
-    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
-    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
-    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
-    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
-    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
-    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
-    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
-    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
-    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
-    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
-    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
-    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
-    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
-    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
-    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
-    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
-    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
-    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
-    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
-    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
-    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
-    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
-    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
-    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
-    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
-    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
-    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
-    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
-    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
-    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
-    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
-    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
-    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
-    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
-    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
-    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
-    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
-    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-   
-    stimcalName$[0] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
-'    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[7] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
-    stimcalName$[31] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
-    
-    trialsName$[0] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
      
 	return;
 end
@@ -5015,141 +4856,21 @@ end
 '
 
 
-
-
 '
 '
 '===== RecFRAExpListGenGetParams =====
 
-'Fetch experiment lists from the registry for AMDisc, generating stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
+'Fetch experiment lists from the registry for FRA, generating stim, experiments
 proc RecFRAExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\FRAExpListGenParam";
     
-    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
-    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
-    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
-    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
-    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
-    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
-    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
-    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
-    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
-    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
-    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
-    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
-    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
-    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
-    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
-    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
-    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
-    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
-    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
-    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
-    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
-    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
-    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
-    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
-    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
-    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
-    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
-    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
-    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
-    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
-    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
-    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
-    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
-    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
-    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
-    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
-    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
-    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
-    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-	
-    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
-    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
-    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
-    
-    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recFRANumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
 	
 	return;
 end
@@ -5167,134 +4888,16 @@ end
 '===== RecFRAExpListLoadSaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecFRAExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\FRAExpListLoadParam";
     
-    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
-    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
-    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
-    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
-    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
-    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
-    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
-    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
-    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
-    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
-    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
-    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
-    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
-    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
-    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
-    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
-    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
-    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
-    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
-    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
-    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
-    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
-    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
-    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
-    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
-    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
-    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
-    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
-    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
-    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
-    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
-    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
-    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
-    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
-    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
-    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
-    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
-    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
-    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
-    
-    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
-    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
-    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
-    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
-    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
-    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
-    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
-    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
-    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
-    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
-    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
-    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
-    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
-    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
-    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
-    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
-    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
-    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
-    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
-    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
-    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
-    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
-    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
-    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
-    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
-    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
-    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
-    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
-    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
-    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
-    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
-    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
-    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
-    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
-    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
-    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
-    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
-    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
-    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
-    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
-    
-    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
-    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
-    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
-    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
-    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
-    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
-    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
-    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
-    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
-    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
-    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
-    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
-    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
-    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
-    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
-    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
-    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
-    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
-    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
-    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
-    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
-    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
-    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
-    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
-    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
-    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
-    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
-    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
-    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
-    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
-    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
-    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
-    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
-    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
-    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
-    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
-    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
-    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
-    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recFRANumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -5311,134 +4914,16 @@ end
 '===== RecFRAExpListGenSaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecFRAExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\FRAExpListGenParam";
     
-    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
-    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
-    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
-    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
-    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
-    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
-    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
-    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
-    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
-    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
-    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
-    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
-    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
-    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
-    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
-    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
-    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
-    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
-    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
-    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
-    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
-    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
-    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
-    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
-    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
-    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
-    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
-    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
-    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
-    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
-    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
-    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
-    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
-    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
-    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
-    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
-    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
-    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
-    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
-    
-    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
-    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
-    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
-    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
-    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
-    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
-    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
-    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
-    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
-    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
-    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
-    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
-    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
-    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
-    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
-    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
-    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
-    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
-    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
-    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
-    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
-    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
-    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
-    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
-    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
-    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
-    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
-    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
-    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
-    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
-    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
-    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
-    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
-    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
-    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
-    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
-    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
-    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
-    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
-    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
-    
-    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
-    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
-    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
-    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
-    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
-    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
-    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
-    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
-    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
-    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
-    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
-    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
-    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
-    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
-    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
-    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
-    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
-    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
-    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
-    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
-    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
-    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
-    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
-    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
-    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
-    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
-    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
-    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
-    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
-    SetStringRegistryValue(key$, "TrialsName30", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
-    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
-    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
-    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
-    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
-    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
-    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
-    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
-    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recFRANumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -5453,134 +4938,16 @@ end
 '===== RecSpaceDisExpListLoadGetParams =====
 
 'Fetch experiment lists from the registry for SpaceDis, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecSpaceDisExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\SpaceDisExpListLoadParam";
     
-    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
-    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
-    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
-    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
-    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
-    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
-    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
-    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
-    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
-    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
-    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
-    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
-    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
-    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
-    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
-    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
-    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
-    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
-    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
-    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-    expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
-    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
-    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
-    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
-    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
-    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
-    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
-    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
-    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
-    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
-    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
-    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
-    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
-    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
-    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
-    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
-    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
-    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
-    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
-    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-    
-    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
-    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName30", stimcalName$[30]);
-    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
-    
-    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recSpaceDisNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -5597,134 +4964,16 @@ end
 '===== RecSpaceDisExpListGenGetParams =====
 
 'Fetch experiment lists from the registry for SpaceDis, generating stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecSpaceDisExpListGenGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\SpaceDisExpListGenParam";
     
-    expName$[0] := GetStringRegistryValue$(key$, "ExpName0", expName$[0]);
-    expName$[1] := GetStringRegistryValue$(key$, "ExpName1", expName$[1]);
-    expName$[2] := GetStringRegistryValue$(key$, "ExpName2", expName$[2]);
-    expName$[3] := GetStringRegistryValue$(key$, "ExpName3", expName$[3]);
-    expName$[4] := GetStringRegistryValue$(key$, "ExpName4", expName$[4]);
-    expName$[5] := GetStringRegistryValue$(key$, "ExpName5", expName$[5]);
-    expName$[6] := GetStringRegistryValue$(key$, "ExpName6", expName$[6]);
-    expName$[7] := GetStringRegistryValue$(key$, "ExpName7", expName$[7]);
-    expName$[8] := GetStringRegistryValue$(key$, "ExpName8", expName$[8]);
-    expName$[9] := GetStringRegistryValue$(key$, "ExpName9", expName$[9]);
-    expName$[10] := GetStringRegistryValue$(key$, "ExpName10", expName$[10]);
-    expName$[11] := GetStringRegistryValue$(key$, "ExpName11", expName$[11]);
-    expName$[12] := GetStringRegistryValue$(key$, "ExpName12", expName$[12]);
-    expName$[13] := GetStringRegistryValue$(key$, "ExpName13", expName$[13]);
-    expName$[14] := GetStringRegistryValue$(key$, "ExpName14", expName$[14]);
-    expName$[15] := GetStringRegistryValue$(key$, "ExpName15", expName$[15]);
-    expName$[16] := GetStringRegistryValue$(key$, "ExpName16", expName$[16]);
-    expName$[17] := GetStringRegistryValue$(key$, "ExpName17", expName$[17]);
-    expName$[18] := GetStringRegistryValue$(key$, "ExpName18", expName$[18]);
-    expName$[19] := GetStringRegistryValue$(key$, "ExpName19", expName$[19]);
-	expName$[20] := GetStringRegistryValue$(key$, "ExpName20", expName$[20]);
-    expName$[21] := GetStringRegistryValue$(key$, "ExpName21", expName$[21]);
-    expName$[22] := GetStringRegistryValue$(key$, "ExpName22", expName$[22]);
-    expName$[23] := GetStringRegistryValue$(key$, "ExpName23", expName$[23]);
-    expName$[24] := GetStringRegistryValue$(key$, "ExpName24", expName$[24]);
-    expName$[25] := GetStringRegistryValue$(key$, "ExpName25", expName$[25]);
-    expName$[26] := GetStringRegistryValue$(key$, "ExpName26", expName$[26]);
-    expName$[27] := GetStringRegistryValue$(key$, "ExpName27", expName$[27]);
-    expName$[28] := GetStringRegistryValue$(key$, "ExpName28", expName$[28]);
-    expName$[29] := GetStringRegistryValue$(key$, "ExpName29", expName$[29]);
-    expName$[30] := GetStringRegistryValue$(key$, "ExpName30", expName$[30]);
-    expName$[31] := GetStringRegistryValue$(key$, "ExpName31", expName$[31]);
-    expName$[32] := GetStringRegistryValue$(key$, "ExpName32", expName$[32]);
-    expName$[33] := GetStringRegistryValue$(key$, "ExpName33", expName$[33]);
-    expName$[34] := GetStringRegistryValue$(key$, "ExpName34", expName$[34]);
-    expName$[35] := GetStringRegistryValue$(key$, "ExpName35", expName$[35]);
-    expName$[36] := GetStringRegistryValue$(key$, "ExpName36", expName$[36]);
-    expName$[37] := GetStringRegistryValue$(key$, "ExpName37", expName$[37]);
-    expName$[38] := GetStringRegistryValue$(key$, "ExpName38", expName$[38]);
-    expName$[39] := GetStringRegistryValue$(key$, "ExpName39", expName$[39]);
-     
-    stimcalName$[0] := GetStringRegistryValue$(key$, "StimcalName0", stimcalName$[0]);
-    stimcalName$[1] := GetStringRegistryValue$(key$, "StimcalName1", stimcalName$[1]);
-    stimcalName$[2] := GetStringRegistryValue$(key$, "StimcalName2", stimcalName$[2]);
-    stimcalName$[3] := GetStringRegistryValue$(key$, "StimcalName3", stimcalName$[3]);
-    stimcalName$[4] := GetStringRegistryValue$(key$, "StimcalName4", stimcalName$[4]);
-    stimcalName$[5] := GetStringRegistryValue$(key$, "StimcalName5", stimcalName$[5]);
-    stimcalName$[6] := GetStringRegistryValue$(key$, "StimcalName6", stimcalName$[6]);
-    stimcalName$[7] := GetStringRegistryValue$(key$, "StimcalName7", stimcalName$[7]);
-    stimcalName$[8] := GetStringRegistryValue$(key$, "StimcalName8", stimcalName$[8]);
-    stimcalName$[9] := GetStringRegistryValue$(key$, "StimcalName9", stimcalName$[9]);
-    stimcalName$[10] := GetStringRegistryValue$(key$, "StimcalName10", stimcalName$[10]);
-    stimcalName$[11] := GetStringRegistryValue$(key$, "StimcalName11", stimcalName$[11]);
-    stimcalName$[12] := GetStringRegistryValue$(key$, "StimcalName12", stimcalName$[12]);
-    stimcalName$[13] := GetStringRegistryValue$(key$, "StimcalName13", stimcalName$[13]);
-    stimcalName$[14] := GetStringRegistryValue$(key$, "StimcalName14", stimcalName$[14]);
-    stimcalName$[15] := GetStringRegistryValue$(key$, "StimcalName15", stimcalName$[15]);
-    stimcalName$[16] := GetStringRegistryValue$(key$, "StimcalName16", stimcalName$[16]);
-    stimcalName$[17] := GetStringRegistryValue$(key$, "StimcalName17", stimcalName$[17]);
-    stimcalName$[18] := GetStringRegistryValue$(key$, "StimcalName18", stimcalName$[18]);
-    stimcalName$[19] := GetStringRegistryValue$(key$, "StimcalName19", stimcalName$[19]);
-    stimcalName$[20] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[20]);
-    stimcalName$[21] := GetStringRegistryValue$(key$, "StimcalName21", stimcalName$[21]);
-    stimcalName$[22] := GetStringRegistryValue$(key$, "StimcalName22", stimcalName$[22]);
-    stimcalName$[23] := GetStringRegistryValue$(key$, "StimcalName23", stimcalName$[23]);
-    stimcalName$[24] := GetStringRegistryValue$(key$, "StimcalName24", stimcalName$[24]);
-    stimcalName$[25] := GetStringRegistryValue$(key$, "StimcalName25", stimcalName$[25]);
-    stimcalName$[26] := GetStringRegistryValue$(key$, "StimcalName26", stimcalName$[26]);
-    stimcalName$[27] := GetStringRegistryValue$(key$, "StimcalName27", stimcalName$[27]);
-    stimcalName$[28] := GetStringRegistryValue$(key$, "StimcalName28", stimcalName$[28]);
-    stimcalName$[29] := GetStringRegistryValue$(key$, "StimcalName29", stimcalName$[29]);
-    stimcalName$[30] := GetStringRegistryValue$(key$, "StimcalName20", stimcalName$[30]);
-    stimcalName$[31] := GetStringRegistryValue$(key$, "StimcalName31", stimcalName$[31]);
-    stimcalName$[32] := GetStringRegistryValue$(key$, "StimcalName32", stimcalName$[32]);
-    stimcalName$[33] := GetStringRegistryValue$(key$, "StimcalName33", stimcalName$[33]);
-    stimcalName$[34] := GetStringRegistryValue$(key$, "StimcalName34", stimcalName$[34]);
-    stimcalName$[35] := GetStringRegistryValue$(key$, "StimcalName35", stimcalName$[35]);
-    stimcalName$[36] := GetStringRegistryValue$(key$, "StimcalName36", stimcalName$[36]);
-    stimcalName$[37] := GetStringRegistryValue$(key$, "StimcalName37", stimcalName$[37]);
-    stimcalName$[38] := GetStringRegistryValue$(key$, "StimcalName38", stimcalName$[38]);
-    stimcalName$[39] := GetStringRegistryValue$(key$, "StimcalName39", stimcalName$[39]);
-    
-    trialsName$[0] := GetStringRegistryValue$(key$, "TrialsName0", trialsName$[0]);
-    trialsName$[1] := GetStringRegistryValue$(key$, "TrialsName1", trialsName$[1]);
-    trialsName$[2] := GetStringRegistryValue$(key$, "TrialsName2", trialsName$[2]);
-    trialsName$[3] := GetStringRegistryValue$(key$, "TrialsName3", trialsName$[3]);
-    trialsName$[4] := GetStringRegistryValue$(key$, "TrialsName4", trialsName$[4]);
-    trialsName$[5] := GetStringRegistryValue$(key$, "TrialsName5", trialsName$[5]);
-    trialsName$[6] := GetStringRegistryValue$(key$, "TrialsName6", trialsName$[6]);
-    trialsName$[7] := GetStringRegistryValue$(key$, "TrialsName7", trialsName$[7]);
-    trialsName$[8] := GetStringRegistryValue$(key$, "TrialsName8", trialsName$[8]);
-    trialsName$[9] := GetStringRegistryValue$(key$, "TrialsName9", trialsName$[9]);
-    trialsName$[10] := GetStringRegistryValue$(key$, "TrialsName10", trialsName$[10]);
-    trialsName$[11] := GetStringRegistryValue$(key$, "TrialsName11", trialsName$[11]);
-    trialsName$[12] := GetStringRegistryValue$(key$, "TrialsName12", trialsName$[12]);
-    trialsName$[13] := GetStringRegistryValue$(key$, "TrialsName13", trialsName$[13]);
-    trialsName$[14] := GetStringRegistryValue$(key$, "TrialsName14", trialsName$[14]);
-    trialsName$[15] := GetStringRegistryValue$(key$, "TrialsName15", trialsName$[15]);
-    trialsName$[16] := GetStringRegistryValue$(key$, "TrialsName16", trialsName$[16]);
-    trialsName$[17] := GetStringRegistryValue$(key$, "TrialsName17", trialsName$[17]);
-    trialsName$[18] := GetStringRegistryValue$(key$, "TrialsName18", trialsName$[18]);
-    trialsName$[19] := GetStringRegistryValue$(key$, "TrialsName19", trialsName$[19]);
-    trialsName$[20] := GetStringRegistryValue$(key$, "TrialsName20", trialsName$[20]);
-    trialsName$[21] := GetStringRegistryValue$(key$, "TrialsName21", trialsName$[21]);
-    trialsName$[22] := GetStringRegistryValue$(key$, "TrialsName22", trialsName$[22]);
-    trialsName$[23] := GetStringRegistryValue$(key$, "TrialsName23", trialsName$[23]);
-    trialsName$[24] := GetStringRegistryValue$(key$, "TrialsName24", trialsName$[24]);
-    trialsName$[25] := GetStringRegistryValue$(key$, "TrialsName25", trialsName$[25]);
-    trialsName$[26] := GetStringRegistryValue$(key$, "TrialsName26", trialsName$[26]);
-    trialsName$[27] := GetStringRegistryValue$(key$, "TrialsName27", trialsName$[27]);
-    trialsName$[28] := GetStringRegistryValue$(key$, "TrialsName28", trialsName$[28]);
-    trialsName$[29] := GetStringRegistryValue$(key$, "TrialsName29", trialsName$[29]);
-    trialsName$[30] := GetStringRegistryValue$(key$, "TrialsName30", trialsName$[30]);
-    trialsName$[31] := GetStringRegistryValue$(key$, "TrialsName31", trialsName$[31]);
-    trialsName$[32] := GetStringRegistryValue$(key$, "TrialsName32", trialsName$[32]);
-    trialsName$[33] := GetStringRegistryValue$(key$, "TrialsName33", trialsName$[33]);
-    trialsName$[34] := GetStringRegistryValue$(key$, "TrialsName34", trialsName$[34]);
-    trialsName$[35] := GetStringRegistryValue$(key$, "TrialsName35", trialsName$[35]);
-    trialsName$[36] := GetStringRegistryValue$(key$, "TrialsName36", trialsName$[36]);
-    trialsName$[37] := GetStringRegistryValue$(key$, "TrialsName37", trialsName$[37]);
-    trialsName$[38] := GetStringRegistryValue$(key$, "TrialsName38", trialsName$[38]);
-    trialsName$[39] := GetStringRegistryValue$(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recSpaceDisNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -5742,134 +4991,16 @@ end
 '===== RecSpaceDisExpListLoadSaveParams =====
 
 'Save experiment lists to the registry for SpaceDis, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecSpaceDisExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\SpaceDisExpListLoadParam";
     
-    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
-    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
-    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
-    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
-    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
-    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
-    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
-    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
-    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
-    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
-    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
-    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
-    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
-    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
-    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
-    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
-    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
-    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
-    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
-    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
-    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
-    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
-    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
-    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
-    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
-    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
-    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
-    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
-    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
-    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
-    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
-    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
-    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
-    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
-    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
-    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
-    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
-    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
-    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
-    
-    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
-    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
-    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
-    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
-    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
-    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
-    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
-    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
-    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
-    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
-    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
-    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
-    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
-    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
-    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
-    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
-    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
-    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
-    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
-    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
-    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
-    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
-    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
-    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
-    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
-    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
-    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
-    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
-    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
-    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
-    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
-    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
-    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
-    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
-    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
-    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
-    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
-    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
-    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
-    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
-    
-    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
-    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
-    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
-    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
-    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
-    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
-    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
-    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
-    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
-    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
-    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
-    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
-    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
-    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
-    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
-    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
-    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
-    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
-    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
-    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
-    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
-    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
-    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
-    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
-    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
-    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
-    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
-    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
-    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
-    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
-    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
-    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
-    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
-    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
-    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
-    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
-    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
-    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
-    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recSpaceDisNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -5886,135 +5017,16 @@ end
 '===== RecSpaceDisExpListGenSaveParams =====
 
 'Save experiment lists to the registry for SpaceDis, loading stim, experiments
-'Note that the variables &expName$[] etc. are exactly 20 in size, can't be changed
-'without a ton of manual work
 proc RecSpaceDisExpListGenSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
+    var i%;
     key$:="Reclab\\SpaceDisExpListGenParam";
     
-    SetStringRegistryValue(key$, "ExpName0", expName$[0]);
-    SetStringRegistryValue(key$, "ExpName1", expName$[1]);
-    SetStringRegistryValue(key$, "ExpName2", expName$[2]);
-    SetStringRegistryValue(key$, "ExpName3", expName$[3]);
-    SetStringRegistryValue(key$, "ExpName4", expName$[4]);
-    SetStringRegistryValue(key$, "ExpName5", expName$[5]);
-    SetStringRegistryValue(key$, "ExpName6", expName$[6]);
-    SetStringRegistryValue(key$, "ExpName7", expName$[7]);
-    SetStringRegistryValue(key$, "ExpName8", expName$[8]);
-    SetStringRegistryValue(key$, "ExpName9", expName$[9]);
-    SetStringRegistryValue(key$, "ExpName10", expName$[10]);
-    SetStringRegistryValue(key$, "ExpName11", expName$[11]);
-    SetStringRegistryValue(key$, "ExpName12", expName$[12]);
-    SetStringRegistryValue(key$, "ExpName13", expName$[13]);
-    SetStringRegistryValue(key$, "ExpName14", expName$[14]);
-    SetStringRegistryValue(key$, "ExpName15", expName$[15]);
-    SetStringRegistryValue(key$, "ExpName16", expName$[16]);
-    SetStringRegistryValue(key$, "ExpName17", expName$[17]);
-    SetStringRegistryValue(key$, "ExpName18", expName$[18]);
-    SetStringRegistryValue(key$, "ExpName19", expName$[19]);
-    SetStringRegistryValue(key$, "ExpName20", expName$[20]);
-    SetStringRegistryValue(key$, "ExpName21", expName$[21]);
-    SetStringRegistryValue(key$, "ExpName22", expName$[22]);
-    SetStringRegistryValue(key$, "ExpName23", expName$[23]);
-    SetStringRegistryValue(key$, "ExpName24", expName$[24]);
-    SetStringRegistryValue(key$, "ExpName25", expName$[25]);
-    SetStringRegistryValue(key$, "ExpName26", expName$[26]);
-    SetStringRegistryValue(key$, "ExpName27", expName$[27]);
-    SetStringRegistryValue(key$, "ExpName28", expName$[28]);
-    SetStringRegistryValue(key$, "ExpName29", expName$[29]);
-    SetStringRegistryValue(key$, "ExpName30", expName$[30]);
-    SetStringRegistryValue(key$, "ExpName31", expName$[31]);
-    SetStringRegistryValue(key$, "ExpName32", expName$[32]);
-    SetStringRegistryValue(key$, "ExpName33", expName$[33]);
-    SetStringRegistryValue(key$, "ExpName34", expName$[34]);
-    SetStringRegistryValue(key$, "ExpName35", expName$[35]);
-    SetStringRegistryValue(key$, "ExpName36", expName$[36]);
-    SetStringRegistryValue(key$, "ExpName37", expName$[37]);
-    SetStringRegistryValue(key$, "ExpName38", expName$[38]);
-    SetStringRegistryValue(key$, "ExpName39", expName$[39]);
-	
-
-    SetStringRegistryValue(key$, "StimcalName0", stimcalName$[0]);
-    SetStringRegistryValue(key$, "StimcalName1", stimcalName$[1]);
-    SetStringRegistryValue(key$, "StimcalName2", stimcalName$[2]);
-    SetStringRegistryValue(key$, "StimcalName3", stimcalName$[3]);
-    SetStringRegistryValue(key$, "StimcalName4", stimcalName$[4]);
-    SetStringRegistryValue(key$, "StimcalName5", stimcalName$[5]);
-    SetStringRegistryValue(key$, "StimcalName6", stimcalName$[6]);
-    SetStringRegistryValue(key$, "StimcalName7", stimcalName$[7]);
-    SetStringRegistryValue(key$, "StimcalName8", stimcalName$[8]);
-    SetStringRegistryValue(key$, "StimcalName9", stimcalName$[9]);
-    SetStringRegistryValue(key$, "StimcalName10", stimcalName$[10]);
-    SetStringRegistryValue(key$, "StimcalName11", stimcalName$[11]);
-    SetStringRegistryValue(key$, "StimcalName12", stimcalName$[12]);
-    SetStringRegistryValue(key$, "StimcalName13", stimcalName$[13]);
-    SetStringRegistryValue(key$, "StimcalName14", stimcalName$[14]);
-    SetStringRegistryValue(key$, "StimcalName15", stimcalName$[15]);
-    SetStringRegistryValue(key$, "StimcalName16", stimcalName$[16]);
-    SetStringRegistryValue(key$, "StimcalName17", stimcalName$[17]);
-    SetStringRegistryValue(key$, "StimcalName18", stimcalName$[18]);
-    SetStringRegistryValue(key$, "StimcalName19", stimcalName$[19]);
-    SetStringRegistryValue(key$, "StimcalName20", stimcalName$[20]);
-    SetStringRegistryValue(key$, "StimcalName21", stimcalName$[21]);
-    SetStringRegistryValue(key$, "StimcalName22", stimcalName$[22]);
-    SetStringRegistryValue(key$, "StimcalName23", stimcalName$[23]);
-    SetStringRegistryValue(key$, "StimcalName24", stimcalName$[24]);
-    SetStringRegistryValue(key$, "StimcalName25", stimcalName$[25]);
-    SetStringRegistryValue(key$, "StimcalName26", stimcalName$[26]);
-    SetStringRegistryValue(key$, "StimcalName27", stimcalName$[27]);
-    SetStringRegistryValue(key$, "StimcalName28", stimcalName$[28]);
-    SetStringRegistryValue(key$, "StimcalName29", stimcalName$[29]);
-    SetStringRegistryValue(key$, "StimcalName30", stimcalName$[30]);
-    SetStringRegistryValue(key$, "StimcalName31", stimcalName$[31]);
-    SetStringRegistryValue(key$, "StimcalName32", stimcalName$[32]);
-    SetStringRegistryValue(key$, "StimcalName33", stimcalName$[33]);
-    SetStringRegistryValue(key$, "StimcalName34", stimcalName$[34]);
-    SetStringRegistryValue(key$, "StimcalName35", stimcalName$[35]);
-    SetStringRegistryValue(key$, "StimcalName36", stimcalName$[36]);
-    SetStringRegistryValue(key$, "StimcalName37", stimcalName$[37]);
-    SetStringRegistryValue(key$, "StimcalName38", stimcalName$[38]);
-    SetStringRegistryValue(key$, "StimcalName39", stimcalName$[39]);
-    
-    SetStringRegistryValue(key$, "TrialsName0", trialsName$[0]);
-    SetStringRegistryValue(key$, "TrialsName1", trialsName$[1]);
-    SetStringRegistryValue(key$, "TrialsName2", trialsName$[2]);
-    SetStringRegistryValue(key$, "TrialsName3", trialsName$[3]);
-    SetStringRegistryValue(key$, "TrialsName4", trialsName$[4]);
-    SetStringRegistryValue(key$, "TrialsName5", trialsName$[5]);
-    SetStringRegistryValue(key$, "TrialsName6", trialsName$[6]);
-    SetStringRegistryValue(key$, "TrialsName7", trialsName$[7]);
-    SetStringRegistryValue(key$, "TrialsName8", trialsName$[8]);
-    SetStringRegistryValue(key$, "TrialsName9", trialsName$[9]);
-    SetStringRegistryValue(key$, "TrialsName10", trialsName$[10]);
-    SetStringRegistryValue(key$, "TrialsName11", trialsName$[11]);
-    SetStringRegistryValue(key$, "TrialsName12", trialsName$[12]);
-    SetStringRegistryValue(key$, "TrialsName13", trialsName$[13]);
-    SetStringRegistryValue(key$, "TrialsName14", trialsName$[14]);
-    SetStringRegistryValue(key$, "TrialsName15", trialsName$[15]);
-    SetStringRegistryValue(key$, "TrialsName16", trialsName$[16]);
-    SetStringRegistryValue(key$, "TrialsName17", trialsName$[17]);
-    SetStringRegistryValue(key$, "TrialsName18", trialsName$[18]);
-    SetStringRegistryValue(key$, "TrialsName19", trialsName$[19]);
-    SetStringRegistryValue(key$, "TrialsName20", trialsName$[20]);
-    SetStringRegistryValue(key$, "TrialsName21", trialsName$[21]);
-    SetStringRegistryValue(key$, "TrialsName22", trialsName$[22]);
-    SetStringRegistryValue(key$, "TrialsName23", trialsName$[23]);
-    SetStringRegistryValue(key$, "TrialsName24", trialsName$[24]);
-    SetStringRegistryValue(key$, "TrialsName25", trialsName$[25]);
-    SetStringRegistryValue(key$, "TrialsName26", trialsName$[26]);
-    SetStringRegistryValue(key$, "TrialsName27", trialsName$[27]);
-    SetStringRegistryValue(key$, "TrialsName28", trialsName$[28]);
-    SetStringRegistryValue(key$, "TrialsName29", trialsName$[29]);
-    SetStringRegistryValue(key$, "TrialsName30", trialsName$[30]);
-    SetStringRegistryValue(key$, "TrialsName31", trialsName$[31]);
-    SetStringRegistryValue(key$, "TrialsName32", trialsName$[32]);
-    SetStringRegistryValue(key$, "TrialsName33", trialsName$[33]);
-    SetStringRegistryValue(key$, "TrialsName34", trialsName$[34]);
-    SetStringRegistryValue(key$, "TrialsName35", trialsName$[35]);
-    SetStringRegistryValue(key$, "TrialsName36", trialsName$[36]);
-    SetStringRegistryValue(key$, "TrialsName37", trialsName$[37]);
-    SetStringRegistryValue(key$, "TrialsName38", trialsName$[38]);
-    SetStringRegistryValue(key$, "TrialsName39", trialsName$[39]);
+    for i% := 0 to recSpaceDisNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
      
 	return;
 end
@@ -6022,6 +5034,57 @@ end
 '===== End RecSpaceDisExpListGenSaveParams =====
 '
 '
+
+
+'
+'
+'===== RecHumanFCExpListLoadGetParams =====
+
+'Fetch experiment lists from the registry for HumanFC, loading stim, experiments
+proc RecHumanFCExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[],&stimcalDistName$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\HumanFCExpListLoadParam";
+    
+    for i% := 0 to recHumanFCNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        stimcalDistName$[i%] := GetStringRegistryValue$(key$, "StimcalDistName"+Str$(i%), stimcalDistName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecHumanFCExpListLoadGetParams =====
+'
+'
+
+'
+'
+'===== RecHumanFCExpListLoadSaveParams =====
+
+'Save experiment lists to the registry for HumanFC, loading stim, experiments
+proc RecHumanFCExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[],stimcalDistName$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\HumanFCExpListLoadParam";
+    
+    for i% := 0 to recHumanFCNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "StimcalDistName"+Str$(i%), stimcalDistName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecHumanFCExpListLoadSaveParams =====
+'
+'
+
+
 
 
 
@@ -6077,7 +5140,7 @@ func RecVerifyInputFile%(fileIn$)
     docase
     case temp$ = "S1" then
         printlog("File %s appears to be a Trial file\n",fileIn$);
-    case temp$ = "File Location" then
+    case temp$ = "File Location" or temp$ = "File location" then  'this lower version should not be standard, but...
         printlog("File %s appears to be a Stim/Cal file\n",fileIn$);
     case temp$ = "Dur" then
         printlog("File %s appears to be a Tone/Noise/AM generation file\n",fileIn$);
@@ -6136,6 +5199,7 @@ func RecVerifyInputFile%(fileIn$)
     printlog("Successfully read file %s, contained %d lines with %d columns!\n",fileIn$,lineCount%-1,lineLength%);
     
     return lineLength%;    '6: "trials" file
+                           '9: "trials" file, includes a "distractor" stimulus
                            '10: generate "stim" file
                            '15: "calibration" file, 15-speaker array
                            '16: "calibration" file, 16-speaker array
@@ -6229,6 +5293,83 @@ end
 '===== End RecLoadTrialsFile =====
 '
 '
+
+
+
+'
+'
+'===== RecLoadTrialsFile9 =====
+func RecLoadTrialsFile9%(fileLoc$,&totalTrials%)
+    'a 9-column version of RecLoadTrialsFile, includes distractor stimulus
+    
+    
+    var status%;
+    var lineCount%;
+    var keepGoing% := 1;
+    var numRead%;
+    var readLine$[10];
+    var fh0%;
+    
+    status% := 0;  'begin with "failure", change to success if success
+    
+    printlog("Loading Trial File: %s\n",fileLoc$);
+    
+    'First, make sure the file won't barf on us
+    numRead% := RecVerifyInputFile%(fileLoc$);
+    if numRead% <> 9 then
+        if numRead% = -1 then
+            message("Starting over!|Failure to read trials file!");
+        else
+            message("Starting over!|Incorrect number of fields in trials file (expected 9 fields, got "+Str$(numRead%)+")!");
+        endif
+        return status%;  'returns failure
+    endif;
+        
+    'Then read the file
+    fh0%:=FileOpen(fileLoc$,8,0);
+    
+    'readsetup(""," ","","","	");
+    readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
+    
+    'Skip past the header line
+    numRead% := read(readLine$[0:7]);
+    
+    while keepGoing% do
+        'Read the next line in the file, return line and number of fields read
+        numRead% := read(readLine$[0:10]);  'reading as many as ten lines as a check - if ten successfully read, something is wrong with the file
+        lineCount% += 1;
+        
+        'Place values into global variables
+        docase
+        case numRead% = 9 then
+            recTrialS1%[lineCount%-1] := val(readLine$[0]);
+            recTrialS2%[lineCount%-1] := val(readLine$[1]);
+            recTrialDistractor%[lineCount%-1] := val(readLine$[2]);
+            recTrialS1Spkr%[lineCount%-1] := val(readLine$[3]);
+            recTrialS2Spkr%[lineCount%-1] := val(readLine$[4]);
+            recTrialDistractorSpkr%[lineCount%-1] := val(readLine$[5]);
+            recTrialS1DeltadB[lineCount%-1] := val(readLine$[6]);
+            recTrialS2DeltadB[lineCount%-1] := val(readLine$[7]);
+            recTrialDistractorDeltadB[lineCount%-1] := val(readLine$[8]);
+        case numRead%<0 then
+            keepGoing% := 0;
+            totalTrials% := lineCount%-1;  'set to return the number of lines read, this will be useful
+            status% := 1;  'not sure that will work with the other logic
+        else
+            message("Starting over!|Failure to successfully read file with nine fields despite initial check!");
+            keepGoing% := 0;
+        endcase;    
+    wend;    
+    
+    fileclose();  'close fh0%, the currently open file
+    
+    return status%;
+    
+end
+'===== End RecLoadTrialsFile9 =====
+'
+'
+
 
 
 
@@ -6326,6 +5467,161 @@ end
 '===== End RecLoadStimCalFile =====
 '
 '
+
+
+
+'
+'
+'===== RecLoadStimCalMFCarrierFile =====
+func RecLoadStimCalMFCarrierFile%(fileLoc$,nSpk%,&recTotalStim%)
+'These files by definition have two additional columns, Modulation Frequency and Carrier Type$, following Duration column   
+
+    var status%;
+    var lineCount%;
+    var keepGoing% := 1;
+    var numRead%;
+    var readLine$[34];
+    var fh0%;
+    var i%;
+    
+    status% := 0;  'begin with "failure", change to success if success
+    
+    printlog("Loading Stim/Cal w/MF&Carrier File: %s\n",fileLoc$);
+        
+    'First, make sure the file won't barf on us
+    numRead% := RecVerifyInputFile%(fileLoc$);
+    if numRead% <> nSpk%+4 then
+        if numRead% = -1 then
+            message("Starting over!|Failure to read Stim/Cal file!");
+        else
+            message("Starting over!|Incorrect number of fields in Stim/Cal file (expected "+Str$(nSpk%+2)+" fields, got "+Str$(numRead%)+")!");
+        endif
+        return status%;  'returns failure
+    endif;
+        
+    'Then read the file
+    fh0%:=FileOpen(fileLoc$,8,0);
+    
+    'readsetup(""," ","","","	");
+    readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
+    
+    'Skip past the header line
+    numRead% := read(readLine$[0:34]);
+    
+    while keepGoing% do
+        'Read the next line in the file, return line and number of fields read
+        numRead% := read(readLine$[0:34]);  'reading as many as 34 lines as a check - if 34 successfully read, something is wrong with the file
+        lineCount% += 1;
+        
+        'Place values into global variables
+        docase
+        case numRead% = nSpk%+4 then
+            recTrialLoadLoc$[lineCount%-1] := readLine$[0];  'Disk location of files to load, stim/cal file
+            recTrialDur[lineCount%-1] := val(readLine$[1]);  'Trial duration
+            recTrialMF[lineCount%-1] := val(readLine$[2]);   'Modulation frequency
+            recTrialCarrier$[lineCount%-1] := readLine$[3];  'Carrier type
+            for i% := 0 to nSpk%-1 do
+                recTrialStimCal[lineCount%-1][i%] := val(readLine$[i%+4]);  'Calibration values per speaker
+            next; 
+        case numRead%<0 then 'quit at end of file
+            keepGoing% := 0;
+            lineCount% -= 1;  'Decrement to get correct count on EOF
+            status% := 1;
+        else
+            message("Starting over!|Failure to successfully read file with "+Str$(nSpk%+2)+" fields despite initial check!");
+            printlog("Failure to successfully read file with %d fields despite initial check!\n",nSpk%+2);
+            keepGoing% := 0;
+        endcase;    
+    wend;    
+    
+    fileclose();  'close fh0%, the currently open file
+    
+    recTotalStim% := lineCount%;
+    
+    return status%;
+    
+end
+'===== End RecLoadStimCalMFCarrierFile =====
+'
+'
+
+
+
+'
+'
+'===== RecLoadStimCalDistractorFile =====
+func RecLoadStimCalDistractorFile%(fileLoc$,nSpk%,&recTotalStim%)
+'These files by definition have two additional columns, Modulation Frequency and Carrier Type$, following Duration column
+
+    var status%;
+    var lineCount%;
+    var keepGoing% := 1;
+    var numRead%;
+    var readLine$[34];
+    var fh0%;
+    var i%;
+    
+    status% := 0;  'begin with "failure", change to success if success
+    
+    printlog("Loading Distractor Stim/Cal w/MF&Carrier File: %s\n",fileLoc$);
+        
+    'First, make sure the file won't barf on us
+    numRead% := RecVerifyInputFile%(fileLoc$);
+    if numRead% <> nSpk%+4 then  'here there are four extra columns, file location$, duration, MF, carrier type$
+        if numRead% = -1 then
+            message("Starting over!|Failure to read Stim/Cal file!");
+        else
+            message("Starting over!|Incorrect number of fields in Stim/Cal file (expected "+Str$(nSpk%+2)+" fields, got "+Str$(numRead%)+")!");
+        endif
+        return status%;  'returns failure
+    endif;
+        
+    'Then read the file
+    fh0%:=FileOpen(fileLoc$,8,0);
+    
+    'readsetup(""," ","","","	");
+    readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
+    
+    'Skip past the header line
+    numRead% := read(readLine$[0:34]);
+    
+    while keepGoing% do
+        'Read the next line in the file, return line and number of fields read
+        numRead% := read(readLine$[0:34]);  'reading as many as 34 lines as a check - if 34 successfully read, something is wrong with the file
+        lineCount% += 1;
+        
+        'Place values into global variables
+        docase
+        case numRead% = nSpk%+4 then
+            recTrialLoadLocDistractor$[lineCount%-1] := readLine$[0];  'Disk location of files to load, stim/cal file
+            recTrialDurDistractor[lineCount%-1] := val(readLine$[1]);  'Trial duration
+            recTrialMFDistractor[lineCount%-1] := val(readLine$[2]);   'Modulation frequency
+            recTrialCarrierDistractor$[lineCount%-1] := readLine$[3];  'Carrier type
+            for i% := 0 to nSpk%-1 do
+                recTrialStimCalDistractor[lineCount%-1][i%] := val(readLine$[i%+4]);  'Calibration values per speaker
+            next; 
+        case numRead%<0 then 'quit at end of file
+            keepGoing% := 0;
+            lineCount% -= 1;  'Decrement to get correct count on EOF
+            status% := 1;
+        else
+            message("Starting over!|Failure to successfully read file with "+Str$(nSpk%+2)+" fields despite initial check!");
+            printlog("Failure to successfully read file with %d fields despite initial check!\n",nSpk%+2);
+            keepGoing% := 0;
+        endcase;    
+    wend;    
+    
+    fileclose();  'close fh0%, the currently open file
+    
+    recTotalStim% := lineCount%;
+    
+    return status%;
+    
+end
+'===== End RecLoadStimCalDistractorFile =====
+'
+'
+
 
 
 
@@ -6500,6 +5796,10 @@ func NameThatStimulus$(n%)
     
     name$ := dur$ + freq$ + am$ + amphse$ + seed$;
     
+    if recFRALoadStim% = 1 then
+        name$ := "(stim is loaded, can't autoname)";
+    endif;    
+    
     return name$;
     
 end
@@ -6536,7 +5836,7 @@ func GenTrialsSearch%()
     nRS% := recSearchSpeakerSweepRepeats%;
     
     nSpkr% := recNSpeakers%; 'shorthand again. speaker sweep! '10 for debugging purposes
-    if recDebug% = 1 then
+    if recDebug% > 0 then
         nSpkr% := 10; '10 for debugging purposes to equal recMaxTrial
     endif;
     currSpkr% := 1; 'start with speaker 1
@@ -6984,8 +6284,9 @@ func GenTrialsFRALoad%()
     next;    
 
     for i% := 0 to recTotalTrials% do    '2. save values into rec2StimList, rec2SpeakerList, rec2DeltadBList
-        rec2StimList%[i%][0] := RecTrialS1%[i%];
-        rec2StimList%[i%][1] := RecTrialS2%[i%];
+        rec2StimList%[i%][0] := RecTrialS1%[i%];  'These appear to be indexed "backwards", I'm under the impression
+        rec2StimList%[i%][1] := RecTrialS2%[i%];  'that they work, so probably the FRA function that uses them also
+                                                  'indexes backwards, don't have time to check it right now. -jj 5/15/19
     
         rec2SpeakerList%[i%][0] := RecTrialS1Spkr%[i%];
         rec2SpeakerList%[i%][1] := RecTrialS2Spkr%[i%];
@@ -7199,6 +6500,80 @@ end
 '===== End GenTrialsDis =====
 '
 '
+
+
+
+
+'
+'
+'===== GenTrialsHumanFC =====
+func GenTrialsHumanFC%()
+    var status% := 1;
+    var i%;
+    var j%;
+    var count% := 0;
+    var rewardInt% := 5;
+    var miniTrialOrder%[recTotalTrials%];
+    var randNum := 0;
+    var randInt%;
+    var randInt2%;
+    var rewardArray%[80];
+    var rewardIndex%;
+    
+    ' ===== Create Trials =====
+    recNTrials% := (recTotalTrials%*recHumanFCRepeatsPerStim%);  'Set global Ntrials
+
+    for i% := 0 to recTotalTrials%-1 do    
+        miniTrialOrder%[i%] := i%;  ' 1. populate miniTrialOrder%, etc.
+        recTrialTerminalIndex%[i%] := 1;  'For this experiment, every trial has exactly one S1 and one S2, so zero-based terminal index is 1
+        recPWAList%[0][i%] := 0;  'this is PWA to play, just use PWAs in order
+        recPWAList%[1][i%] := 1;  '(recPWAList%[][] is a more meaningful variable for things like search where PWAs get pre-loaded and we bounce through them, we use it here for convenience)
+        
+        recStimList%[0][i%] := RecTrialS1%[i%];  '2. save values into rec2StimList, rec2SpeakerList, rec2DeltadBList
+        recStimList%[1][i%] := RecTrialS2%[i%];  'and distractor versions as well
+        recDistractorStimList%[i%] := recTrialDistractor%[i%];  'may need to change this to 2-D for GNG
+        
+        recSpeakerList%[0][i%] := RecTrialS1Spkr%[i%];
+        recSpeakerList%[1][i%] := RecTrialS2Spkr%[i%];
+        recDistractorSpeakerList%[i%] := recTrialDistractorSpkr%[i%];
+    
+        recDeltadBList[0][i%] := recTrialS1DeltadB[i%];
+        recDeltadBList[1][i%] := recTrialS2DeltadB[i%];
+        recDistractorDeltadBList[i%] := recTrialDistractorDeltadB[i%];
+        
+        docase
+        case recTrialMF[RecTrialS1%[i%]] > recTrialMF[RecTrialS2%[i%]]  then 
+            'LO trial
+            recTrialTerminalIsS2%[i%] := 2; 'S2-LO --> use in StimComplete in RecGoNoGoEng 
+        case recTrialMF[RecTrialS1%[i%]] < recTrialMF[RecTrialS2%[i%]] then
+            'HI trial
+            recTrialTerminalIsS2%[i%] := 1; 'S2-HI --> use in StimComplete in RecGoNoGoEng 
+        case recTrialS2%[i%] = recTrialS1%[i%] then
+            'catch trial
+            recTrialTerminalIsS2%[i%] := 0;  'S2 = S1
+        endcase;
+        
+    next;
+
+    for i% := 0 to recHumanFCRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
+        
+        if recDoNotShuffle% = 0 then
+            ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
+        endif;
+    
+        for j% := 0 to recTotalTrials%-1 do   'load this "chunk" of the order into the RecTrialOrder
+            recTrialOrder%[count%] := miniTrialOrder%[j%];
+            count% += 1;                    'increment count to the next spot in RecTrialOrder to fill
+        next;
+    next;
+        
+    return status%;
+end
+'===== End GenTrialsHumanFC =====
+'
+'
+
+
 
 
 '
