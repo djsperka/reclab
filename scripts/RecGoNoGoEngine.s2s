@@ -4190,8 +4190,8 @@ func BehOutput(resultCode$, isS2%)
         view(fh%).print("%f\t%d\n",StimOn,recFRAreward%[recCurrentTrial%]);
     case recExpToRun% = recExpHumanFCButton% then
         'This line is apparently not too long, but man, it's gotta be close.
-    view(fh%).print("%d\t%d\t %f\t%s\t %f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
-       recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStim%],recTrialCarrierDistractor$[thisStim%],spkrD%,
+    view(fh%).print("%d\t%d\t%f\t%s\t%f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
+       recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStimD%],recTrialCarrierDistractor$[thisStimD%],spkrD%,
        recDistractorDeltadBList[recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
         'NOTE: output key for "Stype" for Human FC
         'isS2%+1 = 1 for S1, 2 for S2 High, 3 for terminal S1 (same), and 4 for S2 Low
