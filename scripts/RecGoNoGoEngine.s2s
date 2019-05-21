@@ -4164,7 +4164,8 @@ func BehOutput(resultCode$, isS2%)
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Stim1","Spkr1","Stim2","Spkr2","dB1","dB2","StimOnset","Reward");
         case recExpToRun% = recExpHumanFCButton% then
             'hmm
-            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","StimMF","StimCarrier","StimAtten","DistStimMF","DistStimCarrier","DistSpkr","DistAtten","Result","Resp","StimOnset","LeverTime"); 'header for Human FC vars
+        view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","StimMF","StimCarrier","StimAtten","DistStimMF",
+                         "DistStimCarrier","DistSpkr","DistAtten","Result","Resp","StimOnset","LeverTime"); 'header for Human FC vars
         else 'in all other cases, this is what Jackie has right now - case statement can be easily updated in the future
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","StimOnset","LeverTime"); 'header for trial vars
             'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
@@ -4189,7 +4190,9 @@ func BehOutput(resultCode$, isS2%)
         view(fh%).print("%f\t%d\n",StimOn,recFRAreward%[recCurrentTrial%]);
     case recExpToRun% = recExpHumanFCButton% then
         'This line is apparently not too long, but man, it's gotta be close.
-        view(fh%).print("%d\t%d\t %f\t%s\t %f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStim%],recTrialCarrierDistractor$[thisStim%],spkrD%,recDistractorDeltadBList[recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
+    view(fh%).print("%d\t%d\t %f\t%s\t %f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
+       recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStim%],recTrialCarrierDistractor$[thisStim%],spkrD%,
+       recDistractorDeltadBList[recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
         'NOTE: output key for "Stype" for Human FC
         'isS2%+1 = 1 for S1, 2 for S2 High, 3 for terminal S1 (same), and 4 for S2 Low
     else
