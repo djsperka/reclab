@@ -991,7 +991,8 @@ Func PlayTwoSounds%(isS2%)
         
         '''FOR S1, WHICH IS ON STANDALONE
         'Get this stimulus index
-        thisStimSA% := recStimList%[recTrialOrder%[playInd%]][isS2%];
+        'thisStimSA% := recStimList%[recTrialOrder%[playInd%]][isS2%];
+        thisStimSA% := recStimList%[isS2%][recTrialOrder%[playInd%]];
         
         'S1/S2 are on standalone speaker by definition
         
@@ -999,7 +1000,8 @@ Func PlayTwoSounds%(isS2%)
         calatten := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
         
         'Get trial-based attenuation for current stimulus
-        trlatten := recDeltadBList[recTrialOrder%[playInd%]][isS2%];
+        'trlatten := recDeltadBList[recTrialOrder%[playInd%]][isS2%];
+        trlatten := recDeltadBList[isS2%][recTrialOrder%[playInd%]];
         
         'Get total attenuation
         if isS2% = 0 then
