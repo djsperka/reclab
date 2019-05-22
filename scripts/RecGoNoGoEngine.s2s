@@ -1068,17 +1068,20 @@ Func PlayTwoSounds%(isS2%)
         case recExpToRun% = recExpHumanFCButton% then
             status% := recSpeaker%(spkrArray%);
             if status% <> 0 then
+                printlog("recSpeaker returned status of %d!! Failing!!\n",status%);
                 return status%;
             endif;
             
             status% := recAttenByID%(attenArray,arrayPA4ID%);
             if status% <> 0 then
+                printlog("recAttenByID (Array) returned status of %d!! Failing!!\n",status%);
                 return status%;
             endif;
             
             if standalonePA4ID% > -1 then  'this should always be true...
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
                 if status% <> 0 then
+                    printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
                     return status%;
                 endif;
             endif;

@@ -278,7 +278,7 @@ func recInitTDT%()
                     rackFirstPA4% := rn%;
                     positionFirstPA4% := pn%;
                     PrintLog("Found first PA4 at rack %d port %d xln %x\n", rn%, pn%, xlnFirstPA4%);
-                case dev% = xbPA4DEVCODE% and xlnSecondPA4% > -1 then  'if we have filled the first PA4, fill the second
+                case dev% = xbPA4DEVCODE% and xlnFirstPA4% > -1 and xlnSecondPA4% = -1 then  'if we have filled the first PA4, fill the second
                     xlnSecondPA4% := xbGetXLN%(rn%, pn%);
                     rackSecondPA4% := rn%;
                     positionSecondPA4% := pn%;
