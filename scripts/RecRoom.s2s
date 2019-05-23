@@ -3197,7 +3197,11 @@ func RecExpHumanFCDialog%()
         recExpToRun% := recExpHumanFCButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
-        
+    
+        recMatGenStim% := 0;
+        recAMSPPassiveTask% := 0;
+        recActive% := 1;
+    
         status% := 1;
     else
         status% := 1;

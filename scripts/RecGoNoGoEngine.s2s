@@ -2591,6 +2591,7 @@ func IdleLoop%()
     '                endif;
                     CheckLever%("inTrialInit%",1);
                     'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
+                    'printlog("recAMSPPassiveTask value is %d and time is %f\n",recAMSPPassiveTask%,tNow);
                     if inTrialInit% = 1 or recAMSPPassiveTask% = 1 then
                         SampleKey("S"); 'stop blink sequence *immediately* - therefore, do not use SafeSampleKey
                         if recFixLED% = 1 then
