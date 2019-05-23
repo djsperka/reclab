@@ -945,8 +945,7 @@ Func PlayTwoSounds%(isS2%)
     'Note that recStimCount% (which steps us through the n S1s and S2, if present, is incremented 
     'in StimComplete% and reset to zero in PrepareNewTrial%.
     
-    'Get play wave area with current stimulus
-    playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
+    
     
     docase
     case recExpToRun% = recExpFRAButton% then  ' note that isS2% is not used here
@@ -969,6 +968,9 @@ Func PlayTwoSounds%(isS2%)
         printlog("cal atten is %f and trial atten is %f\n",calatten,trlatten);
         atten := calatten + trlatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
         
+        'Get play wave area with current stimulus
+        playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
+        
     case recExpToRun% = recExpHumanFCButton% then         
         
         '''FOR DISTRACTOR, WHICH IS ON ARRAY
@@ -988,6 +990,8 @@ Func PlayTwoSounds%(isS2%)
         printlog("for distractor, cal atten is %f and trial atten is %f\n",calatten,trlattenArray);
         attenArray := calatten + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
         
+        'Get play wave area with current stimulus
+        playChar$ := GetPlayWaveKey$(isS2%);
         
         '''FOR S1, WHICH IS ON STANDALONE
         'Get this stimulus index
@@ -1991,6 +1995,11 @@ end
 ' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
 ' All stuff (like loading stimuli) which will be too costly time-wise to do while a 
 ' trial is running should be done here. 
+'
+'Right now this is ONLY used by the HumanFC experiment (this experiment may well be renamed soon)
+'For this experiment, there is a convention that a true S1 (the first S1, we may use this later
+'for stimuli we may call S1.n stimuli) there is no distractor, so we will leave the value in the
+'distractor position as zeroes.
 
 
 func PrepareNextTrial2PWAs%(dontLoadPWAs%)
@@ -2089,25 +2098,27 @@ func PrepareNextTrial2PWAs%(dontLoadPWAs%)
                 return -1;    
             else  'Load stimuli from file (which is the ONLY thing we can legally do right now for this double-wide PWA thingy)
                 
-                'get filename
-                file$ := recTrialLoadLocDistractor$[indD%];  'this is the distractor
-                if recDebug% > 0 then
-                    printlog("Trying to open stim file %s\n",file$);
-                endif;
-                'open current stimulus
-                fh%:=fileopen(file$,9,0);
-                if fh%<0 then
-                    message("Warning Message | failed to load the stimulus waveform!");
-                    printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
-                    Stop%();
-                    return -1;
-                endif;
+                if i% > 0 then  'do not load a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes
+                    'get filename
+                    file$ := recTrialLoadLocDistractor$[indD%];  'this is the distractor
+                    if recDebug% > 0 then
+                        printlog("Trying to open stim file %s\n",file$);
+                    endif;
+                    'open current stimulus
+                    fh%:=fileopen(file$,9,0);
+                    if fh%<0 then
+                        message("Warning Message | failed to load the stimulus waveform!");
+                        printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
+                        Stop%();
+                        return -1;
+                    endif;
                 
-                'reads fh% two bytes at a time, puts in recStimTransfer%[]
-                nread%:=breadsize(2,rec2StimTransfer%[][0]); '<----- NOTE THAT DISTRACTOR GOES TO DAC0, BECAUSE DAC0 IS CONNECTED TO THE PM1
+                    'reads fh% two bytes at a time, puts in recStimTransfer%[]
+                    nread%:=breadsize(2,rec2StimTransfer%[][0]); '<----- NOTE THAT DISTRACTOR GOES TO DAC0, BECAUSE DAC0 IS CONNECTED TO THE PM1
                 
-                'close current stimulus
-                fileclose();  'close fh%
+                    'close current stimulus
+                    fileclose();  'close fh%
+                endif;
                 
                 
                 
@@ -3251,7 +3262,7 @@ func IdleLoop%()
         case iState% = stateTrainingReward% then
             
             ' Are we giving free (training) rewards? If we are, then do so, otherwise we just pass on through. 
-            if recTrainingRewardmL > 0 then
+            if recTrainingRewardmL > 0 and recTurnOffReward% = 0 then
                 RecLogStatus("TrainingReward", "Giving training reward, size " + str$(recTrainingRewardmL) + " mLs");
                 amountRewarded += recTrainingRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
@@ -3667,7 +3678,7 @@ func IdleLoop%()
             'ChangeThresh(doIncUp%,doIncDown%,doIncLeft%,doIncRight%);
             recMissRepeatsCounter% := 0; 'reset MissRepeatsCounter to 0, keep track of consecutive Misses
             
-            if recHitRewardmL > 0 then
+            if recHitRewardmL > 0 and recTurnOffReward% = 0 then
                 'do reward increment stuff (note: if no increment then adding 0 every time will do nothing)
                 if thisHitReward = 0 then 'it was reset! (or this is the first trial)
                     thisHitReward := recHitRewardmL; 'this reward will be the base reward level

@@ -448,7 +448,7 @@ var recPctJuice%;                   'percentage of time variable reward will be 
 var recPctStimulation%;             'percentage of time variable reward will be a Stimulation    
 var recJuiceToStimDelay%;           'ms delay between (nominal) juice reward and stimulation reward, can attempt to deliver both at "same" time
 var recChangeRewardType% := 1;      'Do we change reward type before this trial?  Do change on first trial, or after error    
-    
+var recTurnOffReward%;              'Do we turn off the reward?    
     
 'Interrupts
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
@@ -540,6 +540,8 @@ while recReadyToQuit% = 0 do
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
         view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
+        view(recLog%).print("RecRoom: Are Stimuli Shiffled? = %d\n",1-recDoNotShuffle%);
+        view(recLog%).print("RecRoom: Is Reward On? = %d\n",1-recTurnOffReward%);
         
         if recExpToRun% <> recLastExpRun% then
             RecLEDReminderDialog%(); 'call LED color switch reminder dialog before proceeding
@@ -1469,7 +1471,7 @@ proc RecHumanFCLoadGetParams()
     key$:="Reclab\\HumanFCParam";
     
     recHumanFCExpIndexLoad% := GetIntRegistryValue%(key$, "HumanFCExpIndexLoad", recHumanFCExpIndexLoad%); 
-    recHumanFCRepeatsPerStim% := GetIntRegistryValue%(key$, "HumanFCRepeatsPerStim", recHumanFCRepeatsPerStim%);    
+    recHumanFCRepeatsPerStim% := GetIntRegistryValue%(key$, "HumanFCRepeatsPerStim", recHumanFCRepeatsPerStim%);      
     
 	return;
 end
@@ -1479,6 +1481,40 @@ end
 '
 
 
+'
+'===== RecExpSelectDialogSaveParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecExpSelectDialogSaveParams()
+	var key$;
+    key$:="Reclab\\ExpSelectDialog";
+    
+    SetIntRegistryValue(key$, "DoNotShuffle", recDoNotShuffle%); 
+    SetIntRegistryValue(key$, "TurnOffReward", recTurnOffReward%);
+    
+	return;
+end
+
+'===== RecExpSelectDialogSaveParams =====
+'
+'
+'
+'===== RecExpSelectDialogGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecExpSelectDialogGetParams()
+	var key$;
+    key$:="Reclab\\ExpSelectDialog";
+    
+    recDoNotShuffle% := GetIntRegistryValue%(key$, "DoNotShuffle", recDoNotShuffle%); 
+    recTurnOffReward% := GetIntRegistryValue%(key$, "TurnOffReward", recTurnOffReward%);      
+    
+	return;
+end
+
+'===== End RecExpSelectDialogGetParams =====
+'
+'
 
 
 
@@ -1499,6 +1535,8 @@ func RecExpSelectDialog%()
     spkArr$[1] := "15";
     spkArr$[2] := "16";
     spkArr$[3] := "Standalone";
+    
+    RecExpSelectDialogGetParams();
     
     recExpSelectDialogAllowOK% := 0;  'Disable OK button to start, force selection of experiment
     
@@ -1541,11 +1579,12 @@ func RecExpSelectDialog%()
     DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 6);
     
     DlgCheck(6,"Do Not Shuffle Stimuli",2,13);
+    DlgCheck(7,"Turn Off Reward",2,14);
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recDoNotShuffle%);  'no items
+    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recDoNotShuffle%,recTurnOffReward%);  'no items
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1591,6 +1630,8 @@ func RecExpSelectDialog%()
             standalonePA4ID% := -1;  'No standalone PA4
         endcase
         'So now we have assigned recNSpeakers% to work as it always has, and two PA4IDs to be used when calling RecAttenByID%()
+        
+        RecExpSelectDialogSaveParams();
         
         status% := 1;
     else
@@ -3156,9 +3197,7 @@ func RecExpHumanFCDialog%()
         recExpToRun% := recExpHumanFCButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
-    
-        recMatGenStim% := 0;  'Explicitly set to NOT generate stims
-    
+        
         status% := 1;
     else
         status% := 1;
