@@ -4889,8 +4889,8 @@ proc RecFRAExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     're-done in the dialog box.
     for i% := 0 to recFRANumExps%-1 do
         expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
-        stimcalName$[i%] := GetLocalCalibPath$() + "\\" + GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
-        trialsName$[i%] := GetStimPath$() + "\\" + GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
     next;
 
     PrintLog("RecFRAExpListLoadGetParams\n");
