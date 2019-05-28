@@ -981,6 +981,7 @@ Func PlayTwoSounds%(isS2%)
         spkrArray% := recDistractorSpeakerList%[recTrialOrder%[playInd%]];
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
+        printlog("CAL ATTEN INDICES ARE:  thisStimArray %d, sprkArray %d\n",thisStimArray%,spkrArray%-1);
         calatten := recTrialStimCalDistractor[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
         
         'Get trial-based attenuation for current stimulus
@@ -2764,6 +2765,7 @@ func IdleLoop%()
                 RecLogStatus("stmp", "stmp%=" + str$(stmp%));
             else
                 stmp% := 0;  'simulate playing sound if no CED
+                stmp% := PlayTwoSounds%(0);  '
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
             endif;
             
