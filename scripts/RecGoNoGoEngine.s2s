@@ -4099,7 +4099,11 @@ func BehOutput(resultCode$, isS2%)
         exptext$ := "Audiogram"; 
     case recExpToRun% = recExpHumanFCButton% then
         exptext$ := "HumanFC";
-        thisStimD% := recDistractorStimList%[recTrialOrder%[recCurrentTrial%-1]];  'These are one-D and as such not indexed by PWA, but this will change for the GNG
+        if isS2% = 0 then
+            thisStimD% := 0;  'This is "silence" by definition, I think this will change with GNG as we will need to explicitly set silence
+        else
+            thisStimD% := recDistractorStimList%[recTrialOrder%[recCurrentTrial%-1]];  'These are one-D and as such not indexed by PWA, but this will change for the GNG
+        endif;
         spkrD% := recDistractorSpeakerList%[recTrialOrder%[recCurrentTrial%-1]];
         PrintLog("***thisStimDistractor = %d and thisSpeakerDistractor = %d\n",thisStimD%,spkrD%);
         'printlog("**Distractor should be %s\n",NameThatStimulus$(recDistractorStimList%[recTrialOrder%[recCurrentTrial%-1]]));  'This won't work for loaded stims
