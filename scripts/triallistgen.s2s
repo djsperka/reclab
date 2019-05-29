@@ -413,6 +413,7 @@ func SendTrialToMiddle%(nTrials%,unfinishedTrial%,minToSkip%,&trialOrder%[])
     var minpos%;
     var maxpos%;
     var newpos%;
+    var tempTrialOrder%;
     
     if unfinishedTrial% < nTrials%-1 then  'unfinishedTrial% is an index, but nTrials% is a count
         minpos% := unfinishedTrial% + minToSkip%;  'in index units
@@ -430,11 +431,17 @@ func SendTrialToMiddle%(nTrials%,unfinishedTrial%,minToSkip%,&trialOrder%[])
         case newpos% = unfinishedTrial% then
             'do nothing, trial will repeat
         case newpos% = maxpos% then
-            arrconst(trialOrder%[unfinishedTrial%:maxpos%-unfinishedTrial%+1],trialOrder%[unfinishedTrial%+1:maxpos%-unfinishedTrial%]);
-            trialOrder%[newpos%] := unfinishedTrial%;
+            tempTrialOrder% := trialOrder%[unfinishedTrial%];
+            'arrconst(trialOrder%[unfinishedTrial%:maxpos%-unfinishedTrial%+1],trialOrder%[unfinishedTrial%+1:maxpos%-unfinishedTrial%]); 'Nope! (But silent error)
+            arrconst(trialOrder%[unfinishedTrial%:maxpos%-unfinishedTrial%],trialOrder%[unfinishedTrial%+1:maxpos%-unfinishedTrial%]);  'Yep!
+            'trialOrder%[newpos%] := unfinishedTrial%;  'Nope!
+            trialOrder%[newpos%] := tempTrialOrder%;  'Yep!
         else
-            arrconst(trialOrder%[unfinishedTrial%:newpos%-unfinishedTrial%+1],trialOrder%[unfinishedTrial%+1:newpos%-unfinishedTrial%+1]);
-            trialOrder%[newpos%] := unfinishedTrial%;
+            tempTrialOrder% := trialOrder%[unfinishedTrial%];
+            'arrconst(trialOrder%[unfinishedTrial%:newpos%-unfinishedTrial%+1],trialOrder%[unfinishedTrial%+1:newpos%-unfinishedTrial%+1]);  'Nope! (But silent error)
+            arrconst(trialOrder%[unfinishedTrial%:newpos%-unfinishedTrial%],trialOrder%[unfinishedTrial%+1:newpos%-unfinishedTrial%]);  'Yep!
+            'trialOrder%[newpos%] := unfinishedTrial%;  'Nope!
+            trialOrder%[newpos%] := tempTrialOrder%;  'Yep!
         endcase        
     else
         'Don't do anything here - if it is the last trial it will automatically repeat, that's the only option
