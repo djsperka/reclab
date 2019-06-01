@@ -251,7 +251,7 @@ func RunGoNoGoEngine%()
         docase
         case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then 
             InitializeParallelPlayWaveAreas();
-        case recExpToRun% = recExpHumanFCButton% then
+        case recExpToRun% = recExpStereoDisButton% then
             InitializeMultipleParallelPlayWaveAreas();
         else
             InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
@@ -917,7 +917,7 @@ end
 '
 '-------------------------------------------------------------------------------------------
 
-Func PlayTwoSounds%(isS2%)
+Func PlayTwoSounds%(whichStim%)
     var atten;
     var attenArray;
     var attenArray2;  'not used, at least yet, pointing towards potential two-array usage
@@ -932,7 +932,6 @@ Func PlayTwoSounds%(isS2%)
     var spkrArray2%;  'not used, at least yet, pointing towards potential two-array usage
     var playInd%;
     var status%;
-    var isS2$;
     var thisStim%;  'this is the index of the physical stimulus (re: stim file list or stim properties list)
     var thisStimArray%;
     var thisStimArray2%;  'not used, at least yet, pointing towards potential two-array usage
@@ -971,33 +970,32 @@ Func PlayTwoSounds%(isS2%)
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
         
-    case recExpToRun% = recExpHumanFCButton% then         
+    case recExpToRun% = recExpStereoDisButton% then         
         
         '''FOR DISTRACTOR, WHICH IS ON ARRAY
         'Get this stimulus index
-        thisStimArray% := recDistractorStimList%[recTrialOrder%[playInd%]];
+        thisStimArray% := recDistractorStimList%[whichStim%][recTrialOrder%[playInd%]];
         
         'Get speaker for current stimulus
-        spkrArray% := recDistractorSpeakerList%[recTrialOrder%[playInd%]];
+        spkrArray% := recDistractorSpeakerList%[whichStim%][recTrialOrder%[playInd%]];
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         printlog("CAL ATTEN INDICES ARE:  thisStimArray %d, sprkArray %d\n",thisStimArray%,spkrArray%-1);
         calatten := recTrialStimCalDistractor[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
         
         'Get trial-based attenuation for current stimulus
-        trlattenArray := recDistractorDeltadBList[recTrialOrder%[playInd%]];
+        trlattenArray := recDistractorDeltadBList[whichStim%][recTrialOrder%[playInd%]];
         
         'Get total attenuation
         printlog("for distractor, cal atten is %f and trial atten is %f\n",calatten,trlattenArray);
         attenArray := calatten + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
         
         'Get play wave area with current stimulus
-        playChar$ := GetPlayWaveKey$(isS2%);
+        playChar$ := GetPlayWaveKey$(whichStim%);
         
         '''FOR S1, WHICH IS ON STANDALONE
         'Get this stimulus index
-        'thisStimSA% := recStimList%[recTrialOrder%[playInd%]][isS2%];
-        thisStimSA% := recStimList%[isS2%][recTrialOrder%[playInd%]];
+        thisStimSA% := recStimList%[whichStim%][recTrialOrder%[playInd%]];
         
         'S1/S2 are on standalone speaker by definition
         
@@ -1005,16 +1003,18 @@ Func PlayTwoSounds%(isS2%)
         calatten := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
         
         'Get trial-based attenuation for current stimulus
-        'trlatten := recDeltadBList[recTrialOrder%[playInd%]][isS2%];
-        trlatten := recDeltadBList[isS2%][recTrialOrder%[playInd%]];
+        trlatten := recDeltadBList[whichStim%][recTrialOrder%[playInd%]];
         
         'Get total attenuation
-        if isS2% = 0 then
+        docase
+        case whichStim% = 0 then
             printlog("for S1, cal atten is %f and trial atten is %f\n",calatten,trlatten);
-        else
+        case whichStim% = recTrialTerminalIndex%[recTrialOrder%[playInd%]] then
             printlog("for S2, cal atten is %f and trial atten is %f\n",calatten,trlatten);
-        endif;
-        attenSA := calatten + trlatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
+        else
+            printlog("for S1.n #%d, cal atten is %f and trial atten is %f\n",whichStim%,calatten,trlatten);
+        endcase;
+        attenSA := calatten + trlatten;  'for all cases, attenuation is calibrating attenuation + trial attenuation
         
         
     endcase
@@ -1072,7 +1072,7 @@ Func PlayTwoSounds%(isS2%)
             'use trlatten for attenuation because calibrating attenuation isn't informative
             RecLogStatus("PlayTwoSounds", "SPK " + str$(spkr%) + " ATT " + str$(trlatten) + "\n");
             
-        case recExpToRun% = recExpHumanFCButton% then
+        case recExpToRun% = recExpStereoDisButton% then
             status% := recSpeaker%(spkrArray%);
             if status% <> 0 then
                 printlog("recSpeaker returned status of %d!! Failing!!\n",status%);
@@ -1131,7 +1131,7 @@ Func PlayTwoSounds%(isS2%)
         docase
         case recExpToRun% = recExpFRAButton% then
             s$ := Print$("\"%s\",%s,%d,%d,%.1f,\"", playChar$, recCurrentTrial%, spkr%, trlatten);  
-        case recExpToRun% = recExpHumanFCButton% then
+        case recExpToRun% = recExpStereoDisButton% then
             s$ := Print$("\"%s\",%s,%d,standalone,%.1f,%d,%.1f,\"", playChar$, recCurrentTrial%, trlatten, spkrArray%, trlattenArray);
         endcase
         
@@ -1144,7 +1144,7 @@ Func PlayTwoSounds%(isS2%)
     docase
     case recExpToRun% = recExpFRAButton% then
         recPlayPoints% := recPlayRateHz*recTrialDur[thisStim%]/1000;  'recTrialDur is in ms 
-    case recExpToRun% = recExpHumanFCButton% then  
+    case recExpToRun% = recExpStereoDisButton% then  
         recPlayPoints% := recPlayRateHz*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms
     endcase
     
@@ -1227,8 +1227,8 @@ func StimComplete%(isS2%, success%)
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
         
-    case isS2% = 1 and recExpToRun% = recExpHumanFCButton% then  'If this is the final stimulus in the Human FC experiment, S2 High
-        printlog("Human FC Hi!, current trial is %d\n", recCurrentTrial%); 
+    case isS2% = 1 and recExpToRun% = recExpStereoDisButton% then  'If this is the final stimulus in the Stereo Distractor experiment, S2 High
+        printlog("Stereo Distractor FC Hi!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then
             resultCode$ := "HH";
         else
@@ -1261,8 +1261,8 @@ func StimComplete%(isS2%, success%)
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
         
-    case isS2% = 3 and recExpToRun% = recExpHumanFCButton% then  'If this is the final stimulus in the Human FC experiment, S2 Low
-        printlog("Human FC Low!, current trial is %d\n", recCurrentTrial%); 
+    case isS2% = 3 and recExpToRun% = recExpStereoDisButton% then  'If this is the final stimulus in the Stereo Distractor experiment, S2 Low
+        printlog("Stereo Distractor FC Low!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then
             resultCode$ := "HL";
         else
@@ -1284,8 +1284,8 @@ func StimComplete%(isS2%, success%)
         endif;
         status% := 0;  'After S2, we will indicate the next stimulus is an S1, as it will be.
         
-    case isS2% = 2 and recExpToRun% = recExpHumanFCButton% then  'If this is the final stimulus in the Human FC experiment, S2 Same
-        printlog("Human FC Low!, current trial is %d\n", recCurrentTrial%); 
+    case isS2% = 2 and recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 then  'If this is the final stimulus in the Stereo Distractor FC experiment, S2 Same
+        printlog("Stereo Distractor FC Low!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then '1 indicates response was S2 High, 0 indicates response was S2 Low
             resultCode$ := "SH";  'Same, response was high
         else
@@ -1329,9 +1329,9 @@ func StimComplete%(isS2%, success%)
         recStimCount% += 1;
         termInd% := recTrialTerminalIndex%[stimInd%];  'terminal index
         if termInd% = recStimCount% then 'if the next stimulus is the terminal stimulus
-            docase 'This works for HumanFC as well as AMDis
+            docase 'This works for StereoDis as well as AMDis
             case recTrialTerminalIsS2%[stimInd%] = 1 then 'terminal stimulus is a target ; for AMDis is(HI) recTrialS2%[i%] > recTrialS1%[i%] 
-                status% := 1;  'return indicates S2 is next (S2-HI if AMDis)
+                status% := 1;  'return indicates S2 is next (S2-HI if AMDis, StereoDis)
             case recTrialTerminalIsS2%[stimInd%] = 2 then 'terminal stim in a target (LO) recTrialS2%[i%] < recTrialS1%[i%] *jao 
                 printlog("AMDis Lo: next stim will be a decrease in AMrate, responseMode:=3 \n"); 
                 status% := 3;  'return indicates S2-LO is next
@@ -1989,7 +1989,7 @@ end
 
 '------- PrepareNextTrial2PWAs% --------------------------------------------------------
 ' 
-' Called prior to initiating a set of S1/S2 stimuli, for scenarios like Human FC that
+' Called prior to initiating a set of S1/S2 stimuli, for scenarios like Stereo Distractor that
 ' have double-barreled PWAs.
 ' Return 1 if all is well, 0 if all trials are done, negative for error. 
 '
@@ -1997,7 +1997,7 @@ end
 ' All stuff (like loading stimuli) which will be too costly time-wise to do while a 
 ' trial is running should be done here. 
 '
-'Right now this is ONLY used by the HumanFC experiment (this experiment may well be renamed soon)
+'Right now this is ONLY used by the StereoDis experiment (this experiment may well be renamed soon)
 'For this experiment, there is a convention that a true S1 (the first S1, we may use this later
 'for stimuli we may call S1.n stimuli) there is no distractor, so we will leave the value in the
 'distractor position as zeroes.
@@ -2071,18 +2071,18 @@ func PrepareNextTrial2PWAs%(dontLoadPWAs%)
             
             'get index of trial
             ind% := recStimList%[i%][thisTrial%];
-            indD% := recDistractorStimList%[thisTrial%];  'may need to change this to 2-D for GNG
+            indD% := recDistractorStimList%[i%][thisTrial%];
             
-            'get speaker of trial
+            'get speaker of trial - SPEAKER IS UNUSED IN THIS FUNCTION
             'thisSpkr% := recSpeakerList%[i%][thisTrial%];
-            thisSpkr% := recDistractorSpeakerList%[thisTrial%];  'Only the distractor changes speaker (also this doesn't get used!)
+            'thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker (also this doesn't get used!)
                 
             'Set rec2StimTransfer%[] to zeros
             arrconst(rec2StimTransfer%[][],0);  
             
             docase
-            case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this is testing
-                'don't do anything, just pretend all is OK
+            'case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this enables testing, currently no double-barreled PWA experiments allow generated stimuli
+                'don't do anything, just pretend all is OK - ACTUALLY, AGAIN NOT SURE THIS IS NEEDED AS GENERATED STIM THROWS AN ERROR BELOW
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 'Really, this isn't a boo-boo we should expect, but I'm leaving it in in case it's useful down the road
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
@@ -2327,14 +2327,14 @@ func IdleLoop%()
                
         
         
-    'Update the joystick plot every 5 ms
-    'printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
+        'Update the joystick plot every 5 ms
+        'printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
         if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 and recCEDIsPresent% = 1 then
             XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
             YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.001,tNow-.006);
             View(joyview%).XYAddData(joydatachan%,XJoy,YJoy);  'do not need to flip axis values
             tLastJoyUpdate := tNow;
-        'printlog("Updated joystick voltage with x voltage %f and y voltage %f\n",XJoy,YJoy);
+            'printlog("Updated joystick voltage with x voltage %f and y voltage %f\n",XJoy,YJoy);
         endif;
         
         
@@ -2372,7 +2372,7 @@ func IdleLoop%()
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
                 docase
-                case recExpToRun% = recExpHumanFCButton% then
+                case recExpToRun% = recExpStereoDisButton% then
                     stmp% := PrepareNextTrial2PWAs%(0);
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then
                     stmp% := PrepareNextTrial%(0); 'load PWAs, should gracefully pass through in debug mode as well
@@ -2754,8 +2754,8 @@ func IdleLoop%()
             
             RecLogStatus("TrialSoundA", "Call expt function");
             if recCEDIsPresent% = 1 then
-                if recExpToRun% = recExpHumanFCButton% then
-                    stmp% := PlayTwoSounds%(0);  'For now, 0 plays the first sound (and 1 would play the second sound), this won't last
+                if recExpToRun% = recExpStereoDisButton% then
+                    stmp% := PlayTwoSounds%(recStimCount%);
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
@@ -2765,7 +2765,7 @@ func IdleLoop%()
                 RecLogStatus("stmp", "stmp%=" + str$(stmp%));
             else
                 stmp% := 0;  'simulate playing sound if no CED
-                stmp% := PlayTwoSounds%(0);  '
+                stmp% := PlayTwoSounds%(recStimCount%);  '
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
             endif;
             
@@ -2868,22 +2868,23 @@ func IdleLoop%()
                     responseMode% := -1; 'reset for debugging
                     isS2% := StimComplete%(0, 1);  'isS2% will tell us what the next stimulus is
                     responseMode% := isS2%; 'branched from isS2% for Hi/Lo responses
+ 
                     docase 
                     case isS2% = 0 then
                         ChangeStateTo(stateStartSoundA%);  'SoundA is a non-terminal S1
                     case isS2% = 1 then
                         isTerminalS1% := 0;
-                        ChangeStateTo(stateStartSoundB%);  'for AMdis/HumanFC: Hi (S2>S1)
+                        ChangeStateTo(stateStartSoundB%);  'for AMdis/StereoDis: Hi (S2>S1)
                     case isS2% = 2 then
                         isTerminalS1% := 1;
                         ChangeStateTo(stateStartSoundC%);  'SoundC is a terminal S1 - a stimulus which will be rewarded for no-go; for Hi/Lo (forced choice) case, will be rewarded 50%
-                        if recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton% then  'HumanFC not rewarded right now, but still run through this...may be useful in future
+                        if recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton% then  'StereoDis not rewarded right now, but still run through this...may be useful in future
                             coinFlipResult% := round(rand()); 'simple 50/50 way. might want to create a variable "sameRewardRate" or something.
                             printlog("coinFlipResult% = /d%", coinFlipResult%); '*jao
                         endif;
                     case isS2% = 3 then
                         isTerminalS1% := 0;
-                        ChangeStateTo(stateStartSoundD%);  'for AMDis/HumanFC: Lo (S2<S1) 
+                        ChangeStateTo(stateStartSoundD%);  'for AMDis/StereoDis: Lo (S2<S1) 
                     else
                         RecLogStatus("WaitISI", "Unknown return value from StimComplete");
                         Message("Error in StimComplete%()!!!");
@@ -2916,8 +2917,8 @@ func IdleLoop%()
         case iState% = stateStartSoundB% then
             RecLogStatus("TrialSoundB", "Call expt function");
             if recCEDIsPresent% = 1 then
-                if recExpToRun% = recExpHumanFCButton% then
-                    stmp% := PlayTwoSounds%(1);  'For now, 1 plays the second sound (and 0 would play the first sound), this won't last
+                if recExpToRun% = recExpStereoDisButton% then
+                    stmp% := PlayTwoSounds%(recStimCount%);
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
@@ -3009,8 +3010,8 @@ func IdleLoop%()
             'Logic here is actually the same as for sound B
             RecLogStatus("TrialSoundC", "Call expt function");
             if recCEDIsPresent% = 1 then
-                if recExpToRun% = recExpHumanFCButton% then
-                    stmp% := PlayTwoSounds%(1);  'For now, 1 plays the second sound (and 0 would play the first sound), this really won't last
+                if recExpToRun% = recExpStereoDisButton% then
+                    stmp% := PlayTwoSounds%(recStimCount%);
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
@@ -3105,8 +3106,8 @@ func IdleLoop%()
         case iState% = stateStartSoundD% then
             RecLogStatus("TrialSoundD", "Call expt function");
             if recCEDIsPresent% = 1 then
-                if recExpToRun% = recExpHumanFCButton% then
-                    stmp% := PlayTwoSounds%(1);  'For now, 1 plays the second sound (and 0 would play the first sound), this won't last
+                if recExpToRun% = recExpStereoDisButton% then
+                    stmp% := PlayTwoSounds%(recStimCount%);
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
@@ -3193,7 +3194,7 @@ func IdleLoop%()
         case iState% = stateStartSoundE% then
             RecLogStatus("TrialSoundE", "Call expt function");
             if recCEDIsPresent% = 1 then
-                stmp% := PlayTwoSounds%(0);  'For FRA, we need to pass a value, but it will be ignored
+                stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
                 StimStoppedNotSet% := 1; ' now that we played a sound we need to set the time of that sound stopping again (for ISI)
                 recStimOn := StimOn;  
                 dummy% := fraStimComplete%();
@@ -3323,9 +3324,9 @@ func IdleLoop%()
                     UpdateAudiogram(1);  'hit, make audiogram stimulus quieter, etc.
                 endif;
                 docase
-                case responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'HI, HIT
+                case responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, HIT
                     StimComplete%(1, 1);
-                case responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'LOW, HIT
+                case responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'LOW, HIT
                     StimComplete%(3, 1);
                 else
                     StimComplete%(1, 1);  'must come after UpdateAudiogram()
@@ -3340,9 +3341,9 @@ func IdleLoop%()
                 isEarlyMiss% := 0;  'reset variable
                 'time of early FA is recorded above
                 docase
-                case responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'HI, MISS
+                case responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, MISS
                     StimComplete%(1, 0);
-                case responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'LOW, MISS
+                case responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'LOW, MISS
                     StimComplete%(3, 0);
                 else
                     StimComplete%(1, 0);  'must come after UpdateAudiogram()
@@ -3351,8 +3352,8 @@ func IdleLoop%()
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateFalsePositive%);
                 
-            'AMDis Hi/Lo or HumanFC --> SAME trials early response
-            case isEarlyFA% = 1 or isEarlyCR% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then  'AMDis Hi/Lo --> SAME trial, inResponse1% OR 2                 
+            'AMDis Hi/Lo or StereoDis --> SAME trials early response
+            case isEarlyFA% = 1 or isEarlyCR% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then  'AMDis Hi/Lo --> SAME trial, inResponse1% OR 2                 
                 docase
                 case isEarlyCR% = 1 then 'inResponse2%
                     isEarlyCR% := 0;  'reset variable
@@ -3394,8 +3395,9 @@ func IdleLoop%()
                 ChangeStateTo(stateHitReward%);   
                 
             
-        'Done with early responses, now in response window        
-        'AMDis HI/LO and HumanFC
+            'Done with early responses, now in response window 
+                
+            'PASSIVE AMDis/SpaceDis HI
             case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then
                 RecLogStatus("InResponseWindow", "Passive task - HIT HI"); 
                 StimComplete%(1, 1);
@@ -3403,37 +3405,40 @@ func IdleLoop%()
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
-            case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%)
-            'isTerminalS1% = 0 then 
-                'SafeSampleKey("R");  'not in Recgen.pls!
+            'PASSIVE AMDis/SPpaceDis LO
+            case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) 
                 RecLogStatus("InResponseWindow", "Passive task - HIT Lo");
                 StimComplete%(3, 1);
                 SafeSampleKey("M"); 'what is this about?
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
-            case inResponse1% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'HI, HIT
-            'isTerminalS1% = 0 then 
-                'SafeSampleKey("R");  'not in Recgen.pls!
+            'ACTIVE AMDis/SpaceDis/StereoDis HI Hit, either FC or GNG, InResponse% is same for both
+            case inResponse1% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, HIT 
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT HI"); 
                 StimComplete%(1, 1);
                 SafeSampleKey("M"); 'what is this about?
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
-            'Lo-Hit in response window    
-            case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%)
-            'isTerminalS1% = 0 then 
-                'SafeSampleKey("R");  'not in Recgen.pls!
+            'ACTIVE StereoDis LO Hit, GNG only
+            case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% and recIsGoNoGo% = 1 then 'LO, HIT 
+                RecLogStatus("InResponseWindow", "In response position 1 - HIT LO"); 
+                StimComplete%(3, 1);
+                SafeSampleKey("M"); 'what is this about?
+                numHits% += 1; 'increment HIT counter
+                recPreciseTrialTime := recLeverTime; 'time hit occurred
+                ChangeStateTo(stateHitReward%);
+            'ACTIVE AMDis/SpaceDis/StereoDis LO Hit, FC only (cannot get inResponse2% = 1 in GNG)
+            case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%)
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
                 StimComplete%(3, 1);
                 SafeSampleKey("M"); 'what is this about?
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
-            'Hi-Miss in response window    
-            case inResponse2% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'HI, MISS
-            'isTerminalS1% = 0 then  
+            'ACTIVE AMDis/SpaceDis/StereoDis HI Miss, FC only (cannot get inResponse2% = 1 in GNG)    
+            case inResponse2% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, MISS  
                 RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);  
@@ -3450,10 +3455,8 @@ func IdleLoop%()
                 endif
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateMissTimeout%);
-            'Lo-MISS in response window    
-            case inResponse1% = 1 and responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 'LO, MISS
-            'isTerminalS1% = 0 then  
-                'SafeSampleKey("R");  'not in Recgen.pls!
+            'ACTIVE AMDis/SpaceDis/StereoDis LO Miss, FC only, GNG case must be dealt with earlier in CASE statement   
+            case inResponse1% = 1 and responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'LO, MISS 
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(3, 0);   'gotcha bitch!
@@ -3473,9 +3476,7 @@ func IdleLoop%()
                 ChangeStateTo(stateMissTimeout%);
             
             'SAME and in either response window    
-            case responseMode% = 2 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) and (inResponse1% = 1 or inResponse2% = 1) then 'SAME, either response
-            'isTerminalS1% = 1 then  
-                'SafeSampleKey("R");  'not in Recgen.pls!
+            case responseMode% = 2 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) and (inResponse1% = 1 or inResponse2% = 1) and recIsGoNoGo% = 0 then 'SAME, either response
                 if inResponse1% = 1 then
                     RecLogStatus("InResponseWindow", "In response position 1 , SAME trial - went Hi");
                     'want to keep track of which response happened in output...
@@ -3484,7 +3485,7 @@ func IdleLoop%()
                     'want to keep track of which response happened in output...
                 endif;
                 recPreciseTrialTime := recLeverTime;  'time response occurred
-                if recExpToRun% = recExpHumanFCButton% then
+                if recExpToRun% = recExpStereoDisButton% then
                     'Cheating here, and passing a value OTHER THAN actual success, so that we can know which direction the human actually responded, as that seems important
                     StimComplete%(2, inResponse1%);  '1 indicates response was S2 High, 0 indicates response was S2 Low
                 else
@@ -3500,7 +3501,6 @@ func IdleLoop%()
 
         'the original code for SAME/DIFF:
             case (tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1) or (inResponse1% = 1 and isTerminalS1% = 0) then  'forced choice OR go/no-go
-                'SafeSampleKey("R");  'not in Recgen.pls!
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 SafeSampleKey("M");
@@ -3541,7 +3541,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - NO RESPONSE ON FORCED CHOICE");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
                 docase
-                case (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpHumanFCButton%) then 
+                case (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 
                     StimComplete%(responseMode%, 0);
                 else
                     StimComplete%(isTerminalS1%+1, 0);  'this covers whether it is terminal S1 or not
@@ -3564,6 +3564,23 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
                 'numFPs% += 1;  'increment FP counter   'NOTE: NOT SURE WHETHER TO INCREMENT FA COUNTER HERE OR NOT
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response --> OR, delete reshuffling above and do FA timeout
+                
+            'ACTIVE StereoDis HI Miss, GNG only
+            case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and responseMode% = 1 and recExpToRun% = recExpStereoDisButton% then 'HI, Miss 
+                RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (HI)"); 
+                StimComplete%(1, 0);
+                SafeSampleKey("M"); 'what is this about?
+                numMisses% += 1;  'increment MISS counter
+                recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
+                ChangeStateTo(stateMissTimeout%);
+            'ACTIVE StereoDis LO Miss, GNG only
+            case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% then 'HI, Miss 
+                RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (LO)"); 
+                StimComplete%(3, 0);
+                SafeSampleKey("M"); 'what is this about?
+                numMisses% += 1;  'increment MISS counter
+                recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
+                ChangeStateTo(stateMissTimeout%);
             'Response window is closed, miss on go/no-go   
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and isTerminalS1% = 0 then  'go/no-go miss
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS");
@@ -4066,7 +4083,7 @@ func BehOutput(resultCode$, isS2%)
     'var playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
     var thisStim%;
     var spkr%;
-    var thisStimD%;  'Distractor in HumanFC
+    var thisStimD%;  'Distractor in StereoDis
     var spkrD%;
     var joyResponse%;
     var missReps%;
@@ -4081,7 +4098,7 @@ func BehOutput(resultCode$, isS2%)
     
     'determing expt specific strings... etc..
     'this docase also ensures a new file will be created for each experiment or for which vars to add for which expt
-    'I have moved this up to allow HumanFC case to do some additional work
+    'I have moved this up to allow StereoDis case to do some additional work
     docase
     case recExpToRun% = recExpAMDiscButton% then
         exptext$ := "AMDis";
@@ -4097,16 +4114,11 @@ func BehOutput(resultCode$, isS2%)
         exptext$ := "Cueing";
     case recExpToRun% = recExpAudiogramButton% then
         exptext$ := "Audiogram"; 
-    case recExpToRun% = recExpHumanFCButton% then
-        exptext$ := "HumanFC";
-        if isS2% = 0 then
-            thisStimD% := 0;  'This is "silence" by definition, I think this will change with GNG as we will need to explicitly set silence
-        else
-            thisStimD% := recDistractorStimList%[recTrialOrder%[recCurrentTrial%-1]];  'These are one-D and as such not indexed by PWA, but this will change for the GNG
-        endif;
-        spkrD% := recDistractorSpeakerList%[recTrialOrder%[recCurrentTrial%-1]];
+    case recExpToRun% = recExpStereoDisButton% then
+        exptext$ := "StereoDis";
+        thisStimD% := recDistractorStimList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]];  
+        spkrD% := recDistractorSpeakerList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]];
         PrintLog("***thisStimDistractor = %d and thisSpeakerDistractor = %d\n",thisStimD%,spkrD%);
-        'printlog("**Distractor should be %s\n",NameThatStimulus$(recDistractorStimList%[recTrialOrder%[recCurrentTrial%-1]]));  'This won't work for loaded stims
     endcase
     
     
@@ -4185,10 +4197,10 @@ func BehOutput(resultCode$, isS2%)
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\n","Spkr","Freq","dB","Result","StimOnset","LeverTime"); 'header for trial vars
         case recExpToRun% = recExpFRAButton% then
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Stim1","Spkr1","Stim2","Spkr2","dB1","dB2","StimOnset","Reward");
-        case recExpToRun% = recExpHumanFCButton% then
+        case recExpToRun% = recExpStereoDisButton% then
             'hmm
         view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","StimMF","StimCarrier","StimAtten","DistStimMF",
-                         "DistStimCarrier","DistSpkr","DistAtten","Result","Resp","StimOnset","LeverTime"); 'header for Human FC vars
+                         "DistStimCarrier","DistSpkr","DistAtten","Result","Resp","StimOnset","LeverTime"); 'header for Stereo Distractor vars
         else 'in all other cases, this is what Jackie has right now - case statement can be easily updated in the future
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","Spkr","Atten","Result","Resp","StimOnset","LeverTime"); 'header for trial vars
             'or split S1 and S2 into two lines - call after each StimComplete --> yes. this will be called after each stimulus from StimComplete
@@ -4211,12 +4223,12 @@ func BehOutput(resultCode$, isS2%)
         view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][1],rec2SpeakerList%[recCurrentTrial%][1]);
         view(fh%).print("%f\t%f\t",dB1,dB2);
         view(fh%).print("%f\t%d\n",StimOn,recFRAreward%[recCurrentTrial%]);
-    case recExpToRun% = recExpHumanFCButton% then
+    case recExpToRun% = recExpStereoDisButton% then
         'This line is apparently not too long, but man, it's gotta be close.
     view(fh%).print("%d\t%d\t%f\t%s\t%f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
        recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStimD%],recTrialCarrierDistractor$[thisStimD%],spkrD%,
-       recDistractorDeltadBList[recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
-        'NOTE: output key for "Stype" for Human FC
+       recDistractorDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
+        'NOTE: output key for "Stype" for Stereo Distractor
         'isS2%+1 = 1 for S1, 2 for S2 High, 3 for terminal S1 (same), and 4 for S2 Low
     else
         view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2%+1,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!

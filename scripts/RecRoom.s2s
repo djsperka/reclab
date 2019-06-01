@@ -61,12 +61,14 @@ var recExpSpaceDisButton%:=13; '*jao
 var recSpaceDisAddExpButton%:=14; 'more buttons!
 var recSpaceDisDeleteExpButton%:=15;  'moar buttons!!
 var recExpAudiogramButton%:=16;  'maori buttons!!!! 
-var recExpHumanFCButton%:=17;    
-var recExpHumanFCAddExpButton%:=18;
-var recExpHumanFCDeleteExpButton%:=19;
+var recExpStereoDisButton%:=17;    
+var recExpStereoDisAddExpButton%:=18;
+var recExpStereoDisDeleteExpButton%:=19;
 var recFRAAddExpButton%:=20;
 var recFRADeleteExpButton%:=21;    
-var recSelectStimDistractorFileButton%:=22;    
+var recSelectStimDistractorFileButton%:=22;  
+var recExpStereoDisGNGAddExpButton%:=23;
+var recExpStereoDisGNGDeleteExpButton%:=24;    
     
 
 'Selection Dialog variables
@@ -166,7 +168,8 @@ var recFRATrialsNameLoad$[recFRANumExps%];    'Trials file names, loading files
 var recFRAExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recFRAExpIndexGen%;          'Experiment index, for generating stims, etc. 
 var recFRARepeatsPerStim% := 1;       'Number of repeats for each stimulus defined in the trials file   
-var recHumanFCRepeatsPerStim% := 1;    
+var recStereoDisRepeatsPerStim% := 1;  
+var recStereoDisGNGRepeatsPerStim% := 1;    
 var recRepeatsPerStim%;       'Number of repeats for each stimulus defined in the trials file    
 var recFRAText2%;    
 var recFRALoadStim% := 1;
@@ -258,13 +261,21 @@ var recSpaceDisExpIndexGen%;          'Experiment index, for generating stims, e
 'var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
     
     
-'Human Forced Choice Dialog variables
-const recHumanFCNumExps% := 40;
-var recHumanFCExpNameLoad$[recHumanFCNumExps%];
-var recHumanFCStimcalNameLoad$[recHumanFCNumExps%];
-var recHumanFCStimcalDistractorNameLoad$[recHumanFCNumExps%];
-var recHumanFCTrialsNameLoad$[recHumanFCNumExps%];
-var recHumanFCExpIndexLoad%;
+'Stereo Distractor Dialog variables
+const recStereoDisNumExps% := 40;
+var recStereoDisExpNameLoad$[recStereoDisNumExps%];
+var recStereoDisStimcalNameLoad$[recStereoDisNumExps%];
+var recStereoDisStimcalDistractorNameLoad$[recStereoDisNumExps%];
+var recStereoDisTrialsNameLoad$[recStereoDisNumExps%];
+var recStereoDisExpIndexLoad%;
+var recStereoDisExpDoFC%;
+const recStereoDisGNGNumExps% := 40;
+var recStereoDisGNGExpNameLoad$[recStereoDisGNGNumExps%];
+var recStereoDisGNGStimcalNameLoad$[recStereoDisGNGNumExps%];
+var recStereoDisGNGStimcalDistractorNameLoad$[recStereoDisGNGNumExps%];
+var recStereoDisGNGTrialsNameLoad$[recStereoDisGNGNumExps%];
+var recStereoDisGNGExpIndexLoad%;  
+var recStereoDisExpDoGNG%;    
     
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
@@ -321,6 +332,7 @@ const recMaxStim%:=1000;            'Maximum number of stimuli, 1000 is probably
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
 const recMaxTrial%:=5000;           'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
+const recMaxDistractor%:=6;         'Maximum number of distractors (= max number of S1.ns in distractor expt.), currently index 0 will remain empty as the true S1 has no distractor    
 var recTotalStim%;                  'Total number of stimuli specified in Stim or Stim/Cal file
 var recTotalDistractorStim%;        'Total number of stimuli specified in distractor version of Stim/Cal file    
 var recMinS1%;                      'Minimum number of S1s
@@ -330,6 +342,7 @@ var recTrialLoadLoc$[recMaxStim%];            'Disk location of files to load, s
 var recTrialLoadLocDistractor$[recMaxStim%];  'Disk location of files to load, stim/cal file, distractors
 var recTrialDur[recMaxStim%];       '          Duration of each stimulus, in ms, stim/cal OR stim file
 var recTrialDurDistractor[recMaxStim%];       'Duration of each stimulus, in ms, stim/cal OR stim file, distractors
+var recTrialNumS1ns%[recMaxStim%];            'Number of S1.n stimuli on each trial, used for two-speaker distractor scenarios    
 var recTrialMF[recMaxStim%];                  'Modulation frequency of each stimulus    
 var recTrialMFDistractor[recMaxStim%];        'Modulation frequency of each stimulus, distractors
 var recTrialCarrier$[recMaxStim%];            'Carrier type of each stimulus
@@ -358,9 +371,9 @@ var recTrialS1Spkr%[recMaxTrial%];            'Index corresponding to S1 speaker
 var recTrialS2Spkr%[recMaxTrial%];            'Index corresponding to S2 speaker
 var recTrialS1DeltadB[recMaxTrial%];          'Allows a single trial's S1 to be different from default intensity
 var recTrialS2DeltadB[recMaxTrial%];          'Allows a single trial's S2 to be different from default intensity   
-var recTrialDistractor%[recMaxTrial%];        'Index corresponding to distractor stimulus 
-var recTrialDistractorSpkr%[recMaxTrial%];    'Index corresponding to distractor speaker
-var recTrialDistractorDeltadB[recMaxTrial%];  'Allows a single trial's distractor to be different from default intensity     
+var recTrialDistractor%[recMaxTrial%][recMaxDistractor%];        'Index corresponding to distractor stimulus 
+var recTrialDistractorSpkr%[recMaxTrial%][recMaxDistractor%];    'Index corresponding to distractor speaker
+var recTrialDistractorDeltadB[recMaxTrial%][recMaxDistractor%];  'Allows a single trial's distractor to be different from default intensity     
     
 var recPlayPoints%;                 'Holds the number of points to play for each stimulus    
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
@@ -370,13 +383,13 @@ var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring
     
 'Trial list variables
 var recPWAList%[recMaxStimPerTrial%][recMaxTrial%];     'Holds indices to which PWA to use on each trial, and therefore also indexes recStimList%[][]    
-var recStimList%[recMaxPWA%][recMaxTrial%];             'A list of unique stim/speaker combos on each trial 
+var recStimList%[recMaxStimPerTrial%][recMaxTrial%];    'A list of unique stim/speaker combos on each trial
 var recTrialTerminalIndex%[recMaxTrial%];               'For each trial, holds indices to which row of recPWAList%[][] holds the final stimulus
 var recTrialTerminalIsS2%[recMaxTrial%];                'For each trial, if 1 trial is target (Hit/miss), if 0 trial is catch (CR/FA)
 var recTotalTrials%;                                    'Holds the number of trials in the trials file, will not necessarily be the same as recNTrials% due to repeats    
 var recNTrials%;                                        'Holds the total number of trials
 var recNUniqueStims%[recMaxTrial%];                     'Holds the number of unique stims on each trial, for loading PWAs
-var recSpeakerList%[recMaxPWA%][recMaxTrial%];          'Same as recStimList%[][], but holds speaker number
+var recSpeakerList%[recMaxStimPerTrial%][recMaxTrial%];          'Same as recStimList%[][], but holds speaker number
 'var recAttenList%[recMaxStimPerTrial%][recMaxTrial%];   'Same as recStimList%[][], but holds CALIBRATING attenuation FROM A FILE, currently disabled
 var recDeltadBList[recMaxStimPerTrial%][recMaxTrial%];  'Same as recPWAList%[][], but holds TRIAL-BASED attenuation (experimentally relevant)   
 var recTrialOrder%[recMaxTrial%];                       'Holds order in which trials should be presented
@@ -391,10 +404,10 @@ var rec2DeltadBList[recMaxTrial%][2];
 var recFRAReward%[recMaxTrial%];    
     
     
-'Human Forced Choice specific trial list variables
-var recDistractorStimList%[recMaxTrial%];
-var recDistractorSpeakerList%[recMaxTrial%];
-var recDistractorDeltadBList[recMaxTrial%];
+'Stereo Distractor specific trial list variables
+var recDistractorStimList%[recMaxStimPerTrial%][recMaxTrial%];
+var recDistractorSpeakerList%[recMaxStimPerTrial%][recMaxTrial%];
+var recDistractorDeltadBList[recMaxStimPerTrial%][recMaxTrial%];  
     
     
 'Timing Parameters
@@ -770,27 +783,48 @@ while recReadyToQuit% = 0 do
             endif;
             
             
-        case recExpToRun% = recExpHumanFCButton% then  'For Human Forced Choice, at least for now, all stimuli are generated
-            recExptText$ := "Running Human Forced Choice "; 
+        case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 then  'For Stereo Distractor, at least for now, all stimuli are generated
+            recExptText$ := "Running Stereo Distractor FC"; 
             
             'Get stimfile and trials file lists
-            RecHumanFCExpListLoadGetParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
+            RecStereoDisExpListLoadGetParams(recStereoDisExpNameLoad$[],recStereoDisStimcalNameLoad$[],recStereoDisTrialsNameLoad$[],recStereoDisStimcalDistractorNameLoad$[]);
             'Load trials file, stim/cal file
-            trialsOK% := RecLoadTrialsFile9%(recHumanFCTrialsNameLoad$[recHumanFCExpIndexLoad%],recTotalTrials%);
+            trialsOK% := RecLoadTrialsFile9%(recStereoDisTrialsNameLoad$[recStereoDisExpIndexLoad%],recTotalTrials%);
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
-                stimOK% := RecLoadStimCalDistractorFile%(recHumanFCStimcalDistractorNameLoad$[recHumanFCExpIndexLoad%],recNSpeakers%,recTotalDistractorStim%);
+                stimOK% := RecLoadStimCalDistractorFile%(recStereoDisStimcalDistractorNameLoad$[recStereoDisExpIndexLoad%],recNSpeakers%,recTotalDistractorStim%);
                 if stimOK% = 1 then  'Don't bother with loading S1/S2 Stim/Cal file if distractor one is bad
-                    stimOK% := RecLoadStimCalMFCarrierFile%(recHumanFCStimcalNameLoad$[recHumanFCExpIndexLoad%],1,recTotalStim%);  'here, there is only 1 S1/S2 speaker, at least for now
+                    stimOK% := RecLoadStimCalMFCarrierFile%(recStereoDisStimcalNameLoad$[recStereoDisExpIndexLoad%],1,recTotalStim%);  'here, there is only 1 S1/S2 speaker, at least for now
                 else
                     stimOK% := -1;  'This is an indicator that the distractor file read failed, as opposed to S1/S2
                 endif;
             endif;
-            recSelectedStimFile$ := recHumanFCStimcalNameLoad$[recHumanFCExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
-            recSelectedStimDistractorFile$ := recHumanFCStimcalDistractorNameLoad$[recHumanFCExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
-            recSelectedTrialsFile$ := recHumanFCTrialsNameLoad$[recHumanFCExpIndexLoad%]; 'ditto. for BehOutput
+            recSelectedStimFile$ := recStereoDisStimcalNameLoad$[recStereoDisExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedStimDistractorFile$ := recStereoDisStimcalDistractorNameLoad$[recStereoDisExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recStereoDisTrialsNameLoad$[recStereoDisExpIndexLoad%]; 'ditto. for BehOutput
                 
             calibOK% := 0;  'Short circuit, this means OK.
-                        
+            
+            
+        case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoGNG% = 1 then  'For Stereo Distractor, at least for now, all stimuli are generated
+            recExptText$ := "Running Stereo Distractor GNG"; 
+            
+            'Get stimfile and trials file lists
+            RecStereoDisGNGExpListLoadGetParams(recStereoDisGNGExpNameLoad$[],recStereoDisGNGStimcalNameLoad$[],recStereoDisGNGTrialsNameLoad$[],recStereoDisGNGStimcalDistractorNameLoad$[]);
+            'Load trials file, stim/cal file
+            trialsOK% := RecLoadTrialsFile22%(recStereoDisGNGTrialsNameLoad$[recStereoDisGNGExpIndexLoad%],recTotalTrials%);
+            if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
+                stimOK% := RecLoadStimCalDistractorFile%(recStereoDisGNGStimcalDistractorNameLoad$[recStereoDisGNGExpIndexLoad%],recNSpeakers%,recTotalDistractorStim%);
+                if stimOK% = 1 then  'Don't bother with loading S1/S2 Stim/Cal file if distractor one is bad
+                    stimOK% := RecLoadStimCalMFCarrierFile%(recStereoDisGNGStimcalNameLoad$[recStereoDisGNGExpIndexLoad%],1,recTotalStim%);  'here, there is only 1 S1/S2 speaker, at least for now
+                else
+                    stimOK% := -1;  'This is an indicator that the distractor file read failed, as opposed to S1/S2
+                endif;
+            endif;
+            recSelectedStimFile$ := recStereoDisGNGStimcalNameLoad$[recStereoDisGNGExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedStimDistractorFile$ := recStereoDisGNGStimcalDistractorNameLoad$[recStereoDisGNGExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recStereoDisGNGTrialsNameLoad$[recStereoDisGNGExpIndexLoad%]; 'ditto. for BehOutput
+                
+            calibOK% := 0;  'Short circuit, this means OK.            
             
         endcase;
         
@@ -812,7 +846,7 @@ while recReadyToQuit% = 0 do
             'Make sure that the trials file does not specify more speakers than are present in the selected speaker array
             'Use recTrialDur[], recTrialS1Spkr%[], recTrialS2Spkr%[]
             var tempSpeakerCount%;
-            if recExpToRun% = recExpHumanFCButton% then  'For this experiment, the arrays are "switched", the S1/S2 stimuli are on the standalone speaker and the distractors are on the array
+            if recExpToRun% = recExpStereoDisButton% then  'For this experiment, the arrays are "switched", the S1/S2 stimuli are on the standalone speaker and the distractors are on the array
                 tempSpeakerCount% := 1;
             else
                 tempSpeakerCount% := recNSpeakers%;
@@ -825,20 +859,36 @@ while recReadyToQuit% = 0 do
                 trialsOK% := -1;
             endif;
             
-            'Additional checks for HumanFC experiment
-            if recExpToRun% = recExpHumanFCButton% then
+            'Additional checks for StereoDis experiment
+            if recExpToRun% = recExpStereoDisButton% then
                 'Make sure that the trials file does not specify more distractor stimuli than are present in the Distractor Stim or Stim/Cal file
-                if recTrialDistractor%[max(recTrialDistractor%)] <= recTotalDistractorStim% then
+                var tempmax%[recMaxDistractor%];
+                var iLoop%;
+                'Can't max a 2-d array, have to loop to get max of each column
+                for iLoop% := 0 to recMaxDistractor%-1 do
+                    tempmax%[iLoop%] := recTrialDistractor%[max(recTrialDistractor%[][iLoop%])][iLoop%];
+                next
+                'if recTrialDistractor%[max(recTrialDistractor%)] <= recTotalDistractorStim% then
+                if tempmax%[max(tempmax%)] <= recTotalDistractorStim% then
                     printlog("All distractor stimuli in trials file are accounted for in Distractor Stim or Stim/Cal file!\n");
                 else
-                    printlog("Maximum distractor stimulus in trials file is %d but not only %d stimuli are specified in Distractor Stim or Stim/Cal file!\n",recTrialDistractor%[max(recTrialDistractor%)],recTotalDistractorStim%);
+                    'printlog("Maximum distractor stimulus in trials file is %d but not only %d stimuli are specified in Distractor Stim or Stim/Cal file!\n",recTrialDistractor%[max(recTrialDistractor%)],recTotalDistractorStim%);
+                    printlog("Maximum distractor stimulus in trials file is %d but not only %d stimuli are specified in Distractor Stim or Stim/Cal file!\n",tempmax%[max(tempmax%)],recTotalDistractorStim%);
                     message("Starting Over!|Trials File specifies illegal stimulus number!");
                     trialsOK% := -1;
                 endif;
-                if recTrialDistractorSpkr%[max(recTrialDistractorSpkr%)] <= recNSpeakers% then
+                
+                ArrConst(tempmax%[],0);  'reset variable
+                'same thing for speaker
+                for iLoop% := 0 to recMaxDistractor%-1 do
+                    tempmax%[iLoop%] := recTrialDistractorSpkr%[max(recTrialDistractorSpkr%[][iLoop%])][iLoop%];
+                next
+                'if recTrialDistractorSpkr%[max(recTrialDistractorSpkr%)] <= recNSpeakers% then
+                if tempmax%[max(tempmax%)] <= recNSpeakers% then
                     printlog("All distractor speakers in trials file are present in array!\n");
                 else
-                    printlog("Maximum distractor speaker in trials file is %d but there are only %d speakers in the specified speaker array!\n",recTrialDistractorSpkr%[max(recTrialDistractorSpkr%)],recNSpeakers%);
+                    'printlog("Maximum distractor speaker in trials file is %d but there are only %d speakers in the specified speaker array!\n",recTrialDistractorSpkr%[max(recTrialDistractorSpkr%)],recNSpeakers%);
+                    printlog("Maximum distractor speaker in trials file is %d but there are only %d speakers in the specified speaker array!\n",tempmax%[max(tempmax%)],recNSpeakers%);
                     message("Starting Over!|Trials File specifies illegal speaker number!");
                     trialsOK% := -1;
                 endif;
@@ -862,7 +912,7 @@ while recReadyToQuit% = 0 do
                         fileclose();  'Close fhglob%, currently open file
                     endif;
                 next;
-                if recExpToRun% = recExpHumanFCButton% then  'Check distractors too
+                if recExpToRun% = recExpStereoDisButton% then  'Check distractors too
                     tempglob% := 0;
                     for iglob%:=0 to recTotalDistractorStim%-1 do
                         if tempglob% = 0 then  'this is because we can't break - and we don't want like 100 messages if all 100 stims don't exist
@@ -957,9 +1007,13 @@ while recReadyToQuit% = 0 do
                 'message("AUDIOGRAM is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 result% := GenTrialsAudiogram%();  'Generate trials for Audiogram.  Return result of 1 if OK, 0 if not.
                 
-            case recExpToRun% = recExpHumanFCButton% then
+            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoFC% = 1 then
                 'do Trial List Generation stuff!
-                result% := GenTrialsHumanFC%();  'Generate trials for HumanFC.  Return result of 1 if OK, 0 if not.
+                result% := GenTrialsStereoDis%();  'Generate trials for StereoDis.  Return result of 1 if OK, 0 if not.
+                
+            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoGNG% = 1 then
+                'do Trial List Generation stuff!
+                result% := GenTrialsStereoDisGNG%();  'Generate trials for StereoDis.  Return result of 1 if OK, 0 if not.    
                 
             endcase            
             recLastExpRun% := recExpToRun%; 'i think this should go here; remember the experiment that was just run for the next time around
@@ -1446,39 +1500,80 @@ end
 
 
 '
-'===== recHumanFCLoadSaveParams =====
+'===== recStereoDisLoadSaveParams =====
 
 'Fetch Debugging parameters from the registry
-proc RecHumanFCLoadSaveParams()
+proc RecStereoDisLoadSaveParams()
 	var key$;
-    key$:="Reclab\\HumanFCParam";
+    key$:="Reclab\\HumanFCParam";  'renamed experiment from HumanFC to StereoDis, just keep old name for registry, it's easier
     
-    SetIntRegistryValue(key$, "HumanFCExpIndexLoad", recHumanFCExpIndexLoad%); 
-    SetIntRegistryValue(key$, "HumanFCRepeatsPerStim", recHumanFCRepeatsPerStim%);
+    SetIntRegistryValue(key$, "HumanFCExpIndexLoad", recStereoDisExpIndexLoad%); 
+    SetIntRegistryValue(key$, "HumanFCRepeatsPerStim", recStereoDisRepeatsPerStim%);
+    SetIntRegistryValue(key$, "StereoDisExpDoFC", recStereoDisExpDoFC%);
     
 	return;
 end
 
-'===== End RecHumanFCLoadSaveParams =====
+'===== End RecStereoDisLoadSaveParams =====
 '
 '
 '
-'===== RecHumanFCLoadGetParams =====
+'===== RecStereoDisLoadGetParams =====
 
 'Fetch Debugging parameters from the registry
-proc RecHumanFCLoadGetParams()
+proc RecStereoDisLoadGetParams()
 	var key$;
-    key$:="Reclab\\HumanFCParam";
+    key$:="Reclab\\HumanFCParam";  'renamed experiment from HumanFC to StereoDis, just keep old name for registry, it's easier
     
-    recHumanFCExpIndexLoad% := GetIntRegistryValue%(key$, "HumanFCExpIndexLoad", recHumanFCExpIndexLoad%); 
-    recHumanFCRepeatsPerStim% := GetIntRegistryValue%(key$, "HumanFCRepeatsPerStim", recHumanFCRepeatsPerStim%);      
+    recStereoDisExpIndexLoad% := GetIntRegistryValue%(key$, "HumanFCExpIndexLoad", recStereoDisExpIndexLoad%); 
+    recStereoDisRepeatsPerStim% := GetIntRegistryValue%(key$, "HumanFCRepeatsPerStim", recStereoDisRepeatsPerStim%);
+    recStereoDisExpDoFC% := GetIntRegistryValue%(key$, "StereoDisExpDoFC", recStereoDisExpDoFC%);
     
 	return;
 end
 
-'===== End RecHumanFCLoadGetParams =====
+'===== End RecStereoDisLoadGetParams =====
 '
 '
+
+
+'
+'===== recStereoDisGNGLoadSaveParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecStereoDisGNGLoadSaveParams()
+	var key$;
+    key$:="Reclab\\StereoDisParam";  
+    
+    SetIntRegistryValue(key$, "StereoDisGNGExpIndexLoad", recStereoDisGNGExpIndexLoad%); 
+    SetIntRegistryValue(key$, "StereoDisGNGRepeatsPerStim", recStereoDisGNGRepeatsPerStim%);
+    SetIntRegistryValue(key$, "StereoDisExpDoGNG", recStereoDisExpDoGNG%);
+    
+	return;
+end
+
+'===== End RecStereoDisGNGLoadSaveParams =====
+'
+'
+'
+'===== RecStereoDisGNGLoadGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecStereoDisGNGLoadGetParams()
+	var key$;
+    key$:="Reclab\\StereoDisParam";  
+    
+    recStereoDisGNGExpIndexLoad% := GetIntRegistryValue%(key$, "StereoDisGNGExpIndexLoad", recStereoDisGNGExpIndexLoad%); 
+    recStereoDisGNGRepeatsPerStim% := GetIntRegistryValue%(key$, "StereoDisGNGRepeatsPerStim", recStereoDisGNGRepeatsPerStim%);   
+    recStereoDisExpDoGNG% := GetIntRegistryValue%(key$, "StereoDisExpDoGNG", recStereoDisExpDoGNG%);
+    
+	return;
+end
+
+'===== End RecStereoDisGNGLoadGetParams =====
+'
+'
+
 
 
 '
@@ -1572,7 +1667,7 @@ func RecExpSelectDialog%()
     DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 10);
     DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 10); 'will go under FRA button '*jao
     DlgButton(recExpAudiogramButton%, "           Audiogram           ", RecAudiogramDialog%, 2, 11);  
-    DlgButton(recExpHumanFCButton%, " Human Forced Choice ", RecExpHumanFCDialog%, 26, 11);
+    DlgButton(recExpStereoDisButton%, "     Stereo Distractor     ", RecExpStereoDisDialog%, 26, 11);
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 6);
@@ -3159,48 +3254,65 @@ end;
 
 '
 '
-'===== RecExpHumanFCDialog =====
+'===== RecExpStereoDisDialog =====
 
-'A dialog for the Human Forced Choice experiment(s?)
+'A dialog for the Stereo Distractor experiment(s?)
 
-func RecExpHumanFCDialog%()
+func RecExpStereoDisDialog%()
     
     var i%;
     var status% := 0;
     
-    ' Fetch parameters from registry    
-    RecHumanFCLoadGetParams();
-    RecHumanFCExpListLoadGetParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
-        
+    ' Fetch parameters from registry, forced choice  
+    RecStereoDisLoadGetParams();
+    RecStereoDisExpListLoadGetParams(recStereoDisExpNameLoad$[],recStereoDisStimcalNameLoad$[],recStereoDisTrialsNameLoad$[],recStereoDisStimcalDistractorNameLoad$[]);
+    
+    ' Fetch parameters from registry, GNG
+    RecStereoDisGNGLoadGetParams();
+    RecStereoDisGNGExpListLoadGetParams(recStereoDisGNGExpNameLoad$[],recStereoDisGNGStimcalNameLoad$[],recStereoDisGNGTrialsNameLoad$[],recStereoDisGNGStimcalDistractorNameLoad$[]);
     
     ' Generate the dialog    
-    DlgCreate("Human Forced Choice Dialog",0,0,74,14);
+    DlgCreate("Stereo Distractor Dialog",0,0,74,14);
     
-    DlgGroup("Stimulus Selection",1,1,72,4);
-    DlgList(1,27,recHumanFCExpNameLoad$[],recHumanFCNumExps%,24,4);
-    recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,4);  'recExpHumanFCAddExpButton%
-    DlgButton(recExpHumanFCAddExpButton%, "  Add Experiment  ", RecHumanFCAddExp%,53,3);
-    DlgButton(recExpHumanFCDeleteExpButton%, "Delete Experiment ", RecHumanFCDeleteExp%,53,4);
+    DlgGroup("Stimulus Selection, Forced Choice",1,1,72,4);
+    DlgCheck(1,"Do Forced Choice Experiment",2,2);
+    DlgList(2,27,recStereoDisExpNameLoad$[],recStereoDisNumExps%,24,4);
+    recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,4);  'recExpStereoDisAddExpButton%
+    DlgButton(recExpStereoDisAddExpButton%, "   Add Experiment   ", RecStereoDisAddExp%,53,3);
+    DlgButton(recExpStereoDisDeleteExpButton%, "Delete Experiment ", RecStereoDisDeleteExp%,53,4);
     
-    DlgInteger(2,"Repeats Per Stim",1,1000,18,6);
-    'DlgAllow(0xffff, 0, RecExpHumanFCDialogChanged%);   'don't think we'll need this
+    DlgGroup("Stimulus Selection, Go/No-Go",1,5,72,4);
+    DlgCheck(3,"Do Go/No-Go Experiment",2,6);
+    DlgList(4,27,recStereoDisGNGExpNameLoad$[],recStereoDisGNGNumExps%,24,8);
+    recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,8);  'recExpStereoDisGNGAddExpButton%
+    DlgButton(recExpStereoDisGNGAddExpButton%, "   Add Experiment   ", RecStereoDisGNGAddExp%,53,7);
+    DlgButton(recExpStereoDisGNGDeleteExpButton%, "Delete Experiment ", RecStereoDisGNGDeleteExp%,53,8);
+    
+    DlgInteger(5,"Repeats Per Stim",1,1000,18,10);
+    DlgAllow(0xffff, 0, RecExpStereoDisDialogChanged%);   
     
     
-    i%:=DlgShow(recHumanFCExpIndexLoad%,recHumanFCRepeatsPerStim%);   'Yes, that's it!
+    i%:=DlgShow(recStereoDisExpDoFC%,recStereoDisExpIndexLoad%,recStereoDisExpDoGNG%,recStereoDisGNGExpIndexLoad%,recStereoDisRepeatsPerStim%);   'Yes, that's it!
 
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        RecHumanFCLoadSaveParams();        
+        RecStereoDisLoadSaveParams();        
+        RecStereoDisGNGLoadSaveParams();
         
-        DlgValue$(-1,"Run HumanFC"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
-        recExpToRun% := recExpHumanFCButton%;
+        DlgValue$(-1,"Run StereoDis"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
+        recExpToRun% := recExpStereoDisButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
     
         recMatGenStim% := 0;
         recAMSPPassiveTask% := 0;
         recActive% := 1;
+        if recStereoDisExpDoFC% = 1 then
+            recIsGoNoGo% := 0;
+        else
+            recIsGoNoGo% := 1;
+        endif;
     
         status% := 1;
     else
@@ -3212,6 +3324,45 @@ func RecExpHumanFCDialog%()
 end;
 
 
+'
+'
+'===== RecExpStereoDisDialogChanged =====
+
+' This function is initially called with a "0" input
+func RecExpStereoDisDialogChanged%(item%)
+    
+    if (item% = 1 or item% = 0) and DlgValue(1) = 1 then  'if we are running FC, disable GNG buttons (includes item%=0 to disable on dialog open)
+        DlgEnable(1,2); 'Enable FC list selection
+        DlgEnable(1,-recExpStereoDisAddExpButton%); 'Enable FC add button
+        DlgEnable(1,-recExpStereoDisDeleteExpButton%); 'Enable FC delete button
+        DlgEnable(0,4); 'Disable GNG list selection
+        DlgEnable(0,-recExpStereoDisGNGAddExpButton%); 'Disable GNG add button
+        DlgEnable(0,-recExpStereoDisGNGDeleteExpButton%); 'Disable GNG delete button
+        DlgValue(3,0);  'And set GNG checkbox to 0
+        DlgEnable(1,-1);  'Enable "OK"
+    endif;
+    
+    if (item% = 3 or item% = 0) and DlgValue(3) = 1 then  'if we are running FC, disable GNG buttons (includes item%=0 to disable on dialog open)
+        DlgEnable(0,2); 'Disable FC list selection
+        DlgEnable(0,-recExpStereoDisAddExpButton%); 'Disable FC add button
+        DlgEnable(0,-recExpStereoDisDeleteExpButton%); 'Disable FC delete button
+        DlgEnable(1,4); 'Enable GNG list selection
+        DlgEnable(1,-recExpStereoDisGNGAddExpButton%); 'Enable GNG add button
+        DlgEnable(1,-recExpStereoDisGNGDeleteExpButton%); 'Enable GNG delete button
+        DlgValue(1,0);  'And set FC checkbox to 0
+        DlgEnable(1,-1);  'Enable "OK"
+    endif;
+    
+    if DlgValue(1) = 0 and DlgValue(3) = 0 then
+        DlgEnable(0,-1);  'Disable "OK" if neither experiment is selected
+    endif;
+    
+    return 1;
+end
+
+'===== End RecExpStereoDisDialogChanged =====
+'
+'
 
 
 
@@ -4546,12 +4697,12 @@ end;
 
 '
 '
-'===== RecHumanFCAddExp =====
+'===== RecStereoDisAddExp =====
 
-'This is a dialog that comes up to allow adding "experiments" to the HumanFC dialog
+'This is a dialog that comes up to allow adding "experiments" to the StereoDis dialog
 'Please note that in order to reset the list box in the calling dialog, we have to actually
 'CLOSE the calling dialog and reopen it.  That's gotta be manual.
-func RecHumanFCAddExp%()
+func RecStereoDisAddExp%()
     
     var i%;
     var j%;
@@ -4568,7 +4719,7 @@ func RecHumanFCAddExp%()
     
     ' Generate the dialog
     
-    DlgCreate("Human FC Experiment ADD Dialog", 62, 10);
+    DlgCreate("Stereo Distractor Experiment ADD Dialog", 62, 10);
     DlgString(1,40,100,"a-zA-Z0-9",26,1);
     DlgText("Name of New Experiment",2,1);
     DlgButton(recSelectStimFileButton%,   "S1/S2 Stim/Cal File", RecSelectStimFile%,2,2);
@@ -4584,30 +4735,30 @@ func RecHumanFCAddExp%()
     ' If user hit OK then add new experiment 
 	if i% = 1 then
         'reload parameters
-        RecHumanFCExpListLoadGetParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
+        RecStereoDisExpListLoadGetParams(recStereoDisExpNameLoad$[],recStereoDisStimcalNameLoad$[],recStereoDisTrialsNameLoad$[],recStereoDisStimcalDistractorNameLoad$[]);
         'find first empty slot
         j% := 0;
         k% := -1;
-        while j% < recHumanFCNumExps% do
-            if recHumanFCExpNameLoad$[j%] = "" then
+        while j% < recStereoDisNumExps% do
+            if recStereoDisExpNameLoad$[j%] = "" then
                 k% := j%;  'k% holds index of first empty slot
-                j% := recHumanFCNumExps%;
+                j% := recStereoDisNumExps%;
             endif;
             j%+=1;
         wend
         'Return if all slots are full
         if k% = -1 then
-            Message("All " + Str$(recHumanFCNumExps%) + " slots are full!  You must delete an experiment!");
+            Message("All " + Str$(recStereoDisNumExps%) + " slots are full!  You must delete an experiment!");
             return 1;
         endif;
         'Otherwise place values 
-        recHumanFCExpNameLoad$[k%] := mystr$;
-        recHumanFCStimcalNameLoad$[k%] := mystr2$;
-        recHumanFCTrialsNameLoad$[k%] := mystr3$;
-        recHumanFCStimcalDistractorNameLoad$[k%] := mystr4$;
+        recStereoDisExpNameLoad$[k%] := mystr$;
+        recStereoDisStimcalNameLoad$[k%] := mystr2$;
+        recStereoDisTrialsNameLoad$[k%] := mystr3$;
+        recStereoDisStimcalDistractorNameLoad$[k%] := mystr4$;
         'And save them
-        RecHumanFCExpListLoadSaveParams(recHumanFCExpNameLoad$[],recHumanFCStimcalNameLoad$[],recHumanFCTrialsNameLoad$[],recHumanFCStimcalDistractorNameLoad$[]);
-        status% := 0;  'close the calling dialog - necessary to refresh list in HumanFCDialog
+        RecStereoDisExpListLoadSaveParams(recStereoDisExpNameLoad$[],recStereoDisStimcalNameLoad$[],recStereoDisTrialsNameLoad$[],recStereoDisStimcalDistractorNameLoad$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in StereoDisDialog
     else
         status% := 1;
     endif
@@ -4616,7 +4767,7 @@ func RecHumanFCAddExp%()
 
 end;
 
-'===== End RecHumanFCAddExp =====
+'===== End RecStereoDisAddExp =====
 '
 '
 
@@ -4624,31 +4775,31 @@ end;
 
 '
 '
-'===== RecHumanFCDeleteExp =====
+'===== RecStereoDisDeleteExp =====
 
 'This is a dialog that comes up to allow deleting "experiments" from the AMDisc dialog
-func RecHumanFCDeleteExp%()
+func RecStereoDisDeleteExp%()
 
     var i%;
     var j%;
     var status% := 0;
-    var mystr$[recHumanFCNumExps%];
-    var mystr1$[recHumanFCNumExps%];
-    var mystr2$[recHumanFCNumExps%];
-    var mystr3$[recHumanFCNumExps%];
+    var mystr$[recStereoDisNumExps%];
+    var mystr1$[recStereoDisNumExps%];
+    var mystr2$[recStereoDisNumExps%];
+    var mystr3$[recStereoDisNumExps%];
     
     var sli%;
 
     
     ' Fetch parameters from registry     
-    RecHumanFCExpListLoadGetParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+    RecStereoDisExpListLoadGetParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
     
     
     ' Generate the dialog
     
     DlgCreate("Cueing Experiment DELETE Dialog", 62, 10);
     DlgText("Select Experiment to Delete",2,1);
-    DlgList(1,27,mystr$,recHumanFCNumExps%,28,1);
+    DlgList(1,27,mystr$,recStereoDisNumExps%,28,1);
 
     ' Show the dialog. 
     i%:=DlgShow(sli%);
@@ -4656,8 +4807,8 @@ func RecHumanFCDeleteExp%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         'Remove experiment that has been selected and move everything up one
-        if sli% < recHumanFCNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
-            for j% := sli% to recHumanFCNumExps%-2 do
+        if sli% < recStereoDisNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recStereoDisNumExps%-2 do
                 mystr$[j%] := mystr$[j%+1];
                 mystr1$[j%] := mystr1$[j%+1];
                 mystr2$[j%] := mystr2$[j%+1];
@@ -4665,13 +4816,13 @@ func RecHumanFCDeleteExp%()
             next;
         endif;
         'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
-        mystr$[recHumanFCNumExps%-1] := "";
-        mystr1$[recHumanFCNumExps%-1] := "";
-        mystr2$[recHumanFCNumExps%-1] := "";
-        mystr3$[recHumanFCNumExps%-1] := "";
+        mystr$[recStereoDisNumExps%-1] := "";
+        mystr1$[recStereoDisNumExps%-1] := "";
+        mystr2$[recStereoDisNumExps%-1] := "";
+        mystr3$[recStereoDisNumExps%-1] := "";
         
         'Save the new values
-        RecHumanFCExpListLoadSaveParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+        RecStereoDisExpListLoadSaveParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
         
         status% := 0;  'Close the calling dialog
     else
@@ -4682,9 +4833,155 @@ func RecHumanFCDeleteExp%()
     
 end;
 
-'===== End RecHumanFCDeleteExp =====
+'===== End RecStereoDisDeleteExp =====
 '
 '
+
+
+
+
+'
+'
+'===== RecStereoDisGNGAddExp =====
+
+'This is a dialog that comes up to allow adding "experiments" to the StereoDis dialog
+'Please note that in order to reset the list box in the calling dialog, we have to actually
+'CLOSE the calling dialog and reopen it.  That's gotta be manual.
+func RecStereoDisGNGAddExp%()
+    
+    var i%;
+    var j%;
+    var k%;
+    var status% := 0;
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+    var mystr4$;
+    
+    
+    ' Fetch parameters from registry    
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Stereo Distractor Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    DlgButton(recSelectStimFileButton%,   "S1/S2 Stim/Cal File", RecSelectStimFile%,2,2);
+    DlgButton(recSelectTrialsFileButton%, "    Trials File   ", RecSelectTrialsFile%,2,3);
+    DlgButton(recSelectStimDistractorFileButton%,   "Distractor Stim/Cal File", RecSelectStimFile2%,2,4);
+    DlgString(2,40,200,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,200,"",26,3);  'for visual confirmation of selected distractor stim file
+    DlgString(4,40,200,"",26,4);  'for visual confirmation of selected trials file
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$,mystr4$);
+    
+    ' If user hit OK then add new experiment 
+	if i% = 1 then
+        'reload parameters
+        RecStereoDisGNGExpListLoadGetParams(recStereoDisGNGExpNameLoad$[],recStereoDisGNGStimcalNameLoad$[],recStereoDisGNGTrialsNameLoad$[],recStereoDisGNGStimcalDistractorNameLoad$[]);
+        'find first empty slot
+        j% := 0;
+        k% := -1;
+        while j% < recStereoDisGNGNumExps% do
+            if recStereoDisGNGExpNameLoad$[j%] = "" then
+                k% := j%;  'k% holds index of first empty slot
+                j% := recStereoDisGNGNumExps%;
+            endif;
+            j%+=1;
+        wend
+        'Return if all slots are full
+        if k% = -1 then
+            Message("All " + Str$(recStereoDisGNGNumExps%) + " slots are full!  You must delete an experiment!");
+            return 1;
+        endif;
+        'Otherwise place values 
+        recStereoDisGNGExpNameLoad$[k%] := mystr$;
+        recStereoDisGNGStimcalNameLoad$[k%] := mystr2$;
+        recStereoDisGNGTrialsNameLoad$[k%] := mystr3$;
+        recStereoDisGNGStimcalDistractorNameLoad$[k%] := mystr4$;
+        'And save them
+        RecStereoDisGNGExpListLoadSaveParams(recStereoDisGNGExpNameLoad$[],recStereoDisGNGStimcalNameLoad$[],recStereoDisGNGTrialsNameLoad$[],recStereoDisGNGStimcalDistractorNameLoad$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in StereoDisDialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecStereoDisGNGAddExp =====
+'
+'
+
+
+
+'
+'
+'===== RecStereoDisGNGDeleteExp =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the AMDisc dialog
+func RecStereoDisGNGDeleteExp%()
+
+    var i%;
+    var j%;
+    var status% := 0;
+    var mystr$[recStereoDisGNGNumExps%];
+    var mystr1$[recStereoDisGNGNumExps%];
+    var mystr2$[recStereoDisGNGNumExps%];
+    var mystr3$[recStereoDisGNGNumExps%];
+    
+    var sli%;
+
+    
+    ' Fetch parameters from registry     
+    RecStereoDisGNGExpListLoadGetParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("Cueing Experiment DELETE Dialog", 62, 10);
+    DlgText("Select Experiment to Delete",2,1);
+    DlgList(1,27,mystr$,recStereoDisGNGNumExps%,28,1);
+
+    ' Show the dialog. 
+    i%:=DlgShow(sli%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Remove experiment that has been selected and move everything up one
+        if sli% < recStereoDisGNGNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recStereoDisGNGNumExps%-2 do
+                mystr$[j%] := mystr$[j%+1];
+                mystr1$[j%] := mystr1$[j%+1];
+                mystr2$[j%] := mystr2$[j%+1];
+                mystr3$[j%] := mystr3$[j%+1];
+            next;
+        endif;
+        'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+        mystr$[recStereoDisGNGNumExps%-1] := "";
+        mystr1$[recStereoDisGNGNumExps%-1] := "";
+        mystr2$[recStereoDisGNGNumExps%-1] := "";
+        mystr3$[recStereoDisGNGNumExps%-1] := "";
+        
+        'Save the new values
+        RecStereoDisGNGExpListLoadSaveParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+        
+        status% := 0;  'Close the calling dialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecStereoDisGNGDeleteExp =====
+'
+'
+
 
 
 
@@ -5085,15 +5382,15 @@ end
 
 '
 '
-'===== RecHumanFCExpListLoadGetParams =====
+'===== RecStereoDisExpListLoadGetParams =====
 
-'Fetch experiment lists from the registry for HumanFC, loading stim, experiments
-proc RecHumanFCExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[],&stimcalDistName$[])
+'Fetch experiment lists from the registry for StereoDis, loading stim, experiments
+proc RecStereoDisExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[],&stimcalDistName$[])
 	var key$;
     var i%;
-    key$:="Reclab\\HumanFCExpListLoadParam";
+    key$:="Reclab\\HumanFCExpListLoadParam";  'renamed experiment from HumanFC to StereoDis, just keep old name for registry, it's easier
     
-    for i% := 0 to recHumanFCNumExps%-1 do
+    for i% := 0 to recStereoDisNumExps%-1 do
         expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
         stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         stimcalDistName$[i%] := GetStringRegistryValue$(key$, "StimcalDistName"+Str$(i%), stimcalDistName$[i%]);
@@ -5103,21 +5400,21 @@ proc RecHumanFCExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[],&
 	return;
 end
 
-'===== End RecHumanFCExpListLoadGetParams =====
+'===== End RecStereoDisExpListLoadGetParams =====
 '
 '
 
 '
 '
-'===== RecHumanFCExpListLoadSaveParams =====
+'===== RecStereoDisExpListLoadSaveParams =====
 
-'Save experiment lists to the registry for HumanFC, loading stim, experiments
-proc RecHumanFCExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[],stimcalDistName$[])
+'Save experiment lists to the registry for StereoDis, loading stim, experiments
+proc RecStereoDisExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[],stimcalDistName$[])
 	var key$;
     var i%;
-    key$:="Reclab\\HumanFCExpListLoadParam";
+    key$:="Reclab\\HumanFCExpListLoadParam";  'renamed experiment from HumanFC to StereoDis, just keep old name for registry, it's easier
     
-    for i% := 0 to recHumanFCNumExps%-1 do
+    for i% := 0 to recStereoDisNumExps%-1 do
         SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
         SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         SetStringRegistryValue(key$, "StimcalDistName"+Str$(i%), stimcalDistName$[i%]);
@@ -5127,7 +5424,57 @@ proc RecHumanFCExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[],sti
 	return;
 end
 
-'===== End RecHumanFCExpListLoadSaveParams =====
+'===== End RecStereoDisExpListLoadSaveParams =====
+'
+'
+
+
+
+'
+'
+'===== RecStereoDisGNGExpListLoadGetParams =====
+
+'Fetch experiment lists from the registry for StereoDis, loading stim, experiments
+proc RecStereoDisGNGExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[],&stimcalDistName$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\StereoDisExpListLoadParam";  
+    
+    for i% := 0 to recStereoDisNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        stimcalDistName$[i%] := GetStringRegistryValue$(key$, "StimcalDistName"+Str$(i%), stimcalDistName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecStereoDisGNGExpListLoadGetParams =====
+'
+'
+
+'
+'
+'===== RecStereoDisGNGExpListLoadSaveParams =====
+
+'Save experiment lists to the registry for StereoDis, loading stim, experiments
+proc RecStereoDisGNGExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[],stimcalDistName$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\StereoDisExpListLoadParam";  
+    
+    for i% := 0 to recStereoDisNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "StimcalDistName"+Str$(i%), stimcalDistName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecStereoDisGNGExpListLoadSaveParams =====
 '
 '
 
@@ -5252,6 +5599,7 @@ func RecVerifyInputFile%(fileIn$)
                            '16: "calibration" file, 16-speaker array
                            '17: load "stim/cal" file 15-speaker array
                            '18: load "stim/cal" file 16-speaker array
+                           '22: "trials" file, for distractor GNG experiment
                            '31: "calibration" file, both 15-speaker AND 16-speaker array
                            '33: load "stim/cal" file both 15-speaker AND 16-speaker array
 end
@@ -5391,13 +5739,14 @@ func RecLoadTrialsFile9%(fileLoc$,&totalTrials%)
         case numRead% = 9 then
             recTrialS1%[lineCount%-1] := val(readLine$[0]);
             recTrialS2%[lineCount%-1] := val(readLine$[1]);
-            recTrialDistractor%[lineCount%-1] := val(readLine$[2]);
+            recTrialDistractor%[lineCount%-1][1] := val(readLine$[2]);  'loading into index 1, index 0 will remain zeros as there is no distractor for S1
             recTrialS1Spkr%[lineCount%-1] := val(readLine$[3]);
             recTrialS2Spkr%[lineCount%-1] := val(readLine$[4]);
-            recTrialDistractorSpkr%[lineCount%-1] := val(readLine$[5]);
+            recTrialDistractorSpkr%[lineCount%-1][0] := val(readLine$[5]);  'here, loading a "dummy" value into index 0, should not be used but putting it in just in case as 0 is not a legal speaker value
+            recTrialDistractorSpkr%[lineCount%-1][1] := val(readLine$[5]);
             recTrialS1DeltadB[lineCount%-1] := val(readLine$[6]);
             recTrialS2DeltadB[lineCount%-1] := val(readLine$[7]);
-            recTrialDistractorDeltadB[lineCount%-1] := val(readLine$[8]);
+            recTrialDistractorDeltadB[lineCount%-1][1] := val(readLine$[8]);  'loading into index 1, index 0 will remain zeros as there is no distractor for S1
         case numRead%<0 then
             keepGoing% := 0;
             totalTrials% := lineCount%-1;  'set to return the number of lines read, this will be useful
@@ -5414,6 +5763,113 @@ func RecLoadTrialsFile9%(fileLoc$,&totalTrials%)
     
 end
 '===== End RecLoadTrialsFile9 =====
+'
+'
+
+
+'
+'
+'===== RecLoadTrialsFile22 =====
+func RecLoadTrialsFile22%(fileLoc$,&totalTrials%)
+    'a 22-column version of RecLoadTrialsFile, includes distractor stimulus
+    
+    
+    var status%;
+    var lineCount%;
+    var keepGoing% := 1;
+    var numRead%;
+    var readLine$[23];
+    var fh0%;
+    var tempDist%;
+    var tempDistSpkr%;
+    var tempDistddB;
+    
+    status% := 0;  'begin with "failure", change to success if success
+    
+    printlog("Loading Trial File: %s\n",fileLoc$);
+    
+    'First, make sure the file won't barf on us
+    numRead% := RecVerifyInputFile%(fileLoc$);
+    if numRead% <> 22 then
+        if numRead% = -1 then
+            message("Starting over!|Failure to read trials file!");
+        else
+            message("Starting over!|Incorrect number of fields in trials file (expected 22 fields, got "+Str$(numRead%)+")!");
+        endif
+        return status%;  'returns failure
+    endif;
+        
+    'Then read the file
+    fh0%:=FileOpen(fileLoc$,8,0);
+    
+    'readsetup(""," ","","","	");
+    readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
+    
+    'Skip past the header line
+    numRead% := read(readLine$[0:7]);
+    
+    while keepGoing% do
+        'Read the next line in the file, return line and number of fields read
+        numRead% := read(readLine$[0:23]);  'reading as many as 23 lines as a check - if 23 successfully read, something is wrong with the file
+        lineCount% += 1;
+        
+        'Place values into global variables
+        docase
+        case numRead% = 22 then
+            'read in the first ten values, have to hold the final distractor values in temp, will place at end later
+            recTrialS1%[lineCount%-1] := val(readLine$[0]);
+            recTrialS2%[lineCount%-1] := val(readLine$[1]);
+            'recTrialDistractor%[lineCount%-1] := val(readLine$[2]);
+            tempDist% := val(readLine$[2]);  'Hold this in temp, because we don't know how many S1.ns we have yet
+            recTrialS1Spkr%[lineCount%-1] := val(readLine$[3]);
+            recTrialS2Spkr%[lineCount%-1] := val(readLine$[4]);
+            'recTrialDistractorSpkr%[lineCount%-1] := val(readLine$[5]);
+            tempDistSpkr% := val(readLine$[5]);  'Hold this in temp, because we don't know how many S1.ns we have yet
+            recTrialS1DeltadB[lineCount%-1] := val(readLine$[6]);
+            recTrialS2DeltadB[lineCount%-1] := val(readLine$[7]);
+            'recTrialDistractorDeltadB[lineCount%-1] := val(readLine$[8]);
+            tempDistddB := val(readLine$[8]);  'Hold this in temp, because we don't know how many S1.ns we have yet
+            recTrialNumS1ns%[lineCount%-1] := val(readLine$[9]);  'The S1 "counts" as an S1.n, so this will be between 1-5
+            
+            'read in the variable distractors
+            recTrialDistractor%[lineCount%-1][1] := val(readLine$[10]);  'Do not fill recTrialDistractor%[xxx][0], no distractor for first S1
+            recTrialDistractor%[lineCount%-1][2] := val(readLine$[11]);
+            recTrialDistractor%[lineCount%-1][3] := val(readLine$[12]);
+            recTrialDistractor%[lineCount%-1][4] := val(readLine$[13]);
+            
+            recTrialDistractorSpkr%[lineCount%-1][1] := val(readLine$[14]);
+            recTrialDistractorSpkr%[lineCount%-1][2] := val(readLine$[15]);
+            recTrialDistractorSpkr%[lineCount%-1][3] := val(readLine$[16]);
+            recTrialDistractorSpkr%[lineCount%-1][4] := val(readLine$[17]);
+            
+            recTrialDistractorDeltadB[lineCount%-1][1] := val(readLine$[18]);
+            recTrialDistractorDeltadB[lineCount%-1][2] := val(readLine$[19]);
+            recTrialDistractorDeltadB[lineCount%-1][3] := val(readLine$[20]);
+            recTrialDistractorDeltadB[lineCount%-1][4] := val(readLine$[21]);
+            
+            'copy final distractor into correct location, may overwrite "-1"s
+            recTrialDistractor%[lineCount%-1][recTrialNumS1ns%[lineCount%-1]] := tempDist%;
+            recTrialDistractorSpkr%[lineCount%-1][recTrialNumS1ns%[lineCount%-1]] := tempDistSpkr%;
+            recTrialDistractorSpkr%[lineCount%-1][0] := recTrialDistractorSpkr%[lineCount%-1][1]; 'Put a legal value (next distractor speaker) into index 0, should not be used, but just in case
+            recTrialDistractorDeltadB[lineCount%-1][recTrialNumS1ns%[lineCount%-1]] := tempDistddB;
+            
+        case numRead%<0 then
+            keepGoing% := 0;
+            totalTrials% := lineCount%-1;  'set to return the number of lines read, this will be useful
+            status% := 1;  'not sure that will work with the other logic
+        else
+            printlog("Number of fields read is %d\n",numRead%);
+            message("Starting over!|Failure to successfully read file with 22 fields despite initial check!");
+            keepGoing% := 0;
+        endcase;    
+    wend;    
+    
+    fileclose();  'close fh0%, the currently open file
+    
+    return status%;
+    
+end
+'===== End RecLoadTrialsFile22 =====
 '
 '
 
@@ -6553,8 +7009,8 @@ end
 
 '
 '
-'===== GenTrialsHumanFC =====
-func GenTrialsHumanFC%()
+'===== GenTrialsStereoDis =====
+func GenTrialsStereoDis%()
     var status% := 1;
     var i%;
     var j%;
@@ -6568,7 +7024,7 @@ func GenTrialsHumanFC%()
     var rewardIndex%;
     
     ' ===== Create Trials =====
-    recNTrials% := (recTotalTrials%*recHumanFCRepeatsPerStim%);  'Set global Ntrials
+    recNTrials% := (recTotalTrials%*recStereoDisRepeatsPerStim%);  'Set global Ntrials
 
     for i% := 0 to recTotalTrials%-1 do    
         miniTrialOrder%[i%] := i%;  ' 1. populate miniTrialOrder%, etc.
@@ -6578,15 +7034,16 @@ func GenTrialsHumanFC%()
         
         recStimList%[0][i%] := RecTrialS1%[i%];  '2. save values into rec2StimList, rec2SpeakerList, rec2DeltadBList
         recStimList%[1][i%] := RecTrialS2%[i%];  'and distractor versions as well
-        recDistractorStimList%[i%] := recTrialDistractor%[i%];  'may need to change this to 2-D for GNG
+        recDistractorStimList%[1][i%] := recTrialDistractor%[i%][1];  'changed this to 2-D to accommodate GNG
         
         recSpeakerList%[0][i%] := RecTrialS1Spkr%[i%];
         recSpeakerList%[1][i%] := RecTrialS2Spkr%[i%];
-        recDistractorSpeakerList%[i%] := recTrialDistractorSpkr%[i%];
+        recDistractorSpeakerList%[0][i%] := recTrialDistractorSpkr%[i%][1];  'Should not be read, but just in case needs to be a legal speaker
+        recDistractorSpeakerList%[1][i%] := recTrialDistractorSpkr%[i%][1];  'changed this to 2-D to accommodate GNG
     
         recDeltadBList[0][i%] := recTrialS1DeltadB[i%];
         recDeltadBList[1][i%] := recTrialS2DeltadB[i%];
-        recDistractorDeltadBList[i%] := recTrialDistractorDeltadB[i%];
+        recDistractorDeltadBList[1][i%] := recTrialDistractorDeltadB[i%][1];  'changed this to 2-D to accommodate GNG
         
         docase
         case recTrialMF[RecTrialS1%[i%]] > recTrialMF[RecTrialS2%[i%]]  then 
@@ -6602,7 +7059,7 @@ func GenTrialsHumanFC%()
         
     next;
 
-    for i% := 0 to recHumanFCRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
+    for i% := 0 to recStereoDisRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
         if recDoNotShuffle% = 0 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
@@ -6616,7 +7073,85 @@ func GenTrialsHumanFC%()
         
     return status%;
 end
-'===== End GenTrialsHumanFC =====
+'===== End GenTrialsStereoDis =====
+'
+'
+
+
+'
+'
+'===== GenTrialsStereoDisGNG =====
+func GenTrialsStereoDisGNG%()
+    var status% := 1;
+    var i%;
+    var j%;
+    var count% := 0;
+    var rewardInt% := 5;
+    var miniTrialOrder%[recTotalTrials%];
+    var randNum := 0;
+    var randInt%;
+    var randInt2%;
+    var rewardArray%[80];
+    var rewardIndex%;
+    
+    ' ===== Create Trials =====
+    recNTrials% := (recTotalTrials%*recStereoDisRepeatsPerStim%);  'Set global Ntrials
+
+    for i% := 0 to recTotalTrials%-1 do    
+        miniTrialOrder%[i%] := i%;  ' 1. populate miniTrialOrder%, etc.
+        recTrialTerminalIndex%[i%] := recTrialNumS1ns%[i%];  'For this experiment, there are a variable number of S1.ns, if number of S1.ns is 2, then third stimulus is terminal (index = 2)
+        
+        for j% := 0 to recTrialTerminalIndex%[i%] do
+        
+            recPWAList%[j%][i%] := j%;  'this is PWA to play, just use PWAs in order
+            '(recPWAList%[][] is a more meaningful variable for things like search where PWAs get pre-loaded and we bounce through them, we use it here for convenience)
+            
+            '2. save values into rec2StimList, rec2SpeakerList, rec2DeltadBList
+            if j% < recTrialTerminalIndex%[i%] then
+                recStimList%[j%][i%] := RecTrialS1%[i%];  'Stim will be S1 except on terminal index
+                recSpeakerList%[j%][i%] := RecTrialS1Spkr%[i%];  'Same thing for speaker
+                recDeltadBList[j%][i%] := recTrialS1DeltadB[i%];  'Same thing for delta dB
+            else
+                recStimList%[j%][i%] := RecTrialS2%[i%];  'Stim will be S2 on terminal index
+                recSpeakerList%[j%][i%] := RecTrialS2Spkr%[i%];  'Same thing for speaker
+                recDeltadBList[j%][i%] := recTrialS2DeltadB[i%];  'Same thing for delta dB
+            endif;
+            
+            recDistractorStimList%[j%][i%] := recTrialDistractor%[i%][j%];  'changed this to 2-D to accommodate GNG
+            recDistractorSpeakerList%[j%][i%] := recTrialDistractorSpkr%[i%][j%];  'changed this to 2-D to accommodate GNG
+            recDistractorDeltadBList[j%][i%] := recTrialDistractorDeltadB[i%][j%];  'changed this to 2-D to accommodate GNG
+            
+        next;
+        
+        docase
+        case recTrialMF[RecTrialS1%[i%]] > recTrialMF[RecTrialS2%[i%]]  then 
+            'LO trial
+            recTrialTerminalIsS2%[i%] := 2; 'S2-LO --> use in StimComplete in RecGoNoGoEng 
+        case recTrialMF[RecTrialS1%[i%]] < recTrialMF[RecTrialS2%[i%]] then
+            'HI trial
+            recTrialTerminalIsS2%[i%] := 1; 'S2-HI --> use in StimComplete in RecGoNoGoEng 
+        case recTrialS2%[i%] = recTrialS1%[i%] then  'if it is the same stimulus it is the same MF
+            'catch trial
+            recTrialTerminalIsS2%[i%] := 0;  'S2 = S1
+        endcase;
+            
+    next;
+
+    for i% := 0 to recStereoDisRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
+        
+        if recDoNotShuffle% = 0 then
+            ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
+        endif;
+    
+        for j% := 0 to recTotalTrials%-1 do   'load this "chunk" of the order into the RecTrialOrder
+            recTrialOrder%[count%] := miniTrialOrder%[j%];
+            count% += 1;                    'increment count to the next spot in RecTrialOrder to fill
+        next;
+    next;
+        
+    return status%;
+end
+'===== End GenTrialsStereoDisGNG =====
 '
 '
 
