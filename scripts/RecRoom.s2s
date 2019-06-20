@@ -5506,7 +5506,17 @@ func RecVerifyInputFile%(fileIn$)
     var i%;
     var nCh%;  'number of characters
     var lineCount%;
-
+    
+    'FileOpen will open a file dialog if the file-to-open is an empty string.  But it would be complicated to
+    'determine the name of any file selected (should be some way to get it from fh0%, but...), communicate the
+    'name back out for the actual read, and most importantly log the name of the file used.  If a registry entry
+    'is blank it's probably best to just inform the user and try again - this will push them to fix the registry.
+    if fileIn$ = "" then
+        printlog("Requested input file name is blank!  This probably is the result of an empty registry entry.  Starting over!\n");
+        message("Starting over!|Requested input file name is blank!");
+        return -1;
+    endif;
+    
     'printlog("opening file %s \n", fileIn$);
     fh0%:=FileOpen(fileIn$,8,0);
     
@@ -5623,17 +5633,10 @@ func RecLoadTrialsFile%(fileLoc$,&totalTrials%)
     var numRead%;
     var readLine$[7];
     var fh0%;
-    var trimTest$;
     
     status% := 0;  'begin with "failure", change to success if success
     
     printlog("Loading Trial File: %s\n",fileLoc$);
-    
-'    trimTest$ := fileLoc$;
-'    Trim(trimTest$);
-'    if trimTest$ = "" then
-'        message("Trial file read from registry returned blank!|You may use the upcoming dialog to select a trial file|Give Jeff a pic of this message!");
-'    endif;
     
     'First, make sure the file won't barf on us
     numRead% := RecVerifyInputFile%(fileLoc$);
@@ -5897,17 +5900,11 @@ func RecLoadStimCalFile%(fileLoc$,nSpk%,&recTotalStim%)
     var readLine$[34];
     var fh0%;
     var i%;
-    var trimTest$;
     
     status% := 0;  'begin with "failure", change to success if success
     
     printlog("Loading Stim/Cal File: %s\n",fileLoc$);
     
-'    trimTest$ := fileLoc$;
-'    Trim(trimTest$);
-'    if trimTest$ = "" then
-'        message("Stimcal file read from registry returned blank!|You may use the upcoming dialog to select a stimcal file|Give Jeff a pic of this message!");
-'    endif;
         
     'First, make sure the file won't barf on us
     numRead% := RecVerifyInputFile%(fileLoc$);
