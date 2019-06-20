@@ -5629,11 +5629,11 @@ func RecLoadTrialsFile%(fileLoc$,&totalTrials%)
     
     printlog("Loading Trial File: %s\n",fileLoc$);
     
-    trimTest$ := fileLoc$;
-    Trim(trimTest$);
-    if trimTest$ = "" then
-        message("Trial file read from registry returned blank!|You may use the upcoming dialog to select a trial file|Give Jeff a pic of this message!");
-    endif;
+'    trimTest$ := fileLoc$;
+'    Trim(trimTest$);
+'    if trimTest$ = "" then
+'        message("Trial file read from registry returned blank!|You may use the upcoming dialog to select a trial file|Give Jeff a pic of this message!");
+'    endif;
     
     'First, make sure the file won't barf on us
     numRead% := RecVerifyInputFile%(fileLoc$);
@@ -5903,11 +5903,11 @@ func RecLoadStimCalFile%(fileLoc$,nSpk%,&recTotalStim%)
     
     printlog("Loading Stim/Cal File: %s\n",fileLoc$);
     
-    trimTest$ := fileLoc$;
-    Trim(trimTest$);
-    if trimTest$ = "" then
-        message("Stimcal file read from registry returned blank!|You may use the upcoming dialog to select a stimcal file|Give Jeff a pic of this message!");
-    endif;
+'    trimTest$ := fileLoc$;
+'    Trim(trimTest$);
+'    if trimTest$ = "" then
+'        message("Stimcal file read from registry returned blank!|You may use the upcoming dialog to select a stimcal file|Give Jeff a pic of this message!");
+'    endif;
         
     'First, make sure the file won't barf on us
     numRead% := RecVerifyInputFile%(fileLoc$);
