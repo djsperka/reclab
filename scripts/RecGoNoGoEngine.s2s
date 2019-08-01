@@ -406,11 +406,11 @@ proc CreateSampleConfiguration()
     sampleRate% := 50000; 'was 28000
     'call SetTrodeChannels to fill Trode Channels, Ports, and Numbers arrays
     SetTrodeChannels();
-
-PrintLog("Port numbers on CED are......: %d \n", recTrodePort%);
-PrintLog(" >> for Trode Channel numbers: %d \n", recTrodeChannel%);
-PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
-
+    
+    PrintLog("Port numbers on CED are......: %d \n", recTrodePort%);
+    PrintLog(" >> for Trode Channel numbers: %d \n", recTrodeChannel%);
+    PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
+    
     ' Initialize sampling settings 'probably shouldn't fuck with these
     'SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
     SampleChannels(200); 'Set the max number of channels to be 200! this should solve all my problems
@@ -423,7 +423,7 @@ PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
     SampleEvent(recTrigChannel%, recTriggerPort%, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
     SampleComment$(recTrigChannel%, "Trigger");
     SampleTitle$(recTrigChannel%, "Trigger");
-
+    
     if recUseJoystick% = 0 then
         ' Event channel 1 is for the lever
         SampleEvent(recLeverChannel%, recLeverPort%, 2, 10);  'create a level channel for the lever, 10 Hz max sustained
@@ -458,7 +458,7 @@ PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
         XYColour(joydatachan%,16);  'set a colo(u)r for joydatachan%
         XYSize(joydatachan%,-1); 'for channel joydatachan%, plot only one point at a time (-1)
     endif
-
+    
     ' Text marks
     SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
     recChanTM% := 30;  'That's the TextMark channel --> this isn't used anywhere, it's just to remind us that channel 30 IS textmark (by default)
@@ -469,56 +469,57 @@ PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
         SampleWaveform(recDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
         SampleTitle$(recDAC0Channel%, "DAC0");
         SampleComment$(recDAC0Channel%, "DAC0");
-    endif
-
-' Record as many electrodes as specified in Experiment Selection Dialog
-if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
-    i%:=0; 'do channel 1
-        SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
-        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-        SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
-        SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
-    i%:=1; 'do channel 2
-        SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
-        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-        SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
-        SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
+    endif   
     
-else if recNElectrodes% = 3 then'IF 3 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform & an event channel
-    '**** YOU'RE GOING TO NEED A MORE SOPHISTICATED WAY TO HANDLE THESE OPTIONS!!****
-    i%:=0; 'do channel 1
+    ' Record as many electrodes as specified in Experiment Selection Dialog
+    if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
+        i%:=0; 'do channel 1
         SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
         thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
         SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
         SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
-    i%:=1; 'do channel 2
+        i%:=1; 'do channel 2
         SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
         thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
         SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
         SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
-    i%:=2; 'do channel 3 - event chan (TTL)
-        SampleEvent(recTrodeChannel%[i%],1,1,1000); 'channel#, EVENT port#, 1=event on rising edge,max sustained event rate (Hz)
-        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-        SampleTitle$(recTrodeChannel%[i%], "TTL in"); 'name Channel with actual trode position #
-        SampleComment$(recTrodeChannel%[i%], "Single trode: TTL input"); 'and comment Channel with Trode Position #        
         
-else 'all wavemark
-    for i% := 0 to recNElectrodes%-1 do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
-        'ditch the case statements and loop it
-        'SampleWaveform instead of WaveMark --> will have to filter but then we get LFP data too, which may be pretty cool!
-        SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" sampling rate
-        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-        SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
-        SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
-    '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
-    next;
+    else 
+        if recNElectrodes% = 3 then'IF 3 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform & an event channel
+            '**** YOU'RE GOING TO NEED A MORE SOPHISTICATED WAY TO HANDLE THESE OPTIONS!!****
+            i%:=0; 'do channel 1
+            SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
+            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+            SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
+            SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
+            i%:=1; 'do channel 2
+            SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
+            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+            SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
+            SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
+            i%:=2; 'do channel 3 - event chan (TTL)
+            SampleEvent(recTrodeChannel%[i%],1,1,1000); 'channel#, EVENT port#, 1=event on rising edge,max sustained event rate (Hz)
+            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+            SampleTitle$(recTrodeChannel%[i%], "TTL in"); 'name Channel with actual trode position #
+            SampleComment$(recTrodeChannel%[i%], "Single trode: TTL input"); 'and comment Channel with Trode Position #        
+            
+        else 'all wavemark
+            for i% := 0 to recNElectrodes%-1 do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
+                'ditch the case statements and loop it
+                'SampleWaveform instead of WaveMark --> will have to filter but then we get LFP data too, which may be pretty cool!
+                SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" sampling rate
+                thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+                SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
+                SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
+                '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
+            next;
+        endif
     endif
-endif
 
 
-' NOTE: wavemark channels must be b/w 1-100    
-'Note that the sample rate is strange (28 kHz).  These are exactly the Usrey lab conventions, so whatevs.
-'Actual sampling rate may vary! (constrained by hardware)
+    ' NOTE: wavemark channels must be b/w 1-100    
+    'Note that the sample rate is strange (28 kHz).  These are exactly the Usrey lab conventions, so whatevs.
+    'Actual sampling rate may vary! (constrained by hardware)
 
     'set up stimulation copy ports
     if recRewardType% > 0 then
@@ -527,16 +528,18 @@ endif
     endif;
     
     
+    printlog("PLS file load success is %d\n",SampleSequencer(script$ + "recgen.pls")+1); 'Load sample sequencer
     
-    
-' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
+    ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
     ' The second arg groups channels with same ideal rates together so they all get same 
     ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
     ' assuming you use same ideal rate (in SampleWavemark()). 
+    ' Update: Optimization now done following poll of 1401 to determine what type of 1401 is present
     
-    printlog("PLS file load success is %d\n",SampleSequencer(script$ + "recgen.pls")+1); 'Load sample sequencer
+	'SampleOptimise(2, 1, 5, 2, 50, -1, 1);  'Optimization settings, don't change unless there's an issue; turn burst mode on!!
     
-	SampleOptimise(2, 1, 5, 2, 50, -1, 1);  'Optimization settings, don't change unless there's an issue; turn burst mode on!!
+    this1401Type% := Determine1401Type%();  'this1401Type% is used by Get1401Type%();
+    SampleOptimise(2, 1, Get1401Type%(), 2, 50, -1, 1);  'Optimization settings using Get1401Type%; still turn burst mode on
     SampleMode(1);  'Continuous recording
 end
 
