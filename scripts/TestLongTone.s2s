@@ -193,11 +193,11 @@ func IdleLoop%()
     docase
     case iState% = stateStart% then
         'This state is only entered once per "experiment" - once per each time the template file passes control
-        printlog("Starting state logic loop/n");
+        printlog("Starting state logic loop\n");
         ChangeStateTo(statePrepareTone%);
         
     case iState% = statePrepareTone% then
-        printlog("Starting tone #%d/n",count%+1);
+        printlog("Starting tone #%d\n",count%+1);
         SampleSeqVar(11,SequencerToneAmplitude%(amp[count%]));  'set amplitude of pulse
         SampleSeqVar(12,SequencerToneFrequency%(freq[count%]));  'set frequency of pulse
         SampleSeqVar(13,SequencerToneDuration%(dur[count%]));  'set duration of pulse
