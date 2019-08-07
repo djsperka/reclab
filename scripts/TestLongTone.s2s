@@ -1,0 +1,303 @@
+
+#include "recfuncs.s2s"
+#include "filesystemvars.s2s"
+#include "LogUtilities.s2s"
+
+var a%;
+var SequencerPeriodMS;
+var soundOutputChannel% := 1;
+var digCode%[4];
+var foundDigMarkTime;
+var expectedOffTime;
+var prevTime;
+var iStatus%;
+var recDataWindowView%;
+var SecPerSample;  'Needed?
+var TimePerADC;  'Needed?
+var UsPerTime;  'Needed?
+var iState%;
+var tNow;
+var tStateStart;
+var count%;
+var att[3];
+var amp[3];
+var dur[3];
+var freq[3];
+
+att[0] := 25;
+att[1] := 20;
+att[2] := 15;
+
+amp[0] := 1;
+amp[1] := 1;
+amp[2] := 1;
+
+dur[0] := 5;
+dur[1] := 20;
+dur[2] := 100;
+
+freq[0] := 1000;
+freq[1] := 750;
+freq[2] := 500;
+
+
+const recStartButton% := 1;
+const recStopButton% := 2;
+
+const stateStart% := 1;
+const statePrepareTone% := 2;
+const stateFindDigMarkOn% := 3;
+const stateFindDigMarkOff% := 4;
+
+'Initialize TDT, for PA4
+if RecInitTDT%() < 0 then  'RecInitTDT%() is in recfuncs
+    LogInfo("Init TDT FAILED!");
+    halt;
+endif
+
+
+'Ripped from RecRoom, should be fine for testing
+SampleChannels(200); 'Set the max number of channels to be 200! this should solve all my problems
+SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
+SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
+SampleAutoFile(0);     'set auto-filing state to "off"
+
+' Text marks
+SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
+
+' Digital marker channel (NOT IN RECROOM RIGHT NOW)
+SampleDigMark(20);  '20 Hz should be plenty high for an expected sustained rate
+SampleTitle$(32,"ToneStartStop");  'Digital marker is by definition channel 32
+
+
+
+' Record (sound output) only on debug, it will inflate the file sizes...
+SampleWaveform(soundOutputChannel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only), record on port 6
+SampleTitle$(soundOutputChannel%, "Sound");
+SampleComment$(soundOutputChannel%, "Sound");
+
+'load PLS file
+printlog("PLS file load success is %d\n",SampleSequencer(script$ + "TestLongTone.pls")+1); 'Load sample sequencer
+
+this1401Type% := Determine1401Type%();  'this1401Type% is used by Get1401Type%();
+SampleOptimise(2, 1, Get1401Type%(), 2, 50, -1, 1);  'Optimization settings using Get1401Type%; still turn burst mode on
+SampleMode(1);  'Set for continuous recording
+
+
+'Open new recording
+recDataWindowView% := FileNew(0,4);
+printlog("Data window pointer is %d\n",recDataWindowView%);  'log the data window pointer
+if recDataWindowView% < 0 then
+    printlog("FileNew appear to have broken with error: %s\n",Error$(recDataWindowView%));
+endif;
+Window(0, 0, 100, 50); 
+View(recDataWindowView%).WindowVisible(1);
+
+
+View(App(8)).WindowVisible(0);	'Hide the standard sample bar
+ToolbarVisible(1);
+ToolbarSet(recStartButton%, "Start", Start%);
+ToolbarSet(recStopButton%, "Stop Sampling", Stop%);
+ToolbarEnable(recStartButton%, 1);
+ToolbarEnable(recStopButton%, 0);
+
+
+ToolbarSet(0, "");  'explicitly set the idle function to nothing - for some reason on second/third/etc. expts. the idle function is kicking in early even though I don't think it should be active yet   
+printlog("Toolbar initialized\n");
+
+Toolbar("Hit \"Start\" to begin sampling.", 0x3ff);  'Run the toolbar; the experiment will be here most of the time
+
+printlog("End of stimuli!\n");
+
+
+
+
+
+
+
+
+
+
+
+
+func Start%()
+    
+    ToolbarEnable(recStartButton%, 0);
+    ToolbarEnable(recStopButton%, 1);
+    
+    SampleStart();
+    ToolbarText("Sampling started.");  ' Tell the world about it. 
+    printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
+    TimePerADC := SampleTimePerAdc();  'get AD conversion rate
+    UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
+    SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample
+    SequencerPeriodMS := SampleSeqClock(1);  'Get the clock period of the sequencer, in MS, must do this after starting sampling
+    'SequencerPeriodMS := 0.01;  'This value is for testing, use "real" value in actual code
+
+    ' Set idle function
+    ToolbarSet(0, "", IdleLoop%);
+    
+    ' Set iState to start
+    iState% := stateStart%;
+
+    return 1;
+end
+
+
+func Stop%()
+    
+    ' Stop sampling....
+    if SampleStatus() <> -1 then
+        
+        tNow := View(recDataWindowView%).MaxTime(32);  'find maximum time value on digmark channel
+        yield(0.025);  'Wait 25 ms to make sure NextTime call is cool
+        SampleKey("t");  'Stop playing sound (should already be stopped unless we are stopping it in the middle of a tone)
+        
+        foundDigMarkTime := -1;
+        var emergencyCount%;
+        while foundDigMarkTime < tNow and emergencyCount% < 100 do
+            foundDigMarkTime := NextTime(32,tNow,digCode%[]);
+            yield(0.05);  'Wait 50 ms if the sound hasn't completed yet
+            emergencyCount% += 1;  'this will only wait 5 seconds to find the digmark before giving up
+        wend
+        
+        printlog("the emergency get out variable value is %d, 100 is BAD\n",emergencyCount%);
+        
+        
+        var retVal2%;
+        retVal2% := SampleStop();
+        printlog("SampleStop returned %d\n",retVal2%);
+        if retVal2% < 0 then
+            printlog("Samplestop error is %s\n",Error$(retVal2%));
+        endif;
+    else
+        printlog("Sampling was already stopped when Stop() was called!  Seems unusual!\n");
+ 
+    endif
+
+    ' Returning zero from here or any ToolbarSet() functions causes the 
+    ' Toolbar() function to return.
+    return 0;
+    
+end
+
+
+
+
+func IdleLoop%()
+    
+    tNow := View(recDataWindowView%).MaxTime(32);  'find maximum time value on digmark channel, because that's all we care about
+    iStatus% := 1;
+        
+    ' ============= State Logic - determine which state we are in 
+    docase
+    case iState% = stateStart% then
+        'This state is only entered once per "experiment" - once per each time the template file passes control
+        printlog("Starting state logic loop/n");
+        ChangeStateTo(statePrepareTone%);
+        
+    case iState% = statePrepareTone% then
+        printlog("Starting tone #%d/n",count%+1);
+        SampleSeqVar(11,SequencerToneAmplitude%(amp[count%]));  'set amplitude of pulse
+        SampleSeqVar(12,SequencerToneFrequency%(freq[count%]));  'set frequency of pulse
+        SampleSeqVar(13,SequencerToneDuration%(dur[count%]));  'set duration of pulse
+        
+        foundDigMarkTime := -1;
+        ChangeStateTo(stateFindDigMarkOn%);
+        recAttenByID%(att[count%],xlnFirstPA4%);
+        yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
+        
+        SampleKey("T");  'Start tone
+        SampleText("Tone " + Str$(count%+1) + ", freq = " + Str$(freq[count%]) + " Hz");
+        
+    case iState% = stateFindDigMarkOn% then
+        while foundDigMarkTime < tStateStart and tNow < tStateStart+10 do  'don't wait more than 10 seconds to read digmark, in case this doesn't work
+            foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
+        wend
+        if foundDigMarkTime > tStateStart then
+            printlog("Found code %d at %f for stimulus on\n",digCode%[0],foundDigMarkTime);
+            expectedOffTime := foundDigMarkTime + dur[count%];
+        else
+            printlog("We didn't find the digMark to start the stimulus!\n");
+            expectedOffTime := tNow + dur[count%];
+        endif;
+        ChangeStateTo(stateFindDigMarkOff%);
+        
+        
+    case iState% = stateFindDigMarkOff% then  
+        while foundDigMarkTime < tStateStart and tNow < expectedOffTime+10 do
+            foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
+        wend
+        if foundDigMarkTime > tStateStart then
+            printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkTime);
+        else
+            printlog("We didn't find the digMark to end the stimulus!\n");
+        endif;
+        count% += 1;
+        if count% < 3 then
+            ChangeStateTo(statePrepareTone%);
+        else
+            Stop%();
+            iStatus% := 0;
+        endif;
+        
+    endcase;
+    
+    
+    
+    return iStatus%;
+    
+end
+
+
+
+
+
+'This function takes a value from 0 to 1, which is an amplitude scale value intended for use
+'with the sampling sequencer when creating tones on the 1401, where 1 corresponds to the full
+'amplitude range allowed.  Returns an integer value to be placed into a sample sequencer variable.
+func SequencerToneAmplitude%(in)
+    var out%;
+    out% := 32768*in;
+    return out%;
+end
+
+
+'This function takes a value in seconds and converts it to 1401 clock ticks.  Requires SequencerPeriodMS
+'to have been calculated.  Returns an integer value to be placed into a sample sequencer variable 
+func SequencerToneDuration%(sec)
+    var temp;
+    var out%;
+    temp := sec*1000/SequencerPeriodMS;  'do math in float
+    out% := temp-2;  'now convert to integer, subtract two ticks for sequencer instructions
+    return out%;
+end
+
+
+'This function takes a value in Hz and converts it to a value that the 1401 can convert to degrees/step.
+func SequencerToneFrequency%(Hz)
+    var out%;
+    var OneDeg% := 11930465;  'when placed in a sample sequencer variable, this integer is one degree
+    var PeriodDurSec;
+    var StepsPerCycle;
+    var DegPerCycle;
+    PeriodDurSec := 1/Hz;  'How many seconds in one tone cycle
+    StepsPerCycle := PeriodDurSec*1000/SequencerPeriodMS;  'How many clock steps in one tone cycle
+    DegPerCycle := 360/StepsPerCycle;  'How many degrees do we advance in one clock cycle
+    out% := DegPerCycle*OneDeg%;
+    return out%;
+end
+
+
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' ChangeStateTo
+' 
+' Call this function on exit from a state. The var stateTo% should be the state to enter
+' on the next call to the loop function. 
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc ChangeStateTo(stateTo%)
+	iState% := stateTo%;
+    tStateStart := View(recDataWindowView%).MaxTime();
+end;
