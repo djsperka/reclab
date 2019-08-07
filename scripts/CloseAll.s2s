@@ -1,0 +1,8 @@
+' $Log$
+' Revision 1.1  2004/10/01 19:41:01  dan
+' From production
+' 
+
+
+
+FileClose(-1,-1);
