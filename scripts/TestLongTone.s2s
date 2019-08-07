@@ -32,9 +32,9 @@ amp[0] := 1;
 amp[1] := 1;
 amp[2] := 1;
 
-dur[0] := 5;
-dur[1] := 20;
-dur[2] := 100;
+dur[0] := 1;
+dur[1] := 1;
+dur[2] := 10;
 
 freq[0] := 1000;
 freq[1] := 750;
@@ -77,7 +77,7 @@ SampleTitle$(soundOutputChannel%, "Sound");
 SampleComment$(soundOutputChannel%, "Sound");
 
 'load PLS file
-printlog("PLS file load success is %d\n",SampleSequencer(script$ + "TestLongTone.pls")+1); 'Load sample sequencer
+printlog("PLS file load success is %d\n",SampleSequencer(script$ + "TestLongToneRamp.pls")+1); 'Load sample sequencer
 
 this1401Type% := Determine1401Type%();  'this1401Type% is used by Get1401Type%();
 SampleOptimise(2, 1, Get1401Type%(), 2, 50, -1, 1);  'Optimization settings using Get1401Type%; still turn burst mode on
@@ -227,6 +227,7 @@ func IdleLoop%()
     case iState% = stateFindDigMarkOff% then  
         while foundDigMarkTime < tStateStart and tNow < expectedOffTime+10 do
             foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
+            Yield(0.1);  'This allows the display to update
         wend
         if foundDigMarkTime > tStateStart then
             printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkTime);
