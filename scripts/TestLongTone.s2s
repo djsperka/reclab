@@ -32,9 +32,9 @@ amp[0] := 1;
 amp[1] := 1;
 amp[2] := 1;
 
-dur[0] := 1;
-dur[1] := 1;
-dur[2] := 10;
+dur[0] := 5;
+dur[1] := 0.1;
+dur[2] := 5;
 
 freq[0] := 1000;
 freq[1] := 750;
@@ -216,8 +216,8 @@ func IdleLoop%()
             foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
         wend
         if foundDigMarkTime > tStateStart then
-            printlog("Found code %d at %f for stimulus on\n",digCode%[0],foundDigMarkTime);
             expectedOffTime := foundDigMarkTime + dur[count%];
+            printlog("Found code %d at %f for stimulus on, expected off time is %f\n",digCode%[0],foundDigMarkTime,expectedOffTime);
         else
             printlog("We didn't find the digMark to start the stimulus!\n");
             expectedOffTime := tNow + dur[count%];
@@ -226,13 +226,15 @@ func IdleLoop%()
                
     case iState% = stateWaitForEndOfSound% then
         if tNow > expectedOffTime then
+            printlog("Looking for digMark at end of stimulus\n");
             ChangeStateTo(stateFindDigMarkOff%);
         endif;
         
     case iState% = stateFindDigMarkOff% then  
-        while foundDigMarkTime < expectedOffTime-0.5 and tNow < expectedOffTime+10 do
-            foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
+        while foundDigMarkTime < expectedOffTime-0.05 and tNow < expectedOffTime+10 do
+            foundDigMarkTime := NextTime(32,tStateStart-0.05,digCode%[]);
             Yield(0.1);  'This allows the display to update
+            tNow := View(recDataWindowView%).MaxTime();
         wend
         if foundDigMarkTime > tStateStart then
             printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkTime);
