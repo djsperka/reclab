@@ -38,7 +38,7 @@ dur[2] := 5;
 
 freq[0] := 1000;
 freq[1] := 750;
-freq[2] := 500;
+freq[2] := 480;
 
 
 const recStartButton% := 1;
