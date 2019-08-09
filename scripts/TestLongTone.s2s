@@ -48,6 +48,7 @@ const stateStart% := 1;
 const statePrepareTone% := 2;
 const stateFindDigMarkOn% := 3;
 const stateFindDigMarkOff% := 4;
+const stateWaitForEndOfSound% := 5;
 
 'Initialize TDT, for PA4
 if RecInitTDT%() < 0 then  'RecInitTDT%() is in recfuncs
@@ -221,11 +222,15 @@ func IdleLoop%()
             printlog("We didn't find the digMark to start the stimulus!\n");
             expectedOffTime := tNow + dur[count%];
         endif;
-        ChangeStateTo(stateFindDigMarkOff%);
-        
+        ChangeStateTo(stateWaitForEndOfSound%);
+               
+    case iState% = stateWaitForEndOfSound% then
+        if tNow > expectedOffTime then
+            ChangeStateTo(stateFindDigMarkOff%);
+        endif;
         
     case iState% = stateFindDigMarkOff% then  
-        while foundDigMarkTime < tStateStart and tNow < expectedOffTime+10 do
+        while foundDigMarkTime < expectedOffTime-0.5 and tNow < expectedOffTime+10 do
             foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
             Yield(0.1);  'This allows the display to update
         wend

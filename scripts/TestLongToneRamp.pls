@@ -5,7 +5,7 @@
 ;V15 is current amplitude of the tone, while ramping
                 SET    0.010,1,0       ;10 microseconds per step (DON'T CHANGE), fastest possible
 0000            JUMP   next
-0001 PLAYTONE: 'T MOVI V14,5           ;Putting ramp step in a variable makes SZINC easier
+0001 PLAYTONE: 'T MOVI V14,98          ;Putting ramp step in a variable makes SZINC easier
 0002            MOVI   V15,0           ;Current amplitude of tone
 0003            SZ     0,0             ;Set amplitude of tone to zero, to start, will ramp
 0004            PHASE  0,-90           ;Change to sine phase
