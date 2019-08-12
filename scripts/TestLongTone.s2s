@@ -187,7 +187,7 @@ end
 
 func IdleLoop%()
     
-    tNow := View(recDataWindowView%).MaxTime(32);  'find maximum time value on digmark channel, because that's all we care about
+    tNow := View(recDataWindowView%).MaxTime(); 
     iStatus% := 1;
         
     ' ============= State Logic - determine which state we are in 

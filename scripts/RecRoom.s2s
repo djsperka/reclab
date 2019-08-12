@@ -68,7 +68,8 @@ var recFRAAddExpButton%:=20;
 var recFRADeleteExpButton%:=21;    
 var recSelectStimDistractorFileButton%:=22;  
 var recExpStereoDisGNGAddExpButton%:=23;
-var recExpStereoDisGNGDeleteExpButton%:=24;    
+var recExpStereoDisGNGDeleteExpButton%:=24;  
+var recExpLongToneButton%:=25;    
     
 
 'Selection Dialog variables
@@ -174,6 +175,11 @@ var recRepeatsPerStim%;       'Number of repeats for each stimulus defined in th
 var recFRAText2%;    
 var recFRALoadStim% := 1;
 var recDur;     
+    
+'Long Tone Dialog variables
+var recLongToneDuration;
+var recLongToneFreq;
+var recLongToneSpeaker%;
     
 'Audiogram dialog variables
 var recAudiogramS1Speaker%;  
@@ -553,7 +559,7 @@ while recReadyToQuit% = 0 do
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
         view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
-        view(recLog%).print("RecRoom: Are Stimuli Shiffled? = %d\n",1-recDoNotShuffle%);
+        view(recLog%).print("RecRoom: Are Stimuli Shuffled? = %d\n",1-recDoNotShuffle%);
         view(recLog%).print("RecRoom: Is Reward On? = %d\n",1-recTurnOffReward%);
         
         if recExpToRun% <> recLastExpRun% then
@@ -570,11 +576,29 @@ while recReadyToQuit% = 0 do
         'Load stim/cal file, trials file.
         'For generated stimuli, load calibration file to Matlab here
         docase
+        case recExpToRun% = recExpLongToneButton% then 
+            recExptText$ := "Running Long Tone "; 
+            trialsOK% := 2;  'Short circuit, no trials file to load
+            stimOK% := 1;  'Short circuit, no stim file to load
+            'Load calibration file into Matlab's workspace
+            'The file specified must contain a cell array named "calib" with recNSpeakers% cells inside
+            'We will eventually pass a structure (syntax: AFFT(1,thisSpkr%) or AFilt(1,thisSpkr%)) to
+            'Matlab when generating stimuli.  Reclab_Panstim will do the rest
+            'I'm not sure the filter coefficient version is the best method - looks like the FFT version will be best
+            if recMatlabIsPresent% = 1 and recCalibIsPresent% = 1 then
+                statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                calibOK% := EvalMatlabStatement%(statement$);
+            else
+                message("Either no Matlab or no calib, we will have to guess the correct attenuation!");
+                'let it go forward
+                calibOK% := 0; 
+            endif;
+
         case recExpToRun% = recExpSearchButton% then  'For Search, all stimuli are generated
             recExptText$ := "Running Search " + recExptText$;  'the Search dialog puts a stimulus type in recExptText$ before we get here, this is the only expt that does that (thus far)
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
-            'TODO Load calibration file into Matlab's workspace
+            'Load calibration file into Matlab's workspace
             'The file specified must contain a cell array named "calib" with recNSpeakers% cells inside
             'We will eventually pass a structure (syntax: AFFT(1,thisSpkr%) or AFilt(1,thisSpkr%)) to
             'Matlab when generating stimuli.  Reclab_Panstim will do the rest
@@ -598,7 +622,7 @@ while recReadyToQuit% = 0 do
             recExptText$ := "Running FRA "; 
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
-            'TODO Load calibration file into Matlab's workspace, same details as above in Search
+            'Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
                     statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
@@ -627,7 +651,6 @@ while recReadyToQuit% = 0 do
             recSelectedTrialsFile$ := recFRATrialsNameLoad$[recFRAExpIndexLoad%]; 'ditto. for BehOutput
                 
             calibOK% := 0;  'Short circuit, this means OK.
-            
             
         case recExpToRun% = recExpJoyTrnButton% then '*jao
             recExptText$ := "Running Joy Train ";
@@ -675,7 +698,7 @@ while recReadyToQuit% = 0 do
             recSelectedTrialsFile$ := recAMDiscTrialsNameGen$[recAMDiscExpIndexGen%]; 'ditto. for BehOutput
                 
             if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
-                'TODO Load calibration file into Matlab's workspace, same details as above in Search
+                'Load calibration file into Matlab's workspace, same details as above in Search
                 if recMatlabIsPresent% = 1 then
                     if recCalibIsPresent% = 1 then 
                         statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
@@ -716,7 +739,7 @@ while recReadyToQuit% = 0 do
             recSelectedTrialsFile$ := recSpaceDisTrialsNameGen$[recSpaceDisExpIndexGen%]; 'ditto. for BehOutput
                 
             if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
-                'TODO Load calibration file into Matlab's workspace, same details as above in Search
+                'Load calibration file into Matlab's workspace, same details as above in Search
                 if recMatlabIsPresent% = 1 then
                     if recCalibIsPresent% = 1 then 
                         statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
@@ -732,7 +755,7 @@ while recReadyToQuit% = 0 do
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
             recExptText$ := "Running Cueing "; 
-            'Not Yet Iimplemented
+            'Not Yet Implemented
             'Copy from load version of AM Disc when cueing is ready
             calibOK% := 0;  'Short circuit, this means OK.
             
@@ -740,7 +763,7 @@ while recReadyToQuit% = 0 do
             recExptText$ := "Running Cueing "; '+ recExptText$???
             'Not Yet Implemented
             'Copy from generate version of AM Disc when cueing is ready
-            'TODO Load calibration file into Matlab's workspace, same details as above in Search
+            'Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
                     statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
@@ -766,7 +789,7 @@ while recReadyToQuit% = 0 do
             'Also, set this explicitly every time, OK for first run, but on subsequent runs, has to be reset
             recAudiogramStartNewTrial% := 1;
             
-            'TODO Load calibration file into Matlab's workspace, same details as above in Search
+            'Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
                     statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
@@ -781,7 +804,6 @@ while recReadyToQuit% = 0 do
                     calibOK% := 0; 
                 endif;
             endif;
-            
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 then  'For Stereo Distractor, at least for now, all stimuli are generated
             recExptText$ := "Running Stereo Distractor FC"; 
@@ -803,7 +825,6 @@ while recReadyToQuit% = 0 do
             recSelectedTrialsFile$ := recStereoDisTrialsNameLoad$[recStereoDisExpIndexLoad%]; 'ditto. for BehOutput
                 
             calibOK% := 0;  'Short circuit, this means OK.
-            
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoGNG% = 1 then  'For Stereo Distractor, at least for now, all stimuli are generated
             recExptText$ := "Running Stereo Distractor GNG"; 
@@ -1668,6 +1689,7 @@ func RecExpSelectDialog%()
     DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 10); 'will go under FRA button '*jao
     DlgButton(recExpAudiogramButton%, "           Audiogram           ", RecAudiogramDialog%, 2, 11);  
     DlgButton(recExpStereoDisButton%, "     Stereo Distractor     ", RecExpStereoDisDialog%, 26, 11);
+    DlgButton(recExpLongToneButton%, "           Long Tone           ", RecLongToneDialog%, 2, 12); 
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 6);
@@ -2602,6 +2624,76 @@ end;
 'end GenTrialsJoyTrain%() '*jao
 
 
+'===== RecLongToneGetParams ===== 
+
+func RecLongToneGetParams()
+	var key$;
+    key$:="Reclab\\Longtone";
+    
+    recLongToneSpeaker% := GetIntRegistryValue%(key$, "LongToneSpeaker", recLongToneSpeaker%);
+    recLongToneDuration := GetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
+    recLongToneFreq := GetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
+
+    return;
+
+end; 
+'end  RecLongToneGetParams(); 
+
+
+'===== RecLongToneSaveParams ===== 
+
+func RecLongToneSaveParams()
+	var key$;
+    key$:="Reclab\\Longtone";
+
+    SetIntRegistryValue(key$, "LongToneSpeaker", recLongToneSpeaker%);
+    SetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
+    SetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
+
+	return;
+
+end; 
+'end  RecLongToneSaveParams(); 
+
+
+
+'===== RecLongToneDialog ===== '-jj
+func RecLongToneDialog%()
+    var i%; 'for DlgShow
+    var status% := 0;
+    
+    ' Fetch parameters from registry    
+    'RecLongToneGetParams();
+    
+    ' Generate the dialog
+    DlgCreate("Long Tone Dialog");
+    DlgReal(1,"Duration of Tone (s)",0.01,4000);
+    DlgReal(2,"Frequency (Hz)",20,40000);
+    DlgInteger(3,"Speaker",1,16);
+    'DlgReal(4,"Target Amplitude (dB)",10,100);
+    
+    ' Show the dialog
+    i% := DlgShow(recLongToneDuration,recLongToneFreq,recLongToneSpeaker%);
+    
+    ' If user checked box and hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'RecLongToneSaveParams(); 
+        
+        'Reset dialog OK button text on Select dialog, and note which experiment to run
+        DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
+        DlgValue$(-1,"Run Long Tone"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
+        recExpToRun% := recExpLongToneButton%;
+        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+    
+        status% := 1;
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end
 
 
 

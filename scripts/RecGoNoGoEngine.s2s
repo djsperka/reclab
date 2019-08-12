@@ -114,6 +114,7 @@ var StimStoppedNotSet%;                    ' Boolean that dictates when StimStop
 var UsPerTime;                             ' number of microseconds per sequencer sample period
 var TimePerADC;                            ' 
 var SecPerSample;                          ' 
+var SequencerPeriodMS;
 var RewOn;                                 ' time of reward onset
 var PrevRewOn;                             ' time of previous reward onset, avoids error if Spike2 code executes faster than sequencer
 var dummy% := 0;
@@ -179,6 +180,10 @@ const stateFRAInitializeTrials%               := 35;
 const stateFRAHitReward%                      := 36;
 const stateFRAISIDelay%                       := 37;
 const stateFRAJuiceBreak%                     := 38;
+const statePrepareTone%                       := 39;
+const stateFindDigMarkOn%                     := 40;
+const stateWaitForEndOfSound%                 := 41;
+const stateFindDigMarkOff%                    := 42;
 
 var recDelayIntervalTime         := 0;
 var recDelayIntervalInterrupt%   := 0;  'was there an interrupt in the delay interval?
@@ -253,6 +258,8 @@ func RunGoNoGoEngine%()
             InitializeParallelPlayWaveAreas();
         case recExpToRun% = recExpStereoDisButton% then
             InitializeMultipleParallelPlayWaveAreas();
+        case recExpToRun% = recExpLongToneButton% then
+            'Do nothing, no need to initialize PWAs.
         else
             InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
         endcase
@@ -463,6 +470,13 @@ proc CreateSampleConfiguration()
     SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
     recChanTM% := 30;  'That's the TextMark channel --> this isn't used anywhere, it's just to remind us that channel 30 IS textmark (by default)
     '31 is keyboard input also
+    
+    if recExpToRun% = recExpLongToneButton% then
+        ' Digital marker channel
+        SampleDigMark(20);  '20 Hz should be plenty high for an expected sustained rate
+        SampleTitle$(32,"ToneStartStop");  'Digital marker is by definition channel 32
+    endif;
+    
     
     ' Record DAC0 (sound output) only on debug, it will inflate the file sizes...
     if recSoundRecording% = 1 then
@@ -1423,6 +1437,7 @@ func Start%()
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         view(recLog%).print("Sampling started.\n");
         recCurrentlySampling% := 1;  'don't start sampling again
+        SequencerPeriodMS := SampleSeqClock(1);  'Get the clock period of the sequencer, in MS, must do this after starting sampling
         TimePerADC := SampleTimePerAdc();  'get AD conversion rate
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
         SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample
@@ -1466,8 +1481,14 @@ func Stop%()
     
     ' Stop sampling....
     if SampleStatus() <> -1 then
-        SafeSampleKey("S");  'Kill blink sequence, if one exists - when does this happens? think about making it not safe ~jao
-        SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
+        
+        if recExpToRun% = recExpLongToneButton% then
+            SampleKey("t");  'Stop playing sound (should already be stopped unless we are stopping it in the middle of a tone)
+        else
+            SafeSampleKey("S");  'Kill blink sequence, if one exists - when does this happens? think about making it not safe ~jao
+            SafeSampleKey("K");  'Kill reward, just in case, only relevant if CED is being used
+        endif;
+        
         
         var retVal2%;
         retVal2% := SampleStop();
@@ -1761,6 +1782,46 @@ end
 
 
 
+func PrepareLongTone()
+    var atten;
+    var matPutOK% := 0;
+    
+    if recCalibIsPresent% = 1 then
+        'Use speaker calibration to determine 
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",0.5);  'duration doesn't matter
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneFreq);  'Set tone frequency
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneFreq);  'Ditto
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",1);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",0);  
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
+        matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
+        matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxPoints%);
+        matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
+        
+        if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+            message("There has been an error in sending data to Matlab!  Quitting!");
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+            SafeSampleKey("M");
+            Stop%();
+            return -1;
+        endif;
+        
+        
+        statement$ := "[~ atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+        'statement$ := "[~ atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+        EvalMatlabStatement%(statement$);  'Fills atten
+    else
+        atten := 20;  'Guessing!
+    endif;
+    
+    
+    return atten;    
+end
 
 
 
@@ -2347,11 +2408,14 @@ func IdleLoop%()
         case iState% = stateStart% then
             'This state is only entered once per "experiment" - once per each time the template file passes control
             RecLogStatus("Start", "Starting state logic loop.");
-            if recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
+            docase
+            case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
                 ChangeStateTo(stateFRAInitializeTrials%);
+            case recExpToRun% = recExpLongToneButton% then
+                ChangeStateTo(statePrepareTone%);
             else
                 ChangeStateTo(stateInitializeTrials%);
-            endif;
+            endcase;
             
             
         case iState% = stateInitializeTrials% then
@@ -3831,6 +3895,64 @@ func IdleLoop%()
             'Stop%();
             
             
+        case iState% = statePrepareTone% then
+            var foundDigMarkTime;
+            var digCode%[4];
+            var expectedOffTime;
+            printlog("Starting tone \n");
+            SampleSeqVar(11,SequencerToneAmplitude%(1));  'set amplitude of pulse
+            SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
+            SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse
+            
+            PrepareLongTone();
+            
+            foundDigMarkTime := -1;
+            ChangeStateTo(stateFindDigMarkOn%);
+            
+            'set PA5
+            'recAttenByID%(att[count%],xlnFirstPA4%);
+            yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
+            
+            SampleKey("T");  'Start tone
+            SampleText("Tone freq = " + Str$(recLongToneFreq) + " Hz");
+            
+        case iState% = stateFindDigMarkOn% then
+            while foundDigMarkTime < tStateStart and tNow < tStateStart+10 do  'don't wait more than 10 seconds to read digmark, in case this doesn't work
+                foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
+            wend
+            if foundDigMarkTime > tStateStart then
+                expectedOffTime := foundDigMarkTime + recLongToneDuration;
+                printlog("Found code %d at %f for stimulus on, expected off time is %f\n",digCode%[0],foundDigMarkTime,expectedOffTime);
+            else
+                printlog("We didn't find the digMark to start the stimulus!\n");
+                expectedOffTime := tNow + recLongToneDuration;
+            endif;
+            ChangeStateTo(stateWaitForEndOfSound%);
+            
+        case iState% = stateWaitForEndOfSound% then
+            if tNow > expectedOffTime then
+                printlog("Looking for digMark at end of stimulus\n");
+                ChangeStateTo(stateFindDigMarkOff%);
+            endif;
+            
+        case iState% = stateFindDigMarkOff% then  
+            while foundDigMarkTime < expectedOffTime-0.05 and tNow < expectedOffTime+10 do
+                foundDigMarkTime := NextTime(32,tStateStart-0.05,digCode%[]);
+                Yield(0.1);  'This allows the display to update
+                tNow := View(recDataWindowView%).MaxTime();
+            wend
+            if foundDigMarkTime > tStateStart then
+                printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkTime);
+            else
+                printlog("We didn't find the digMark to end the stimulus!\n");
+            endif;
+
+            iStatus% := 0;
+            recReadyToQuit% := 0;
+            ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
+        
+        
+            
             
         case iState% = stateTDTError% then
             
@@ -4334,4 +4456,43 @@ proc PlayWaveStopWithErrorCheck()
         printlog("Error: %s at time %f\n",ErrTxt$,tNow);
     endcase
         
+end
+
+
+
+
+
+'This function takes a value from 0 to 1, which is an amplitude scale value intended for use
+'with the sampling sequencer when creating tones on the 1401, where 1 corresponds to the full
+'amplitude range allowed.  Returns an integer value to be placed into a sample sequencer variable.
+func SequencerToneAmplitude%(in)
+    var out%;
+    out% := 32768*in;
+    return out%;
+end
+
+
+'This function takes a value in seconds and converts it to 1401 clock ticks.  Requires SequencerPeriodMS
+'to have been calculated.  Returns an integer value to be placed into a sample sequencer variable 
+func SequencerToneDuration%(sec)
+    var temp;
+    var out%;
+    temp := sec*1000/SequencerPeriodMS;  'do math in float
+    out% := temp-2;  'now convert to integer, subtract two ticks for sequencer instructions
+    return out%;
+end
+
+
+'This function takes a value in Hz and converts it to a value that the 1401 can convert to degrees/step.
+func SequencerToneFrequency%(Hz)
+    var out%;
+    var OneDeg% := 11930465;  'when placed in a sample sequencer variable, this integer is one degree
+    var PeriodDurSec;
+    var StepsPerCycle;
+    var DegPerCycle;
+    PeriodDurSec := 1/Hz;  'How many seconds in one tone cycle
+    StepsPerCycle := PeriodDurSec*1000/SequencerPeriodMS;  'How many clock steps in one tone cycle
+    DegPerCycle := 360/StepsPerCycle;  'How many degrees do we advance in one clock cycle
+    out% := DegPerCycle*OneDeg%;
+    return out%;
 end
