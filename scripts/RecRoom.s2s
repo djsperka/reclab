@@ -533,12 +533,14 @@ endif
 
 
 'Initialize TDT, if present
-if recTDTIsPresent% = 1 then 
+if recTDTIsPresent% = 1 then
+    ToolbarText("Initializing TDT, this could take up to 5 seconds");    
     if RecInitTDT%() < 0 then  'RecInitTDT%() is in recfuncs
         LogInfo("Init TDT FAILED!");
         CloseMatlab(matlabOpenSuccess%);  'close Matlab if it is open and we are quitting
         halt;
     endif
+    ToolbarText("");
 else
     LogInfo("Client is in testing mode. Bypassing TDT initialization.");
 endif
@@ -2663,7 +2665,7 @@ func RecLongToneDialog%()
     var status% := 0;
     
     ' Fetch parameters from registry    
-    'RecLongToneGetParams();
+    RecLongToneGetParams();
     
     ' Generate the dialog
     DlgCreate("Long Tone Dialog");
@@ -2677,7 +2679,7 @@ func RecLongToneDialog%()
     
     ' If user checked box and hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        'RecLongToneSaveParams(); 
+        RecLongToneSaveParams(); 
         
         'Reset dialog OK button text on Select dialog, and note which experiment to run
         DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog

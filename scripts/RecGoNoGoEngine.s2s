@@ -222,6 +222,9 @@ var amountRewarded := 0;
 
 'var channels%[4];
 
+var expectedOffTime;
+var foundDigMarkTime;
+var digCode%[4];
 
 '#include "reccreate.s2s"  'functions for creation of stimuli, superceded by reclab_panstim.m
 
@@ -1812,9 +1815,11 @@ func PrepareLongTone()
         endif;
         
         
-        statement$ := "[~ atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
-        'statement$ := "[~ atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
         EvalMatlabStatement%(statement$);  'Fills atten
+    printlog("Calculated attenuation is %f/n",atten);
+    atten := 20;
     else
         atten := 20;  'Guessing!
     endif;
@@ -3896,9 +3901,6 @@ func IdleLoop%()
             
             
         case iState% = statePrepareTone% then
-            var foundDigMarkTime;
-            var digCode%[4];
-            var expectedOffTime;
             var atten;
             var status%;
             printlog("Starting tone \n");
@@ -3944,7 +3946,7 @@ func IdleLoop%()
             
         case iState% = stateWaitForEndOfSound% then
             if tNow > expectedOffTime then
-                printlog("Looking for digMark at end of stimulus\n");
+                printlog("Looking for digMark at end of stimulus because tNow is %f and expected off time is %f\n",tNow,expectedOffTime);
                 ChangeStateTo(stateFindDigMarkOff%);
             endif;
             
