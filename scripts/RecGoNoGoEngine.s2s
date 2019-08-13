@@ -3899,18 +3899,31 @@ func IdleLoop%()
             var foundDigMarkTime;
             var digCode%[4];
             var expectedOffTime;
+            var atten;
+            var status%;
             printlog("Starting tone \n");
             SampleSeqVar(11,SequencerToneAmplitude%(1));  'set amplitude of pulse
             SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
             SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse
             
-            PrepareLongTone();
+            atten := PrepareLongTone();
             
             foundDigMarkTime := -1;
             ChangeStateTo(stateFindDigMarkOn%);
             
-            'set PA5
-            'recAttenByID%(att[count%],xlnFirstPA4%);
+
+            ' Set speaker and atten
+            status% := recSpeaker%(recLongToneSpeaker%);
+            if status% <> 0 then
+                printlog("Problem setting speaker for long tone!\n");
+                return 0;
+            endif;
+            status% := recAttenByID%(atten,arrayPA4ID%);
+            if status% <> 0 then
+                printlog("Problem setting attenuation for long tone!\n");
+                return 0;
+            endif;  
+            
             yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
             
             SampleKey("T");  'Start tone
