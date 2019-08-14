@@ -1788,6 +1788,7 @@ end
 func PrepareLongTone()
     var atten;
     var matPutOK% := 0;
+    var matGetAttenOK%;
     
     if recCalibIsPresent% = 1 then
         'Use speaker calibration to determine 
@@ -1817,9 +1818,13 @@ func PrepareLongTone()
         
         statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
         'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
-        EvalMatlabStatement%(statement$);  'Fills atten
-    printlog("Calculated attenuation is %f/n",atten);
-    atten := 20;
+        EvalMatlabStatement%(statement$);  'Fills atten on matlab side
+        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);
+        printlog("Calculated attenuation is %f/n",atten);
+        if matGetAttenOK% < 0 then 'error
+            message("There has been an error in getting atten data from Matlab!");
+            atten := 20;  'set atten to 20 arbitrarily
+        endif;
     else
         atten := 20;  'Guessing!
     endif;

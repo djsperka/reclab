@@ -590,6 +590,8 @@ while recReadyToQuit% = 0 do
             if recMatlabIsPresent% = 1 and recCalibIsPresent% = 1 then
                 statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
                 calibOK% := EvalMatlabStatement%(statement$);
+                printlog("Matlab statement for load is: %s\n",statement$);
+                printlog("CalibOK is %d where 0 is OK and -1 is not OK\n",calibOK%);
             else
                 message("Either no Matlab or no calib, we will have to guess the correct attenuation!");
                 'let it go forward
