@@ -1792,7 +1792,7 @@ func PrepareLongTone()
     if recCalibIsPresent% = 1 then
         'Use speaker calibration to determine 
         matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",0.5);  'duration doesn't matter
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",500);  'duration doesn't matter, but it is in MILLISECONDS
         matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneFreq);  'Set tone frequency
         matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneFreq);  'Ditto
         matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
