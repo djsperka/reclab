@@ -3973,7 +3973,7 @@ func IdleLoop%()
             
             'Either way, move to next trial, or go back to experiment selection dialog
             recCurrentTrial% += 1;
-            if recCurrentTrial% > recNTrials% then
+            if recCurrentTrial% >= recNTrials% then
                 printlog("All long tone trials complete!\n");
                 iStatus% := 0;
                 recReadyToQuit% := 0;
