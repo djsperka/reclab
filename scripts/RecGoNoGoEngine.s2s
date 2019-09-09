@@ -184,6 +184,7 @@ const statePrepareTone%                       := 39;
 const stateFindDigMarkOn%                     := 40;
 const stateWaitForEndOfSound%                 := 41;
 const stateFindDigMarkOff%                    := 42;
+const stateLongToneISI%                       := 43;
 
 var recDelayIntervalTime         := 0;
 var recDelayIntervalInterrupt%   := 0;  'was there an interrupt in the delay interval?
@@ -1791,7 +1792,7 @@ func PrepareLongTone()
     var matGetAttenOK%;
     
     if recCalibIsPresent% = 1 then
-        'Use speaker calibration to determine 
+        'Use speaker calibration to determine attenuation
         matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
         matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",500);  'duration doesn't matter, but it is in MILLISECONDS
         matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneFreq);  'Set tone frequency
@@ -1810,7 +1811,7 @@ func PrepareLongTone()
         if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
             message("There has been an error in sending data to Matlab!  Quitting!");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            SafeSampleKey("M");
+            SafeSampleKey("M");  'Turn off LED
             Stop%();
             return -1;
         endif;
@@ -1926,7 +1927,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 Stop%();
                 return -1;
             case recMatGenStim% = 1 and recSearchStimType% <> 3 then  'Generate stimuli using Matlab - even something CED can do like tones.  Just easier to be consistent.
@@ -1956,7 +1957,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    SafeSampleKey("M");
+                    SafeSampleKey("M");  'Turn off LED
                     Stop%();
                     return -1;
                 endif;
@@ -1986,19 +1987,19 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 case matGetStimOK% < 0 then 'error
                     message("There has been an error in getting stimulus data from Matlab!");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    'SafeSampleKey("M");
+                    'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
                     'return -1;
                 case matGetAttenOK% < 0 then 'error
                     message("There has been an error in getting atten data from Matlab!");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    'SafeSampleKey("M");
+                    'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
                     'return -1;
                 case matGetSeedOK% < 0 then 'error
                     message("There has been an error in getting seed data from Matlab!");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    'SafeSampleKey("M");
+                    'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
                     'return -1;
                 endcase;
@@ -2044,7 +2045,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    'SafeSampleKey("M");
+                    'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
                     'return -1;
                 endif;
@@ -2161,14 +2162,14 @@ func PrepareNextTrial2PWAs%(dontLoadPWAs%)
                 'Really, this isn't a boo-boo we should expect, but I'm leaving it in in case it's useful down the road
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 Stop%();
                 return -1;
             case recMatGenStim% = 1 then  'this is a different boo-boo
                 'We shouldn't get here but just in case
                 message("There are currently no experiments designed to GENERATE stims for a double-barreled PWA!  Quitting!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 Stop%();
                 return -1;    
             else  'Load stimuli from file (which is the ONLY thing we can legally do right now for this double-wide PWA thingy)
@@ -2226,7 +2227,7 @@ func PrepareNextTrial2PWAs%(dontLoadPWAs%)
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                    'SafeSampleKey("M");
+                    'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
                     'return -1;
                 endif;
@@ -2354,7 +2355,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
                 message("There has been an error in PlayWaveCopy!  Check Log File!");
                 printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
                 'recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                'SafeSampleKey("M");
+                'SafeSampleKey("M");  'Turn off LED
                 'Stop%();
                 'return -1;
            endif;
@@ -2662,11 +2663,6 @@ func IdleLoop%()
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 'do state stuff here
                  if tNow < tStartBlink + recTrialInitWindow then
-    '                if recCEDIsPresent% = 1  and recActive% = 1 then
-    '                    CheckLever%();
-    '                else
-    '                    inTrialInit% := 1; 'simulate success
-    '                endif;
                     CheckLever%("inTrialInit%",1);
                     'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
                     'printlog("recAMSPPassiveTask value is %d and time is %f\n",recAMSPPassiveTask%,tNow);
@@ -2898,7 +2894,7 @@ func IdleLoop%()
                 case recAMSPPassiveTask% = 0 and isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
-                    SafeSampleKey("M");
+                    SafeSampleKey("M");  'Turn off LED
                     ChangeStateTo(stateFAInterrupt%);  'on FA interrupt, reshuffle entire stim sequence in later
                 else
                     ChangeStateTo(stateISIDelay%);
@@ -2936,7 +2932,7 @@ func IdleLoop%()
                 numFPs% += 1;  'increment FP counter
                 recPreciseTrialTime := recLeverTime;  'time false positive occurred
                 StimComplete%(0, 0);
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
                 if tNow - tStateStart > recISI then
@@ -3396,7 +3392,7 @@ func IdleLoop%()
             case isEarlyHit% = 1 then  'we don't care about the state of the lever; it was already released early
                 isEarlyHit% := 0;  'reset variable
                 'time of early hit is recorded above
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 if recExpToRun% = recExpAudiogramButton% then
                     UpdateAudiogram(1);  'hit, make audiogram stimulus quieter, etc.
                 endif;
@@ -3425,7 +3421,7 @@ func IdleLoop%()
                 else
                     StimComplete%(1, 0);  'must come after UpdateAudiogram()
                 endcase
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateFalsePositive%);
                 
@@ -3446,7 +3442,7 @@ func IdleLoop%()
             
                 'time of early "FA" or "CR" (response) is recorded above ; for either response do:
                 StimComplete%(2, coinFlipResult%);   'terminal S1
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
                 if coinFlipResult% = 1 then
                     ChangeStateTo(stateHitReward%);
@@ -3459,7 +3455,7 @@ func IdleLoop%()
                 isEarlyFA% := 0;  'reset variable
                 'time of early FA is recorded above
                 StimComplete%(2, 0);  'terminal S1
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 numFAs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
             'Early CR, interrupted final stimulus, this is OK   
@@ -3467,7 +3463,7 @@ func IdleLoop%()
                 isEarlyCR% := 0;  'reset variable
                 'time of early hit is recorded above
                 StimComplete%(2, 1);   'terminal S1
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 'CR counter?
                 ChangeStateTo(stateHitReward%);   
                 
@@ -3478,7 +3474,7 @@ func IdleLoop%()
             case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then
                 RecLogStatus("InResponseWindow", "Passive task - HIT HI"); 
                 StimComplete%(1, 1);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
@@ -3486,7 +3482,7 @@ func IdleLoop%()
             case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) 
                 RecLogStatus("InResponseWindow", "Passive task - HIT Lo");
                 StimComplete%(3, 1);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
@@ -3494,7 +3490,7 @@ func IdleLoop%()
             case inResponse1% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, HIT 
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT HI"); 
                 StimComplete%(1, 1);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
@@ -3502,7 +3498,7 @@ func IdleLoop%()
             case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% and recIsGoNoGo% = 1 then 'LO, HIT 
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT LO"); 
                 StimComplete%(3, 1);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
@@ -3510,7 +3506,7 @@ func IdleLoop%()
             case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%)
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
                 StimComplete%(3, 1);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
@@ -3519,7 +3515,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);  
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
@@ -3537,7 +3533,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(3, 0);   'gotcha bitch!
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
@@ -3568,7 +3564,7 @@ func IdleLoop%()
                 else
                     StimComplete%(2, coinFlipResult%);  '**this variable needs to be declared and established somewhere** *jao 
                 endif;
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
                 if coinFlipResult% = 1 then
                     ChangeStateTo(stateHitReward%);
@@ -3580,7 +3576,7 @@ func IdleLoop%()
             case (tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1) or (inResponse1% = 1 and isTerminalS1% = 0) then  'forced choice OR go/no-go
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 if recExpToRun% = recExpAudiogramButton% then
                     UpdateAudiogram(1);  'hit, make audiogram stimulus quieter, etc.
                 endif;
@@ -3592,7 +3588,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 1 - False Alarm on terminal S1");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(2, 0);  'terminal S1
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 numFAs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
             'CR in response window    
@@ -3601,7 +3597,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - Correct Rejection");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(2, 1);    'terminal S1
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 'CR counter?
                 ChangeStateTo(stateHitReward%);
             'Miss in response window    
@@ -3609,7 +3605,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "In response position 2 - Miss on terminal S2");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateFalsePositive%); 'should this be MissTimeout?? - reshuffle trial?
             
@@ -3624,7 +3620,7 @@ func IdleLoop%()
                     StimComplete%(isTerminalS1%+1, 0);  'this covers whether it is terminal S1 or not
                 endcase
                 
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 'Decrement joystick thresholds if appropriate
                 docase  'doing a case statement here because I think there might be "isTerminalS1% == 2" down the road
                 case isTerminalS1% = 1 then
@@ -3646,7 +3642,7 @@ func IdleLoop%()
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and responseMode% = 1 and recExpToRun% = recExpStereoDisButton% then 'HI, Miss 
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (HI)"); 
                 StimComplete%(1, 0);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 ChangeStateTo(stateMissTimeout%);
@@ -3654,7 +3650,7 @@ func IdleLoop%()
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% then 'HI, Miss 
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (LO)"); 
                 StimComplete%(3, 0);
-                SafeSampleKey("M"); 'what is this about?
+                SafeSampleKey("M");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 ChangeStateTo(stateMissTimeout%);
@@ -3669,7 +3665,7 @@ func IdleLoop%()
                     recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
                     ChangeStateTo(statePreTrialDelay%);  'for the audiogram, misses are expected, just change state to pre-trial delay and do not turn off LED
                 else
-                    SafeSampleKey("M");
+                    SafeSampleKey("M");  'Turn off LED
                     ChangeStateTo(stateMissTimeout%);
                 endif;
                 StimComplete%(1, 0);  'must come after UpdateAudiogram()
@@ -3678,7 +3674,7 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - Correct Rejection on terminal S1");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 StimComplete%(2, 1);  'terminal S1
-                SafeSampleKey("M");
+                SafeSampleKey("M");  'Turn off LED
                 'CR counter?
                 ChangeStateTo(stateCRReward%);  
                 'Otherwise, the response window is still open and the lever is still down    
@@ -3897,7 +3893,7 @@ func IdleLoop%()
             
         case iState% = stateDone% then
             PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
-            SafeSampleKey("M");
+            SafeSampleKey("M");  'Turn off LED
             RecLogStatus("Done", "");
             iStatus% := 0;
             recReadyToQuit% := 0;
@@ -3908,17 +3904,13 @@ func IdleLoop%()
         case iState% = statePrepareTone% then
             var atten;
             var status%;
-            printlog("Starting tone \n");
+            
+            'Set values that can be assigned for the entire set of stimuli
             SampleSeqVar(11,SequencerToneAmplitude%(1));  'set amplitude of pulse
             SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
-            SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse
             
             atten := PrepareLongTone();
             
-            foundDigMarkTime := -1;
-            ChangeStateTo(stateFindDigMarkOn%);
-            
-
             ' Set speaker and atten
             status% := recSpeaker%(recLongToneSpeaker%);
             if status% <> 0 then
@@ -3929,12 +3921,24 @@ func IdleLoop%()
             if status% <> 0 then
                 printlog("Problem setting attenuation for long tone!\n");
                 return 0;
-            endif;  
+            endif; 
             
-            yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
+            ChangeStateTo(stateLongToneISI%);  'Go to an ISI before the first tone to get a full pre-stimulus period           
             
-            SampleKey("T");  'Start tone
-            SampleText("Tone freq = " + Str$(recLongToneFreq) + " Hz");
+        case iState% = stateLongToneISI% then
+            if tNow > tStateStart + recLongToneISI then
+                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
+                SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse on sequencer
+            
+                foundDigMarkTime := -1;
+                ChangeStateTo(stateFindDigMarkOn%);
+            
+                yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
+            
+                printlog("Starting tone \n");
+                SampleKey("T");  'Start tone
+                SampleText("Tone freq = " + Str$(recLongToneFreq) + " Hz");
+            endif
             
         case iState% = stateFindDigMarkOn% then
             while foundDigMarkTime < tStateStart and tNow < tStateStart+10 do  'don't wait more than 10 seconds to read digmark, in case this doesn't work
@@ -3966,10 +3970,19 @@ func IdleLoop%()
             else
                 printlog("We didn't find the digMark to end the stimulus!\n");
             endif;
-
-            iStatus% := 0;
-            recReadyToQuit% := 0;
-            ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
+            
+            'Either way, move to next trial, or go back to experiment selection dialog
+            recCurrentTrial% += 1;
+            if recCurrentTrial% > recNTrials% then
+                printlog("All long tone trials complete!\n");
+                iStatus% := 0;
+                recReadyToQuit% := 0;
+                ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
+            else
+                printlog("Waiting for next stimulus start time\n");
+                ChangeStateTo(stateLongToneISI%);
+            endif;
+            
         
         
             
@@ -3981,7 +3994,7 @@ func IdleLoop%()
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            SafeSampleKey("M");
+            SafeSampleKey("M");  'Turn off LED
             iStatus% := 0;
             Stop%();
             
@@ -3995,7 +4008,7 @@ func IdleLoop%()
             RecLogStatus("A coding Error has occurred!", "");
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            SafeSampleKey("M");
+            SafeSampleKey("M");  'Turn off LED
             Stop%();
             
             
@@ -4006,7 +4019,7 @@ func IdleLoop%()
             Message("Unknown state (%d)!", iState%);
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            SafeSampleKey("M");
+            SafeSampleKey("M");  'Turn off LED
             Stop%();          
         endcase
 

@@ -180,6 +180,8 @@ var recDur;
 var recLongToneDuration;
 var recLongToneFreq;
 var recLongToneSpeaker%;
+var recLongToneNRepeats%;     
+var recLongToneISI;   
     
 'Audiogram dialog variables
 var recAudiogramS1Speaker%;  
@@ -402,6 +404,7 @@ var recTrialOrder%[recMaxTrial%];                       'Holds order in which tr
 var recCurrentTrial%;                                   'Holds current trial in ordinal sequence, will be used to index recTrialOrder%[]    
 var recCurrRandomSeed%[recMaxPWA%];                     'Holds the random seeds used to generate each trial, only done on a trial-by-trial basis    
 var recStimCount%;                                      'Counter for current recMaxStimPerTrial%   
+var recLongToneDurationList[recMaxTrial%];              'Holds the duration of each long tone   
     
 'FRA-specific trial list variables
 var rec2StimList%[recMaxTrial%][2]; 'first dimension: trial number, second dimension: DAC0 stimuli, DAC1 stimuli)    
@@ -980,6 +983,9 @@ while recReadyToQuit% = 0 do
             'Do this prior to running the experiment for all exps
             'Note that recNTrials% will need to be set in all cases; it will need to be arbitrarily huge for Search
             docase 
+            case recExpToRun% = recExpLongToneButton% then
+                'do Trial List Generation stuff!
+                result% := GenTrialsLongTone%();  'Generate trials for Long Tone.  Return result of 1 if OK, 0 if not.  Not sure how it's not OK.
             case recExpToRun% = recExpSearchButton% then
                 'do Trial List Generation stuff!
                 recSearchLoaded% := 0;  'reset variable to allow PWAs to be loaded only once for SEARCH
@@ -2637,7 +2643,9 @@ func RecLongToneGetParams()
     recLongToneSpeaker% := GetIntRegistryValue%(key$, "LongToneSpeaker", recLongToneSpeaker%);
     recLongToneDuration := GetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
     recLongToneFreq := GetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
-
+    recLongToneNRepeats% := GetIntRegistryValue%(key$, "LongToneNRepeats", recLongToneNRepeats%);
+    recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);     
+    
     return;
 
 end; 
@@ -2653,6 +2661,8 @@ func RecLongToneSaveParams()
     SetIntRegistryValue(key$, "LongToneSpeaker", recLongToneSpeaker%);
     SetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
     SetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
+    SetIntRegistryValue(key$, "LongToneNRepeats", recLongToneNRepeats%);
+    SetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);
 
 	return;
 
@@ -2671,13 +2681,16 @@ func RecLongToneDialog%()
     
     ' Generate the dialog
     DlgCreate("Long Tone Dialog");
-    DlgReal(1,"Duration of Tone (s)",0.01,4000);
-    DlgReal(2,"Frequency (Hz)",20,40000);
-    DlgInteger(3,"Speaker",1,16);
+    'DlgReal(1,"Duration of Tone (s)",0.01,4000);  'no longer using this, as we have a defined series of tones .... recLongToneDuration
+    DlgReal(1,"Frequency (Hz)",20,40000);
+    DlgInteger(2,"Speaker",1,16);
+    DlgInteger(3,"Number of repeats per tone",1,100);
+    DlgReal(4,"ISI, seconds",1,100);
     'DlgReal(4,"Target Amplitude (dB)",10,100);
     
     ' Show the dialog
-    i% := DlgShow(recLongToneDuration,recLongToneFreq,recLongToneSpeaker%);
+    i% := DlgShow(recLongToneFreq,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI);
+    
     
     ' If user checked box and hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -7261,6 +7274,47 @@ end
 '===== End GenTrialsStereoDisGNG =====
 '
 '
+
+
+'
+'
+'===== GenTrialsLongTone =====
+func GenTrialsLongTone%()
+    var status% := 1;
+    var i%;
+    var j%;
+    var count%;
+    var numDurs% := 4;  'Hard coding durations to be 0.1, 1, 10, 100
+    var durs[4];
+    durs[0] := 0.1;
+    durs[1] := 1;
+    durs[2] := 10;
+    durs[3] := 100;
+    
+    recNTrials% := recLongToneNRepeats%*numDurs%;
+    
+    if recNTrials% > recMaxTrial% then
+        message("The maximum number of trials is " + Str$(recMaxTrial%) + " but " + Str$(recNTrials%) + " trials were requested!");
+        return 0;
+    endif;
+    
+    for i% := 0 to numDurs%-1 do
+        for j% := 0 to recLongToneNRepeats%-1 do
+            recLongToneDurationList[count%] := durs[i%];  
+            count% += 1;
+        next
+    next
+    
+    'Sanity check passed!
+    'printlog("Long tone durations are: %f\n",recLongToneDurationList[]);
+    'halt;
+    
+    return status%;
+end
+'===== End GenTrialsLongTone =====
+'
+'
+
 
 
 
