@@ -973,16 +973,16 @@ Func PlayTwoSounds%(whichStim%)
         'Totally feels like these should be indexed by recTrialOrder%[playInd%]!!!
         
         'Get this stimulus index
-        thisStim% := rec2StimList%[playInd%][0];
+        thisStim% := rec2StimList%[recTrialOrder%[playInd%]][0];
         
         'Get speaker for current stimulus
-        spkr% := rec2SpeakerList%[playInd%][0];
+        spkr% := rec2SpeakerList%[recTrialOrder%[playInd%]][0];
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         calatten := recTrialStimCal[thisStim%][spkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
         
         'Get trial-based attenuation for current stimulus
-        trlatten := rec2DeltadBList[playInd%][0];  
+        trlatten := rec2DeltadBList[recTrialOrder%[playInd%]][0];  
         
         'Get total attenuation
         printlog("cal atten is %f and trial atten is %f\n",calatten,trlatten);
