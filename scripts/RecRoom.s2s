@@ -1004,7 +1004,7 @@ while recReadyToQuit% = 0 do
                 result% := GenTrialsFRA%();  'Generate trials for FRA.  Return result of 1 if OK, 0 if not.
                 'message("FRA is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 
-            case recExpToRun% = recExpFRAButton% and recFRALoadStim% then
+            case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
                 'do Trial List Generation stuff!
                 result% := GenTrialsFRALoad%();  'Generate trials for FRA.  Return result of 1 if OK, 0 if not.
                 'message("FRA is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
@@ -6907,9 +6907,9 @@ func GenTrialsFRALoad%()
     next;    
 
     for i% := 0 to recTotalTrials% do    '2. save values into rec2StimList, rec2SpeakerList, rec2DeltadBList
-        rec2StimList%[i%][0] := RecTrialS1%[i%];  'These appear to be indexed "backwards", I'm under the impression
-        rec2StimList%[i%][1] := RecTrialS2%[i%];  'that they work, so probably the FRA function that uses them also
-                                                  'indexes backwards, don't have time to check it right now. -jj 5/15/19
+        rec2StimList%[i%][0] := RecTrialS1%[i%];  
+        rec2StimList%[i%][1] := RecTrialS2%[i%];  
+                                                  
     
         rec2SpeakerList%[i%][0] := RecTrialS1Spkr%[i%];
         rec2SpeakerList%[i%][1] := RecTrialS2Spkr%[i%];
@@ -6939,21 +6939,34 @@ func GenTrialsFRALoad%()
     'generate trials that are rewarded
     'Make an array with the exact number of each interval that fits in 996 trials.
     for i% := 0 to 79 do
+'        docase                            'recoding this, because <=, >= will make SO much more sense to read
+'        case i% < 14 then
+'            rewardArray%[i%] := 10;
+'        case i% > 13 and i% < 28 then
+'            rewardArray%[i%] := 11;
+'        case i% > 27 and i% < 41 then
+'            rewardArray%[i%] := 12;
+'        case i% > 40 and i% < 54 then
+'            rewardArray%[i%] := 13;
+'        case i% > 53 and i% < 67 then
+'            rewardArray%[i%] := 14;
+'        case i% > 66 then
+'            rewardArray%[i%] := 15;
+'        endcase
         docase
-        case i% < 14 then
+        case i% <= 13 then
             rewardArray%[i%] := 10;
-        case i% > 13 and i% < 28 then
+        case i% >= 14 and i% <= 27 then
             rewardArray%[i%] := 11;
-        case i% > 27 and i% < 41 then
+        case i% >= 28 and i% <= 40 then
             rewardArray%[i%] := 12;
-        case i% > 40 and i% < 54 then
+        case i% >= 41 and i% <= 53 then
             rewardArray%[i%] := 13;
-        case i% > 53 and i% < 67 then
+        case i% >= 54 and i% <= 66 then
             rewardArray%[i%] := 14;
-        case i% > 66 then
+        case i% >= 67 then
             rewardArray%[i%] := 15;
         endcase
-        
     next; 
     
     if recDoNotShuffle% = 0 then

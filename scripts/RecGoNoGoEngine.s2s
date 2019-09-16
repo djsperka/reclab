@@ -2289,7 +2289,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
     recCurrentTrial% := recCurrentTrial%;
     printlog("Stim number is %d\n",recCurrentTrial%);
     
-    recDur := recTrialDur[rec2StimList%[recCurrentTrial%][0]];  
+    recDur := recTrialDur[rec2StimList%[recTrialOrder%[recCurrentTrial%]][0]];  
     
     ' Put current trial sequence into log file
     if recDebug% > 0 then
@@ -2297,7 +2297,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
         PrintLog("Stimuli: ");
         PrintLog("\n");
         ' Print stmulus number
-        PrintLog("16 array: " + str$(rec2StimList%[recCurrentTrial%][0]) + ", Standalone: " + str$(rec2StimList%[recCurrentTrial%][1]));
+        PrintLog("16 array: " + str$(rec2StimList%[recTrialOrder%[recCurrentTrial%]][0]) + ", Standalone: " + str$(rec2StimList%[recTrialOrder%[recCurrentTrial%]][1]));
         PrintLog("\n");
         printLog("stimulus duration is %f\n",recDur);
     endif
@@ -2308,7 +2308,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
         'for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
     
         'get speaker of trial
-        thisSpkr% := rec2SpeakerList%[recCurrentTrial%][i%];
+        thisSpkr% := rec2SpeakerList%[recTrialOrder%[recCurrentTrial%]][i%];
         PrintLog("Array speaker: " + str$(thisSpkr%));
         PrintLog("\n");
     
@@ -2323,7 +2323,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
             'Load stimuli from file
                 
             'get filename
-            file$ := recTrialLoadLoc$[rec2StimList%[recCurrentTrial%][i%]];
+            file$ := recTrialLoadLoc$[rec2StimList%[recTrialOrder%[recCurrentTrial%]][i%]];
             PrintLog("Current file loading: " + file$);
             PrintLog("\n");
         
