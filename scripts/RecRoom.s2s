@@ -6419,7 +6419,7 @@ func NameThatStimulus$(n%)
     
     name$ := dur$ + freq$ + am$ + amphse$ + seed$;
     
-    if recFRALoadStim% = 1 then
+    if recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
         name$ := "(stim is loaded, can't autoname)";
     endif;    
     

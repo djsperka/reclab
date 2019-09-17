@@ -484,7 +484,7 @@ proc CreateSampleConfiguration()
     
     ' Record DAC0 (sound output) only on debug, it will inflate the file sizes...
     if recSoundRecording% = 1 then
-        SampleWaveform(recDAC0Channel%, 6, 50000);   'create a 50 kHz channel to record sound output (on testing only)
+        SampleWaveform(recDAC0Channel%, 6, 100000);   'create a 100 kHz channel to record sound output (on testing only)
         SampleTitle$(recDAC0Channel%, "DAC0");
         SampleComment$(recDAC0Channel%, "DAC0");
     endif   
