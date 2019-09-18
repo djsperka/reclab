@@ -1819,13 +1819,20 @@ func PrepareLongTone()
         
         statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
         'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
-        EvalMatlabStatement%(statement$);  'Fills atten on matlab side
-        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);
-        printlog("Calculated attenuation is %f/n",atten);
-        if matGetAttenOK% < 0 then 'error
-            message("There has been an error in getting atten data from Matlab!");
-            atten := 20;  'set atten to 20 arbitrarily
+        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
+        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
+        atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
+        if recLongToneTargetdB <> 65 then
+            printlog("Calculated attenuation to produce %f dB is %f/n",recLongToneTargetdB,atten);
         endif;
+        docase
+        case atten < 0 then
+            atten := 0;
+            message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
+        case matGetAttenOK% < 0 then 'error
+            message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
+            atten := 20;  'set atten to 20 arbitrarily
+        endcase;
     else
         atten := 20;  'Guessing!
     endif;

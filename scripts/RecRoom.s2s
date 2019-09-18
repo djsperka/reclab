@@ -182,6 +182,7 @@ var recLongToneFreq;
 var recLongToneSpeaker%;
 var recLongToneNRepeats%;     
 var recLongToneISI;   
+var recLongToneTargetdB;
     
 'Audiogram dialog variables
 var recAudiogramS1Speaker%;  
@@ -2644,7 +2645,8 @@ func RecLongToneGetParams()
     recLongToneDuration := GetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
     recLongToneFreq := GetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
     recLongToneNRepeats% := GetIntRegistryValue%(key$, "LongToneNRepeats", recLongToneNRepeats%);
-    recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);     
+    recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);   
+    recLongToneTargetdB := GetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);  
     
     return;
 
@@ -2663,6 +2665,7 @@ func RecLongToneSaveParams()
     SetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
     SetIntRegistryValue(key$, "LongToneNRepeats", recLongToneNRepeats%);
     SetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);
+    SetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);
 
 	return;
 
@@ -2686,10 +2689,11 @@ func RecLongToneDialog%()
     DlgInteger(2,"Speaker",1,16);
     DlgInteger(3,"Number of repeats per tone",1,100);
     DlgReal(4,"ISI, seconds",1,100);
+    DlgReal(5,"Target dB",1,100);
     'DlgReal(4,"Target Amplitude (dB)",10,100);
     
     ' Show the dialog
-    i% := DlgShow(recLongToneFreq,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI);
+    i% := DlgShow(recLongToneFreq,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneTargetdB);
     
     
     ' If user checked box and hit OK then save parameters (and return 1). 
