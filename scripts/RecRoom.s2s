@@ -2001,6 +2001,7 @@ func RecExpSearchDialog%()
                 for j% := 0 to recSearchToneSweepNSteps%-1 do
                     recTrialGenLowpassHz[j%] := recSearchToneSweepFreqList[j%];
                     recTrialGenHighpassHz[j%] := recSearchToneSweepFreqList[j%];
+                    recTrialGenRampMS[j%] := 2;
                 next
                 printlog("Tone Sweep selected from search dialog, %d repeats\n",recSearchToneSweepRepeats%); 'n repeats of each tone
                 printlog("Tone Sweep Progression is %d Hz\n",recSearchToneSweepFreqList[0:recSearchToneSweepNSteps%]);
