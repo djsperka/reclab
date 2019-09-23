@@ -227,6 +227,10 @@ var expectedOffTime;
 var foundDigMarkTime;
 var digCode%[4];
 
+'To remove SampleAutoCommit
+var SamplingCommitPeriod := 30;  'This will be more specific, we will auto-commit between trials if it has been at least 30 seconds
+var LastSamplingCommitTime := 0;
+
 '#include "reccreate.s2s"  'functions for creation of stimuli, superceded by reclab_panstim.m
 
 
@@ -426,7 +430,8 @@ proc CreateSampleConfiguration()
     'SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
     SampleChannels(200); 'Set the max number of channels to be 200! this should solve all my problems
     SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
-	SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
+	'SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
+    SampleAutoCommit(0);  'Auto commit is causing some slow-down issues, trying manual
     SampleAutoFile(0);     'set auto-filing state to "off"
     'SampleAutoName$("reclab000");  'set file name template
     
@@ -2453,6 +2458,14 @@ func IdleLoop%()
             
  
             CheckLever%("inOrigin%",1);  'flush joystick/lever data, default to inOrigin
+            
+            'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
+            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
+                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
+                LastSamplingCommitTime := tNow;
+            endif;
+            
+            
             'only original check for pause location....
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
@@ -2518,6 +2531,12 @@ func IdleLoop%()
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
+            endif;
+            
+            'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
+            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
+                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
+                LastSamplingCommitTime := tNow;
             endif;
             
  
@@ -3933,6 +3952,13 @@ func IdleLoop%()
             ChangeStateTo(stateLongToneISI%);  'Go to an ISI before the first tone to get a full pre-stimulus period           
             
         case iState% = stateLongToneISI% then
+            
+            'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
+            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
+                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
+                LastSamplingCommitTime := tNow;
+            endif;
+            
             if tNow > tStateStart + recLongToneISI then
                 recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
                 SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse on sequencer
