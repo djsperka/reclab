@@ -430,8 +430,8 @@ proc CreateSampleConfiguration()
     'SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
     SampleChannels(200); 'Set the max number of channels to be 200! this should solve all my problems
     SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
-	'SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
-    SampleAutoCommit(0);  'Auto commit is causing some slow-down issues, trying manual
+	SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
+    'SampleAutoCommit(0);  'Auto commit is causing some slow-down issues, trying manual (WON'T WORK ON SPIKE6!!!)
     SampleAutoFile(0);     'set auto-filing state to "off"
     'SampleAutoName$("reclab000");  'set file name template
     
@@ -2416,7 +2416,7 @@ func IdleLoop%()
         
         'Update the joystick plot every 5 ms
         'printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
-        if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 and recCEDIsPresent% = 1 then
+        if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 and recCEDIsPresent% = 1 and tNow > .002 then
             XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
             YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.001,tNow-.006);
             View(joyview%).XYAddData(joydatachan%,XJoy,YJoy);  'do not need to flip axis values
@@ -2460,10 +2460,11 @@ func IdleLoop%()
             CheckLever%("inOrigin%",1);  'flush joystick/lever data, default to inOrigin
             
             'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
-            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
-                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
-                LastSamplingCommitTime := tNow;
-            endif;
+            'Will not work with Spike6
+'            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
+'                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
+'                LastSamplingCommitTime := tNow;
+'            endif;
             
             
             'only original check for pause location....
@@ -2534,10 +2535,11 @@ func IdleLoop%()
             endif;
             
             'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
-            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
-                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
-                LastSamplingCommitTime := tNow;
-            endif;
+            'Will not work with Spike6
+'            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
+'                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
+'                LastSamplingCommitTime := tNow;
+'            endif;
             
  
             'only original check for pause location....
@@ -3954,10 +3956,11 @@ func IdleLoop%()
         case iState% = stateLongToneISI% then
             
             'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
-            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
-                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
-                LastSamplingCommitTime := tNow;
-            endif;
+            'Will not work with Spike6
+'            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
+'                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
+'                LastSamplingCommitTime := tNow;
+'            endif;
             
             if tNow > tStateStart + recLongToneISI then
                 recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
