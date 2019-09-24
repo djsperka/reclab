@@ -21,6 +21,11 @@ func GetDataPath$()
 return GetDrivePath$() + "\\Data";
 end
 
+func GetScratchPath$()
+return GetDrivePath$() + "\\CEDScratchFolder";
+end
+
+
 func GetStimPath$()
 return stim$;
 end

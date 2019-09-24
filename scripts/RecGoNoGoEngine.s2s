@@ -580,7 +580,9 @@ end
 proc InitializeWindows()
      
     ' Since we are opening files here, set the path. 
-    FilePathSet(GetDataPath$(), 1, 1);  'Sets path for new data files
+    'FilePathSet(GetDataPath$(), 1, 1);  'Sets path for new data files
+    FilePathSet(GetScratchPath$(), 1, 1);  'Sets path for new data files to scratch folder, alleviates SampleAutoCommit stutter
+                                           'File will still be saved on data path in the end
     
     ' Open xy window for use in online display
     'Currently disabled because ExtractSpaceInitialize etc. are disabled, so it does nothing.  May
