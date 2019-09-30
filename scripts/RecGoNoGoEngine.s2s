@@ -430,8 +430,8 @@ proc CreateSampleConfiguration()
     'SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
     SampleChannels(200); 'Set the max number of channels to be 200! this should solve all my problems
     SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
-	SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
-    'SampleAutoCommit(0);  'Auto commit is causing some slow-down issues, trying manual (WON'T WORK ON SPIKE6!!!)
+	'SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
+    SampleAutoCommit(0);  'Auto commit is causing some slow-down issues, trying manual (WON'T WORK ON SPIKE6!!!)...but turning it off anyway!
     SampleAutoFile(0);     'set auto-filing state to "off"
     'SampleAutoName$("reclab000");  'set file name template
     
