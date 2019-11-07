@@ -21,7 +21,7 @@ const maxTrodes% := 21; 'Can record 24 ADCs, but three are taken by JoyX/JoyY/Au
 var recTrodePosition%[maxTrodes%];
 var recTrodeChannel%[maxTrodes%];
 var recTrodePort%[maxTrodes%];
-var maxTrodesThisExpt% := 4;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
+'var maxTrodesThisExpt% := 4;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
 
 ' ports
 const recLeverPort% := 1;    'Event port
@@ -314,7 +314,7 @@ var portNum%;
 var trodeNum%;
 
 'TrodePorts will not change! same as TrodeChans, unless TrodeChannels changes/becomes configurable 
-for i% := 0 to maxTrodesThisExpt%-1 do 'maxTrodes = 21, limited by available ports excluding JoyX/JoyY/AudioCopy
+for i% := 0 to maxTrodes%-1 do 'maxTrodes = 21, limited by available ports excluding JoyX/JoyY/AudioCopy
     portNum% := i%+3; 'first electrode is on Port 3
     recTrodePort%[i%] := portNum%;
     recTrodePosition%[i%] := portNum%; 'this way all the numbers are the same! easyPeasy!

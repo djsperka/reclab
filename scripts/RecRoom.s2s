@@ -3633,11 +3633,11 @@ func RecExpTimingRewardDialog%()
         endcase;
         
         'set maximum number of electrodes allowed, based on whether we need stimulation ports
-        if recRewardType% > 0 then 'if stimulating
-            maxTrodesThisExpt% := 4;  'per Conor, Reclab will NOT be using multi-contact probes and stimulation together
-        else
-            maxTrodesThisExpt% := 28;  
-        endif;
+        'if recRewardType% > 0 then 'if stimulating
+        '    maxTrodes% := 4;  'per Conor, Reclab will NOT be using multi-contact probes and stimulation together
+        'else
+        '    maxTrodes% := 28;  
+        'endif;
         
         
         if recRunTimeCall% = 0 then 'only save parameters if it's a non-run-time call, run-time calls are often for late-session adjustments and shouldn't start the next session
