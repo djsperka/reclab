@@ -6,49 +6,29 @@
 '==========================   Global variables  ============================================
 
 
-' channel numbers and window handles
-'const recDAC0Channel% := 1;          ' DAC0 output should be tee'd and input to ADC port 6
-'const recTrigChannel% := 2;          ' Channel for trigger recording (teed from trig input!)
-'const recLeverChannel% := 3;         ' Channel for behavioral lever recording
-'const configJoyXChannel% := 4;       ' Channel for JoystickX
-'const configJoyYChannel% := 5;       ' Channel for JoystickY
-''const recTrode1Channel% := 11;       ' First electrode. Don't use channel numbers above this
-'const recTrode2Channel% := 12;       ' I'm breaking the above rule (don't use channel numbers above this)
-'const recTrode3Channel% := 13;       '   because it makes no sense to me.  If it turns out to matter
-'const recTrode4Channel% := 14;       '   then I suppose we'll figure that out!
-'const recTrode5Channel% := 15;
-'const recTrode6Channel% := 16;
-'const recTrode7Channel% := 17;
-'const recTrode8Channel% := 18;
-'const recTrode9Channel% := 19;
-'const recTrode10Channel% := 20;
-
 ' channel numbers ***and window handles***??
 ' there are 1-32 max # electrodes on our probe, so reserve these channel numbers for electrodes and don't use them elsewhere
 ' as far as I can tell, channel numbers are arbitrary (as opposed to Ports#s), so use channel #s 40 and up for non-electrodes
-const recLeverChannel% := 33;         ' Channel for behavioral lever recording ; 3-->40
-const configJoyXChannel% := 34;       ' Channel for JoystickX 4-->40
-const configJoyYChannel% := 35;       ' Channel for JoystickY 5-->41
-const recDAC0Channel% := 36;          ' DAC0 output should be tee'd and input to ADC port 6 ; 1-->46
-const recDAC1Channel% := 37;          '
-const recTrigChannel% := 38;          ' Channel for trigger recording (teed from trig input!) 2-->42
-const configStimCopyChannel1% := 50;
-const configStimCopyChannel2% := 51;
+const recLeverChannel% := 33;         ' Channel for behavioral lever recording
+const configJoyXChannel% := 34;       ' Channel for JoystickX
+const configJoyYChannel% := 35;       ' Channel for JoystickY
+const audioOutputCopyChannel% := 36;  ' Audio output should be tee'd and input to ADC port 2 
+const recBAK1Channel% := 37;             ' First BAK
+const recBAK2Channel% := 38;             ' Second BAK
 
 'electrode channel, port & number variables (because you cant make a const array)
-const maxTrodes% := 32; '29;'30; 'max # of electrodes we can record is 30, limited by available Ports; 29 for now b/c of stupid textmark constraint
-var recTrodePosition%[maxTrodes%];'
+const maxTrodes% := 21; 'Can record 24 ADCs, but three are taken by JoyX/JoyY/AudioCopy
+var recTrodePosition%[maxTrodes%];
 var recTrodeChannel%[maxTrodes%];
 var recTrodePort%[maxTrodes%];
 var maxTrodesThisExpt% := 4;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
 
 ' ports
-const recTriggerPort% := 0; 'qwhy????
-const recLeverPort% := 1; 'does not need to be distinct from joystick because they will never be used at the same time
-const configJoyXPort% := 0;  'A2D port (changed from 2 to 0)
-const configJoyYPort% := 1;  'A2D port (changed from 3 to 1)
-const configStimCopyPort1% := 6;  'per Conor, Reclab will NOT be using multi-contact probes and stimulation together, we can plug into front, if we use stim reward, max channels will be 4, won't interfere
-const configStimCopyPort2% := 7;
+const recLeverPort% := 1;    'Event port
+const recBAK1Port% := 0;        'Event port
+const recBAK2Port% := 1;        'Event port  --  Note that recLeverPort% and BAK2Port conflict for now.  It is anticipated that there should not be recording+lever until late 2020
+const configJoyXPort% := 0;  'A2D port
+const configJoyYPort% := 1;  'A2D port
 
 ' memory channels
 var recMemChanLeverDebounce%;
@@ -241,11 +221,6 @@ var LastSamplingCommitTime := 0;
 'out of the toolbar will then return control to the (template) file.
 func RunGoNoGoEngine%()
 
-    'This variable appears to be completely unused at this time
-'    channels%[0] := recTrode1Channel%;
-'    channels%[1] := recTrigChannel%;
-'    channels%[2] := recLeverChannel%;
-'    channels%[3] := 30;
     view(recLog%).print("Begin func RunGoNoGoEngine%.\n");    
     'We do want to start from the start state!
     iState% := stateStart%;
@@ -330,77 +305,22 @@ end
 ' this contains the electrode/port/channel mapping that is crucial to keep track of when running 
 ' experiments! So, don't fuck with it unless you are sure you know what you're doing!
 ' ~jao 2014 Aug 21
+' -jj fucked with it because he knows what he's doing 2019 Nov 6
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func SetTrodeChannels()
 'make a func so that if you want to make this a dialog function its easier
 var i%;
-var index%;
 var portNum%;
 var trodeNum%;
 
 'TrodePorts will not change! same as TrodeChans, unless TrodeChannels changes/becomes configurable 
-'recTrodePort% := [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31]; 
-'for i% := 1 to 28 do 'maxTrodes = 30, limited by available Ports
-for i% := 1 to maxTrodesThisExpt% do 'maxTrodes = 30, limited by available Ports  updated by jj 9/5/2016 to allow for two stimulation inputs at the end
-    index% := i%-1; 'index starts at 0
-    portNum% := i%+1; 'first electrode is on Port 2
-    recTrodePort%[index%] := portNum%;
-    recTrodePosition%[index%] := portNum%; 'this way all the numbers are the same! easyPeasy!
-    recTrodeChannel%[index%] := portNum%;
+for i% := 0 to maxTrodesThisExpt%-1 do 'maxTrodes = 21, limited by available ports excluding JoyX/JoyY/AudioCopy
+    portNum% := i%+3; 'first electrode is on Port 3
+    recTrodePort%[i%] := portNum%;
+    recTrodePosition%[i%] := portNum%; 'this way all the numbers are the same! easyPeasy!
+    recTrodeChannel%[i%] := portNum%;
 next;
 
-'***THIS IS IMPORTANT *** ELECTRODE NAMES ARE SET HERE
-'30 electrode positions on probe that are being used, for cases where channel number cannot be the same as the electrode position:
-'recTrodePosition% := (2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,30,31);
-'for i% := 1 to maxTrodes% do 'maxTrodes = 30, limited by available Ports
-'    index% := i%-1; 'index starts at 0
-'    trodeNum% := i%+1; 'first electrode is on Port 2
-'    recTrodePosition%[index%] := trodeNum%;
-'next;
-'
-'
-''channel numbers mostly correspond to electrode position on probe:
-'' note that channel 30 is reserved for TextMark data, and 31 seems to be keyboard
-''i tried using 50, and 51 instead of 30 & 31, but that just looks weird
-''recTrodeChannel% := [2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27,28,29,50,51];
-'if recNElectrodes% > 0 then
-'    for i% := 1 to maxTrodes% do'29 do '
-'        recTrodeChannel%[i%-1] := i%;
-'    next;
-'    
-''    recTrodeChannel%[0] := 2; 
-''    recTrodeChannel%[1] := 3; 
-''    recTrodeChannel%[2] := 4; 
-''    recTrodeChannel%[3] := 5;
-''    recTrodeChannel%[4] := 6;
-''    recTrodeChannel%[5] := 7;
-''    recTrodeChannel%[6] := 8;
-''    recTrodeChannel%[7] := 9;
-''    recTrodeChannel%[8] := 10;
-''    recTrodeChannel%[9] := 11;
-''    recTrodeChannel%[10] := 12;
-''    recTrodeChannel%[11] := 13;
-''    recTrodeChannel%[12] := 14;
-''    recTrodeChannel%[13] := 15;
-''    recTrodeChannel%[14] := 16;
-''    recTrodeChannel%[15] := 17;
-''    recTrodeChannel%[16] := 18;
-''    recTrodeChannel%[17] := 19;
-''    recTrodeChannel%[18] := 20;
-''    recTrodeChannel%[19] := 21;
-''    recTrodeChannel%[20] := 22;
-''    recTrodeChannel%[21] := 23;
-''    recTrodeChannel%[22] := 24;
-''    recTrodeChannel%[23] := 25;
-''    recTrodeChannel%[24] := 26;
-''    recTrodeChannel%[25] := 27;
-''    recTrodeChannel%[26] := 28;
-''    recTrodeChannel%[27] := 29;
-''    recTrodeChannel%[28] := 50; '30 reserved for TextMark
-''    recTrodeChannel%[29] := 51; '31 seems to be reserved for Keyboard input
-'            'i don't like this because 50 and 51 are orphaned, i'd rather move everything back and keep it contiguous
-'endif
-'
 end
 '======  end SetTrodeChannels() ======================
 
@@ -409,12 +329,12 @@ end
 '
 ' CreateSampleConfiguration()
 ' jackie's version, 2014 Aug 21
+' jackie's version getting rolled by jj's version, 2019 Nov 6
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc CreateSampleConfiguration()
     
 	var index;
-    var r;
     var i%;
     var thisTrodeString$;
     var sampleRate%;
@@ -425,20 +345,17 @@ proc CreateSampleConfiguration()
     PrintLog("Port numbers on CED are......: %d \n", recTrodePort%);
     PrintLog(" >> for Trode Channel numbers: %d \n", recTrodeChannel%);
     PrintLog(" >> for Trode Probe Positions: %d \n", recTrodePosition%);
+       
     
-    ' Initialize sampling settings 'probably shouldn't fuck with these
-    'SampleClear();  'remove any previous sampling settings - shouldn't really do anything, but I seem to be getting a wavemark when I shouldn't be asking for one
+    ' Initialize sampling settings
+    SampleClear();  'remove any previous sampling settings
     SampleChannels(200); 'Set the max number of channels to be 200! this should solve all my problems
     SampleAutoComment(0);  'no automatic prompt for file comments when sampling ends
 	'SampleAutoCommit(30);  'automatically commit sampling every 30 seconds
     SampleAutoCommit(0);  'Auto commit is causing some slow-down issues, trying manual (WON'T WORK ON SPIKE6!!!)...but turning it off anyway!
     SampleAutoFile(0);     'set auto-filing state to "off"
-    'SampleAutoName$("reclab000");  'set file name template
+    'SampleAutoName$("reclab000");  'set file name template (or not???)
     
-    ' Event channel 0 is for sound triggers
-    SampleEvent(recTrigChannel%, recTriggerPort%, 2, 10);  'create a level channel to capture triggers, 10 Hz max sustained
-    SampleComment$(recTrigChannel%, "Trigger");
-    SampleTitle$(recTrigChannel%, "Trigger");
     
     if recUseJoystick% = 0 then
         ' Event channel 1 is for the lever
@@ -475,6 +392,31 @@ proc CreateSampleConfiguration()
         XYSize(joydatachan%,-1); 'for channel joydatachan%, plot only one point at a time (-1)
     endif
     
+    docase
+    case recNBAKs% = 1 then
+        ' Event channel 0 is for the first BAK
+        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+        SampleTitle$(recBAK1Channel%, "BAK1");
+        SampleComment$(recBAK1Channel%, "BAK1");
+    case recNBAKs% = 2 and recUseJoystick% > 0 then  'If using joystick, there are ports for both BAKs
+        ' Event channel 0 is for the first BAK
+        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+        SampleTitle$(recBAK1Channel%, "BAK1");
+        SampleComment$(recBAK1Channel%, "BAK1");
+        ' Event channel 1 is for the second BAK
+        SampleEvent(recBAK2Channel%, recBAK2Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+        SampleTitle$(recBAK2Channel%, "BAK2");
+        SampleComment$(recBAK2Channel%, "BAK2");
+    case recNBAKs% = 2 and recUseJoystick% = 0 then  'If using lever, only the first BAK can be used, note this
+        ' Event channel 0 is for the first BAK
+        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+        SampleTitle$(recBAK1Channel%, "BAK1");
+        SampleComment$(recBAK1Channel%, "BAK1");
+        
+        Message("The lever cannot be used with 2 BAKs!  Second BAK will not be used, lever should be in event port 1!");
+    endcase
+    
+    
     ' Text marks
     SampleTextMark(200);  'set channel 30 as TextMark channel, 200 characters, which is max allowed by CED
     recChanTM% := 30;  'That's the TextMark channel --> this isn't used anywhere, it's just to remind us that channel 30 IS textmark (by default)
@@ -487,68 +429,73 @@ proc CreateSampleConfiguration()
     endif;
     
     
-    ' Record DAC0 (sound output) only on debug, it will inflate the file sizes...
+    ' Record sound output only on debug, it will inflate the file sizes...
     if recSoundRecording% = 1 then
-        SampleWaveform(recDAC0Channel%, 6, 100000);   'create a 100 kHz channel to record sound output (on testing only)
-        SampleTitle$(recDAC0Channel%, "DAC0");
-        SampleComment$(recDAC0Channel%, "DAC0");
+        SampleWaveform(audioOutputCopyChannel%, 2, 100000);   'create a 100 kHz channel to record sound output (on testing only)
+        SampleTitle$(audioOutputCopyChannel%, "Audio");
+        SampleComment$(audioOutputCopyChannel%, "Audio");
     endif   
     
-    ' Record as many electrodes as specified in Experiment Selection Dialog
-    if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
-        i%:=0; 'do channel 1
-        SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
+    ' Set up recording electrodes
+    for i% := 0 to recNElectrodes%-1 do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
+        'SampleWaveform instead of WaveMark --> will have to filter but then we get LFP data too, which may be pretty cool!
+        SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" sampling rate
         thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-        SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
-        SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
-        i%:=1; 'do channel 2
-        SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
-        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-        SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
-        SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
-        
-    else 
-        if recNElectrodes% = 3 then'IF 3 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform & an event channel
-            '**** YOU'RE GOING TO NEED A MORE SOPHISTICATED WAY TO HANDLE THESE OPTIONS!!****
-            i%:=0; 'do channel 1
-            SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
-            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-            SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
-            SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
-            i%:=1; 'do channel 2
-            SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
-            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-            SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
-            SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
-            i%:=2; 'do channel 3 - event chan (TTL)
-            SampleEvent(recTrodeChannel%[i%],1,1,1000); 'channel#, EVENT port#, 1=event on rising edge,max sustained event rate (Hz)
-            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-            SampleTitle$(recTrodeChannel%[i%], "TTL in"); 'name Channel with actual trode position #
-            SampleComment$(recTrodeChannel%[i%], "Single trode: TTL input"); 'and comment Channel with Trode Position #        
-            
-        else 'all wavemark
-            for i% := 0 to recNElectrodes%-1 do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
-                'ditch the case statements and loop it
-                'SampleWaveform instead of WaveMark --> will have to filter but then we get LFP data too, which may be pretty cool!
-                SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" sampling rate
-                thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
-                SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
-                SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
-                '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
-            next;
-        endif
-    endif
+        SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
+        SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
+        '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
+    next;
+    
+    'This bit hacked out, jj 11/6/2019
+'    ' Record as many electrodes as specified in Experiment Selection Dialog
+'    if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
+'        i%:=0; 'do channel 1
+'        SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
+'        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+'        SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
+'        SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
+'        i%:=1; 'do channel 2
+'        SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
+'        thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+'        SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
+'        SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
+'        
+'    else 
+'        if recNElectrodes% = 3 then'IF 3 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform & an event channel
+'            '**** YOU'RE GOING TO NEED A MORE SOPHISTICATED WAY TO HANDLE THESE OPTIONS!!****
+'            i%:=0; 'do channel 1
+'            SampleWaveMark(recTrodeChannel%[i%],recTrodePort%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
+'            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+'            SampleTitle$(recTrodeChannel%[i%], "OnliWaveM"); 'name Channel with actual trode position #
+'            SampleComment$(recTrodeChannel%[i%], "Single trode: online wavemark"); 'and comment Channel with Trode Position #
+'            i%:=1; 'do channel 2
+'            SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" samplig rate
+'            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+'            SampleTitle$(recTrodeChannel%[i%], "Single trode"); 'name Channel with actual trode position #
+'            SampleComment$(recTrodeChannel%[i%], "Single trode: continuous record"); 'and comment Channel with Trode Position #
+'            i%:=2; 'do channel 3 - event chan (TTL)
+'            SampleEvent(recTrodeChannel%[i%],1,1,1000); 'channel#, EVENT port#, 1=event on rising edge,max sustained event rate (Hz)
+'            thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+'            SampleTitle$(recTrodeChannel%[i%], "TTL in"); 'name Channel with actual trode position #
+'            SampleComment$(recTrodeChannel%[i%], "Single trode: TTL input"); 'and comment Channel with Trode Position #        
+'            
+'        else 'all waveform
+'            for i% := 0 to recNElectrodes%-1 do  'if recNElectrodes% is 0, this gloriously does nothing with no error!
+'                'ditch the case statements and loop it
+'                'SampleWaveform instead of WaveMark --> will have to filter but then we get LFP data too, which may be pretty cool!
+'                SampleWaveform(recTrodeChannel%[i%],recTrodePort%[i%], sampleRate%); 'channel#, port#, and "ideal" sampling rate
+'                thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
+'                SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
+'                SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
+'                '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
+'            next;
+'        endif
+'    endif
 
 
     ' NOTE: wavemark channels must be b/w 1-100    
     'Note that the sample rate is strange (28 kHz).  These are exactly the Usrey lab conventions, so whatevs.
     'Actual sampling rate may vary! (constrained by hardware)
-
-    'set up stimulation copy ports
-    if recRewardType% > 0 then
-        SampleWaveform(configStimCopyChannel1%,configStimCopyPort1%,5000);
-        SampleWaveform(configStimCopyChannel2%,configStimCopyPort2%,5000);
-    endif;
     
     
     printlog("PLS file load success is %d\n",SampleSequencer(script$ + "recgen.pls")+1); 'Load sample sequencer
@@ -1371,22 +1318,7 @@ func StimComplete%(isS2%, success%)
     endif;
     return status%;
     
-    'TODO Figure out this ExtractSpace bit.  Doesn't look like recHBeh%/recHBak% handles are made...
-    'All right, as regards the ExtractSpace stuff: For now, we're going to shelve this in order to
-    'move forward.  The essential idea is that we can (and perhaps don't have to) create output files
-    'on the fly for ease of Recanzone analysis.  In the past (i.e. the original ExtractSpace) these
-    'files were designed to comport with longstanding Recanzone analysis.  This is probably no longer
-    'necessary.  If such output files are needed, we can make them, but for now we'll leave it out and
-    'later determine what is necessary.
-    'if recCEDIsPresent% = 1 then
-    'now := MaxTime();
-    'First 4 arguments kosher, checking remaining.  Now last 4 OK.  Args 5-7 are unassigned.
-    'ExtractSpace(recTLastProcessed, now, recDataWindowView%, recXYWindowView%, recHBeh%, recHBak%, recChanWM%, recChanTM%, recTrigChannel%, recLeverChannel%, recNSpeakers%);
-    'recTLastProcessed := now;
-    'endif
-    
-    'I'm kind of assuming this went with ExtractSpace
-    'UpdateOnlineAnalysis();  'It was commented out when I found it.    
+   
     
     
 end

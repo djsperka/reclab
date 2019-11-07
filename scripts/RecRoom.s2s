@@ -308,6 +308,7 @@ recCalibLoc$ := recDrivePath$ + "Data\\Calib\\";           'Have to set this too
 const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2017\\testTextFiles\\";       'Have to set this...  
 const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";           'Have to set this too...   
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
+var recNBAKs%;                      'Number of BAKs to record from, event channels
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    
 var recReadyToQuit%;                'Set this variable to 1 to escape the experiment loop
@@ -1618,6 +1619,7 @@ proc RecExpSelectDialogSaveParams()
     
     SetIntRegistryValue(key$, "DoNotShuffle", recDoNotShuffle%); 
     SetIntRegistryValue(key$, "TurnOffReward", recTurnOffReward%);
+    SetIntRegistryValue(key$, "NBAKs", recNBAKs%);
     
 	return;
 end
@@ -1634,7 +1636,8 @@ proc RecExpSelectDialogGetParams()
     key$:="Reclab\\ExpSelectDialog";
     
     recDoNotShuffle% := GetIntRegistryValue%(key$, "DoNotShuffle", recDoNotShuffle%); 
-    recTurnOffReward% := GetIntRegistryValue%(key$, "TurnOffReward", recTurnOffReward%);      
+    recTurnOffReward% := GetIntRegistryValue%(key$, "TurnOffReward", recTurnOffReward%); 
+    recNBAKs% := GetIntRegistryValue%(key$, "NBAKs", recNBAKs%);    
     
 	return;
 end
@@ -1680,39 +1683,40 @@ func RecExpSelectDialog%()
 
     ' Generate the dialog
     
-    DlgCreate("Experiment Selection Dialog",0,0,52,16);
+    DlgCreate("Experiment Selection Dialog",0,0,52,17);
     
-    DlgGroup("Experimental Details", 1,1,50,6);
+    DlgGroup("Experimental Details", 1,1,50,7);
     DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
-    DlgText("File suffix letter",32,2); DlgString(5,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
-    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,32,0,3); '*jao  JJ sez: note that for stimulation reward, the max is 4, not 32.  But we can't really enforce this because reward type is set up in a later dialog
-    DlgList(3,"Speaker array, first (left) PA4",spkArr$[],10,0,4);
-    DlgList(4,"Speaker array, second (right) PA4",spkArr$[],10,0,5);
+    DlgText("File suffix letter",32,2); DlgString(6,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
+    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,21,0,3); 
+    DlgInteger(3,"Number of BAKs",0,2,0,4);
+    DlgList(4,"Speaker array, first (left) PA4",spkArr$[],10,0,5);
+    DlgList(5,"Speaker array, second (right) PA4",spkArr$[],10,0,6);
     
-    DlgGroup("Experiments", 1,7,50,6);
+    DlgGroup("Experiments", 1,8,50,6);
     DlgButton(0,"         Quit         ");
     DlgButton(1,"          OK          ");
-    DlgButton(recExpSearchButton%, "              Search              ", RecExpSearchDialog%, 2, 8);
-    DlgButton(recExpFRAButton%,    "  FRA/Rate-level/Space  ", RecExpFRADialog%, 2, 9);
-    DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 8);
-    DlgButton(recExpSpaceDisButton%, "          Space Disc          ", RecExpSpaceDisDialog%, 26, 9);
-    DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 10);
-    DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 10); 'will go under FRA button '*jao
-    DlgButton(recExpAudiogramButton%, "           Audiogram           ", RecAudiogramDialog%, 2, 11);  
-    DlgButton(recExpStereoDisButton%, "     Stereo Distractor     ", RecExpStereoDisDialog%, 26, 11);
-    DlgButton(recExpLongToneButton%, "           Long Tone           ", RecLongToneDialog%, 2, 12); 
+    DlgButton(recExpSearchButton%, "              Search              ", RecExpSearchDialog%, 2, 9);
+    DlgButton(recExpFRAButton%,    "  FRA/Rate-level/Space  ", RecExpFRADialog%, 2, 10);
+    DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 9);
+    DlgButton(recExpSpaceDisButton%, "          Space Disc          ", RecExpSpaceDisDialog%, 26, 10);
+    DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 11);
+    DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 11); 'will go under FRA button '*jao
+    DlgButton(recExpAudiogramButton%, "           Audiogram           ", RecAudiogramDialog%, 2, 12);  
+    DlgButton(recExpStereoDisButton%, "     Stereo Distractor     ", RecExpStereoDisDialog%, 26, 12);
+    DlgButton(recExpLongToneButton%, "           Long Tone           ", RecLongToneDialog%, 2, 13); 
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
-    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 6);
-    DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 6);
+    DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 7);
+    DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 7);
     
-    DlgCheck(6,"Do Not Shuffle Stimuli",2,13);
-    DlgCheck(7,"Turn Off Reward",2,14);
+    DlgCheck(7,"Do Not Shuffle Stimuli",2,14);
+    DlgCheck(8,"Turn Off Reward",2,15);
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recDoNotShuffle%,recTurnOffReward%);  'no items
+    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recDoNotShuffle%,recTurnOffReward%);  'no items
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1789,9 +1793,9 @@ func RecExpSelectDialogChanged%(item%)
     'Identifying legal speaker setups
     'Basically, at least one must be an array, they can't both be arrays
     docase
-    case (DlgValue(3) = 1 or DlgValue(3) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3) then
+    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(5) = 0 or DlgValue(5) = 3) then
         speakersOK% := 1;
-    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(3) = 0 or DlgValue(3) = 3) then
+    case (DlgValue(5) = 1 or DlgValue(5) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3) then
         speakersOK% := 1;    
     endcase
     'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
@@ -3662,27 +3666,32 @@ end;
 ' This function is initially called with a "0" input
 func RecExpTimingRewardDialogChanged%(item%) 
     
-    docase
-    case DlgValue(20) = 4 then  'if setting probabilities of juice, etc.
-        DlgEnable(1,21); 'Enable juice probability
-        DlgEnable(1,22); 'Enable stim probability
-        DlgEnable(1,23); 'Enable juice+stim probability label
-    case DlgValue(20) = 5 then 'if setting juice + stim, but it's always juice
-        DlgEnable(0,21); 'Disable juice probability
-        DlgEnable(1,22); 'Enable stim probability
-        DlgEnable(0,23); 'Disable juice+stim probability label
-    else
-        DlgEnable(0,21); 'Disable juice probability
-        DlgEnable(0,22); 'Disable stim probability
-        DlgEnable(0,23); 'Disable juice+stim probability label
-    endcase;
+'    docase
+'    case DlgValue(20) = 4 then  'if setting probabilities of juice, etc.
+'        DlgEnable(1,21); 'Enable juice probability
+'        DlgEnable(1,22); 'Enable stim probability
+'        DlgEnable(1,23); 'Enable juice+stim probability label
+'    case DlgValue(20) = 5 then 'if setting juice + stim, but it's always juice
+'        DlgEnable(0,21); 'Disable juice probability
+'        DlgEnable(1,22); 'Enable stim probability
+'        DlgEnable(0,23); 'Disable juice+stim probability label
+'    else
+'        DlgEnable(0,21); 'Disable juice probability
+'        DlgEnable(0,22); 'Disable stim probability
+'        DlgEnable(0,23); 'Disable juice+stim probability label
+'    endcase;
+'    
+'    if DlgValue(20) = 0 then 'if only juice
+'        DlgEnable(0,24); 'Disable stim delay
+'    else
+'        DlgEnable(1,24); 'Enable stim delay
+'    endif;
     
-    if DlgValue(20) = 0 then 'if only juice
-        DlgEnable(0,24); 'Disable stim delay
-    else
-        DlgEnable(1,24); 'Enable stim delay
-    endif;
-    
+    DlgEnable(0,20); 'Disable stimulation reward
+    DlgEnable(0,21); 'Disable juice pct
+    DlgEnable(0,22); 'Disable stim pct
+    DlgEnable(0,23); 'Disable label
+    DlgEnable(0,24); 'Disable stim delay
     
     
     'update value in text label
