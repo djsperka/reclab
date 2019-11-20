@@ -810,18 +810,19 @@ Func PlaySound%(isS2%)
     
     
     ' Set speaker and atten
-    if recCEDIsPresent% = 1 then
+    if recTDTIsPresent% = 1  and recCEDIsPresent% = 1 then
         status% := recSpeaker%(spkr%);
         if status% <> 0 then
             return status%;
         endif;
-          
+        
         'status% := recAtten%(atten);
         status% := recAttenByID%(atten,arrayPA4ID%);
         if status% <> 0 then
             return status%;
         endif;  
     endif;
+    
     
     'This may not be terribly useful, stimulus ID might be helpful as well - but it's just a log and the sampletext is later
     'use trlatten for attenuation because calibrating attenuation isn't informative
@@ -1028,7 +1029,7 @@ Func PlayTwoSounds%(whichStim%)
     
     
     ' Set speaker and atten ---> These functions call to the PM1 and PA4 respectively so hopefully the second playwave area won't be a problem???
-    if recCEDIsPresent% = 1 then
+    if recCEDIsPresent% = 1 and recTDTIsPresent% = 1 then
         
         docase
         case recExpToRun% = recExpFRAButton% then
@@ -3874,16 +3875,19 @@ func IdleLoop%()
             atten := PrepareLongTone();
             
             ' Set speaker and atten
-            status% := recSpeaker%(recLongToneSpeaker%);
-            if status% <> 0 then
-                printlog("Problem setting speaker for long tone!\n");
-                return 0;
+            if recTDTIsPresent% = 1 then
+                status% := recSpeaker%(recLongToneSpeaker%);
+                if status% <> 0 then
+                    printlog("Problem setting speaker for long tone!\n");
+                    return 0;
+                endif;
+                status% := recAttenByID%(atten,arrayPA4ID%);
+                if status% <> 0 then
+                    printlog("Problem setting attenuation for long tone!\n");
+                    return 0;
+                endif; 
             endif;
-            status% := recAttenByID%(atten,arrayPA4ID%);
-            if status% <> 0 then
-                printlog("Problem setting attenuation for long tone!\n");
-                return 0;
-            endif; 
+            
             
             ChangeStateTo(stateLongToneISI%);  'Go to an ISI before the first tone to get a full pre-stimulus period           
             
