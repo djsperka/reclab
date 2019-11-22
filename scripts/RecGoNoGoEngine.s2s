@@ -1081,17 +1081,17 @@ Func PlayTwoSounds%(whichStim%)
     
 
     if recCEDIsPresent% = 1 then
-        printlog("Sending SafeSampleKey %s\n",playChar$);
+        printlog("Sending SafeSampleKey %s at time %f\n",playChar$,seconds());
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         SafeSampleKey(playChar$);
-        printlog("SafeSampleKey has finished\n");
+        printlog("SafeSampleKey has finished at time %f\n",seconds());
         
         StimOn := SampleSeqVar(3)*UsPerTime/1000000;  'Now, StimOn holds actual presentation time, usually
-        printlog("Stim on (first try) at %f\n",StimOn);
+        printlog("Stim on (first try) at %f (SampleSeqVar3) and %f (system time)\n",StimOn,seconds());
         while StimOn = PrevStimOn do  'This will happen if the above line occurs before the stim starts
             yield(.001,1023);  'yield a millisecond until the stimulus starts playing
             StimOn := SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
-            printlog("Stim on (subsequent try) at %f\n",StimOn);
+            printlog("Stim on (subsequent try) at %f (SampleSeqVar3) and %f (system time)\n",StimOn,seconds());
         wend;          
         PrevStimOn := StimOn;  'keep track of most recent StimOn
         
@@ -1982,6 +1982,10 @@ func PrepareNextTrial%(dontLoadPWAs%)
                 
                 'reads fh% two bytes at a time, puts in recStimTransfer%[]
                 nread%:=breadsize(2,recStimTransfer%[]); 
+                if nread% < 0 then
+                    printlog("There was an error in reading the binary file!  The error is number %d and the text of the error is '%s'\n",nread%,Error$(nread%));
+                endif;
+                
                 
                 'close current stimulus
                 fileclose();  'close fh%
@@ -2246,7 +2250,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
         printlog("recCurrentTrial is %d\n",recCurrentTrial%);
         PrintLog("Stimuli: ");
         PrintLog("\n");
-        ' Print stmulus number
+        ' Print stimulus number
         PrintLog("16 array: " + str$(rec2StimList%[recTrialOrder%[recCurrentTrial%]][0]) + ", Standalone: " + str$(rec2StimList%[recTrialOrder%[recCurrentTrial%]][1]));
         PrintLog("\n");
         printLog("stimulus duration is %f\n",recDur);
@@ -2259,23 +2263,23 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
     
         'get speaker of trial
         thisSpkr% := rec2SpeakerList%[recTrialOrder%[recCurrentTrial%]][i%];
-        PrintLog("Array speaker: " + str$(thisSpkr%));
-        PrintLog("\n");
+        printlog("Array speaker: " + str$(thisSpkr%));
+        printlog("\n");
     
         'Set rec2StimTransfer%[] to zeros
         arrconst(rec2StimTransfer%[][],0); 
     
         for i% := 0 to 1 do
         
-            PrintLog("Loading file for DAC" + str$(i%));
-            PrintLog("\n"); 
+            printlog("Loading file for DAC" + str$(i%));
+            printlog("\n"); 
         
             'Load stimuli from file
                 
             'get filename
             file$ := recTrialLoadLoc$[rec2StimList%[recTrialOrder%[recCurrentTrial%]][i%]];
-            PrintLog("Current file loading: " + file$);
-            PrintLog("\n");
+            printlog("Current file loading: " + file$);
+            printlog("\n");
         
             'open current stimulus
             fh%:=fileopen(file$,9,0);
@@ -2288,9 +2292,16 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
             endif;
                 
             'reads fh% two bytes at a time, puts in recStimTransfer%[]
+            seconds(0,1);  'set resolution to hi-res
+            printlog("Time before BReadSize is %f\n",seconds());
             nread%:=breadsize(2,rec2StimTransfer%[][i%]); 
-            PrintLog("Nread = " + str$(nread%));
-            PrintLog("\n");
+            printlog("BReadSize returned at %f\n",seconds());
+            if nread% < 0 then
+                printlog("There was an error in reading the binary file!  The error is number %d and the text of the error is '%s'\n",nread%,Error$(nread%));
+            else
+                printlog("Number of bytes read = %d\n",nread%);
+            endif;
+
         
             'close current stimulus
             fileclose();  'close fh%
@@ -2300,7 +2311,9 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
             
         'Finally, place the stimulus into the appropriate Play Wave Area
         if recCEDIsPresent% = 1 then
+            printlog("Time before PlayWaveCopy is %f\n",seconds());
             playWaveCopyOK% := PlayWaveCopy(pwChar$, rec2StimTransfer%[][]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
+            printlog("PlayWaveCopy returned at %f\n",seconds());
             if playWaveCopyOK% < 0 then 'error
                 message("There has been an error in PlayWaveCopy!  Check Log File!");
                 printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -2308,7 +2321,9 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
                 'SafeSampleKey("M");  'Turn off LED
                 'Stop%();
                 'return -1;
-           endif;
+            else
+                printlog("PlayWaveCopy success for PWA %s!\n",pwChar$);
+            endif;
         endif;
             
     endif;
@@ -3233,8 +3248,9 @@ func IdleLoop%()
         case iState% = stateStartSoundE% then
             RecLogStatus("TrialSoundE", "Call expt function");
             if recCEDIsPresent% = 1 then
+                printlog("PlayTwoSounds called at %f\n",seconds());
                 stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
-                printlog("PlayTwoSounds Completed!\n");
+                printlog("PlayTwoSounds returned at %f!\n",seconds());
                 StimStoppedNotSet% := 1; ' now that we played a sound we need to set the time of that sound stopping again (for ISI)
                 recStimOn := StimOn;  
                 dummy% := fraStimComplete%();
