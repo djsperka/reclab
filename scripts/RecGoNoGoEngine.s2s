@@ -913,7 +913,7 @@ Func PlayTwoSounds%(whichStim%)
     var thisStimArray2%;  'not used, at least yet, pointing towards potential two-array usage
     var thisStimSA%;
     'var maxdB;  'This is not being used at all (it IS used in PlaySound), not a priority right now
-        
+    printlog("Starting PlayTwoSounds\n");
     'Get index of current trial
     playInd% := recCurrentTrial%-1;  'recCurrentTrial is in human units, convert to index units
     
@@ -945,6 +945,7 @@ Func PlayTwoSounds%(whichStim%)
         
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
+        printlog("Retrieved play wave key %s\n",playChar$);
         
     case recExpToRun% = recExpStereoDisButton% then         
         
@@ -995,7 +996,6 @@ Func PlayTwoSounds%(whichStim%)
         
     endcase
     
-    
     'It is possible that due to the maximum intensity of the stimulus that the requested attenuation
     '(particularly in the audiogram) could be negative.  If so, we are screwed.  Set atten to 0 and point
     'this out to the user
@@ -1013,7 +1013,7 @@ Func PlayTwoSounds%(whichStim%)
         attenSA := 0;
         'maxdB := 65 + calatten;
         printlog("Requested attenuation (%f dB) was negative for this S1/S2 stimulus (%s), has been reset to 0!",calatten + trlatten,recTrialLoadLoc$[thisStim%]);    
-    endif;    
+    endif;   
     
     'Set some attenuation (30 db) during testing, just for the sake of our ears.
     'Once reclab_panstim starts returning a value here, we're in business
@@ -1081,14 +1081,17 @@ Func PlayTwoSounds%(whichStim%)
     
 
     if recCEDIsPresent% = 1 then
-        
+        printlog("Sending SafeSampleKey %s\n",playChar$);
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         SafeSampleKey(playChar$);
+        printlog("SafeSampleKey has finished\n");
         
         StimOn := SampleSeqVar(3)*UsPerTime/1000000;  'Now, StimOn holds actual presentation time, usually
+        printlog("Stim on (first try) at %f\n",StimOn);
         while StimOn = PrevStimOn do  'This will happen if the above line occurs before the stim starts
             yield(.001,1023);  'yield a millisecond until the stimulus starts playing
             StimOn := SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
+            printlog("Stim on (subsequent try) at %f\n",StimOn);
         wend;          
         PrevStimOn := StimOn;  'keep track of most recent StimOn
         
@@ -1111,9 +1114,9 @@ Func PlayTwoSounds%(whichStim%)
             s$ := Print$("\"%s\",%s,%d,standalone,%.1f,%d,%.1f,\"", playChar$, recCurrentTrial%, trlatten, spkrArray%, trlattenArray);
         endcase
         
-        
+        printlog("Ready to sampletext\n");
         SampleText(s$, StimOn);
-        
+        printlog("Wrote sampletext\n");
     endif
     
     'Calculate the duration in points of the stimulus 
@@ -3231,6 +3234,7 @@ func IdleLoop%()
             RecLogStatus("TrialSoundE", "Call expt function");
             if recCEDIsPresent% = 1 then
                 stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
+                printlog("PlayTwoSounds Completed!\n");
                 StimStoppedNotSet% := 1; ' now that we played a sound we need to set the time of that sound stopping again (for ISI)
                 recStimOn := StimOn;  
                 dummy% := fraStimComplete%();
