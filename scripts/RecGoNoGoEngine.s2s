@@ -2003,6 +2003,7 @@ func PrepareNextTrial%(dontLoadPWAs%)
                     'Stop%();
                     'return -1;
                 endif;
+                SafeSampleKey("X");  'This puts in a delay (timed on the sequencer) to prevent 'too fast' calls to play the stim after loading
             endif;
             
         next;
@@ -2185,6 +2186,7 @@ func PrepareNextTrial2PWAs%(dontLoadPWAs%)
                     'Stop%();
                     'return -1;
                 endif;
+                SafeSampleKey("X");  'This puts in a delay (timed on the sequencer) to prevent 'too fast' calls to play the stim after loading
             endif;
             
         next;
@@ -2268,6 +2270,9 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
     
         'Set rec2StimTransfer%[] to zeros
         arrconst(rec2StimTransfer%[][],0); 
+        
+        seconds(0);  'set "seconds" time to zero, for testing
+        'seconds(0,1);  'set resolution to hi-res, not legal in Spike6
     
         for i% := 0 to 1 do
         
@@ -2292,10 +2297,9 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
             endif;
                 
             'reads fh% two bytes at a time, puts in recStimTransfer%[]
-            seconds(0,1);  'set resolution to hi-res
-            printlog("Time before BReadSize is %f\n",seconds());
+            'printlog("Time before BReadSize is %f\n",seconds());
             nread%:=breadsize(2,rec2StimTransfer%[][i%]); 
-            printlog("BReadSize returned at %f\n",seconds());
+            'printlog("BReadSize returned at %f\n",seconds());
             if nread% < 0 then
                 printlog("There was an error in reading the binary file!  The error is number %d and the text of the error is '%s'\n",nread%,Error$(nread%));
             else
@@ -2311,9 +2315,9 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
             
         'Finally, place the stimulus into the appropriate Play Wave Area
         if recCEDIsPresent% = 1 then
-            printlog("Time before PlayWaveCopy is %f\n",seconds());
+            'printlog("Time before PlayWaveCopy is %f\n",seconds());
             playWaveCopyOK% := PlayWaveCopy(pwChar$, rec2StimTransfer%[][]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
-            printlog("PlayWaveCopy returned at %f\n",seconds());
+            'printlog("PlayWaveCopy returned at %f\n",seconds());
             if playWaveCopyOK% < 0 then 'error
                 message("There has been an error in PlayWaveCopy!  Check Log File!");
                 printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -2323,6 +2327,7 @@ func FRAPrepareNextTrial%(dontLoadPWAs%)
                 'return -1;
             else
                 printlog("PlayWaveCopy success for PWA %s!\n",pwChar$);
+                SafeSampleKey("X");  'This puts in a delay (timed on the sequencer) to prevent 'too fast' calls to play the stim after loading
             endif;
         endif;
             
@@ -3248,9 +3253,9 @@ func IdleLoop%()
         case iState% = stateStartSoundE% then
             RecLogStatus("TrialSoundE", "Call expt function");
             if recCEDIsPresent% = 1 then
-                printlog("PlayTwoSounds called at %f\n",seconds());
+                'printlog("PlayTwoSounds called at %f\n",seconds());
                 stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
-                printlog("PlayTwoSounds returned at %f!\n",seconds());
+                'printlog("PlayTwoSounds returned at %f!\n",seconds());
                 StimStoppedNotSet% := 1; ' now that we played a sound we need to set the time of that sound stopping again (for ISI)
                 recStimOn := StimOn;  
                 dummy% := fraStimComplete%();

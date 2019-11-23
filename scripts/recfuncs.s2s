@@ -233,11 +233,15 @@ end
 Proc SafeSampleKey(s$)
     var count% := 0;
     yield(.001);  'It takes the sequencer up to a full step to change the value of variable V2, this step is obligatory
+    'printlog("Checking SampleSeqVar2 at %f\n",seconds());
     while SampleSeqVar(2) <> 0 and count% < 5000 do
+        'printlog("SampleSeqVar2 NOT 0 at %f\n",seconds());
         count% += 1;
         Yield();
     wend
-    SampleKey(s$);    
+    'printlog("SampleSeqVar2 = 0 at %f, requesting SampleKey\n",seconds());
+    SampleKey(s$);  
+    'printlog("SampleKey returned at %f\n",seconds());    
     return;
 end
 
