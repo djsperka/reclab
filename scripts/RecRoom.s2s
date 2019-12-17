@@ -14,6 +14,7 @@
 #include "LogUtilities.s2s"  'for non-time-specific logging, time-specific logging included in RECGEN
 #include "matlab.s2s"
 #include "recfuncs.s2s"
+'#include "RecJoystickFuncs.s2s"
 #include "RegistryUtils.s2s"
 #include "extract_space_functions.s2s"
 #include "filesystemvars.s2s"
@@ -495,7 +496,7 @@ endif;
 'Include files that depend on global variables
 #include "RecGoNoGoEngine.s2s"
 'Include files that rely on recGoNoGoEngine
-#include "RecJoystickFuncs.s2s"
+'#include "RecJoystickFuncs.s2s"
 
 '
 '
@@ -604,7 +605,7 @@ while recReadyToQuit% = 0 do
             endif;
 
         case recExpToRun% = recExpSearchButton% then  'For Search, all stimuli are generated
-            recExptText$ := "Running Search " + recExptText$;  'the Search dialog puts a stimulus type in recExptText$ before we get here, this is the only expt that does that (thus far)
+            recExptText$ := "Running Search " + recExptText$ + " ";  'the Search dialog puts a stimulus type in recExptText$ before we get here, this is the only expt that does that (thus far)
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'Load calibration file into Matlab's workspace
@@ -628,7 +629,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 0 then  'FRA
-            recExptText$ := "Running FRA "; 
+            recExptText$ := "Running FRA (gen) "; 
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'Load calibration file into Matlab's workspace, same details as above in Search
@@ -648,7 +649,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then  'FRA pulling stimuli from input table
-            recExptText$ := "Running FRA ";
+            recExptText$ := "Running FRA (load) ";
             'Get stimfile and trials file lists
             RecFRAExpListLoadGetParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -681,7 +682,7 @@ while recReadyToQuit% = 0 do
                 endif;
             endif; '*jao            
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 0 then  'Loading stims
-            recExptText$ := "Running AMDisc "; 
+            recExptText$ := "Running AMDisc (load) "; 
             'Get stimfile and trials file lists
             RecAMDiscExpListLoadGetParams(recAMDiscExpNameLoad$[],recAMDiscStimcalNameLoad$[],recAMDiscTrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -695,7 +696,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
                     
         case recExpToRun% = recExpAMDiscButton% and recMatGenStim% = 1 then  'Generating stims
-            recExptText$ := "Running AMDisc "; 
+            recExptText$ := "Running AMDisc (gen) "; 
             'Get stimfile and trials file lists
             RecAMDiscExpListGenGetParams(recAMDiscExpNameGen$[],recAMDiscStimcalNameGen$[],recAMDiscTrialsNameGen$[]);
             'Load trials file, stim file, cal file
@@ -722,7 +723,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpSpaceDisButton% and recMatGenStim% = 0 then  'Loading stims
-            recExptText$ := "Running SpaceDis "; 
+            recExptText$ := "Running SpaceDis (load) "; 
             'Get stimfile and trials file lists
             RecSpaceDisExpListLoadGetParams(recSpaceDisExpNameLoad$[],recSpaceDisStimcalNameLoad$[],recSpaceDisTrialsNameLoad$[]);
             'Load trials file, stim/cal file
@@ -736,7 +737,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
                     
         case recExpToRun% = recExpSpaceDisButton% and recMatGenStim% = 1 then  'Generating stims
-            recExptText$ := "Running SpaceDis "; 
+            recExptText$ := "Running SpaceDis (gen) "; 
             'Get stimfile and trials file lists
             RecSpaceDisExpListGenGetParams(recSpaceDisExpNameGen$[],recSpaceDisStimcalNameGen$[],recSpaceDisTrialsNameGen$[]);
             'Load trials file, stim file, cal file
@@ -763,13 +764,13 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
-            recExptText$ := "Running Cueing "; 
+            recExptText$ := "Running Cueing (load) "; 
             'Not Yet Implemented
             'Copy from load version of AM Disc when cueing is ready
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 1 then  'Generating stims
-            recExptText$ := "Running Cueing "; '+ recExptText$???
+            recExptText$ := "Running Cueing (gen) "; '+ recExptText$???
             'Not Yet Implemented
             'Copy from generate version of AM Disc when cueing is ready
             'Load calibration file into Matlab's workspace, same details as above in Search
@@ -815,7 +816,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 then  'For Stereo Distractor, at least for now, all stimuli are generated
-            recExptText$ := "Running Stereo Distractor FC"; 
+            recExptText$ := "Running Stereo Distractor FC "; 
             
             'Get stimfile and trials file lists
             RecStereoDisExpListLoadGetParams(recStereoDisExpNameLoad$[],recStereoDisStimcalNameLoad$[],recStereoDisTrialsNameLoad$[],recStereoDisStimcalDistractorNameLoad$[]);
@@ -836,7 +837,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoGNG% = 1 then  'For Stereo Distractor, at least for now, all stimuli are generated
-            recExptText$ := "Running Stereo Distractor GNG"; 
+            recExptText$ := "Running Stereo Distractor GNG "; 
             
             'Get stimfile and trials file lists
             RecStereoDisGNGExpListLoadGetParams(recStereoDisGNGExpNameLoad$[],recStereoDisGNGStimcalNameLoad$[],recStereoDisGNGTrialsNameLoad$[],recStereoDisGNGStimcalDistractorNameLoad$[]);
