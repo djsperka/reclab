@@ -245,6 +245,11 @@ var recAMDiscTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generatin
 var recAMDiscExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recAMDiscExpIndexGen%;          'Experiment index, for generating stims, etc.
 var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
+var recAMDiscTrialInitReward%;      'Separate out training reward for AMDisc
+var recSpaceDisTrialInitReward%;    'Separate out training reward for SpaceDisc
+var recTrialHoldReward%;            'Give training reward for successful trial hold through stimulus, without response
+var recAMDiscTrialHoldReward%;      'Separate out training reward for AMDisc
+var recSpaceDisTrialHoldReward%;    'Separate out training reward for SpaceDisc
 var recAMSPPassiveTask%;            'Passive version of am / sp        
     
     
@@ -269,7 +274,6 @@ var recSpaceDisStimcalNameGen$[recAMDiscNumExps%];   'Stim file names, generatin
 var recSpaceDisTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generating stims
 var recSpaceDisExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recSpaceDisExpIndexGen%;          'Experiment index, for generating stims, etc.
-'var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
     
     
 'Stereo Distractor Dialog variables
@@ -1430,8 +1434,9 @@ proc RecAMDiscGetParams()
     recAMDiscMatGenStim% := GetIntRegistryValue%(key$, "AMDiscMatGenStim", recAMDiscMatGenStim%);
     recAMDiscExpIndexGen% := GetIntRegistryValue%(key$, "AMDiscExpIndexGen", recAMDiscExpIndexGen%);
     recAMDiscExpIndexLoad% := GetIntRegistryValue%(key$, "AMDiscExpIndexLoad", recAMDiscExpIndexLoad%);   
-    recTrialInitReward% := GetIntRegistryValue%(key$, "TrialInitReward", recTrialInitReward%);
-    recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);
+    recAMDiscTrialInitReward% := GetIntRegistryValue%(key$, "TrialInitReward", recAMDiscTrialInitReward%);
+    recAMDiscTrialHoldReward% := GetIntRegistryValue%(key$, "TrialHoldReward", recAMDiscTrialHoldReward%);
+    'recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);
     recAMSPPassiveTask% := GetIntRegistryValue%(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
 
 	return;
@@ -1461,8 +1466,9 @@ proc RecAMDiscSaveParams()
     SetIntRegistryValue(key$, "AMDiscMatGenStim", recAMDiscMatGenStim%);
     SetIntRegistryValue(key$, "AMDiscExpIndexGen", recAMDiscExpIndexGen%);
     SetIntRegistryValue(key$, "AMDiscExpIndexLoad", recAMDiscExpIndexLoad%);
-    SetIntRegistryValue(key$, "TrialInitReward", recTrialInitReward%);
-    SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
+    SetIntRegistryValue(key$, "TrialInitReward", recAMDiscTrialInitReward%);
+    SetIntRegistryValue(key$, "TrialHoldReward", recAMDiscTrialHoldReward%);
+    'SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
     SetIntRegistryValue(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
     
 	return;
@@ -1491,8 +1497,9 @@ proc RecSpaceDisGetParams()
     recSpaceDisMatGenStim% := GetIntRegistryValue%(key$, "SpaceDisMatGenStim", recSpaceDisMatGenStim%);
     recSpaceDisExpIndexGen% := GetIntRegistryValue%(key$, "SpaceDisExpIndexGen", recSpaceDisExpIndexGen%);
     recSpaceDisExpIndexLoad% := GetIntRegistryValue%(key$, "SpaceDisExpIndexLoad", recSpaceDisExpIndexLoad%);   
-    recTrialInitReward% := GetIntRegistryValue%(key$, "TrialInitReward", recTrialInitReward%);
-    recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);
+    recSpaceDisTrialInitReward% := GetIntRegistryValue%(key$, "TrialInitReward", recSpaceDisTrialInitReward%);
+    recSpaceDisTrialHoldReward% := GetIntRegistryValue%(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);
+    'recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);
     recAMSPPassiveTask% := GetIntRegistryValue%(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
 
 	return;
@@ -1522,8 +1529,9 @@ proc RecSpaceDisSaveParams()
     SetIntRegistryValue(key$, "SpaceDisMatGenStim", recSpaceDisMatGenStim%);
     SetIntRegistryValue(key$, "SpaceDisExpIndexGen", recSpaceDisExpIndexGen%);
     SetIntRegistryValue(key$, "SpaceDisExpIndexLoad", recSpaceDisExpIndexLoad%);
-    SetIntRegistryValue(key$, "TrialInitReward", recTrialInitReward%);
-    SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);  
+    SetIntRegistryValue(key$, "TrialInitReward", recSpaceDisTrialInitReward%);
+    SetIntRegistryValue(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);
+    'SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);  
     SetIntRegistryValue(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
 
 	return;
@@ -3099,7 +3107,8 @@ func RecExpAMDiscDialog%()
     DlgInteger(4,6,1,9,27,7);  'Min S1
     DlgText("Minimum S1 Presentations",2,7);
     DlgCheck(9,"Trial initiation reward?",46,7);
-    DlgReal(10,4,0,3,65,8); DlgText("Training Reward, mL",46,8); 
+    'DlgReal(10,4,0,3,65,8); DlgText("Training Reward, mL",46,8);
+    DlgCheck(10,"Trial Hold reward?",46,8);    
 
     DlgInteger(5,6,0,8,27,8);  'Var S1
     DlgText("Variable S1 Presentations",2,8);
@@ -3119,9 +3128,9 @@ func RecExpAMDiscDialog%()
     '            recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%);  
     
     i%:=DlgShow(recAMDiscMatGenStim%,recAMDiscExpIndexGen%,recAMDiscExpIndexLoad%,recAMDiscMinS1%,recAMDiscVarS1%,
-                recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recTrialInitReward%, recTrainingRewardmL, recAMSPPassiveTask%);  'not setting recAMDiscS1Speaker% in this version
+                recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recAMDiscTrialInitReward%, recAMDiscTrialHoldReward%, recAMSPPassiveTask%);  'not setting recAMDiscS1Speaker% in this version
 
-    printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
+    'printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -3144,6 +3153,8 @@ func RecExpAMDiscDialog%()
             recActive% := 1;   'Don't give an option, must be active
             recFixLED% := 1;
             recMatGenStim% := recAMDiscMatGenStim%;
+            recTrialInitReward% := recAMDiscTrialInitReward%;
+            recTrialHoldReward% := recAMDiscTrialHoldReward%;
         else
             message("The number of variable + constant S1s is greater than the maximum allowed number (%d)",recMaxStimPerTrial%-1);
             DlgValue$(-1,"OK");
@@ -3235,8 +3246,9 @@ func RecExpSpaceDisDialog%()
     DlgInteger(4,6,1,9,27,7);  'Min S1
     DlgText("Minimum S1 Presentations",2,7);
     DlgCheck(9,"Trial initiation reward?",46,7);
-    DlgReal(10,4,0,3,65,8); DlgText("Training Reward, mL",46,8); 
-
+    'DlgReal(10,4,0,3,65,8); DlgText("Training Reward, mL",46,8); 
+    DlgCheck(10,"Trial hold reward?",46,8);
+    
     DlgInteger(5,6,0,8,27,8);  'Var S1
     DlgText("Variable S1 Presentations",2,8);
     DlgReal(6,6,0,1,27,9);  'Proportion of catch trials
@@ -3255,9 +3267,9 @@ func RecExpSpaceDisDialog%()
     '            recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%);  
     
     i%:=DlgShow(recSpaceDisMatGenStim%,recSpaceDisExpIndexGen%,recSpaceDisExpIndexLoad%,recSpaceDisMinS1%,recSpaceDisVarS1%,
-                recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recTrialInitReward%, recTrainingRewardmL, recAMSPPassiveTask%);  'not setting recAMDiscS1Speaker% in this version
+                recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recSpaceDisTrialInitReward%, recSpaceDisTrialHoldReward%, recAMSPPassiveTask%);  'not setting recAMDiscS1Speaker% in this version
 
-    printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
+    'printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -3280,6 +3292,8 @@ func RecExpSpaceDisDialog%()
             recActive% := 1;   'Don't give an option, must be active
             recFixLED% := 1;
             recMatGenStim% := recSpaceDisMatGenStim%;
+            recTrialInitReward% := recSpaceDisTrialInitReward%;
+            recTrialHoldReward% := recSpaceDisTrialHoldReward%;
         else
             message("The number of variable + constant S1s is greater than the maximum allowed number (%d)",recMaxStimPerTrial%-1);
             DlgValue$(-1,"OK");
@@ -6595,7 +6609,7 @@ func GenTrialsAudiogram%()
     
     recNTrials% := recAudiogramNFreqs%;  'one trial for each tone
     recTrainingRewardmL := 0;  'hard code training reward to OFF
-    recTrialInitReward% := 0;  'hard code init reward to OFF
+    recTrialInitReward% := 0;  'hard code init reward to OFF -  this actually won't matter unless somebody goes through the AMDisc/SpaceDis dialogs first
     
     'recAudiogramNFreqs%,recAudiogramToneFreqLow,recAudiogramToneFreqHigh,recAudiogramFreqList[]  'values are already calculated  
     

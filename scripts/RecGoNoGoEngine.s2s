@@ -135,7 +135,7 @@ const stateSoundAPlaying%                     := 6;
 const stateISIDelay%                          := 7;
 const stateStartSoundB%                       := 8;
 const stateSoundBPlaying%                     := 9;
-const stateTrainingReward%                    := 10;
+const stateTrialInitReward%                   := 10;
 const stateInResponseWindow%                  := 11;
 const stateHitReward%                         := 12;
 const stateFalsePositive%                     := 13;
@@ -165,6 +165,7 @@ const stateWaitForEndOfSound%                 := 41;
 const stateFindDigMarkOff%                    := 42;
 const stateLongToneISI%                       := 43;
 const stateStartLongTone%                     := 44;
+const stateTrialHoldReward%                   := 45;
 
 var recDelayIntervalTime         := 0;
 var recDelayIntervalInterrupt%   := 0;  'was there an interrupt in the delay interval?
@@ -2802,7 +2803,7 @@ func IdleLoop%()
                     ChangeStateTo(stateHitReward%); 
                 case recTrialInitReward% <> 0 then 'if not zero (might be -1 from last trial)
                     recTrialInitReward% :=1; 'set it back to 1
-                    ChangeStateTo(stateTrainingReward%);
+                    ChangeStateTo(stateTrialInitReward%);
                 case recExpToRun% = recExpAudiogramButton% then
                     isS2% := 1;  'all audiogram stimuli deserve a response
                     ChangeStateTo(stateStartSoundB%);  'for audiogram, there is only one sound, we want a response, so let's just call it sound B
@@ -2863,17 +2864,19 @@ func IdleLoop%()
             'PlayWaveStop was called, isPlaying% was set to zero, but no explicit check that the stimulus had stopped
             'playing was in fact done.  That check is now explicit, and all commented calls to isPlaying% have been excised.
             
+            'See if sound is still playing, get number of points played
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
             
-            docase
-            case recPointsPlayed% >= recPlayPoints%  then
+            'If sound is still playing, see if it should be over, stop it if so
+            if recPointsPlayed% >= recPlayPoints%  then
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
-            endcase;
+            endif;
             
+            'Check again to see if sound is playing
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
@@ -3009,17 +3012,19 @@ func IdleLoop%()
             
         case iState% = stateSoundBPlaying% then
             
+            'See if sound is still playing, get number of points played
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
             
-            docase
-            case recPointsPlayed% >= recPlayPoints%  then
+            'If sound is still playing, see if it should be over, stop it if so
+            if recPointsPlayed% >= recPlayPoints%  then
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
-            endcase;
+            endif;
             
+            'Check again to see if sound is playing
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
@@ -3028,9 +3033,9 @@ func IdleLoop%()
             
             CheckLever%("inResponse1%",0);  'default is no early hit
             docase
-            case PWA$ = "" then   
+            case PWA$ = "" then 'if sound is not playing
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
-                ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
+                ChangeStateTo(stateTrialHoldReward%);  'check for trial hold reward no matter what, will then move to response window
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
             case recIsGoNoGo% = 1 and inResponse1% = 1 then  'if the sound is still playing, check for early hit (go/no-go)
@@ -3103,17 +3108,20 @@ func IdleLoop%()
         case iState% = stateSoundCPlaying% then
             'here there really is no difference between terminal S1 ("nontarget") and target trials, we deal with the difference
             'in stateInResponseWindow% (at least if there's no interrupt of the stimulus
+            
+            'See if sound is still playing, get number of points played
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
             
-            docase
-            case recPointsPlayed% >= recPlayPoints%  then
+            'If sound is still playing, see if it should be over, stop it if so
+            if recPointsPlayed% >= recPlayPoints%  then
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
-            endcase;
+            endif;
             
+            'Check again to see if sound is playing
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
@@ -3127,7 +3135,7 @@ func IdleLoop%()
                 if isEarlyFA% = 1 then
                     ChangeStateTo(stateInResponseWindow%);  'this will just shunt to the FA penalty, but it keeps the logic consistent
                 else
-                    ChangeStateTo(stateTrainingReward%);
+                    ChangeStateTo(stateTrialHoldReward%);
                 endif;
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
@@ -3147,7 +3155,7 @@ func IdleLoop%()
                 'accept response whether sound should be stopped or not
                 if isEarlyCR% = 0 then
                     isEarlyCR% := 1;  'this is a hit before the sound has stopped playing
-                    recPreciseTrialTime := recLeverTime;  'time early FA occurred
+                    recPreciseTrialTime := recLeverTime;  'time early CR occurred
                     RecLogStatus("WaitTrialSoundC", "Lever is up - FA interrupting terminal S1");
                     if recContinueSoundOnS1Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
@@ -3196,17 +3204,20 @@ func IdleLoop%()
             
             
         case iState% = stateSoundDPlaying% then
+            
+            'See if sound is still playing, get number of points played
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;            
             
-            docase
-            case recPointsPlayed% >= recPlayPoints%  then
+            'If sound is still playing, see if it should be over, stop it if so
+            if recPointsPlayed% >= recPlayPoints%  then
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
-            endcase;
+            endif;
             
+            'Check again to see if sound is playing
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
@@ -3217,7 +3228,7 @@ func IdleLoop%()
             docase
             case PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundD", "Sound done playing.");
-                ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
+                ChangeStateTo(stateTrialHoldReward%);  'check for training reward no matter what
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
             case recIsGoNoGo% = 1 and inResponse2% = 1 then  'if the sound is still playing, check for early hit (go/no-go) 'Response2=Hit, though this case should never really happen *jao
@@ -3305,18 +3316,19 @@ func IdleLoop%()
 
             endif;
             
-            
+            'See if sound is still playing, get number of points played
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
             endif;
             
-            docase
-            case recPointsPlayed% >= recPlayPoints%  then
+            'If sound is still playing, see if it should be over, stop it if so
+            if recPointsPlayed% >= recPlayPoints%  then
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
-            endcase;
+            endif;
             
+            'Check again to see if sound is playing
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
             else
@@ -3325,16 +3337,16 @@ func IdleLoop%()
             
             if PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundE", "Sound done playing.");
-                'ChangeStateTo(stateTrainingReward%);  'check for training reward no matter what - ask Jackie if we want them to NOT get training reward if S2 is interrupted
+                'ChangeStateTo(stateTrialHoldReward%);  'Not doing a trial hold reward in FRA for now -jj
             endif;
             
             
             
-        case iState% = stateTrainingReward% then
+        case iState% = stateTrialInitReward% then
             
-            ' Are we giving free (training) rewards? If we are, then do so, otherwise we just pass on through. 
-            if recTrainingRewardmL > 0 and recTurnOffReward% = 0 then
-                RecLogStatus("TrainingReward", "Giving training reward, size " + str$(recTrainingRewardmL) + " mLs");
+            ' Are we giving trial init rewards? If we are, then do so, otherwise we just pass on through. 
+            if recTrialInitReward% = 1 and recTrainingRewardmL > 0 and recTurnOffReward% = 0 then
+                RecLogStatus("TrialInitReward", "Giving trial init reward, size " + str$(recTrainingRewardmL) + " mLs");
                 amountRewarded += recTrainingRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
                     recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
@@ -3342,18 +3354,20 @@ func IdleLoop%()
                     
                     stmp% := Reward%();
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event();
-                    s$ := Print$("Reward %d", recRewardMs%);
-                    SampleText(s$, RewardOn);
-                    
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
+                    
+                    RewardOn := GetTimeOfLast1401Event();
+                    s$ := Print$("InitReward %d", recRewardMs%);
+                    SampleText(s$, RewardOn);
+                    
+                    
                 endif
             else
-                RecLogStatus("TrainingReward", "No training reward.");
+                RecLogStatus("TrialInitReward", "No trial init reward.");
             endif
             if recTrialInitReward% = 1 then
                 recTrialInitReward% := -1; 'so that after soundA we can pass by this and move forward!! *jao (i feel smart!)
@@ -3363,6 +3377,36 @@ func IdleLoop%()
                 ChangeStateTo(stateInResponseWindow%);
             endif;
             
+            
+        case iState% = stateTrialHoldReward% then
+            
+            ' Are we giving trial hold rewards? Was stimulus held all the way through? If yes, then give reward, otherwise we just pass on through. 
+            if recTrialHoldReward% = 1 and isEarlyHit% = 0 and isEarlyMiss% = 0 and isEarlyCR% = 0 and recTrainingRewardmL > 0 and recTurnOffReward% = 0 then
+                RecLogStatus("TrialHoldReward", "Giving trial hold reward, size " + str$(recTrainingRewardmL) + " mLs");
+                amountRewarded += recTrainingRewardmL;  'add reward to juice counter
+                if recCEDIsPresent% = 1 then
+                    recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
+                    recRewardMs := recRewardMs%;  'we need a float version for later math
+                    
+                    stmp% := Reward%();
+                    'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
+                    if stmp% <> 0 then
+                        PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
+                        Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
+                        ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
+                    endif;
+                    
+                    RewardOn := GetTimeOfLast1401Event();
+                    s$ := Print$("HoldReward %d", recRewardMs%);
+                    SampleText(s$, RewardOn);
+                    
+                    
+                endif
+            else
+                RecLogStatus("TrialHoldReward", "No trial hold reward.");
+            endif
+
+            ChangeStateTo(stateInResponseWindow%);    
             
             
         case iState% = stateInResponseWindow% then
