@@ -164,6 +164,7 @@ const stateFindDigMarkOn%                     := 40;
 const stateWaitForEndOfSound%                 := 41;
 const stateFindDigMarkOff%                    := 42;
 const stateLongToneISI%                       := 43;
+const stateStartLongTone%                     := 44;
 
 var recDelayIntervalTime         := 0;
 var recDelayIntervalInterrupt%   := 0;  'was there an interrupt in the delay interval?
@@ -3915,7 +3916,34 @@ func IdleLoop%()
             
             ChangeStateTo(stateLongToneISI%);  'Go to an ISI before the first tone to get a full pre-stimulus period           
             
+            
         case iState% = stateLongToneISI% then
+            
+            if tNow > tStateStart + recLongToneISI then
+                
+                if rand() < recLongToneRewardProb and recTurnOffReward% = 0 then
+                    
+                    stmp% := Reward%();
+                    'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
+                    RewardOn := GetTimeOfLast1401Event();
+                    s$ := Print$("Reward %d", recRewardMs%);
+                    SampleText(s$, RewardOn);
+                    
+                    if stmp% <> 0 then
+                        PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
+                        Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
+                        ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
+                    endif;
+                    
+                    Yield(1.0);  'wait for lick
+                    
+                endif
+                
+                ChangeStateTo(stateStartLongTone%);
+                
+            endif
+            
+        case iState% = stateStartLongTone% then
             
             'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
             'Will not work with Spike6
@@ -3924,23 +3952,23 @@ func IdleLoop%()
             '                LastSamplingCommitTime := tNow;
             '            endif;
             
-            if tNow > tStateStart + recLongToneISI then
-                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
-                SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse on sequencer
-                
-                foundDigMarkTime := -1;
-                ChangeStateTo(stateFindDigMarkOn%);
-                
-                yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
-                
-                printlog("Starting tone \n");
-                SampleKey("T");  'Start tone
-                StimOn := GetTimeOfLast1401Event();
-                
-                s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%s", recCurrentTrial%, recLongToneSpeaker%, atten, Str$(recLongToneFreq) + " Hz");
-                SampleText(s$,StimOn);
-                'SampleText("Tone freq = " + Str$(recLongToneFreq) + " Hz",StimOn);
-            endif
+            
+            recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
+            SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse on sequencer
+            
+            foundDigMarkTime := -1;
+            ChangeStateTo(stateFindDigMarkOn%);
+            
+            yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
+            
+            printlog("Starting tone \n");
+            SampleKey("T");  'Start tone
+            StimOn := GetTimeOfLast1401Event();
+            
+            s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%s", recCurrentTrial%, recLongToneSpeaker%, atten, Str$(recLongToneFreq) + " Hz");
+            SampleText(s$,StimOn);
+            'SampleText("Tone freq = " + Str$(recLongToneFreq) + " Hz",StimOn);
+            
             
         case iState% = stateFindDigMarkOn% then
             while foundDigMarkTime < tStateStart and tNow < tStateStart+10 do  'don't wait more than 10 seconds to read digmark, in case this doesn't work
@@ -4564,12 +4592,12 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param2 MinOnsetDelay=%f.2,VarOnsetDelay=%f.2,ISI=%f.2,TrialInitWindow=%f.2,ResponseWindow=%f.2",
+    s$ := Print$("Param2 MinOnsetDelay=%.2f,VarOnsetDelay=%.2f,ISI=%.2f,TrialInitWindow=%.2f,ResponseWindow=%.2f",
     recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param3 MissTO=%f.2,FalseAlarmTO=%f.2,DoMissRepeats=%d,MaxMissRepeats=%d,OnS1Interrupt=%d,OnS2Interrupt=%d",
+    s$ := Print$("Param3 MissTO=%.2f,FalseAlarmTO=%.2f,DoMissRepeats=%d,MaxMissRepeats=%d,OnS1Interrupt=%d,OnS2Interrupt=%d",
     recMissTO,recFalseAlarmTO,recMissRepeats%,recMissRepeatsMax%,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%);
     SampleText(s$);
     yield(0.01);
@@ -4579,7 +4607,7 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param5 TrainingRewardML=%f.2,HitRewardML=%f.2,CRRewardML=%f.2,MaxHitRewardML=%f.2,MaxCRRewardML=%f.2,HitRewardIncML=%f.2,S1RewardIncML=%f.2",
+    s$ := Print$("Param5 TrainingRewardML=%.2f,HitRewardML=%.2f,CRRewardML=%.2f,MaxHitRewardML=%.2f,MaxCRRewardML=%.2f,HitRewardIncML=%.2f,S1RewardIncML=%.2f",
     recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,recS1RewardIncmL);
     SampleText(s$);
     yield(0.01);
@@ -4589,48 +4617,48 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param7 UpThreshInner=%f.2,UpThreshOuter=%f.2,DownThreshInner=%f.2,DownThreshOuter=%f.2,LeftThreshInner=%f.2,LeftThreshOuter=%f.2,RightThreshInner=%f.2,RightThreshOuter=%f.2",
+    s$ := Print$("Param7 UpThreshInner=%.2f,UpThreshOuter=%.2f,DownThreshInner=%.2f,DownThreshOuter=%.2f,LeftThreshInner=%.2f,LeftThreshOuter=%.2f,RightThreshInner=%.2f,RightThreshOuter=%.2f",
     UpThreshInner,UpThreshOuter,DownThreshInner,DownThreshOuter,LeftThreshInner,LeftThreshOuter,RightThreshInner,RightThreshOuter);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param8 UpThreshOuterDec=%f.2,UpThreshOuterInc=%f.2,UpThreshInnerDec=%f.2,UpThreshInnerInc=%f.2",
+    s$ := Print$("Param8 UpThreshOuterDec=%.2f,UpThreshOuterInc=%.2f,UpThreshInnerDec=%.2f,UpThreshInnerInc=%.2f",
     UpThreshOuterDec,UpThreshOuterInc,UpThreshInnerDec,UpThreshInnerInc);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param9 DownThreshInnerDec=%f.2,DownThreshInnerInc=%f.2,DownThreshOuterDec=%f.2,DownThreshOuterInc=%f.2",
+    s$ := Print$("Param9 DownThreshInnerDec=%.2f,DownThreshInnerInc=%.2f,DownThreshOuterDec=%.2f,DownThreshOuterInc=%.2f",
     DownThreshInnerDec,DownThreshInnerInc,DownThreshOuterDec,DownThreshOuterInc);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param10 LeftThreshOuterInc=%f.2,LeftThreshOuterDec=%f.2,LeftThreshInnerInc=%f.2,LeftThreshInnerDec=%f.2",
+    s$ := Print$("Param10 LeftThreshOuterInc=%.2f,LeftThreshOuterDec=%.2f,LeftThreshInnerInc=%.2f,LeftThreshInnerDec=%.2f",
     LeftThreshOuterInc,LeftThreshOuterDec,LeftThreshInnerInc,LeftThreshInnerDec);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param11 RightThreshInnerInc=%f.2,RightThreshInnerDec=%f.2,RightThreshOuterInc=%f.2,RightThreshOuterDec=%f.2",
+    s$ := Print$("Param11 RightThreshInnerInc=%.2f,RightThreshInnerDec=%.2f,RightThreshOuterInc=%.2f,RightThreshOuterDec=%.2f",
     RightThreshInnerInc,RightThreshInnerDec,RightThreshOuterInc,RightThreshOuterDec);
     SampleText(s$);
     yield(0.01);
     
     
-    s$ := Print$("Param12 UpThreshOuterMin=%f.2,UpThreshOuterMax=%f.2,UpThreshInnerMin=%f.2,UpThreshInnerMax=%f.2",
+    s$ := Print$("Param12 UpThreshOuterMin=%.2f,UpThreshOuterMax=%.2f,UpThreshInnerMin=%.2f,UpThreshInnerMax=%.2f",
     UpThreshOuterMin,UpThreshOuterMax,UpThreshInnerMin,UpThreshInnerMax);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param13 DownThreshInnerMin=%f.2,DownThreshInnerMax=%f.2,DownThreshOuterMin=%f.2,DownThreshOuterMax=%f.2",
+    s$ := Print$("Param13 DownThreshInnerMin=%.2f,DownThreshInnerMax=%.2f,DownThreshOuterMin=%.2f,DownThreshOuterMax=%.2f",
     DownThreshInnerMin,DownThreshInnerMax,DownThreshOuterMin,DownThreshOuterMax);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param14 LeftThreshOuterMax=%f.2,LeftThreshOuterMin=%f.2,LeftThreshInnerMax=%f.2,LeftThreshInnerMin=%f.2",
+    s$ := Print$("Param14 LeftThreshOuterMax=%.2f,LeftThreshOuterMin=%.2f,LeftThreshInnerMax=%.2f,LeftThreshInnerMin=%.2f",
     LeftThreshOuterMax,LeftThreshOuterMin,LeftThreshInnerMax,LeftThreshInnerMin);
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param15 RightThreshInnerMax=%f.2,RightThreshInnerMin=%f.2,RightThreshOuterMax=%f.2,RightThreshOuterMin=%f.2",
+    s$ := Print$("Param15 RightThreshInnerMax=%.2f,RightThreshInnerMin=%.2f,RightThreshOuterMax=%.2f,RightThreshOuterMin=%.2f",
     RightThreshInnerMax,RightThreshInnerMin,RightThreshOuterMax,RightThreshOuterMin); 
     SampleText(s$);
     yield(0.01);    

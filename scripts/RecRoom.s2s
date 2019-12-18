@@ -184,6 +184,7 @@ var recLongToneSpeaker%;
 var recLongToneNRepeats%;     
 var recLongToneISI;   
 var recLongToneTargetdB;
+var recLongToneRewardProb;
     
 'Audiogram dialog variables
 var recAudiogramS1Speaker%;  
@@ -2653,6 +2654,7 @@ func RecLongToneGetParams()
     recLongToneNRepeats% := GetIntRegistryValue%(key$, "LongToneNRepeats", recLongToneNRepeats%);
     recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);   
     recLongToneTargetdB := GetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);  
+    recLongToneRewardProb := GetFloatRegistryValue(key$, "LongToneRewardProb", recLongToneRewardProb);
     
     return;
 
@@ -2672,6 +2674,7 @@ func RecLongToneSaveParams()
     SetIntRegistryValue(key$, "LongToneNRepeats", recLongToneNRepeats%);
     SetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);
     SetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);
+    SetFloatRegistryValue(key$, "LongToneRewardProb", recLongToneRewardProb);
 
 	return;
 
@@ -2696,10 +2699,11 @@ func RecLongToneDialog%()
     DlgInteger(3,"Number of repeats per tone",1,100);
     DlgReal(4,"ISI, seconds",1,100);
     DlgReal(5,"Target dB",1,100);
+    DlgReal(6,"Probability of reward",0,1);
     'DlgReal(4,"Target Amplitude (dB)",10,100);
     
     ' Show the dialog
-    i% := DlgShow(recLongToneFreq,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneTargetdB);
+    i% := DlgShow(recLongToneFreq,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneTargetdB,recLongToneRewardProb);
     
     
     ' If user checked box and hit OK then save parameters (and return 1). 
@@ -7332,6 +7336,10 @@ func GenTrialsLongTone%()
             count% += 1;
         next
     next
+    
+    if recDoNotShuffle% = 0 then
+        ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices)
+    endif;
     
     'Sanity check passed!
     'printlog("Long tone durations are: %f\n",recLongToneDurationList[]);
