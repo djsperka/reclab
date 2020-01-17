@@ -1823,7 +1823,7 @@ func PrepareLongNoise(overwritePWA%)
         
         'Set recStimTransfer%[] to zeros
         arrconst(recStimTransfer%[],0);  
-        
+                
         if recLongToneDuration >= 1 then
             lndur := 1000;  'We will do 1 second (1000 ms) and repeat
             lnpad% := 0;  'Do not pad, sound is correct length
@@ -1843,7 +1843,7 @@ func PrepareLongNoise(overwritePWA%)
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",0);  
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",1);  'Hardcode Gaussian for now
         matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
         matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
         matPutOK% := matPutOK% + PutMatlabValueInt%("pad",lnpad%); 
@@ -1857,7 +1857,6 @@ func PrepareLongNoise(overwritePWA%)
             return -1;
         endif;
         
-        
         statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
         'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
         EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
@@ -1866,10 +1865,11 @@ func PrepareLongNoise(overwritePWA%)
         matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise%[]);
         matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
         
+        'printlog("atten is %f\n",atten);
       
         atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
         if recLongToneTargetdB <> 65 then
-            printlog("Calculated attenuation to produce %f dB is %f/n",recLongToneTargetdB,atten);
+            printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
         endif;
         
         docase
@@ -1883,11 +1883,12 @@ func PrepareLongNoise(overwritePWA%)
             atten := 20;  'set atten to 20 arbitrarily
         endcase;
         
-        
-        playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise%[]); 
-        if playWaveCopyOK% < 0 then 'error
-            message("There has been an error in PlayWaveCopy!  Check Log File!");
-            printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+        if overwritePWA% <= 1 then  'if 0/1, actually fill PWA.  If 2, we just want the atten value.
+            playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise%[]); 
+            if playWaveCopyOK% < 0 then 'error
+                message("There has been an error in PlayWaveCopy!  Check Log File!");
+                printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+            endif;
         endif;
         
         if overwritePWA% = 0 then
@@ -4073,6 +4074,8 @@ func IdleLoop%()
             
         case iState% = statePrepareTone% then
             var atten;
+            var attenmat[10];
+            var doRepeat%;
             var status%;
             
             if recLongToneType% = 0 then  'If we are doing a tone, set up the tone
@@ -4081,7 +4084,11 @@ func IdleLoop%()
                 SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
                 atten := PrepareLongTone();
             else  'otherwise we are doing broadband or BP noise, which requires a different setup
-                atten := PrepareLongNoise(0);  'pass 0, this will trigger SSK("X") to add 50-ms delay
+                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, can't run initial PrepareLongNoise witout it!
+                for doRepeat% := 0 to 9 do
+                    attenmat[doRepeat%] := PrepareLongNoise(2);  'pass 2, do not do 50-ms delay, do not fill PWA, this is only to get an attenuation value
+                next
+                ArrSum(attenmat[],atten);  'get mean attenuation of 10 tries, should reduce randomness
                 'note that we are only setting the attenuation ONCE.  There is going to be some variability.
             endif;
             
@@ -4158,6 +4165,7 @@ func IdleLoop%()
                 SampleText(s$,StimOn);
                 
             else
+                PrepareLongNoise(0);  'pass 0, this will trigger SSK("X") to add 50-ms delay
                 'Set the number of times to cycle through the PWA
                 if recLongToneDuration >= 1 then
                     recLongToneCyclesRemaining% := recLongToneDuration;  'Same # of cycles as we have seconds
@@ -4200,7 +4208,7 @@ func IdleLoop%()
         case iState% = stateLongNoiseReloadPWA% then
             
             if tNow > recLongToneCycleStartTime then  'if the next cycle has started playing
-                PrepareLongNoise(1);  'reload PWA with new random noise WHILE PLAYING (this is OK!!), don't use SSK("X")
+                'PrepareLongNoise(1);  'reload PWA with new random noise WHILE PLAYING (this is OK!!), don't use SSK("X")
                 recLongToneCycleStartTime += 1;  'Get new cycle start time
                 recLongToneCyclesRemaining% -= 1; 'decrement number of cycles remaining
                 'if we are on the last cycle, go to waiting for end of sound, otherwise just stay here
