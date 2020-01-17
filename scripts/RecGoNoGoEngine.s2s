@@ -1840,7 +1840,7 @@ func PrepareLongNoise(overwritePWA%)
         matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
         matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",1);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",0);  

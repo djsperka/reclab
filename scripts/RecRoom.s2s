@@ -402,7 +402,7 @@ var recPointsPlayed%;               'Allows us to stop the sound once the stimul
 const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus, must be a constant   
 var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
 var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
-const recMaxLongNoisePoints% := recPlayRateHz;   
+const recMaxLongNoisePoints% := recPlayRateHz;   'Not doing multiplication by seconds because seconds is by definition 1.
 var recStimTransferLongNoise%[recMaxLongNoisePoints%];    
     
 'Trial list variables
