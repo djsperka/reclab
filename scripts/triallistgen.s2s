@@ -519,7 +519,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func ShuffleList(&list[])
     var status% := 0;
-    var i%, si%, tmp%;
+    var i%, si%, tmp;
 
     ' Step thru the indices from 0 to n%-2. At each index, we consider the array starting at the 
     ' current index and ending at the end of the array. If there are M elements in that array, 
@@ -527,9 +527,9 @@ func ShuffleList(&list[])
     ' position 0. Step to the next index and repeat. 
     for i% := 0 to Len(list[])-2 do
         si% := Rand(Len(list[])-i%, i%);
-        tmp% := list[i%];
+        tmp := list[i%];
         list[i%] := list[si%];
-        list[si%] := tmp%;
+        list[si%] := tmp;
     next;
     return status%;  'this does nothing right now, because it can't really break.
 end

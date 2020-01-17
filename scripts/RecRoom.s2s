@@ -180,11 +180,17 @@ var recDur;
 'Long Tone Dialog variables
 var recLongToneDuration;
 var recLongToneFreq;
+var recLongToneBPLow;
+var recLongToneBPHigh;
+var recLongToneType%;  '0 = tone, 1 = broadband noise, 2 = bandpass noise
 var recLongToneSpeaker%;
 var recLongToneNRepeats%;     
 var recLongToneISI;   
 var recLongToneTargetdB;
 var recLongToneRewardProb;
+    
+var recLongToneCycleStartTime;
+var recLongToneCyclesRemaining%;    
     
 'Audiogram dialog variables
 var recAudiogramS1Speaker%;  
@@ -395,7 +401,9 @@ var recPlayPoints%;                 'Holds the number of points to play for each
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
 const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus, must be a constant   
 var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
-var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)     
+var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
+const recMaxLongNoisePoints% := recPlayRateHz;   
+var recStimTransferLongNoise%[recMaxLongNoisePoints%];    
     
 'Trial list variables
 var recPWAList%[recMaxStimPerTrial%][recMaxTrial%];     'Holds indices to which PWA to use on each trial, and therefore also indexes recStimList%[][]    
@@ -1897,9 +1905,9 @@ func RecExpSearchDialog%()
     DlgGroup("Tone Sweep",63,2,27,5);
     DlgInteger(5,6,1,100,83,3);  'Tone sweep repeats
     DlgText("Repeats of each tone",64,3);
-    DlgReal(6,6,0.001,50000,83,4);  'Tone sweep low freq
+    DlgReal(6,6,0.001,49999,83,4);  'Tone sweep low freq
     DlgText("Low Frequency, Hz",64,4);
-    DlgReal(7,6,0.001,50000,83,5);  'Tone sweep high freq
+    DlgReal(7,6,0.002,50000,83,5);  'Tone sweep high freq
     DlgText("High Frequency, Hz",64,5);
     DlgInteger(8,6,2,10,83,6);  'Tone sweep number of steps
     DlgText("Number of Steps",64,6);
@@ -2566,7 +2574,11 @@ i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay,
         'see lines 1163-1170 in RecRoom (RecExpSearchDialog) for examples of this (i think)
     
         'trial generation??? --> RecRoom do while 
- 
+        
+        'jj is unsure of something.  It certainly seems that the recDoJoyTrain% checkbox is meant to be checked.
+        'It seems it shouldn't be a checkbox, I think we should just use recExpToRun% := recExpJoyTrnButton% and forget recDoJoyTrain% (which is only checked once in GNGEngine)
+        'But I'm working on other stuff right now and this is not a priority to understand.
+        'When RecLab needs to use/change this, at least this note will be here to get me started.
     
         status% := 1;
     else
@@ -2659,10 +2671,14 @@ func RecLongToneGetParams()
     recLongToneSpeaker% := GetIntRegistryValue%(key$, "LongToneSpeaker", recLongToneSpeaker%);
     recLongToneDuration := GetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
     recLongToneFreq := GetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
+    recLongToneBPLow := GetFloatRegistryValue(key$, "LongToneBPLow", recLongToneBPLow);
+    recLongToneBPHigh := GetFloatRegistryValue(key$, "LongToneBPHigh", recLongToneBPHigh);
+    recLongToneType% := GetIntRegistryValue%(key$, "LongToneType", recLongToneType%);
     recLongToneNRepeats% := GetIntRegistryValue%(key$, "LongToneNRepeats", recLongToneNRepeats%);
     recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);   
     recLongToneTargetdB := GetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);  
     recLongToneRewardProb := GetFloatRegistryValue(key$, "LongToneRewardProb", recLongToneRewardProb);
+    
     
     return;
 
@@ -2679,6 +2695,9 @@ func RecLongToneSaveParams()
     SetIntRegistryValue(key$, "LongToneSpeaker", recLongToneSpeaker%);
     SetFloatRegistryValue(key$, "LongToneDuration", recLongToneDuration);
     SetFloatRegistryValue(key$, "LongToneFreq", recLongToneFreq);
+    SetFloatRegistryValue(key$, "LongToneBPLow", recLongToneBPLow);
+    SetFloatRegistryValue(key$, "LongToneBPHigh", recLongToneBPHigh);
+    SetIntRegistryValue(key$, "LongToneType", recLongToneType%);
     SetIntRegistryValue(key$, "LongToneNRepeats", recLongToneNRepeats%);
     SetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);
     SetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);
@@ -2695,28 +2714,42 @@ end;
 func RecLongToneDialog%()
     var i%; 'for DlgShow
     var status% := 0;
+    var longType$[3];
+    
+    longType$[0] := "Tone";
+    longType$[1] := "Broadband Noise";
+    longType$[2] := "Bandpass Noise";
+    
     
     ' Fetch parameters from registry    
     RecLongToneGetParams();
     
     ' Generate the dialog
     DlgCreate("Long Tone Dialog");
-    'DlgReal(1,"Duration of Tone (s)",0.01,4000);  'no longer using this, as we have a defined series of tones .... recLongToneDuration
-    DlgReal(1,"Frequency (Hz)",20,40000);
-    DlgInteger(2,"Speaker",1,16);
-    DlgInteger(3,"Number of repeats per tone",1,100);
-    DlgReal(4,"ISI, seconds",1,100);
-    DlgReal(5,"Target dB",1,100);
-    DlgReal(6,"Probability of reward",0,1);
-    'DlgReal(4,"Target Amplitude (dB)",10,100);
+    DlgList(1,17,longType$[],3);
+    DlgReal(2,"Tone Frequency (Hz)",20,40000);
+    DlgReal(3,"Low Freq Cutoff (Hz)",1,30000);
+    DlgReal(4,"High Freq Cutoff (Hz)",2,100000);
+    DlgInteger(5,"Speaker",1,16);
+    DlgInteger(6,"Number of repeats per tone",1,100);
+    DlgReal(7,"ISI, seconds",1,100);
+    DlgReal(8,"Target dB",1,100);
+    DlgReal(9,"Probability of reward",0,1);
+    
+    DlgAllow(0xffff, 0, RecLongToneDialogChanged%); 
     
     ' Show the dialog
-    i% := DlgShow(recLongToneFreq,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneTargetdB,recLongToneRewardProb);
-    
+    i% := DlgShow(recLongToneType%,recLongToneFreq,recLongToneBPLow,recLongToneBPHigh,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneTargetdB,recLongToneRewardProb);
+  
     
     ' If user checked box and hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        RecLongToneSaveParams(); 
+        RecLongToneSaveParams();  
+        
+        if recLongToneType% = 1 then  'if we are doing broadband noise, set the values here so we don't have to "think" at the noise creation step
+            recLongToneBPLow := -1;  'correct value for broadband noise
+            recLongToneBPHigh := -1;
+        endif;
         
         'Reset dialog OK button text on Select dialog, and note which experiment to run
         DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
@@ -2734,6 +2767,30 @@ func RecLongToneDialog%()
     
 end
 
+
+
+func RecLongToneDialogChanged%(item%)
+    
+    docase
+    case DlgValue(1) = 0 then  'if tone
+        DlgEnable(1,2);  'Enable tone 
+        DlgEnable(0,3);  'Disable BP low
+        DlgEnable(0,4);  'Disable BP high
+    case DlgValue(1) = 1 then  'if broadband noise
+        DlgEnable(0,2);  'Disable tone 
+        DlgEnable(0,3);  'Disable BP low
+        DlgEnable(0,4);  'Disable BP high
+    case DlgValue(1) = 2 then  'if bandpass noise
+        DlgEnable(0,2);  'Disable tone 
+        DlgEnable(1,3);  'Enable BP low
+        DlgEnable(1,4);  'Enable BP high
+    endcase
+
+    return 1;
+
+
+end;
+'end RecELongToneDialogChanged%()
 
 
 
@@ -6397,14 +6454,24 @@ func NameThatStimulus$(n%)
     
     'Freq is a pain, also construct seed info here, but write seed at the end of the string 
     docase
+    case recSearchStimType% = 3 then 'if it's a click, just say that and move on
+        dur$ := "click";  'Technically, dur will be listed as 200 ms, but that's not really correct
     case recTrialGenLowpassHz[n%] < 0 and recTrialGenHighpassHz[n%] < 0 then 'noise
         if recTrialGenGauss%[n%] = 1 then 'Gaussian noise
             freq$ := "_GaussNoise";
         else 'uniform noise
             freq$ := "_UniformNoise";
         endif;
-  'PrintLog("recStimCount% = %d \n", recStimCount%); '*jao debugging
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        'PrintLog("recStimCount% = %d \n", recStimCount%); '*jao debugging
+        'Not sure what jao was debugging, but there was an issue here in identifying the correct random seed.  
+        'recStimCount% indexes the ordinal of stimuli in each trial, but the stimuli are not necessarily played
+        'in numeric order.  In some cases (e.g. Search) there is only one stimulus in the PWAs but multiple
+        'repeats of that stimulus.  In those cases only the random seed on the first stimulus was being accurately 
+        'reported, after that it was being reported as "0".  Still have to debug this, but I *think* it should
+        'give the right value.  I'm not sure how to test this for multiple PWAs.  In fact, I don't think ANY scenario
+        'uses multiple PWAs AND generated random noise.
+        'seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenLowpassHz[n%] = recTrialGenHighpassHz[n%] then 'tone
         if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
             freq$ := "_" + str$(recTrialGenLowpassHz[n%]) + "Hz";
@@ -6417,21 +6484,24 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        'seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenHighpassHz[n%] < 0 then 'highpass
         if recTrialGenGauss%[n%] = 1 then 'Gaussian noise
             freq$ := "_GaussNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo";
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        'seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenIsSweep%[n%] = 0 then 'bandpass
         if recTrialGenGauss%[n%] = 1 then 'Gaussian noise
             freq$ := "_GaussNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         endif;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        'seed$ := "_Seed" + str$(recCurrRandomSeed%[recStimCount%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     else 'FM sweep
         if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
             freq$ := "_FMSweep_start" + str$(recTrialGenLowpassHz[n%]) + "Hz_end" +  str$(recTrialGenHighpassHz[n%]) + "Hz";
@@ -6469,10 +6539,8 @@ end
 '
 '===== GenTrialsSearch =====
 func GenTrialsSearch%()
-    'Note that normally I would want to put this function in triallistgen.s2s.  However, due to the
-    'large number of variables that it will rely on, I don't think I can pass them all in 256 characters,
-    'so instead I'm keeping it here, where all the variables are global and certain to exist (and where it
-    'won't break triallistgen.s2s for other experiments
+    'At this point, the GenTrialsXXX functions are not in triallistgen.s2s.  Most of this is due to concerns about
+    'the global variables needed.
     var i%;
     var j%;
     var status% := 1;
@@ -6543,7 +6611,7 @@ func GenTrialsSearch%()
             ''            'PrintLog("recPWAList is now: %d \n", recPWAList%);
             '        next;
             recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus        
-            recNUniqueStims%[i%] := 1; 'nSpkr%; not nspkr, only 1 b/c all noise??        
+            recNUniqueStims%[i%] := 1; 'only 1 b/c all noise        
             'this is the one speaker per trial method:
             ArrConst(recSpeakerList%[0:nRS%][i%], currSpkr%);
             '       PrintLog("recSpeakerList%[0:nR%][i%] = %d \n", recSpeakerList%[0:nR%][i%]);
@@ -6585,10 +6653,12 @@ func GenTrialsSearch%()
             
         endcase;        
     next; 
-    if recSearchStimType% < 4 then 'just <, not <>; don't want to shuffle for speaker sweep (=5) either
+    if recSearchStimType% < 4 then 'We refuse to shuffle tone sweeps and speaker sweeps (as of 1/8/20, this is the ONLY situation where we ignore the shuffle variable)
         if recDoNotShuffle% = 0 then
-            ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep
+            ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep or speaker sweep
         endif;
+    else
+        recDoNotShuffle% := 1;  'if we are refusing to shuffle, at least let's keep that knowledge for later in the code
     endif;
     return status%;  'right now, it "can't" fail
 end
@@ -6972,20 +7042,6 @@ func GenTrialsFRALoad%()
     'generate trials that are rewarded
     'Make an array with the exact number of each interval that fits in 996 trials.
     for i% := 0 to 79 do
-'        docase                            'recoding this, because <=, >= will make SO much more sense to read
-'        case i% < 14 then
-'            rewardArray%[i%] := 10;
-'        case i% > 13 and i% < 28 then
-'            rewardArray%[i%] := 11;
-'        case i% > 27 and i% < 41 then
-'            rewardArray%[i%] := 12;
-'        case i% > 40 and i% < 54 then
-'            rewardArray%[i%] := 13;
-'        case i% > 53 and i% < 67 then
-'            rewardArray%[i%] := 14;
-'        case i% > 66 then
-'            rewardArray%[i%] := 15;
-'        endcase
         docase
         case i% <= 13 then
             rewardArray%[i%] := 10;
@@ -7352,7 +7408,7 @@ func GenTrialsLongTone%()
     next
     
     if recDoNotShuffle% = 0 then
-        ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices)
+        ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recLongToneDurationList (only valid indices)
     endif;
     
     'Sanity check passed!
