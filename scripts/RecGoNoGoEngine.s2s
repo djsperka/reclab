@@ -4174,6 +4174,7 @@ func IdleLoop%()
                 else
                     recLongToneCyclesRemaining% := 1;  '1 cycle for the 0.10 second stimulus, we need this for PlayWaveCycles but not for anything else
                 endif;
+                printlog("Number of cycles is %d\n",recLongToneCyclesRemaining%);
                 PlayWaveCycles("a",recLongToneCyclesRemaining%);
                 SampleSeqVar(16,recLongToneCyclesRemaining%);  'put number of cycles expected into sequencer variable
                 
@@ -4234,7 +4235,7 @@ func IdleLoop%()
                 Yield(0.1);  'This allows the display to update
                 tNow := View(recDataWindowView%).MaxTime();
             wend
-            if foundDigMarkOffTime > tStateStart then
+            if foundDigMarkOffTime > foundDigMarkOnTime+0.05 then
                 printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkOffTime);
             else
                 printlog("We didn't find the digMark to end the stimulus!\n");
