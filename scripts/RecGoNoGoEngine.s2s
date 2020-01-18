@@ -207,7 +207,8 @@ var amountRewarded := 0;
 'var channels%[4];
 
 var expectedOffTime;
-var foundDigMarkTime;
+var foundDigMarkOnTime;
+var foundDigMarkOffTime;
 var digCode%[4];
 
 'To remove SampleAutoCommit
@@ -4150,7 +4151,8 @@ func IdleLoop%()
             SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse on sequencer
             
             'Do this early, so that tStateStart will be prior to the DigMark from the start of the tone
-            foundDigMarkTime := -1;
+            foundDigMarkOnTime := -1;
+            foundDigMarkOffTime := -1;
             ChangeStateTo(stateFindDigMarkOn%);
             
             yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
@@ -4173,6 +4175,7 @@ func IdleLoop%()
                     recLongToneCyclesRemaining% := 1;  '1 cycle for the 0.10 second stimulus, we need this for PlayWaveCycles but not for anything else
                 endif;
                 PlayWaveCycles("a",recLongToneCyclesRemaining%);
+                SampleSeqVar(16,recLongToneCyclesRemaining%);  'put number of cycles expected into sequencer variable
                 
                 printlog("Starting noise \n");
                 SampleKey("a");  'Start noise
@@ -4188,12 +4191,12 @@ func IdleLoop%()
             
             
         case iState% = stateFindDigMarkOn% then
-            while foundDigMarkTime < tStateStart and tNow < tStateStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
-                foundDigMarkTime := NextTime(32,tStateStart,digCode%[]);
+            while foundDigMarkOnTime < tStateStart and tNow < tStateStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
+                foundDigMarkOnTime := NextTime(32,tStateStart,digCode%[]);
             wend
-            if foundDigMarkTime >= tStateStart then
-                expectedOffTime := foundDigMarkTime + recLongToneDuration;
-                printlog("Found code %d at %f for stimulus on, expected off time is %f\n",digCode%[0],foundDigMarkTime,expectedOffTime);
+            if foundDigMarkOnTime >= tStateStart then
+                expectedOffTime := foundDigMarkOnTime + recLongToneDuration;
+                printlog("Found code %d at %f for stimulus on, expected off time is %f\n",digCode%[0],foundDigMarkOnTime,expectedOffTime);
             else
                 printlog("We didn't find the digMark to start the stimulus!\n");
                 expectedOffTime := tNow + recLongToneDuration -1;  'We've already waited through a second of this
@@ -4226,13 +4229,13 @@ func IdleLoop%()
             endif;
             
         case iState% = stateFindDigMarkOff% then  
-            while foundDigMarkTime < expectedOffTime-0.05 and tNow < expectedOffTime+10 do
-                foundDigMarkTime := NextTime(32,tStateStart-0.05,digCode%[]);
+            while foundDigMarkOffTime < foundDigMarkOnTime+0.05 and tNow < expectedOffTime+10 do
+                foundDigMarkOffTime := NextTime(32,foundDigMarkOnTime+0.05,digCode%[]);
                 Yield(0.1);  'This allows the display to update
                 tNow := View(recDataWindowView%).MaxTime();
             wend
-            if foundDigMarkTime > tStateStart then
-                printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkTime);
+            if foundDigMarkOffTime > tStateStart then
+                printlog("Found code %d at %f for stimulus off\n",digCode%[0],foundDigMarkOffTime);
             else
                 printlog("We didn't find the digMark to end the stimulus!\n");
             endif;
