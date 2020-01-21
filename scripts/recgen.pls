@@ -21,14 +21,14 @@
 0002            DELAY  ms(50)          ;wait an appropriate time to allow PlayWaveCopy to finish
 0003            MOVI   V2,0            ;Allow sequencer access
 0004            JUMP   NEXT
-0005 PLAYA0: 'a MOVI   V2,1            ;Do not allow sequencer access
-0006            WAVEGO A               ;Play wave area A
-0007 A0WAIT:    WAVEBR A0WAIT,T        ;Wait until area A begins playing
+0005 PLAYN0: 'N MOVI   V2,1            ;Do not allow sequencer access
+0006            WAVEGO N               ;Play wave area N
+0007 NWAIT:     WAVEBR NWAIT,T         ;Wait until area N begins playing
 0008            MARK   1               ;Use digital marker as in long tone
 0009            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
-;0010 A1WAIT:    WAVEBR A1WAIT,S        ;Wait until area A STOPS playing
-0010 A1WAIT:    WAVEBR A1WAIT,C        ;Wait until current cycle count changes
-0011            DBNZ   V16,A1WAIT      ;Decrement V16 (total cycle count) and await next cycle
+;0010 N1WAIT:    WAVEBR N1WAIT,S        ;Wait until area N STOPS playing
+0010 N1WAIT:    WAVEBR N1WAIT,C        ;Wait until current cycle count changes
+0011            DBNZ   V16,N1WAIT      ;Decrement V16 (total cycle count) and await next cycle
 0012            MARK   0               ;Use digital marker as in long tone
 0013            MOVI   V2,0            ;Allow sequencer access
 0014            JUMP   NEXT

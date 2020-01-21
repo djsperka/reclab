@@ -654,7 +654,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' InitializePlayWaveAreaLongTone - add play wave area for Long Tone exps (noise only). 
-' Area "A" only will be allocated.  It will be one second long.  We will set the value
+' Area "N" only will be allocated.  It will be one second long.  We will set the value
 ' of PlayWaveCycles() to repeat the PWA until the full duration of the noise stimulus
 ' is complete.  We will reload the PlayWaveArea multiple times per trial if necessary
 ' (every second) WHILE IT IS PLAYING so that the noise does not repeat.
@@ -663,12 +663,12 @@ end
 Proc InitializePlayWaveAreaLongTone()
     var st;
   
-    st := PlayWaveAdd("A", "A", recDAC0%, recPlayRateHz, recMaxLongNoisePoints%);
+    st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHz, recMaxLongNoisePoints%);
     if st < 0 then
         Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
         halt;
     else
-        PlayWaveTrigger("A", 1);  'set playwave area to triggered mode
+        PlayWaveTrigger("N", 1);  'set playwave area to triggered mode
     endif        
         
 end
@@ -4175,11 +4175,11 @@ func IdleLoop%()
                     recLongToneCyclesRemaining% := 1;  '1 cycle for the 0.10 second stimulus, we need this for PlayWaveCycles but not for anything else
                 endif;
                 printlog("Number of cycles is %d\n",recLongToneCyclesRemaining%);
-                PlayWaveCycles("a",recLongToneCyclesRemaining%);
+                PlayWaveCycles("N",recLongToneCyclesRemaining%);
                 SampleSeqVar(16,recLongToneCyclesRemaining%);  'put number of cycles expected into sequencer variable
                 
                 printlog("Starting noise \n");
-                SampleKey("a");  'Start noise
+                SampleKey("N");  'Start noise
                 StimOn := GetTimeOfLast1401Event();
                 recLongToneCycleStartTime := StimOn;
                 
