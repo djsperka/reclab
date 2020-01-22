@@ -21,7 +21,7 @@
 0002            DELAY  ms(50)          ;wait an appropriate time to allow PlayWaveCopy to finish
 0003            MOVI   V2,0            ;Allow sequencer access
 0004            JUMP   NEXT
-0005 PLAYN0: 'N MOVI   V2,1            ;Do not allow sequencer access
+0005 PLAYN: 'N  MOVI   V2,1            ;Do not allow sequencer access
 0006            WAVEGO N               ;Play wave area N
 0007 NWAIT:     WAVEBR NWAIT,T         ;Wait until area N begins playing
 0008            MARK   1               ;Use digital marker as in long tone

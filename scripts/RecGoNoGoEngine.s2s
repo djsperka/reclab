@@ -760,6 +760,7 @@ Func PlaySound%(isS2local%)
     var thisStim%;  'this is the index of the physical stimulus (re: stim file list or stim properties list)
     var thisPWAIndex%;  'this is the PWA it will be found in on this trial
     var maxdB;
+    var targdB;
     
     'Get index of current trial
     playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
@@ -798,9 +799,11 @@ Func PlaySound%(isS2local%)
     if recExpToRun% = recExpAudiogramButton% then
         printlog("cal atten is %f and current db is %f\n",calatten,recAudiogramCurrentdB);
         atten := 65 + calatten - recAudiogramCurrentdB;
+        targdB := recAudiogramCurrentdB;  'convinced myself this is right
     else
         printlog("cal atten is %f and trial atten is %f\n",calatten,trlatten);
         atten := calatten + trlatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
+        targdB := 65 - trlatten;  'convinced myself this is right
     endif;
     
     'It is possible that due to the maximum intensity of the stimulus that the requested attenuation
@@ -895,12 +898,12 @@ Func PlaySound%(isS2local%)
         case recMatGenStim% = 0 then 'stimuli are read from a file
             's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[recPWAList%[recStimCount%][playInd%]]);
             's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, isS2$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[thisStim%]);
-            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[thisStim%]);
+            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%]);
             SampleText(s$, StimOn);
         case recMatGenStim% = 1 then 'stimuli are generated
             's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(recPWAList%[recStimCount%][playInd%]));
             's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(thisStim%));
-            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(thisStim%));
+            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, targdB, NameThatStimulus$(thisStim%));
             SampleText(s$, StimOn);
         endcase
         
@@ -939,6 +942,8 @@ Func PlayTwoSounds%(whichStim%)
     var thisStimArray2%;  'not used, at least yet, pointing towards potential two-array usage
     var thisStimSA%;
     var isS2$;
+    var targdBArray;
+    var targdBSA;
     'var maxdB;  'This is not being used at all (it IS used in PlaySound), not a priority right now
 
     'Get index of current trial
@@ -980,7 +985,7 @@ Func PlayTwoSounds%(whichStim%)
         trlattenSA := rec2DeltadBList[playInd%][1];
         
         attenSA := calattenSA + trlattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
-        
+        targdBSA := 65 - trlattenSA;  'convinced myself this is right
         
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
@@ -1005,6 +1010,7 @@ Func PlayTwoSounds%(whichStim%)
         'Get total attenuation
         printlog("for distractor, cal atten is %f and trial atten is %f\n",calattenArray,trlattenArray);
         attenArray := calattenArray + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
+        targdBArray := 65 - trlattenArray;  'convinced myself this is right
         
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(whichStim%);
@@ -1022,6 +1028,7 @@ Func PlayTwoSounds%(whichStim%)
         trlattenSA := recDeltadBList[whichStim%][playInd%];
         
         attenSA := calattenSA + trlattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
+        targdBSA := 65 - trlattenSA;  'convinced myself this is right
         
         'Get total attenuation
         docase
@@ -1157,11 +1164,11 @@ Func PlayTwoSounds%(whichStim%)
         
         docase
         case recExpToRun% = recExpFRAButton% then
-            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkrArray%, trlattenArray, recTrialLoadLoc$[thisStimArray%]);  
-            s2$ := Print$("Sound2 %s,silence,%d,standalone,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, recTrialLoadLoc$[thisStimSA%]);             
+            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
+            s2$ := Print$("Sound2 %s,silence,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);             
         case recExpToRun% = recExpStereoDisButton% then
-            s$ := Print$("Sound %s,distractor,%d,%d,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, recTrialLoadLoc$[thisStimArray%]);  
-            s2$ := Print$("Sound2 %s,%s,%d,standalone,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, recTrialLoadLoc$[thisStimSA%]);
+            s$ := Print$("Sound %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
+            s2$ := Print$("Sound2 %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
         endcase            
         SampleText(s$, StimOn);
         SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
@@ -1819,8 +1826,8 @@ func PrepareLongNoise(overwritePWA%)
     
     
     if recCalibIsPresent% = 1 and recMatlabIsPresent% = 1 and recCEDIsPresent% = 1 then  'if there is no calibration/matlab/CED, we can't do this
-        'Get play wave area, hint it's "A"
-        pwChar$ := GetPlayWaveKey$(0);
+        'Get play wave area, hint it's "N"
+        pwChar$ := "N";
         
         'Set recStimTransfer%[] to zeros
         arrconst(recStimTransfer%[],0);  
@@ -4163,7 +4170,7 @@ func IdleLoop%()
                 SampleKey("T");  'Start tone
                 StimOn := GetTimeOfLast1401Event();
             
-                s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, atten, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
+                s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, atten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
                 SampleText(s$,StimOn);
                 
             else
@@ -4183,7 +4190,7 @@ func IdleLoop%()
                 StimOn := GetTimeOfLast1401Event();
                 recLongToneCycleStartTime := StimOn;
                 
-                s$ := Print$("Sound a,LongNoise,%d,%d,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, atten, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
+                s$ := Print$("Sound N,LongNoise,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, atten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
                 SampleText(s$,StimOn);
                 
             endif;
