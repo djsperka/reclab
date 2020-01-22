@@ -192,6 +192,7 @@ var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo re
 var isS2%;              'man, this thing's gotta be global, not local in IdleLoop!  It gets reset to zero every time IdleLoop is called!
 var recStimOn;
 var recFRAPWAIndex% := 0;
+var recLongAtten;
 
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
@@ -4081,7 +4082,6 @@ func IdleLoop%()
             
             
         case iState% = statePrepareTone% then
-            var atten;
             var attenmat[10];
             var doRepeat%;
             var status%;
@@ -4090,13 +4090,13 @@ func IdleLoop%()
                 'Set values that can be assigned for the entire set of stimuli
                 SampleSeqVar(11,SequencerToneAmplitude%(1));  'set amplitude of pulse
                 SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
-                atten := PrepareLongTone();
+                recLongAtten := PrepareLongTone();
             else  'otherwise we are doing broadband or BP noise, which requires a different setup
                 recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, can't run initial PrepareLongNoise witout it!
                 for doRepeat% := 0 to 9 do
                     attenmat[doRepeat%] := PrepareLongNoise(2);  'pass 2, do not do 50-ms delay, do not fill PWA, this is only to get an attenuation value
                 next
-                ArrSum(attenmat[],atten);  'get mean attenuation of 10 tries, should reduce randomness
+                ArrSum(attenmat[],recLongAtten);  'get mean attenuation of 10 tries, should reduce randomness
                 'note that we are only setting the attenuation ONCE.  There is going to be some variability.
             endif;
             
@@ -4108,7 +4108,7 @@ func IdleLoop%()
                     printlog("Problem setting speaker for long tone!\n");
                     return 0;
                 endif;
-                status% := recAttenByID%(atten,arrayPA4ID%);
+                status% := recAttenByID%(recLongAtten,arrayPA4ID%);
                 if status% <> 0 then
                     printlog("Problem setting attenuation for long tone!\n");
                     return 0;
@@ -4170,7 +4170,7 @@ func IdleLoop%()
                 SampleKey("T");  'Start tone
                 StimOn := GetTimeOfLast1401Event();
             
-                s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, atten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
+                s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
                 SampleText(s$,StimOn);
                 
             else
@@ -4190,7 +4190,7 @@ func IdleLoop%()
                 StimOn := GetTimeOfLast1401Event();
                 recLongToneCycleStartTime := StimOn;
                 
-                s$ := Print$("Sound N,LongNoise,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, atten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
+                s$ := Print$("Sound N,LongNoise,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
                 SampleText(s$,StimOn);
                 
             endif;
@@ -4209,7 +4209,7 @@ func IdleLoop%()
                 printlog("We didn't find the digMark to start the stimulus!\n");
                 expectedOffTime := tNow + recLongToneDuration -1;  'We've already waited through a second of this
             endif;
-            if recLongToneType% = 0 or recLongToneDuration >= 1 then  'if it's a tone, or we expect only one cycle, just wait for the end
+            if recLongToneType% = 0 or recLongToneDuration <= 1 then  'if it's a tone, or we expect only one cycle, just wait for the end
                 ChangeStateTo(stateWaitForEndOfSound%);
             else
                 ChangeStateTo(stateLongNoiseReloadPWA%);
@@ -4219,7 +4219,8 @@ func IdleLoop%()
         case iState% = stateLongNoiseReloadPWA% then
             
             if tNow > recLongToneCycleStartTime then  'if the next cycle has started playing
-                'PrepareLongNoise(1);  'reload PWA with new random noise WHILE PLAYING (this is OK!!), don't use SSK("X")
+                PrepareLongNoise(1);  'reload PWA with new random noise WHILE PLAYING (this is OK!!), don't use SSK("X")
+                printlog("Changing stim\n");
                 recLongToneCycleStartTime += 1;  'Get new cycle start time
                 recLongToneCyclesRemaining% -= 1; 'decrement number of cycles remaining
                 'if we are on the last cycle, go to waiting for end of sound, otherwise just stay here
