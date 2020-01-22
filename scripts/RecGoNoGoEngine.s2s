@@ -1852,7 +1852,7 @@ func PrepareLongNoise(overwritePWA%)
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",1);  'Hardcode Gaussian for now
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",99);  'Hardcode Gaussian with 99th percentile cutoff
         matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
         matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
         matPutOK% := matPutOK% + PutMatlabValueInt%("pad",lnpad%); 
