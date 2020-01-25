@@ -188,6 +188,8 @@ var recLongToneNRepeats%;
 var recLongToneISI;   
 var recLongToneTargetdB;
 var recLongToneRewardProb;
+const nLongTones% := 4;
+var LongDurs[nLongTones%];  'setting this in GenTrialsLongTone where it is "easier" to find
     
 var recLongToneCycleStartTime;
 var recLongToneCyclesRemaining%;    
@@ -400,10 +402,12 @@ var recTrialDistractorDeltadB[recMaxTrial%][recMaxDistractor%];  'Allows a singl
 var recPlayPoints%;                 'Holds the number of points to play for each stimulus    
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
 const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus, must be a constant   
+const recMaxLongNoiseBPPoints% := recPlayRateHz*100;
 var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
 var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
 const recMaxLongNoisePoints% := recPlayRateHz;   'Not doing multiplication by seconds because seconds is by definition 1.
-var recStimTransferLongNoise%[recMaxLongNoisePoints%];    
+var recStimTransferLongNoise%[recMaxLongNoisePoints%];  
+var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    
     
 'Trial list variables
 var recPWAList%[recMaxStimPerTrial%][recMaxTrial%];     'Holds indices to which PWA to use on each trial, and therefore also indexes recStimList%[][]    
@@ -420,7 +424,8 @@ var recTrialOrder%[recMaxTrial%];                       'Holds order in which tr
 var recCurrentTrial%;                                   'Holds current trial in ordinal sequence, will be used to index recTrialOrder%[]    
 var recCurrRandomSeed%[recMaxPWA%];                     'Holds the random seeds used to generate each trial, only done on a trial-by-trial basis    
 var recStimCount%;                                      'Counter for current recMaxStimPerTrial%   
-var recLongToneDurationList[recMaxTrial%];              'Holds the duration of each long tone   
+var recLongToneDurationList[recMaxTrial%];              'Holds the duration of each long tone
+var recLongToneDurationIndex%[recMaxTrial%];            'Holds the index of the duration, useful for triggering correct PWA, when necessary 
     
 'FRA-specific trial list variables
 var rec2StimList%[recMaxTrial%][2]; 'first dimension: trial number, second dimension: DAC0 stimuli, DAC1 stimuli)    
@@ -7387,11 +7392,11 @@ func GenTrialsLongTone%()
     var j%;
     var count%;
     var numDurs% := 4;  'Hard coding durations to be 0.1, 1, 10, 100
-    var durs[4];
-    durs[0] := 0.1;
-    durs[1] := 1;
-    durs[2] := 10;
-    durs[3] := 100;
+
+    LongDurs[0] := 0.1;
+    LongDurs[1] := 1;
+    LongDurs[2] := 10;
+    LongDurs[3] := 100;
     
     'Note that the noise is hardcoded in PrepareLongNoise to be Gaussian as that is what is used elsewhere
     
@@ -7404,14 +7409,20 @@ func GenTrialsLongTone%()
     
     for i% := 0 to numDurs%-1 do
         for j% := 0 to recLongToneNRepeats%-1 do
-            recLongToneDurationList[count%] := durs[i%];  
+            'recLongToneDurationList[count%] := LongDurs[i%];  
+            recLongToneDurationIndex%[count%] := i%;
             count% += 1;
         next
     next
     
     if recDoNotShuffle% = 0 then
-        ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recLongToneDurationList (only valid indices)
+        'ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recLongToneDurationList (only valid indices)
+        ShuffleList%(recLongToneDurationIndex%[0:recNTrials%]);  'create a randpermed version of recLongToneDurationIndex% (only valid indices)   
     endif;
+    
+    for i% := 0 to recNTrials%-1 do
+        recLongToneDurationList[i%] := LongDurs[recLongToneDurationIndex%[i%]];
+    next
     
     'Sanity check passed!
     'printlog("Long tone durations are: %f\n",recLongToneDurationList[]);

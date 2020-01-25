@@ -177,6 +177,7 @@ var tLast:=-1;		' last time we checked for a trigger.
 var tLastJoyUpdate; 'last time we updated the joystick
 var iState%:=stateStart%;		' present state
 var tStateStart:=-1;	' time that present state started. Used to measure wait time, fixation time, etc. 
+var tLongToneStart;
 var tNextTrial;
 var isTerminalS1%:=0;    'if trial has terminal S1, logic of state loop must change, so we need to keep track
 var RTESDIsPressed%;  'has ReturnToExperimentSelectionDialog button been pressed?
@@ -246,9 +247,12 @@ func RunGoNoGoEngine%()
             InitializeParallelPlayWaveAreas();
         case recExpToRun% = recExpStereoDisButton% then
             InitializeMultipleParallelPlayWaveAreas();
-        case recExpToRun% = recExpLongToneButton% then
-            'Initialize a play wave area for the noise condition
-            InitializePlayWaveAreaLongTone();
+        case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
+            'Initialize a play wave area for the broadband noise condition
+            InitializePlayWaveAreaLongBB();
+        case recExpToRun% = recExpLongToneButton% and recLongToneType% = 2 then
+            'Initialize a play wave area for the bandpass noise condition
+            InitializePlayWaveAreasLongBP();
         else
             InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
         endcase
@@ -654,14 +658,14 @@ end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' InitializePlayWaveAreaLongTone - add play wave area for Long Tone exps (noise only). 
+' InitializePlayWaveAreaLongBB - add play wave area for Long Tone exps (BB noise only). 
 ' Area "N" only will be allocated.  It will be one second long.  We will set the value
 ' of PlayWaveCycles() to repeat the PWA until the full duration of the noise stimulus
 ' is complete.  We will reload the PlayWaveArea multiple times per trial if necessary
 ' (every second) WHILE IT IS PLAYING so that the noise does not repeat.
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc InitializePlayWaveAreaLongTone()
+Proc InitializePlayWaveAreaLongBB()
     var st;
   
     st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHz, recMaxLongNoisePoints%);
@@ -673,6 +677,40 @@ Proc InitializePlayWaveAreaLongTone()
     endif        
         
 end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitializePlayWaveAreasLongBP - add play wave areas for Long Tone exps (BP noise only). 
+' Areas will be allocated in order: "A", "B", "C", "D", and will be the full duration of
+' Long Noise stimuli.  
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc InitializePlayWaveAreasLongBP()
+    var st;
+    var i%;
+    var nPoints%;
+    
+    
+    for i% := 0 to nLongTones%-1 do
+        
+        nPoints% := recPlayRateHz*LongDurs[i%];
+        
+        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, nPoints%);
+        if st < 0 then
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+            halt;
+        else
+            PlayWaveTrigger(GetPlayWaveKey$(i%), 1);  'set playwave area to triggered mode
+        endif        
+        
+    next
+    
+    
+    
+end
+
+
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -1831,7 +1869,7 @@ func PrepareLongNoise(overwritePWA%)
         pwChar$ := "N";
         
         'Set recStimTransfer%[] to zeros
-        arrconst(recStimTransfer%[],0);  
+        arrconst(recStimTransferLongNoise%[],0);  
                 
         if recLongToneDuration >= 1 then
             lndur := 1000;  'We will do 1 second (1000 ms) and repeat
@@ -1865,6 +1903,8 @@ func PrepareLongNoise(overwritePWA%)
             Stop%();
             return -1;
         endif;
+        
+        'printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,lnpad%,recLongToneSpeaker%);
         
         statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
         'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
@@ -1917,6 +1957,103 @@ func PrepareLongNoise(overwritePWA%)
     return atten;    
 end
 
+
+
+func PrepareLongNoiseBP()
+    var atten;
+    var matPutOK% := 0;
+    var matGetStimOK%;
+    var matGetAttenOK%;
+    var playWaveCopyOK%;
+    var pwChar$;
+    var lndur;
+    var lnpad%;
+    
+    
+    
+    if recCalibIsPresent% = 1 and recMatlabIsPresent% = 1 and recCEDIsPresent% = 1 then  'if there is no calibration/matlab/CED, we can't do this
+        'Get play wave area
+        pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+        
+        'Set recStimTransferLongNoiseBP%[] to zeros
+        arrconst(recStimTransferLongNoiseBP%[],0);  
+        printlog("current trial is %d\n",recCurrentTrial%);        
+        lndur := recLongToneDurationList[recCurrentTrial%]*1000;  'Actual duration, in ms
+        lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+        
+        
+        'Use speaker calibration to determine attenuation
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",1);  'Hardcode Gaussian noise
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
+        matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
+        matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxLongNoiseBPPoints%); 
+        matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
+        
+        if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+            message("There has been an error in sending data to Matlab!  Quitting!");
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+            SafeSampleKey("M");  'Turn off LED
+            Stop%();
+            return -1;
+        endif;
+        
+        printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,recMaxLongNoiseBPPoints%,recLongToneSpeaker%);
+        
+        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
+        
+        'Get stim and atten back from Matlab
+        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoiseBP%[]);
+        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
+        
+        'printlog("atten is %f\n",atten);
+      
+        atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
+        if recLongToneTargetdB <> 65 then
+            printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
+        endif;
+        
+        docase
+        case matGetStimOK% < 0 then 'error
+            message("There has been an error in getting stimulus data from Matlab!");
+        case atten < 0 then
+            atten := 0;
+            message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
+        case matGetAttenOK% < 0 then 'error
+            message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
+            atten := 20;  'set atten to 20 arbitrarily
+        endcase;
+        printlog("Playwavechar is %s and lnpad is %d\n",pwchar$,lnpad%);
+        playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoiseBP%[0:lnpad%]); 
+        if playWaveCopyOK% < 0 then 'error
+            message("There has been an error in PlayWaveCopy!  Check Log File!");
+            printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+        endif;
+        
+        SafeSampleKey("X"); 'put in load delay (may not be long enough??)
+        
+        
+    else
+        message("Matlab/CED/Calibration values are necessary for Long Noise!  Quitting!");
+        recReadyToQuit% := 1;  'This will allow the entire thing to quit
+        SafeSampleKey("M");  'Turn off LED
+        Stop%();
+        return -1;
+    endif;
+    
+    
+    return atten;    
+end
 
 
 '------- PrepareNextTrial% --------------------------------------------------------
@@ -4086,19 +4223,23 @@ func IdleLoop%()
             var doRepeat%;
             var status%;
             
-            if recLongToneType% = 0 then  'If we are doing a tone, set up the tone
+            docase
+            case recLongToneType% = 0 then  'If we are doing a tone, set up the tone
                 'Set values that can be assigned for the entire set of stimuli
                 SampleSeqVar(11,SequencerToneAmplitude%(1));  'set amplitude of pulse
                 SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
                 recLongAtten := PrepareLongTone();
-            else  'otherwise we are doing broadband or BP noise, which requires a different setup
+            case recLongToneType% = 1 then 'if we are doing broadbandnoise, which requires a different setup
                 recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, can't run initial PrepareLongNoise witout it!
                 for doRepeat% := 0 to 9 do
                     attenmat[doRepeat%] := PrepareLongNoise(2);  'pass 2, do not do 50-ms delay, do not fill PWA, this is only to get an attenuation value
                 next
                 ArrSum(attenmat[],recLongAtten);  'get mean attenuation of 10 tries, should reduce randomness
                 'note that we are only setting the attenuation ONCE.  There is going to be some variability.
-            endif;
+            else 'recLongToneType% = 2
+                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration
+                recLongAtten := PrepareLongNoiseBP();  'This might be slow for the 100 second stimulus
+            endcase;
             
             
             ' Set speaker and atten, same for both tone/noise
@@ -4145,7 +4286,7 @@ func IdleLoop%()
             endif
             
         case iState% = stateStartLongTone% then
-            
+            var pwchar$;
             'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
             'Will not work with Spike6
             '            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
@@ -4160,11 +4301,13 @@ func IdleLoop%()
             'Do this early, so that tStateStart will be prior to the DigMark from the start of the tone
             foundDigMarkOnTime := -1;
             foundDigMarkOffTime := -1;
+            
             ChangeStateTo(stateFindDigMarkOn%);
             
             yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
-
-            if recLongToneType% = 0 then
+            
+            docase
+            case recLongToneType% = 0 then
             
                 printlog("Starting tone \n");
                 SampleKey("T");  'Start tone
@@ -4173,7 +4316,9 @@ func IdleLoop%()
                 s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
                 SampleText(s$,StimOn);
                 
-            else
+                tLongToneStart :=  View(recDataWindowView%).MaxTime();
+                
+            case recLongToneType% = 1 then
                 PrepareLongNoise(0);  'pass 0, this will trigger SSK("X") to add 50-ms delay
                 'Set the number of times to cycle through the PWA
                 if recLongToneDuration >= 1 then
@@ -4190,16 +4335,28 @@ func IdleLoop%()
                 StimOn := GetTimeOfLast1401Event();
                 recLongToneCycleStartTime := StimOn;
                 
-                s$ := Print$("Sound N,LongNoise,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
+                s$ := Print$("Sound N,LongNoiseBB,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
                 SampleText(s$,StimOn);
                 
-            endif;
+                tLongToneStart :=  View(recDataWindowView%).MaxTime();
+                
+            else 'recLongToneType% = 2
+                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                printlog("Starting BP noise \n");
+                SampleKey(LCase$(pwChar$));  'Start bp noise
+                StimOn := GetTimeOfLast1401Event();
             
+                s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
+                SampleText(s$,StimOn);
+                
+                tLongToneStart :=  View(recDataWindowView%).MaxTime();
+                
+            endcase;
             
-            
+
             
         case iState% = stateFindDigMarkOn% then
-            while foundDigMarkOnTime < tStateStart and tNow < tStateStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
+            while foundDigMarkOnTime < tStateStart and tNow < tLongToneStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
                 foundDigMarkOnTime := NextTime(32,tStateStart,digCode%[]);
             wend
             if foundDigMarkOnTime >= tStateStart then
@@ -4209,10 +4366,10 @@ func IdleLoop%()
                 printlog("We didn't find the digMark to start the stimulus!\n");
                 expectedOffTime := tNow + recLongToneDuration -1;  'We've already waited through a second of this
             endif;
-            if recLongToneType% = 0 or recLongToneDuration <= 1 then  'if it's a tone, or we expect only one cycle, just wait for the end
-                ChangeStateTo(stateWaitForEndOfSound%);
-            else
+            if recLongToneType% = 1 and recLongToneDuration > 1 then  'if it's a BB, and we expect multiple cycles
                 ChangeStateTo(stateLongNoiseReloadPWA%);
+            else
+                ChangeStateTo(stateWaitForEndOfSound%); ' if we expect only one cycle, just wait for the end
             endif;
             
             
@@ -4258,7 +4415,11 @@ func IdleLoop%()
                 ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
             else
                 printlog("Waiting for next stimulus start time\n");
-                ChangeStateTo(stateLongToneISI%);
+                if recLongToneType% = 2 then
+                    ChangeStateTo(statePrepareTone%);
+                else
+                    ChangeStateTo(stateLongToneISI%);
+                endif;
             endif;
             
             
