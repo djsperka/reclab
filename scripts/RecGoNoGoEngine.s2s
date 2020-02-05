@@ -166,7 +166,7 @@ const stateFindDigMarkOff%                    := 42;
 const stateLongToneISI%                       := 43;
 const stateStartLongTone%                     := 44;
 const stateTrialHoldReward%                   := 45;
-const stateLongNoiseReloadPWA%                := 46;
+'const stateLongNoiseReloadPWA%                := 46;
 
 var recDelayIntervalTime         := 0;
 var recDelayIntervalInterrupt%   := 0;  'was there an interrupt in the delay interval?
@@ -194,6 +194,9 @@ var isS2%;              'man, this thing's gotta be global, not local in IdleLoo
 var recStimOn;
 var recFRAPWAIndex% := 0;
 var recLongAtten;
+var recLoadLongNoise%;
+var LongNoiseBlock%;
+var LongNoiseCounter%;
 
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
@@ -247,11 +250,11 @@ func RunGoNoGoEngine%()
             InitializeParallelPlayWaveAreas();
         case recExpToRun% = recExpStereoDisButton% then
             InitializeMultipleParallelPlayWaveAreas();
-        case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
+        'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
             'Initialize a play wave area for the broadband noise condition
-            InitializePlayWaveAreaLongBB();
-        case recExpToRun% = recExpLongToneButton% and recLongToneType% = 2 then
-            'Initialize a play wave area for the bandpass noise condition
+        '    InitializePlayWaveAreaLongBB();
+        case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
+            'Initialize a play wave area for the bandpass/broadband noise condition
             InitializePlayWaveAreasLongBP();
         else
             InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
@@ -665,25 +668,25 @@ end
 ' (every second) WHILE IT IS PLAYING so that the noise does not repeat.
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc InitializePlayWaveAreaLongBB()
-    var st;
-  
-    st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHz, recMaxLongNoisePoints%);
-    if st < 0 then
-        Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
-        halt;
-    else
-        PlayWaveTrigger("N", 1);  'set playwave area to triggered mode
-    endif        
-        
-end
+'Proc InitializePlayWaveAreaLongBB()
+'    var st;
+'  
+'    st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHz, recMaxLongNoisePoints%);
+'    if st < 0 then
+'        Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
+'        halt;
+'    else
+'        PlayWaveTrigger("N", 1);  'set playwave area to triggered mode
+'    endif        
+'        
+'end
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' InitializePlayWaveAreasLongBP - add play wave areas for Long Tone exps (BP noise only). 
-' Areas will be allocated in order: "A", "B", "C", "D", and will be the full duration of
-' Long Noise stimuli.  
+' InitializePlayWaveAreasLongBP - add play wave areas for Long Tone exps (BP/BB noise only). 
+' Areas will be allocated in order: "A", "B", "C", "D", "E" and will be the full duration
+' of Long Noise stimuli.  
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 Proc InitializePlayWaveAreasLongBP()
@@ -695,7 +698,9 @@ Proc InitializePlayWaveAreasLongBP()
     for i% := 0 to nLongTones%-1 do
         
         nPoints% := recPlayRateHz*LongDurs[i%];
-        
+        'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
+        'that we assign to them in the sequencer code are lower case equivalents (capital jump points
+        'are reserved for traditional model)
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, nPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
@@ -1797,6 +1802,8 @@ end
 
 
 func PrepareLongTone()
+    'This function does nothing but use Matlab to calculate and return the required attenuation for the
+    'long tone stimulus.  Since all long tones are the same frequency, we only call it once.
     var atten;
     var matPutOK% := 0;
     var matGetAttenOK%;
@@ -1852,98 +1859,335 @@ func PrepareLongTone()
 end
 
 
-func PrepareLongNoise(overwritePWA%)
+'This function is part of the "clever" mechanism which would cycle through the PWA multiple times, re-writing
+'new noise samples every cycle (at a relatively early but random location in the cycle) and taking advantage of
+'the fact that while a PWA is playing, you can overwrite with no ill consequences; the overwrite is faster than
+'the play speed, and so when the overwrite passes the point of play the sound just "seamlessly" switches over.
+'This worked GREAT for broadband noise, with the caveat that calibration is a bit more variable on Gaussian
+'noise than it is on uniform noise, so we had to find an "average" value to set the PA5 to (PA5 setting cannot
+'be done on the fly, unlike the PWA overwrite).  Unfortunately, this did NOT work great for bandpass noise. The
+'short explanation is that broadband noise is effectively a continuous series of "clicks" as it contains
+'frequencies about the Nyquist.  One click is as good as another, or in words of wisdom, "You can't fool me,
+'it's clicks all the way down!"  The transition is by definition unnoticeable.  But for our bandpass noise, the
+'sound is filtered below the Nyquist, so if you zoom in on it, it is actually smooth.  Switching from one 
+'bandpass sound to the next (and restarting the cycle on the PWA, for that matter) introduced a discontinuity,
+'and, bam! a click every second.  So much for that.  And as long as we're developing a new method for doing BP
+'sounds, we may as well do BB sounds in exactly the same way.
+'func PrepareLongNoise(overwritePWA%)
+'    var atten;
+'    var matPutOK% := 0;
+'    var matGetStimOK%;
+'    var matGetAttenOK%;
+'    var playWaveCopyOK%;
+'    var pwChar$;
+'    var lndur;
+'    var lnpad%;
+'    
+'    
+'    
+'    if recCalibIsPresent% = 1 and recMatlabIsPresent% = 1 and recCEDIsPresent% = 1 then  'if there is no calibration/matlab/CED, we can't do this
+'        'Get play wave area, hint it's "N"
+'        pwChar$ := "N";
+'        
+'        'Set recStimTransfer%[] to zeros
+'        arrconst(recStimTransferLongNoise%[],0);  
+'                
+'        if recLongToneDuration >= 1 then
+'            lndur := 1000;  'We will do 1 second (1000 ms) and repeat
+'            lnpad% := 0;  'Do not pad, sound is correct length
+'        else
+'            lndur := recLongToneDuration*1000;  'Actual duration, expected to be 0.1 seconds, but it's possible the values get changed
+'            lnpad% := recMaxLongNoisePoints%;  'pad to correct length
+'        endif;
+'        
+'        
+'        'Use speaker calibration to determine attenuation
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",99);  'Hardcode Gaussian with 99th percentile cutoff
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
+'        matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
+'        matPutOK% := matPutOK% + PutMatlabValueInt%("pad",lnpad%); 
+'        matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
+'        
+'        if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+'            message("There has been an error in sending data to Matlab!  Quitting!");
+'            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+'            SafeSampleKey("M");  'Turn off LED
+'            Stop%();
+'            return -1;
+'        endif;
+'        
+'        'printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,lnpad%,recLongToneSpeaker%);
+'        
+'        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+'        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+'        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
+'        
+'        'Get stim and atten back from Matlab
+'        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise%[]);
+'        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
+'        
+'        'printlog("atten is %f\n",atten);
+'      
+'        atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
+'        if recLongToneTargetdB <> 65 then
+'            printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
+'        endif;
+'        
+'        docase
+'        case matGetStimOK% < 0 then 'error
+'            message("There has been an error in getting stimulus data from Matlab!");
+'        case atten < 0 then
+'            atten := 0;
+'            message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
+'        case matGetAttenOK% < 0 then 'error
+'            message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
+'            atten := 20;  'set atten to 20 arbitrarily
+'        endcase;
+'        
+'        if overwritePWA% <= 1 then  'if 0/1, actually fill PWA.  If 2, we just want the atten value.
+'            playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise%[]); 
+'            if playWaveCopyOK% < 0 then 'error
+'                message("There has been an error in PlayWaveCopy!  Check Log File!");
+'                printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+'            endif;
+'        endif;
+'        
+'        if overwritePWA% = 0 then
+'            SafeSampleKey("X");  'only put in delay on first load, on subsequent loads we will already be playing
+'        endif;
+'       
+'        
+'    else
+'        message("Matlab/CED/Calibration values are necessary for Long Noise!  Quitting!");
+'        recReadyToQuit% := 1;  'This will allow the entire thing to quit
+'        SafeSampleKey("M");  'Turn off LED
+'        Stop%();
+'        return -1;
+'    endif;
+'    
+'    
+'    return atten;    
+'end
+
+
+'This function was a first attempt to fix the problems we were having (noted above before PrepareLongNoise)
+'with the bandpass stimuli under that method.  This method here actually worked - I only had to get around a
+'memory issue that turned out NOT to be a 1401 memory issue but rather a Matlab limitation when creating very
+'long bandpass sounds which was fixed by, of all things, upping the swap space on the PC.  The problem with
+'this method is that the stimulus generation and PWA loading are done in real time during the experiment, and
+'that takes far too long (order of ten seconds) to allow us a reasonable ISI on each trial.  Obviously we can't
+'have a longer ISI for the longer noises because then the animal can anticipate what is coming.  Hopefully, the
+'longer portion of that step was the creation of the sounds and not the loading into the PWAs, as the next
+'version (yet untested) attempts to create all the noise stimuli up front, and then only dynamically load them
+'into the PWAs.  We shall see.
+'func PrepareLongNoiseBP()
+'    var atten;
+'    var matPutOK% := 0;
+'    var matGetStimOK%;
+'    var matGetAttenOK%;
+'    var playWaveCopyOK%;
+'    var pwChar$;
+'    var lndur;
+'    var lnpad%;
+'    
+'    
+'    
+'    if recCalibIsPresent% = 1 and recMatlabIsPresent% = 1 and recCEDIsPresent% = 1 then  'if there is no calibration/matlab/CED, we can't do this
+'        'Get play wave area
+'        pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+'        
+'        'Set recStimTransferLongNoiseBP%[] to zeros
+'        arrconst(recStimTransferLongNoiseBP%[],0);  
+'        printlog("current trial is %d\n",recCurrentTrial%);        
+'        lndur := recLongToneDurationList[recCurrentTrial%]*1000;  'Actual duration, in ms
+'        lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+'        
+'        
+'        'Use speaker calibration to determine attenuation
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",1);  'Hardcode Gaussian noise
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
+'        matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
+'        matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxLongNoiseBPPoints%); 
+'        matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
+'        
+'        if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+'            message("There has been an error in sending data to Matlab!  Quitting!");
+'            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+'            SafeSampleKey("M");  'Turn off LED
+'            Stop%();
+'            return -1;
+'        endif;
+'        
+'        printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,recMaxLongNoiseBPPoints%,recLongToneSpeaker%);
+'        
+'        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+'        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+'        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
+'        
+'        'Get stim and atten back from Matlab
+'        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoiseBP%[]);
+'        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
+'        
+'        'printlog("atten is %f\n",atten);
+'      
+'        atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
+'        if recLongToneTargetdB <> 65 then
+'            printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
+'        endif;
+'        
+'        docase
+'        case matGetStimOK% < 0 then 'error
+'            message("There has been an error in getting stimulus data from Matlab!");
+'        case atten < 0 then
+'            atten := 0;
+'            message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
+'        case matGetAttenOK% < 0 then 'error
+'            message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
+'            atten := 20;  'set atten to 20 arbitrarily
+'        endcase;
+'        printlog("Playwavechar is %s and lnpad is %d\n",pwchar$,lnpad%);
+'        playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoiseBP%[0:lnpad%]); 
+'        if playWaveCopyOK% < 0 then 'error
+'            message("There has been an error in PlayWaveCopy!  Check Log File!");
+'            printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+'        endif;
+'        
+'        SafeSampleKey("X"); 'put in load delay (may not be long enough??)
+'        
+'        
+'    else
+'        message("Matlab/CED/Calibration values are necessary for Long Noise!  Quitting!");
+'        recReadyToQuit% := 1;  'This will allow the entire thing to quit
+'        SafeSampleKey("M");  'Turn off LED
+'        Stop%();
+'        return -1;
+'    endif;
+'    
+'    
+'    return atten;    
+'end
+
+
+func PrepareLongNoiseAllAtOnce()
     var atten;
+    var seed;
     var matPutOK% := 0;
     var matGetStimOK%;
     var matGetAttenOK%;
-    var playWaveCopyOK%;
-    var pwChar$;
+    var matGetSeedOK%;
     var lndur;
     var lnpad%;
+    var i%;
+    var j%;
     
     
     
     if recCalibIsPresent% = 1 and recMatlabIsPresent% = 1 and recCEDIsPresent% = 1 then  'if there is no calibration/matlab/CED, we can't do this
-        'Get play wave area, hint it's "N"
-        pwChar$ := "N";
-        
-        'Set recStimTransfer%[] to zeros
-        arrconst(recStimTransferLongNoise%[],0);  
+        'for each long noise stimulus
+        for i% := 0 to nLongTones%-2 do 'don't create noise on the silent trial
+            
+            lndur := (LongDurs[i%]+0.20)*1000;  'Calculate actual duration, in ms, have to add in ramp
+            lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+            
+            'for each repeat of the tone, we can make an independent noise, not frozen 
+            for j% := 0 to recLongToneNRepeats%-1 do
                 
-        if recLongToneDuration >= 1 then
-            lndur := 1000;  'We will do 1 second (1000 ms) and repeat
-            lnpad% := 0;  'Do not pad, sound is correct length
-        else
-            lndur := recLongToneDuration*1000;  'Actual duration, expected to be 0.1 seconds, but it's possible the values get changed
-            lnpad% := recMaxLongNoisePoints%;  'pad to correct length
-        endif;
-        
-        
-        'Use speaker calibration to determine attenuation
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",99);  'Hardcode Gaussian with 99th percentile cutoff
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
-        matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
-        matPutOK% := matPutOK% + PutMatlabValueInt%("pad",lnpad%); 
-        matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
-        
-        if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
-            message("There has been an error in sending data to Matlab!  Quitting!");
-            recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            SafeSampleKey("M");  'Turn off LED
-            Stop%();
-            return -1;
-        endif;
-        
-        'printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,lnpad%,recLongToneSpeaker%);
-        
-        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
-        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
-        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
-        
-        'Get stim and atten back from Matlab
-        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise%[]);
-        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
-        
-        'printlog("atten is %f\n",atten);
-      
-        atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
-        if recLongToneTargetdB <> 65 then
-            printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
-        endif;
-        
-        docase
-        case matGetStimOK% < 0 then 'error
-            message("There has been an error in getting stimulus data from Matlab!");
-        case atten < 0 then
-            atten := 0;
-            message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
-        case matGetAttenOK% < 0 then 'error
-            message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
-            atten := 20;  'set atten to 20 arbitrarily
-        endcase;
-        
-        if overwritePWA% <= 1 then  'if 0/1, actually fill PWA.  If 2, we just want the atten value.
-            playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise%[]); 
-            if playWaveCopyOK% < 0 then 'error
-                message("There has been an error in PlayWaveCopy!  Check Log File!");
-                printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
-            endif;
-        endif;
-        
-        if overwritePWA% = 0 then
-            SafeSampleKey("X");  'only put in delay on first load, on subsequent loads we will already be playing
-        endif;
-        
+                'Set recStimTransferLongNoise2%[] to zeros
+                arrconst(recStimTransferLongNoise2%[],0);  
+                
+                'Create noise, use speaker calibration to determine attenuation
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of noise
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",1);  'Hardcode Gaussian noise
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",10);  'Hardcode 10 ms ramp on/off
+                matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
+                matPutOK% := matPutOK% + PutMatlabValueInt%("pad",LongPoints3%); 
+                matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
+                
+                if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+                    message("There has been an error in sending data to Matlab!  Quitting!");
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SafeSampleKey("M");  'Turn off LED
+                    Stop%();
+                    return -1;
+                endif;
+                
+                printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,LongPoints3%,recLongToneSpeaker%);
+                
+                statement$ := "[stimulus atten seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+                'statement$ := "[stimulus atten seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                EvalMatlabStatement%(statement$);  'Fills stimulus/atten/seed on matlab side
+                
+                'Get stim and atten back from Matlab
+                matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise2%[]);
+                matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
+                matGetSeedOK% := GetMatlabValueFloat%("seed",seed);
+                
+                'printlog("atten is %f\n",atten);
+                
+                atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
+                if recLongToneTargetdB <> 65 then
+                    printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
+                endif;
+                
+                if matGetStimOK% < 0 then 'error
+                    message("There has been an error in getting stimulus data from Matlab!");
+                endif;
+                
+                if atten < 0 then
+                    atten := 0;
+                    message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
+                endif;
+                
+                if matGetAttenOK% < 0 then 'error
+                    message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
+                    atten := 20;  'set atten to 20 arbitrarily
+                endif;
+                
+                if matGetSeedOK% < 0 then 'error
+                    message("There has been an error in getting seed data from Matlab!");
+                endif;
+                
+                recLongNoiseAtten[j%][i%] := atten;
+                recLongNoiseSeed[j%][i%] := seed;
+                docase
+                case i% = 0 then
+                    ArrConst(recLongNoise0%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
+                case i% = 1 then
+                    ArrConst(recLongNoise1%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
+                case i% = 2 then
+                    ArrConst(recLongNoise2%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
+                case i% = 3 then
+                    ArrConst(recLongNoise3%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);  'should be correct size
+                endcase
+                
+            next
+        next
         
     else
         message("Matlab/CED/Calibration values are necessary for Long Noise!  Quitting!");
@@ -1954,87 +2198,49 @@ func PrepareLongNoise(overwritePWA%)
     endif;
     
     
-    return atten;    
+    return 1;  'no return value right now, assume no failure   
 end
 
 
-
-func PrepareLongNoiseBP()
-    var atten;
-    var matPutOK% := 0;
-    var matGetStimOK%;
-    var matGetAttenOK%;
-    var playWaveCopyOK%;
+'For the newest version of long noise, we are doing stimulus generation and PWA load asynchronously
+func LoadLongNoiseToPWA%()
     var pwChar$;
+    var playWaveCopyOK%;
+    var status%;
     var lndur;
     var lnpad%;
     
+    'Get play wave area
+    pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
     
+    printlog("current trial is %d\n",recCurrentTrial%); 
+    printlog("Playwavechar is %s\n",pwchar$);
     
-    if recCalibIsPresent% = 1 and recMatlabIsPresent% = 1 and recCEDIsPresent% = 1 then  'if there is no calibration/matlab/CED, we can't do this
-        'Get play wave area
-        pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
-        
-        'Set recStimTransferLongNoiseBP%[] to zeros
-        arrconst(recStimTransferLongNoiseBP%[],0);  
-        printlog("current trial is %d\n",recCurrentTrial%);        
-        lndur := recLongToneDurationList[recCurrentTrial%]*1000;  'Actual duration, in ms
-        lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
-        
-        
-        'Use speaker calibration to determine attenuation
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",1);  'Hardcode Gaussian noise
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",0);
-        matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
-        matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxLongNoiseBPPoints%); 
-        matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
-        
-        if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
-            message("There has been an error in sending data to Matlab!  Quitting!");
-            recReadyToQuit% := 1;  'This will allow the entire thing to quit
-            SafeSampleKey("M");  'Turn off LED
-            Stop%();
-            return -1;
-        endif;
-        
-        printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,recMaxLongNoiseBPPoints%,recLongToneSpeaker%);
-        
-        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
-        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
-        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
-        
-        'Get stim and atten back from Matlab
-        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoiseBP%[]);
-        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
-        
-        'printlog("atten is %f\n",atten);
-      
-        atten := atten + 65 - recLongToneTargetdB;  'Adjust attenuation to produce requested intensity
-        if recLongToneTargetdB <> 65 then
-            printlog("Calculated attenuation to produce %f dB is %f\n",recLongToneTargetdB,atten);
-        endif;
-        
-        docase
-        case matGetStimOK% < 0 then 'error
-            message("There has been an error in getting stimulus data from Matlab!");
-        case atten < 0 then
-            atten := 0;
-            message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
-        case matGetAttenOK% < 0 then 'error
-            message("There has been an error in getting atten data from Matlab, setting to 20 dB arbitrarily!");
-            atten := 20;  'set atten to 20 arbitrarily
-        endcase;
-        printlog("Playwavechar is %s and lnpad is %d\n",pwchar$,lnpad%);
-        playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoiseBP%[0:lnpad%]); 
+    lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.20)*1000;  'Calculate actual duration, in ms, have to add in ramp
+    lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+         
+    'Mark it zero, dude
+    arrconst(recStimTransferLongNoise2%[],0);
+    
+    docase
+    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
+    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
+    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
+    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
+    'In the case of index = 5, we want silence anyways, so leave it marked zero, dude.
+    endcase
+    
+    'Copy noise to PWA and set PA5 (or copy zeros to PWA if it's the first time through, just in case the "silent" PWA isn't zeros)
+    'Note that for the time being I've actually repented of this decision 15 seconds after I made it seeing as the
+    'delay for loading the PWA might be significant enough that *not* loading zeros changes the timing.  I reserve
+    'the right to un-repent of this decision at any point.
+    'if recLongToneDurationIndex%[recCurrentTrial%] < nLongTones% or LongNoiseBlock% = 0 then
+    
+        playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise2%[]); 
         if playWaveCopyOK% < 0 then 'error
             message("There has been an error in PlayWaveCopy!  Check Log File!");
             printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -2042,18 +2248,20 @@ func PrepareLongNoiseBP()
         
         SafeSampleKey("X"); 'put in load delay (may not be long enough??)
         
-        
-    else
-        message("Matlab/CED/Calibration values are necessary for Long Noise!  Quitting!");
-        recReadyToQuit% := 1;  'This will allow the entire thing to quit
-        SafeSampleKey("M");  'Turn off LED
-        Stop%();
-        return -1;
-    endif;
+        'Set attenuation per stimulus when we load the PWA
+        status% := recAttenByID%(recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]],arrayPA4ID%);
+        if status% <> 0 then
+            printlog("Problem setting attenuation for long noise!\n");
+            return 0;
+        endif; 
+    'endif
     
     
-    return atten;    
+    
+    return 1;  'Any useful return value??
 end
+
+
 
 
 '------- PrepareNextTrial% --------------------------------------------------------
@@ -4229,38 +4437,49 @@ func IdleLoop%()
                 SampleSeqVar(11,SequencerToneAmplitude%(1));  'set amplitude of pulse
                 SampleSeqVar(12,SequencerToneFrequency%(recLongToneFreq));  'set frequency of pulse
                 recLongAtten := PrepareLongTone();
-            case recLongToneType% = 1 then 'if we are doing broadbandnoise, which requires a different setup
-                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, can't run initial PrepareLongNoise witout it!
-                for doRepeat% := 0 to 9 do
-                    attenmat[doRepeat%] := PrepareLongNoise(2);  'pass 2, do not do 50-ms delay, do not fill PWA, this is only to get an attenuation value
-                next
-                ArrSum(attenmat[],recLongAtten);  'get mean attenuation of 10 tries, should reduce randomness
-                'note that we are only setting the attenuation ONCE.  There is going to be some variability.
-            else 'recLongToneType% = 2
-                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration
-                recLongAtten := PrepareLongNoiseBP();  'This might be slow for the 100 second stimulus
+                'Set attenuation once for tone, for noise we will set per stimulus when we load the PWA
+                status% := recAttenByID%(recLongAtten,arrayPA4ID%);
+                if status% <> 0 then
+                    printlog("Problem setting attenuation for long tone!\n");
+                    return 0;
+                endif; 
+            else 
+                PrepareLongNoiseAllAtOnce();  'Fill all noise, atten, seed variables before doing anything else - will be slow
+                recLoadLongNoise% := 1;  'Make sure long noise loads to PWA
+'            case recLongToneType% = 1 then 'if we are doing broadbandnoise, which requires a different setup
+'                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, can't run initial PrepareLongNoise witout it!
+'                for doRepeat% := 0 to 9 do
+'                    attenmat[doRepeat%] := PrepareLongNoise(2);  'pass 2, do not do 50-ms delay, do not fill PWA, this is only to get an attenuation value
+'                next
+'                ArrSum(attenmat[],recLongAtten);  'get mean attenuation of 10 tries, should reduce randomness
+'                'note that we are only setting the attenuation ONCE.  There is going to be some variability.
+'            else 'recLongToneType% = 2
+'                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration
+'                recLongAtten := PrepareLongNoiseBP();  'This might be slow for the 100 second stimulus
             endcase;
             
             
-            ' Set speaker and atten, same for both tone/noise
+            ' Set speaker one time, same for both tone/noise
             if recTDTIsPresent% = 1 then
                 status% := recSpeaker%(recLongToneSpeaker%);
                 if status% <> 0 then
                     printlog("Problem setting speaker for long tone!\n");
                     return 0;
                 endif;
-                status% := recAttenByID%(recLongAtten,arrayPA4ID%);
-                if status% <> 0 then
-                    printlog("Problem setting attenuation for long tone!\n");
-                    return 0;
-                endif; 
+                
             endif;
             
             ChangeStateTo(stateLongToneISI%);  'Go to an ISI before the first tone to get a full pre-stimulus period           
             
-            
         case iState% = stateLongToneISI% then
             
+            'Load PWA first, only do it once
+            if recLongToneType% >= 1 and recLoadLongNoise% = 1 then
+                LoadLongNoiseToPWA%();  'correct PWA is calculated inside this function, attenuation set inside this function
+                recLoadLongNoise% := 0;  'Don't load twice!
+            endif; 
+            
+            'Wait through ISI
             if tNow > tStateStart + recLongToneISI then
                 
                 if rand() < recLongToneRewardProb and recTurnOffReward% = 0 then
@@ -4287,28 +4506,24 @@ func IdleLoop%()
             
         case iState% = stateStartLongTone% then
             var pwchar$;
-            'Replace indiscriminate SampleAutoCommit period with pre-trial commit that won't interfere with trials
-            'Will not work with Spike6
-            '            if tNow > LastSamplingCommitTime + SamplingCommitPeriod then
-            '                View(recDataWindowView%).Modified(0,0);  'Not sure if 0,0 (faster, to OS buffer but no disk write) or 0,1 (slower, full write to disk)
-            '                LastSamplingCommitTime := tNow;
-            '            endif;
-            
             
             recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
-            SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of pulse on sequencer
+            
             
             'Do this early, so that tStateStart will be prior to the DigMark from the start of the tone
             foundDigMarkOnTime := -1;
             foundDigMarkOffTime := -1;
             
+            'Prepare to change to next state
             ChangeStateTo(stateFindDigMarkOn%);
             
             yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
             
             docase
-            case recLongToneType% = 0 then
-            
+            case recLongToneType% = 0 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then  'this is a tone
+                
+                SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of tone on sequencer
+                
                 printlog("Starting tone \n");
                 SampleKey("T");  'Start tone
                 StimOn := GetTimeOfLast1401Event();
@@ -4318,35 +4533,62 @@ func IdleLoop%()
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
-            case recLongToneType% = 1 then
-                PrepareLongNoise(0);  'pass 0, this will trigger SSK("X") to add 50-ms delay
-                'Set the number of times to cycle through the PWA
-                if recLongToneDuration >= 1 then
-                    recLongToneCyclesRemaining% := recLongToneDuration;  'Same # of cycles as we have seconds
-                else
-                    recLongToneCyclesRemaining% := 1;  '1 cycle for the 0.10 second stimulus, we need this for PlayWaveCycles but not for anything else
-                endif;
-                printlog("Number of cycles is %d\n",recLongToneCyclesRemaining%);
-                PlayWaveCycles("N",recLongToneCyclesRemaining%);
-                SampleSeqVar(16,recLongToneCyclesRemaining%);  'put number of cycles expected into sequencer variable
+            case recLongToneType% = 0 and recLongToneDurationIndex%[recCurrentTrial%] = 4 then  'this is a silent period
                 
-                printlog("Starting noise \n");
-                SampleKey("N");  'Start noise
+                SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of silence on sequencer
+                
+                printlog("Starting silent trial \n");
+                SampleKey("U");  'Start silent period
                 StimOn := GetTimeOfLast1401Event();
-                recLongToneCycleStartTime := StimOn;
                 
-                s$ := Print$("Sound N,LongNoiseBB,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
+                'For this Sampletext, only the duration is variable
+                s$ := Print$("Sound U,SilentTrial,%d,0,0,0,%s,0Hz", recCurrentTrial%, Str$(recLongToneDuration) + "s");
+                SampleText(s$,StimOn);
+                
+                tLongToneStart :=  View(recDataWindowView%).MaxTime();    
+                
+            'case recLongToneType% = 1 then
+            '    PrepareLongNoise(0);  'pass 0, this will trigger SSK("X") to add 50-ms delay
+            '    'Set the number of times to cycle through the PWA
+            '    if recLongToneDuration >= 1 then
+            '        recLongToneCyclesRemaining% := recLongToneDuration;  'Same # of cycles as we have seconds
+            '    else
+            '        recLongToneCyclesRemaining% := 1;  '1 cycle for the 0.10 second stimulus, we need this for PlayWaveCycles but not for anything else
+            '    endif;
+            '    printlog("Number of cycles is %d\n",recLongToneCyclesRemaining%);
+            '    PlayWaveCycles("N",recLongToneCyclesRemaining%);
+            '    SampleSeqVar(16,recLongToneCyclesRemaining%);  'put number of cycles expected into sequencer variable
+            '    
+            '    printlog("Starting BB noise \n");
+            '    SampleKey("N");  'Start noise
+            '    StimOn := GetTimeOfLast1401Event();
+            '    recLongToneCycleStartTime := StimOn;
+            '    
+            '    s$ := Print$("Sound N,LongNoiseBB,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
+            '    SampleText(s$,StimOn);
+            '    
+            '    tLongToneStart :=  View(recDataWindowView%).MaxTime();
+                
+            case recLongToneType% = 1 then 'only difference is in sampletexting
+                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                printlog("Starting BB noise \n");
+                SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
+                StimOn := GetTimeOfLast1401Event();
+            
+                s$ := Print$("Sound %s,LongNoiseBB,%d,%d,%.1f,%.1f,%s,BB,seed=%s", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
+                recLongToneTargetdB, Str$(recLongToneDuration) + "s",Str$(recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]));
                 SampleText(s$,StimOn);
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
-            else 'recLongToneType% = 2
+            case recLongToneType% = 2 then
                 pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BP noise \n");
-                SampleKey(LCase$(pwChar$));  'Start bp noise
+                SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event();
-            
-                s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
+                
+                s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s,%s,seed=%s", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
+                recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz",Str$(recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]));
                 SampleText(s$,StimOn);
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
@@ -4366,25 +4608,25 @@ func IdleLoop%()
                 printlog("We didn't find the digMark to start the stimulus!\n");
                 expectedOffTime := tNow + recLongToneDuration -1;  'We've already waited through a second of this
             endif;
-            if recLongToneType% = 1 and recLongToneDuration > 1 then  'if it's a BB, and we expect multiple cycles
-                ChangeStateTo(stateLongNoiseReloadPWA%);
-            else
+            'if recLongToneType% = 1 and recLongToneDuration > 1 then  'if it's a BB, and we expect multiple cycles
+            '    ChangeStateTo(stateLongNoiseReloadPWA%);
+            'else
                 ChangeStateTo(stateWaitForEndOfSound%); ' if we expect only one cycle, just wait for the end
-            endif;
+            'endif;
             
             
-        case iState% = stateLongNoiseReloadPWA% then
-            
-            if tNow > recLongToneCycleStartTime then  'if the next cycle has started playing
-                PrepareLongNoise(1);  'reload PWA with new random noise WHILE PLAYING (this is OK!!), don't use SSK("X")
-                printlog("Changing stim\n");
-                recLongToneCycleStartTime += 1;  'Get new cycle start time
-                recLongToneCyclesRemaining% -= 1; 'decrement number of cycles remaining
-                'if we are on the last cycle, go to waiting for end of sound, otherwise just stay here
-                if recLongToneCyclesRemaining% <= 0 then  'use less than just in case something wacky happens in testing
-                    ChangeStateTo(stateWaitForEndOfSound%);
-                endif;
-            endif
+        'case iState% = stateLongNoiseReloadPWA% then
+        '    
+        '    if tNow > recLongToneCycleStartTime then  'if the next cycle has started playing
+        '        PrepareLongNoise(1);  'reload PWA with new random noise WHILE PLAYING (this is OK!!), don't use SSK("X")
+        '        printlog("Changing stim\n");
+        '        recLongToneCycleStartTime += 1;  'Get new cycle start time
+        '        recLongToneCyclesRemaining% -= 1; 'decrement number of cycles remaining
+        '        'if we are on the last cycle, go to waiting for end of sound, otherwise just stay here
+        '        if recLongToneCyclesRemaining% <= 0 then  'use less than just in case something wacky happens in testing
+        '            ChangeStateTo(stateWaitForEndOfSound%);
+        '        endif;
+        '    endif
             
             
             
@@ -4415,11 +4657,17 @@ func IdleLoop%()
                 ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
             else
                 printlog("Waiting for next stimulus start time\n");
-                if recLongToneType% = 2 then
-                    ChangeStateTo(statePrepareTone%);
-                else
-                    ChangeStateTo(stateLongToneISI%);
+                'if recLongToneType% = 2 then
+                '    ChangeStateTo(statePrepareTone%);
+                'else
+                recLoadLongNoise% := 1;  'All code now goes straight to the ISI, reset long noise to load PWA
+                LongNoiseCounter% += 1;  'Increment count...
+                if LongNoiseCounter% = nLongTones% then  'And if we reach the end of the block...
+                    LongNoiseBlock% += 1;   'increment block counter...
+                    LongNoiseCounter% := 0;  'reset trial counter
                 endif;
+                ChangeStateTo(stateLongToneISI%);
+                'endif;
             endif;
             
             

@@ -186,13 +186,17 @@ var recLongToneType%;  '0 = tone, 1 = broadband noise, 2 = bandpass noise
 var recLongToneSpeaker%;
 var recLongToneNRepeats%;     
 var recLongToneISI;   
+var recLongToneSilentDur;
 var recLongToneTargetdB;
 var recLongToneRewardProb;
-const nLongTones% := 4;
-var LongDurs[nLongTones%];  'setting this in GenTrialsLongTone where it is "easier" to find
-    
-var recLongToneCycleStartTime;
-var recLongToneCyclesRemaining%;    
+const nLongTones% := 5;
+const LongDur0 := 0.1 + 0.020;  'add in 10-ms ramp on each side
+const LongDur1 := 1 + 0.020;  'add in 10-ms ramp on each side
+const LongDur2 := 10 + 0.020;  'add in 10-ms ramp on each side
+const LongDur3 := 100 + 0.020;  'add in 10-ms ramp on each side  
+var LongDurs[nLongTones%];  'setting this in GenTrialsLongTones, so it's with the silent trial setting
+'var recLongToneCycleStartTime;
+'var recLongToneCyclesRemaining%;    
     
 'Audiogram dialog variables
 var recAudiogramS1Speaker%;  
@@ -402,12 +406,23 @@ var recTrialDistractorDeltadB[recMaxTrial%][recMaxDistractor%];  'Allows a singl
 var recPlayPoints%;                 'Holds the number of points to play for each stimulus    
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
 const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus, must be a constant   
-const recMaxLongNoiseBPPoints% := recPlayRateHz*100;
+'const recMaxLongNoiseBPPoints% := recPlayRateHz*100;
+'const recMaxLongNoisePoints% := recPlayRateHz;   'Not doing multiplication by seconds because seconds is by definition 1.
+const LongPoints0% := LongDur0*recPlayRateHz;
+const LongPoints1% := LongDur1*recPlayRateHz;
+const LongPoints2% := LongDur2*recPlayRateHz;
+const LongPoints3% := LongDur3*recPlayRateHz;
 var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
 var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
-const recMaxLongNoisePoints% := recPlayRateHz;   'Not doing multiplication by seconds because seconds is by definition 1.
-var recStimTransferLongNoise%[recMaxLongNoisePoints%];  
-var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    
+'var recStimTransferLongNoise%[recMaxLongNoisePoints%];  
+'var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    
+var recStimTransferLongNoise2%[LongPoints3%];
+var recLongNoise3%[8][LongPoints3%];   'variables to hold long noises
+var recLongNoise2%[8][LongPoints2%];    
+var recLongNoise1%[8][LongPoints1%];
+var recLongNoise0%[8][LongPoints0%];    
+var recLongNoiseAtten[8][4];                       'variables to hold long noise attenuation    
+var recLongNoiseSeed[8][4];                        'variables to hold long noise attenuation    
     
 'Trial list variables
 var recPWAList%[recMaxStimPerTrial%][recMaxTrial%];     'Holds indices to which PWA to use on each trial, and therefore also indexes recStimList%[][]    
@@ -2680,7 +2695,8 @@ func RecLongToneGetParams()
     recLongToneBPHigh := GetFloatRegistryValue(key$, "LongToneBPHigh", recLongToneBPHigh);
     recLongToneType% := GetIntRegistryValue%(key$, "LongToneType", recLongToneType%);
     recLongToneNRepeats% := GetIntRegistryValue%(key$, "LongToneNRepeats", recLongToneNRepeats%);
-    recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);   
+    recLongToneISI := GetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);  
+    recLongToneSilentDur := GetFloatRegistryValue(key$, "LongToneSilentDur", recLongToneSilentDur); 
     recLongToneTargetdB := GetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);  
     recLongToneRewardProb := GetFloatRegistryValue(key$, "LongToneRewardProb", recLongToneRewardProb);
     
@@ -2705,6 +2721,7 @@ func RecLongToneSaveParams()
     SetIntRegistryValue(key$, "LongToneType", recLongToneType%);
     SetIntRegistryValue(key$, "LongToneNRepeats", recLongToneNRepeats%);
     SetFloatRegistryValue(key$, "LongToneISI", recLongToneISI);
+    SetFloatRegistryValue(key$, "LongToneSilentDur", recLongToneSilentDur); 
     SetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);
     SetFloatRegistryValue(key$, "LongToneRewardProb", recLongToneRewardProb);
 
@@ -2736,15 +2753,16 @@ func RecLongToneDialog%()
     DlgReal(3,"Low Freq Cutoff (Hz)",1,30000);
     DlgReal(4,"High Freq Cutoff (Hz)",2,100000);
     DlgInteger(5,"Speaker",1,16);
-    DlgInteger(6,"Number of repeats per tone",1,100);
+    DlgInteger(6,"Number of repeats per tone",1,8);  'We have to restrict this to 8 because of maximum variable size allowed by CED (have to hold all the damn long noises!)
     DlgReal(7,"ISI, seconds",1,100);
-    DlgReal(8,"Target dB",1,100);
-    DlgReal(9,"Probability of reward",0,1);
+    DlgReal(8,"Silence trial, seconds",0.1,100);
+    DlgReal(9,"Target dB",1,100);
+    DlgReal(10,"Probability of reward",0,1);
     
     DlgAllow(0xffff, 0, RecLongToneDialogChanged%); 
     
     ' Show the dialog
-    i% := DlgShow(recLongToneType%,recLongToneFreq,recLongToneBPLow,recLongToneBPHigh,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneTargetdB,recLongToneRewardProb);
+    i% := DlgShow(recLongToneType%,recLongToneFreq,recLongToneBPLow,recLongToneBPHigh,recLongToneSpeaker%,recLongToneNRepeats%,recLongToneISI,recLongToneSilentDur,recLongToneTargetdB,recLongToneRewardProb);
   
     
     ' If user checked box and hit OK then save parameters (and return 1). 
@@ -7391,23 +7409,24 @@ func GenTrialsLongTone%()
     var i%;
     var j%;
     var count%;
-    var numDurs% := 4;  'Hard coding durations to be 0.1, 1, 10, 100
-
-    LongDurs[0] := 0.1;
-    LongDurs[1] := 1;
-    LongDurs[2] := 10;
-    LongDurs[3] := 100;
+    
+    'Hard coding durations to be 0.1, 1, 10, 100, now using CONSTs to allow us to make arrays ahead of time to hold many of these
+    LongDurs[0] := LongDur0 - 0.020;
+    LongDurs[1] := LongDur1 - 0.020;
+    LongDurs[2] := LongDur2 - 0.020;
+    LongDurs[3] := LongDur3 - 0.020;
+    LongDurs[4] := recLongToneSilentDur;
     
     'Note that the noise is hardcoded in PrepareLongNoise to be Gaussian as that is what is used elsewhere
     
-    recNTrials% := recLongToneNRepeats%*numDurs%;
+    recNTrials% := recLongToneNRepeats%*nLongTones%;
     
     if recNTrials% > recMaxTrial% then
         message("The maximum number of trials is " + Str$(recMaxTrial%) + " but " + Str$(recNTrials%) + " trials were requested!");
         return 0;
     endif;
     
-    for i% := 0 to numDurs%-1 do
+    for i% := 0 to nLongTones%-1 do
         for j% := 0 to recLongToneNRepeats%-1 do
             'recLongToneDurationList[count%] := LongDurs[i%];  
             recLongToneDurationIndex%[count%] := i%;
