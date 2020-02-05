@@ -421,8 +421,8 @@ var recLongNoise3%[8][LongPoints3%];   'variables to hold long noises
 var recLongNoise2%[8][LongPoints2%];    
 var recLongNoise1%[8][LongPoints1%];
 var recLongNoise0%[8][LongPoints0%];    
-var recLongNoiseAtten[8][4];                       'variables to hold long noise attenuation    
-var recLongNoiseSeed[8][4];                        'variables to hold long noise attenuation    
+var recLongNoiseAtten[8][nLongTones%];                       'variables to hold long noise attenuation    
+var recLongNoiseSeed[8][nLongTones%];                        'variables to hold long noise attenuation    
     
 'Trial list variables
 var recPWAList%[recMaxStimPerTrial%][recMaxTrial%];     'Holds indices to which PWA to use on each trial, and therefore also indexes recStimList%[][]    

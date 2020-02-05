@@ -14,10 +14,10 @@
 ;V14 is the step size of the ramp for the "long tone", 98 corresponds to about 10 ms
 ;V15 is current amplitude of the "long tone", while ramping
 ;V16 is the number of cycles the "long noise" PWA will repeat
-                SET    0.010,1,0       ;10 microseconds per step (DON'T CHANGE), fastest possible
+                SET      0.010 1 0     ;10 microseconds per step (DON'T CHANGE), fastest possible
                 VAR    V2=0            ;V2 logs whether the sequencer is in use
 0000            JUMP   NEXT
-0001 LWAIT: 'X  MOVI   V2,1            ;Do not allow sequencer access
+0001 LWAIT:  'X MOVI   V2,1            ;Do not allow sequencer access
 0002            DELAY  ms(50)          ;wait an appropriate time to allow PlayWaveCopy to finish
 0003            MOVI   V2,0            ;Allow sequencer access
 0004            JUMP   NEXT
@@ -25,7 +25,7 @@
 ;0006            WAVEGO N               ;Play wave area N
 ;0007 NWAIT:     WAVEBR NWAIT,T         ;Wait until area N begins playing
 ;0008            MARK   1               ;Use digital marker as in long tone
-;0009            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+;0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 ;;0010 N1WAIT:    WAVEBR N1WAIT,S        ;Wait until area N STOPS playing
 ;0010 N1WAIT:    WAVEBR N1WAIT,C        ;Wait until current cycle count changes
 ;0011            DBNZ   V16,N1WAIT      ;Decrement V16 (total cycle count) and await next cycle
@@ -37,7 +37,7 @@
 0006            WAVEGO A               ;Play wave area A
 0007 AAWAIT:    WAVEBR AAWAIT,T        ;Wait until area A begins playing
 0008            MARK   1               ;Use digital marker as in long tone
-0009            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0010 AXWAIT:    WAVEBR AXWAIT,S        ;Wait until area A STOPS playing
 0011            DAC    0,0             ;Set DAC to 0
 0012            MARK   0               ;Use digital marker as in long tone
@@ -47,7 +47,7 @@
 0016            WAVEGO B               ;Play wave area B
 0017 BBWAIT:    WAVEBR BBWAIT,T        ;Wait until area B begins playing
 0018            MARK   1               ;Use digital marker as in long tone
-0019            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+0019            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0020 BXWAIT:    WAVEBR BXWAIT,S        ;Wait until area B STOPS playing
 0021            DAC    0,0             ;Set DAC to 0
 0022            MARK   0               ;Use digital marker as in long tone
@@ -57,7 +57,7 @@
 0026            WAVEGO C               ;Play wave area C
 0027 CCWAIT:    WAVEBR CCWAIT,T        ;Wait until area C begins playing
 0028            MARK   1               ;Use digital marker as in long tone
-0029            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+0029            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0030 CXWAIT:    WAVEBR CXWAIT,S        ;Wait until area C STOPS playing
 0031            DAC    0,0             ;Set DAC to 0
 0032            MARK   0               ;Use digital marker as in long tone
@@ -67,7 +67,7 @@
 0036            WAVEGO D               ;Play wave area D
 0037 DDWAIT:    WAVEBR DDWAIT,T        ;Wait until area D begins playing
 0038            MARK   1               ;Use digital marker as in long tone
-0039            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+0039            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0040 DXWAIT:    WAVEBR DXWAIT,S        ;Wait until area D STOPS playing
 0041            DAC    0,0             ;Set DAC to 0
 0042            MARK   0               ;Use digital marker as in long tone
@@ -77,67 +77,67 @@
 0046            WAVEGO E               ;Play wave area E
 0047 EEWAIT:    WAVEBR EEWAIT,T        ;Wait until area E begins playing
 0048            MARK   1               ;Use digital marker as in long tone
-0049            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+0049            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0050 EXWAIT:    WAVEBR EXWAIT,S        ;Wait until area E STOPS playing
 0051            DAC    0,0             ;Set DAC to 0
 0052            MARK   0               ;Use digital marker as in long tone
 0053            MOVI   V2,0            ;Allow sequencer access
 0054            JUMP   NEXT
-0055 PLAYA: 'A  MOVI   V2,1            ;Do not allow sequencer access
+0055 PLAYA:  'A MOVI   V2,1            ;Do not allow sequencer access
 0056            WAVEGO A               ;Play wave area A
 0057 AWAIT:     WAVEBR AWAIT,T         ;Wait until area A begins playing
 0058            TICKS  V3              ;Place # of ticks at time of play into V3
 0059            MOVI   V2,0            ;Allow sequencer access
 0060            JUMP   NEXT
-0061 PLAYB: 'B  MOVI   V2,1            ;See PLAYA
+0061 PLAYB:  'B MOVI   V2,1            ;See PLAYA
 0062            WAVEGO B
 0063 BWAIT:     WAVEBR BWAIT,T
 0064            TICKS  V3
 0065            MOVI   V2,0
 0066            JUMP   NEXT
-0067 PLAYC: 'C  MOVI   V2,1            ;See PLAYA
+0067 PLAYC:  'C MOVI   V2,1            ;See PLAYA
 0068            WAVEGO C
 0069 CWATT:     WAVEBR CWATT,T         ;note label "CWAIT" is reserved and disallowed
 0070            TICKS  V3
 0071            MOVI   V2,0
 0072            JUMP   NEXT
-0073 PLAYD: 'D  MOVI   V2,1            ;See PLAYA
+0073 PLAYD:  'D MOVI   V2,1            ;See PLAYA
 0074            WAVEGO D
 0075 DWATT:     WAVEBR DWATT,T         ;note label "DWAIT" is reserved and disallowed
 0076            TICKS  V3
 0077            MOVI   V2,0
 0078            JUMP   NEXT
-0079 PLAYE: 'E  MOVI   V2,1            ;See PLAYA
+0079 PLAYE:  'E MOVI   V2,1            ;See PLAYA
 0080            WAVEGO E
 0081 EWAIT:     WAVEBR EWAIT,T
 0082            TICKS  V3
 0083            MOVI   V2,0
 0084            JUMP   NEXT
-0085 PLAYF: 'F  MOVI   V2,1            ;See PLAYA
+0085 PLAYF:  'F MOVI   V2,1            ;See PLAYA
 0086            WAVEGO F
 0087 FWAIT:     WAVEBR FWAIT,T
 0088            TICKS  V3
 0089            MOVI   V2,0
 0090            JUMP   NEXT
-0091 PLAYS: 'G  MOVI   V2,1            ;See PLAYA
+0091 PLAYS:  'G MOVI   V2,1            ;See PLAYA
 0092            WAVEGO G
 0093 GWAIT:     WAVEBR GWAIT,T
 0094            TICKS  V3
 0095            MOVI   V2,0
 0096            JUMP   NEXT
-0097 PLAYH: 'H  MOVI   V2,1            ;See PLAYA
+0097 PLAYH:  'H MOVI   V2,1            ;See PLAYA
 0098            WAVEGO H
 0099 HWAIT:     WAVEBR HWAIT,T
 0100            TICKS  V3
 0101            MOVI   V2,0
 0102            JUMP   NEXT
-0103 PLAYI: 'I  MOVI   V2,1            ;See PLAYA
+0103 PLAYI:  'I MOVI   V2,1            ;See PLAYA
 0104            WAVEGO I
 0105 IWAIT:     WAVEBR IWAIT,T
 0106            TICKS  V3
 0107            MOVI   V2,0
 0108            JUMP   NEXT
-0109 PLAYJ: 'J  MOVI   V2,1            ;See PLAYA
+0109 PLAYJ:  'J MOVI   V2,1            ;See PLAYA
 0110            WAVEGO J
 0111 JWAIT:     WAVEBR JWAIT,T
 0112            TICKS  V3
@@ -152,7 +152,7 @@
 0120            DIGOUT [.......0]      ;Set output low (close solenoid)
 0121            MOVI   V2,0            ;Allow sequencer access
 0122            JUMP   NEXT
-0123 STIM:  'Z  MOVI   V2,1            ;Do not allow sequencer access
+0123 STIM:   'Z MOVI   V2,1            ;Do not allow sequencer access
 0124            MULI   V9,ms(1)        ;Multiply V9 (ms) by #clock ticks/ms, put in V9
 0125            DELAY  V9              ;Delay stimulation
 0126            DIGOUT [....11..]      ;Pulse output for stimulator(s), (DIGOUT 2/3)
@@ -188,7 +188,7 @@
 0156            DIGOUT [.......0]      ;Set output low for solenoid, in case
 0157            MOVI   V2,0            ;Allow sequencer access
 0158            JUMP   NEXT            ;Extra DIGOUT bit for solenoid monitor
-0159 LEDON: 'L  MOVI   V2,1            ;Do not allow sequencer access
+0159 LEDON:  'L MOVI   V2,1            ;Do not allow sequencer access
 0160            DIGOUT [......1.]      ;Turn LED on, LED connects to Digital Outputs 1
 0161            BGT    V4,0,FLOFFW     ;If FLASH sequence exists, jump to FLASH OFF WAIT
 0162            JUMP   EXITLED
@@ -225,7 +225,7 @@
 0193            ANGLE  0,0             ;Reset tone to phase 0
 0194            RATE   0,V12           ;Start the tone
 0195            MARK   1               ;Mark onset of tone on digital marker channel
-0196            TICKS  V3              ;Redundant, but get time of onset (plus one tick) again
+0196            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0197 RAMPUP:    ADD    V15,V14         ;Increment current tone amplitude
 0198            BGE    V15,V11,UPDONE  ;If we are finished with ramp, branch
 0199            SZ     0,V15,RAMPUP    ;Increment amplitude of tone and repeat
@@ -241,8 +241,9 @@
 0209            JUMP   NEXT
 0210 SILENCE: 'U DELAY 6               ;Delay equal to LONGTONE delay
 0211            MARK   1               ;Mark "onset" of silence
-0212            DELAY  V13             ;Delay duration of tone
-0213            DELAY  10              ;Delay duration of additional stuff in LONGTONE
-0214            MARK   0               ;Mark "offset" of silence
-0215            JUMP   NEXT
-0216 NEXT:      NOP
+0212            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
+0213            DELAY  V13             ;Delay duration of tone
+0214            DELAY  10              ;Delay duration of additional stuff in LONGTONE
+0215            MARK   0               ;Mark "offset" of silence
+0216            JUMP   NEXT
+0217 NEXT:      NOP    

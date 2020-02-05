@@ -697,7 +697,7 @@ Proc InitializePlayWaveAreasLongBP()
     
     for i% := 0 to nLongTones%-1 do
         
-        nPoints% := recPlayRateHz*LongDurs[i%];
+        nPoints% := recPlayRateHz*(LongDurs[i%]+0.020);  'have to add in the ramp
         'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
         'that we assign to them in the sequencer code are lower case equivalents (capital jump points
         'are reserved for traditional model)
@@ -2104,7 +2104,7 @@ func PrepareLongNoiseAllAtOnce()
         'for each long noise stimulus
         for i% := 0 to nLongTones%-2 do 'don't create noise on the silent trial
             
-            lndur := (LongDurs[i%]+0.20)*1000;  'Calculate actual duration, in ms, have to add in ramp
+            lndur := (LongDurs[i%]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
             lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
             
             'for each repeat of the tone, we can make an independent noise, not frozen 
@@ -2175,6 +2175,7 @@ func PrepareLongNoiseAllAtOnce()
                 
                 recLongNoiseAtten[j%][i%] := atten;
                 recLongNoiseSeed[j%][i%] := seed;
+
                 docase
                 case i% = 0 then
                     ArrConst(recLongNoise0%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
@@ -2209,6 +2210,7 @@ func LoadLongNoiseToPWA%()
     var status%;
     var lndur;
     var lnpad%;
+    var wtf%[1000];
     
     'Get play wave area
     pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
@@ -2216,7 +2218,7 @@ func LoadLongNoiseToPWA%()
     printlog("current trial is %d\n",recCurrentTrial%); 
     printlog("Playwavechar is %s\n",pwchar$);
     
-    lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.20)*1000;  'Calculate actual duration, in ms, have to add in ramp
+    lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
     lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
          
     'Mark it zero, dude
@@ -2225,11 +2227,11 @@ func LoadLongNoiseToPWA%()
     docase
     case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
         ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
-    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+    case recLongToneDurationIndex%[recCurrentTrial%] = 1 then
         ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
-    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+    case recLongToneDurationIndex%[recCurrentTrial%] = 2 then
         ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
-    case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
+    case recLongToneDurationIndex%[recCurrentTrial%] = 3 then
         ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
     'In the case of index = 5, we want silence anyways, so leave it marked zero, dude.
     endcase
@@ -2238,22 +2240,21 @@ func LoadLongNoiseToPWA%()
     'Note that for the time being I've actually repented of this decision 15 seconds after I made it seeing as the
     'delay for loading the PWA might be significant enough that *not* loading zeros changes the timing.  I reserve
     'the right to un-repent of this decision at any point.
-    'if recLongToneDurationIndex%[recCurrentTrial%] < nLongTones% or LongNoiseBlock% = 0 then
+    'if recLongToneDurationIndex%[recCurrentTrial%] < nLongTones% or LongNoiseBlock% = 0 then    
+    playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise2%[0:lnpad%]); 
+    if playWaveCopyOK% < 0 then 'error
+        message("There has been an error in PlayWaveCopy!  Check Log File!");
+        printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+    endif;
     
-        playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise2%[]); 
-        if playWaveCopyOK% < 0 then 'error
-            message("There has been an error in PlayWaveCopy!  Check Log File!");
-            printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
-        endif;
-        
-        SafeSampleKey("X"); 'put in load delay (may not be long enough??)
-        
-        'Set attenuation per stimulus when we load the PWA
-        status% := recAttenByID%(recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]],arrayPA4ID%);
-        if status% <> 0 then
-            printlog("Problem setting attenuation for long noise!\n");
-            return 0;
-        endif; 
+    SafeSampleKey("X"); 'put in load delay (may not be long enough??)
+    
+    'Set attenuation per stimulus when we load the PWA
+    status% := recAttenByID%(recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]],arrayPA4ID%);
+    if status% <> 0 then
+        printlog("Problem setting attenuation for long noise!\n");
+        return 0;
+    endif; 
     'endif
     
     
@@ -4575,8 +4576,8 @@ func IdleLoop%()
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event();
             
-                s$ := Print$("Sound %s,LongNoiseBB,%d,%d,%.1f,%.1f,%s,BB,seed=%s", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
-                recLongToneTargetdB, Str$(recLongToneDuration) + "s",Str$(recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]));
+                s$ := Print$("Sound %s,LongNoiseBB,%d,%d,%.1f,%.1f,%s,BB,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
+                recLongToneTargetdB, Str$(recLongToneDuration) + "s",recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]);
                 SampleText(s$,StimOn);
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
@@ -4587,8 +4588,8 @@ func IdleLoop%()
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event();
                 
-                s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s,%s,seed=%s", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
-                recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz",Str$(recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]));
+                s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s,%s,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
+                recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz",recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]);
                 SampleText(s$,StimOn);
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
@@ -4600,6 +4601,7 @@ func IdleLoop%()
         case iState% = stateFindDigMarkOn% then
             while foundDigMarkOnTime < tStateStart and tNow < tLongToneStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
                 foundDigMarkOnTime := NextTime(32,tStateStart,digCode%[]);
+                tNow := View(recDataWindowView%).MaxTime();
             wend
             if foundDigMarkOnTime >= tStateStart then
                 expectedOffTime := foundDigMarkOnTime + recLongToneDuration;
