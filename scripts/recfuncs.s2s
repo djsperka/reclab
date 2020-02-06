@@ -721,3 +721,174 @@ func Get1401Type%()
     endcase
     
 end
+
+
+
+
+
+'Stolen from Usrey lab - thanks Dan!
+
+
+'****f* Spike2Util/MiscUtilities/GetParameterProgression%
+' NAME
+' GetParameterProgression%
+' SYNOPSIS
+' Prepares an array containing a set of parameters that progress from a starting
+' value to an ending value. The progression can be linear or logarithmic, and 
+' the order of the parameters can be randomized.
+' INPUTS
+' n% : Number of values to generate
+' result[] : Parameter values are placed here
+' indices%[] : Indices into result[] array. Use these to obtain the progression requested
+' firstval : first/starting parameter value 
+' lastval : last/ending parameter value
+' ilog% : Generate linear (log) progression if ilog = 0 (1). 
+' irandom% : randomize order of indices%[] when this <> 0
+' RETURN VALUE
+' Returns 0 on success, nonzero value otherwise (bad value for n%, or else result/indices 
+' not large enough)
+' NOTES
+' For log progressions both firstval and lastval must be > 0. 
+'
+' The array indices%[] is the order you should follow when accessing the 
+' values in result[]. In other words, the order of the parameters is 
+' result[indices%[0]], result[indices%[1]], ... 
+' In the case of a non-randomized progression you can use this method or you can 
+' safely use result[0], result[1], ....
+' SEE ALSO
+' GetRepeatedParameterProgression
+'****
+
+func GetParameterProgression%(n%, result[], indices%[], firstval, lastval, ilog%, irandom%)
+    var status% := 0;
+    docase
+    case Len(result[]) < n% or Len(indices%[]) < n% then
+        status% := 1;
+    case n% < 2 then
+        status% := 1;
+    case ilog% <> 0 and (firstval <= 0 or lastval<= 0) then
+        status% := 1;
+    else
+        var stepsize;
+        var i%;
+        for i% := 0 to n%-1 do
+            indices%[i%] := i%;
+        next
+        if ilog% <> 0 then
+            var firstlog, lastlog;
+            ' Generate log progression
+            firstlog := log(firstval);
+            lastlog := log(lastval);
+            stepsize := (lastlog - firstlog)/(n%-1);
+            for i% := 0 to n%-1 do
+                result[i%] := pow(10, firstlog + i% * stepsize);
+            next;
+        else
+            ' Generate linear progression
+            stepsize := (lastval - firstval)/(n%-1);
+            for i% := 0 to n%-1 do
+                result[i%] := firstval + i% * stepsize;
+            next;
+        endif
+        
+        if irandom% <> 0 then
+            Shuffle%(n%, indices%[]);
+        endif
+        
+    endcase
+    return status%;
+end
+
+'****f* Spike2Util/MiscUtilities/GetRepeatedParameterProgression%
+' NAME
+' GetRepeatedParameterProgression%(n%, nr%, result[], indices%[], firstval, lastval, ilog%, irandom%)
+' SYNOPSIS
+' Prepares an array containing a set of parameters that progress from a starting
+' value to an ending value. The progression can be linear or logarithmic, and 
+' the order of the parameters can be randomized. In addition, the set may be repeated
+' any number of times. 
+' n% : Number of values to generate
+' nr% : Number of repeats to generate
+' result[] : Parameter values are placed here
+' indices%[] : Indices into result[] array. Use these to obtain the progression requested
+' firstval : first/starting parameter value 
+' lastval : last/ending parameter value
+' ilog% : Generate linear (log) progression if ilog = 0 (1). 
+' irandom% : randomize order of indices%[] when this <> 0
+' RETURN VALUE
+' Returns 0 on success, nonzero value otherwise (bad value for n%, or else result/indices 
+' not large enough)
+' NOTES
+' For log progressions both firstval and lastval must be > 0. 
+'
+' The array indices%[] is the order you should follow when accessing the 
+' values in result[]. In other words, the order of the parameters is 
+' result[indices%[0]], result[indices%[1]], ... 
+' In the case of a non-randomized progression you can use this method or you can 
+' safely use result[0], result[1], ....
+' 
+' The indices always complete a set of n% values (0...n%-1) before starting another set. 
+' SEE ALSO
+' GetParameterProgression
+'****
+
+
+func GetRepeatedParameterProgression%(n%, nr%, result[], indices%[], firstval, lastval, ilog%, irandom%)
+    var status% := 0;
+    docase
+    case Len(result[]) < n%*nr% or Len(indices%[]) < n%*nr% then
+        status% := 1;
+    case n% < 2 or nr% < 1 then
+        status% := 1;
+    else
+        var ir%;
+        var is%;
+        for ir% := 0 to nr%-1 do
+            is% := GetParameterProgression%(n%, result[ir%*n%:n%], indices%[ir%*n%:n%], firstval, lastval, ilog%, irandom%);
+            if is% <> 0 then
+                PrintLog("GetRepeatedParameterProgression%()", "Error (" + str$(is%) + ")during repeat# " + str$(ir%));
+                status% := is%;
+            endif
+        next
+    endcase
+    return status%;
+end
+
+
+
+'****f* Spike2Util/MiscUtilities/Shuffle%
+' NAME
+' Shuffle%(n%, list%[])
+' SYNOPSIS
+' Shuffles a list of INDICES.  Overwrites any values in list%[], up to and including index n%-1.
+' INPUTS
+' n% : the number of elements in list%[] to turn to shuffled indices
+' list%[] : array of values, overwritten with shuffled indices from 0:n%-1 in locations 0:n%-1
+' RETURN VALUE
+' Returns 0 on success, 1 otherwise (n% < 1 or length of list%[] less than n%). 
+'****
+
+func Shuffle%(n%, list%[])
+    var status% := 0;
+    var i%, si%, tmp%;
+    if n% < 1 or Len(list%[]) < n% then
+        status% := 1;
+    else
+        ' populate the list%[] array with indices. 
+        for i% := 0 to n%-1 do
+            list%[i%] := i%; 
+        next;
+        
+        ' Step thru the indices from 0 to n%-2. At each index, we consider the array starting at the 
+        ' current index and ending at the end of the array. If there are M elements in that array, 
+        ' draw a random number between 0 and M-1. Swap the index at that position with the index at 
+        ' position 0. Step to the next index and repeat. 
+        for i% := 0 to n%-2 do
+            si% := Rand(n%-i%, i%);
+            tmp% := list%[i%];
+            list%[i%] := list%[si%];
+            list%[si%] := tmp%;
+        next;
+    endif
+    return status%;
+end

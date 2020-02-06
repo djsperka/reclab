@@ -7426,18 +7426,22 @@ func GenTrialsLongTone%()
         return 0;
     endif;
     
-    for i% := 0 to nLongTones%-1 do
-        for j% := 0 to recLongToneNRepeats%-1 do
-            'recLongToneDurationList[count%] := LongDurs[i%];  
-            recLongToneDurationIndex%[count%] := i%;
-            count% += 1;
-        next
-    next
+    'for i% := 0 to nLongTones%-1 do
+    '    for j% := 0 to recLongToneNRepeats%-1 do
+    '        'recLongToneDurationList[count%] := LongDurs[i%];  
+    '        recLongToneDurationIndex%[count%] := i%;
+    '        count% += 1;
+    '    next
+    'next
+    '
+    'if recDoNotShuffle% = 0 then
+    '    'ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recLongToneDurationList (only valid indices)
+    '    ShuffleList%(recLongToneDurationIndex%[0:recNTrials%]);  'create a randpermed version of recLongToneDurationIndex% (only valid indices)   
+    'endif;
     
-    if recDoNotShuffle% = 0 then
-        'ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recLongToneDurationList (only valid indices)
-        ShuffleList%(recLongToneDurationIndex%[0:recNTrials%]);  'create a randpermed version of recLongToneDurationIndex% (only valid indices)   
-    endif;
+    'Use Usrey randomization to get blocked random - note that the values going into recLongToneDurationList[] are not correct and will be overwritten - just need a variable the right size here
+    GetRepeatedParameterProgression%(nLongTones%, recLongToneNRepeats%, recLongToneDurationList[], recLongToneDurationIndex%[], 1, nLongTones%, 0, 1-recDoNotShuffle%)
+    
     
     for i% := 0 to recNTrials%-1 do
         recLongToneDurationList[i%] := LongDurs[recLongToneDurationIndex%[i%]];
