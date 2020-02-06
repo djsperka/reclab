@@ -7440,7 +7440,7 @@ func GenTrialsLongTone%()
     'endif;
     
     'Use Usrey randomization to get blocked random - note that the values going into recLongToneDurationList[] are not correct and will be overwritten - just need a variable the right size here
-    GetRepeatedParameterProgression%(nLongTones%, recLongToneNRepeats%, recLongToneDurationList[], recLongToneDurationIndex%[], 1, nLongTones%, 0, 1-recDoNotShuffle%)
+    GetRepeatedParameterProgression%(nLongTones%, recLongToneNRepeats%, recLongToneDurationList[], recLongToneDurationIndex%[], 1, nLongTones%, 0, 1-recDoNotShuffle%);
     
     
     for i% := 0 to recNTrials%-1 do
