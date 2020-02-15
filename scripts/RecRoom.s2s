@@ -1895,7 +1895,8 @@ func RecExpSearchDialog%()
     RecSearchGetParams();
     if recSearchStimType% = 4 then
         ' Initial calculation of dB steps for tone sweeps
-        GetLogProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);   
+        GetLogProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]); 
+        'GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);        
         ' Followed by initial stringification
         recSearchToneSweepFreqList$ := StringifyProgression2$(recSearchToneSweepNSteps%, recSearchToneSweepFreqList[0:recSearchToneSweepNSteps%], inds%[],0);
     else
