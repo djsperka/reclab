@@ -6297,7 +6297,7 @@ func RecLoadTrialsFile9%(fileLoc$,&totalTrials%)
     readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
     
     'Skip past the header line
-    numRead% := read(readLine$[0:7]);
+    numRead% := read(readLine$[0:9]);
     
     while keepGoing% do
         'Read the next line in the file, return line and number of fields read
