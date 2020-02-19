@@ -20,11 +20,13 @@ var DrivePath$;
 DrivePath$ := GetDrivePath$();
 
 var ConfigFileName$;
-ConfigFileName$ := DrivePath$ + "Users\\reclab\\Desktop\\work\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
+'ConfigFileName$ := DrivePath$ + "Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
+ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
 var i%;
 var j%;
 var SeqFileName$;
-SeqFileName$ := DrivePath$ + "Users\\reclab\\Desktop\\work\\reclab\\scripts\\seq_control_strf_2.PLS";
+'SeqFileName$ := DrivePath$ + "Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";
+SeqFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";
 var ctview%;
 var NumRepeats% := 5;
 var fs;             'sample rate to play stims at, real version
