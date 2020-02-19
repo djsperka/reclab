@@ -220,7 +220,6 @@ var digCode%[4];
 var SamplingCommitPeriod := 30;  'This will be more specific, we will auto-commit between trials if it has been at least 30 seconds
 var LastSamplingCommitTime := 0;
 
-'#include "reccreate.s2s"  'functions for creation of stimuli, superceded by reclab_panstim.m
 #include "RecJoystickFuncs.s2s"
 
 'This is the overarching function which is called by the main (template) file
@@ -459,6 +458,9 @@ proc CreateSampleConfiguration()
         '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
     next;
     
+    ' NOTE: wavemark channels must be b/w 1-100    
+    'Actual sampling rate may vary! (constrained by hardware)
+    
     'This bit hacked out, jj 11/6/2019
     '    ' Record as many electrodes as specified in Experiment Selection Dialog
     '    if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
@@ -506,12 +508,7 @@ proc CreateSampleConfiguration()
     '    endif
     
     
-    ' NOTE: wavemark channels must be b/w 1-100    
-    'Note that the sample rate is strange (28 kHz).  These are exactly the Usrey lab conventions, so whatevs.
-    'Actual sampling rate may vary! (constrained by hardware)
-    
-    
-    printlog("PLS file load success is %d\n",SampleSequencer(script$ + "recgen.pls")+1); 'Load sample sequencer
+    printlog("PLS file load success is %d\n",SampleSequencer(script$ + "recgen.pls")+1); 'Load sample sequencer script
     
     ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
     ' The second arg groups channels with same ideal rates together so they all get same 
@@ -1045,8 +1042,12 @@ Func PlayTwoSounds%(whichStim%)
         spkrArray% := recDistractorSpeakerList%[whichStim%][playInd%];
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
-        printlog("CAL ATTEN INDICES ARE:  thisStimArray %d, sprkArray %d\n",thisStimArray%,spkrArray%-1);
-        calattenArray := recTrialStimCalDistractor[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
+        if recMatGenStim% = 1 then
+            calattenArray := recStereoDisGeneratedAttenList[whichStim%][0];
+        else  'loading stimulus, cal value was in stimcal file
+            printlog("CAL ATTEN INDICES ARE:  thisStimArray %d, sprkArray %d\n",thisStimArray%,spkrArray%-1);
+            calattenArray := recTrialStimCalDistractor[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
+        endif
         
         'Get trial-based attenuation for current stimulus
         trlattenArray := recDistractorDeltadBList[whichStim%][playInd%];
@@ -1066,7 +1067,11 @@ Func PlayTwoSounds%(whichStim%)
         'S1/S2 are on standalone speaker by definition
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
-        calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
+        if recMatGenStim% = 1 then
+            calattenSA := recStereoDisGeneratedAttenList[whichStim%][1];
+        else  'loading stimulus, cal value was in stimcal file
+            calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
+        endif;
         
         'Get trial-based attenuation for current stimulus
         trlattenSA := recDeltadBList[whichStim%][playInd%];
@@ -1209,13 +1214,18 @@ Func PlayTwoSounds%(whichStim%)
         docase
         case recExpToRun% = recExpFRAButton% then
             s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
-            s2$ := Print$("Sound2 %s,silence,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);             
-        case recExpToRun% = recExpStereoDisButton% then
-            s$ := Print$("Sound %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
-            s2$ := Print$("Sound2 %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
+            s2$ := Print$("Sound2 %s,silence,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]); 'This is weird to point out "silence" but the placeholder might be useful in the future.        
+        case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then   
+            s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, NameThatStimulusStereoDis$(recStimList%[whichStim%][playInd%],whichStim%,playInd%));  
+            s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulusStereoDis$(recDistractorStimList%[whichStim%][playInd%],whichStim%,playInd%));  
+        case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then
+            s$ := Print$("Sound2 %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
+            s2$ := Print$("Sound %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
         endcase            
         SampleText(s$, StimOn);
-        SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
+        if whichStim% > 1 then 'only sampletext the distractor stimulus if it is playing
+            SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
+        endif;
         
     endif
     
@@ -2086,6 +2096,11 @@ end
 'end
 
 
+'This function creates all of the (up-to-100-second) long BB/BP stimuli and holds them in a variable.
+'It is called when sampling starts and it takes on the order of two minutes to run, but once it is run
+'things go quickly (the load to the PWA is fast enough to get under the ISI, at least).  This allows
+'us to present the long noise stimuli without clicking, and with good dB control, and without having
+'to worry about giving the animal clues about how long the next one will be.
 func PrepareLongNoiseAllAtOnce()
     var atten;
     var seed;
@@ -2501,7 +2516,7 @@ end
 
 
 
-'------- PrepareNextTrial2PWAs% --------------------------------------------------------
+'------- PrepareNextTrial2PWAs --------------------------------------------------------
 ' 
 ' Called prior to initiating a set of S1/S2 stimuli, for scenarios like Stereo Distractor that
 ' have double-barreled PWAs.
@@ -2517,7 +2532,7 @@ end
 'distractor position as zeroes.
 
 
-func PrepareNextTrial2PWAs%(loadPWAs%)
+func PrepareNextTrial2PWAs(loadPWAs%)
     var i%;
     var ind%;
     var indD%;
@@ -2550,7 +2565,7 @@ func PrepareNextTrial2PWAs%(loadPWAs%)
     
     
     
-    ' Put current trial sequence into log file
+    ' Put current trial sequence into log file (this may not be an ideal log, but it's basically unused so it's a low priority)
     if recDebug% > 0 then
         printlog("recCurrentTrial is %d\n",recCurrentTrial%);
         printlog("thisTrial is %d\n",thisTrial%);
@@ -2560,7 +2575,7 @@ func PrepareNextTrial2PWAs%(loadPWAs%)
         for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
             ' Get current PWA
             thisPWA% := recPWAList%[i%][thisTrial%];
-            ' Print stmulus number
+            ' Print stimulus number
             PrintLog(str$(recStimList%[thisPWA%][thisTrial%]) + " ");
         next
         PrintLog("\nPWAs: ");
@@ -2576,41 +2591,152 @@ func PrepareNextTrial2PWAs%(loadPWAs%)
     
     if loadPWAs% = 1 then
         ' Generate/Load stimuli and put them into PlayWaveAreas
-        for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
+        for i% := 0 to recTrialTerminalIndex%[thisTrial%] do  'go through S1, S2
             'Note that this actually SHOULD work for scenarios where there are more than one S1 stimulus,
             'well except that the recDistractorStimList%[] would need to be 2-D, I think.
             
             'Get play wave area for current stimulus
             pwChar$ := GetPlayWaveKey$(i%); 
             
-            'get index of trial
+            'get index of trial to index into stim file
             ind% := recStimList%[i%][thisTrial%];
             indD% := recDistractorStimList%[i%][thisTrial%];
-            
-            'get speaker of trial - SPEAKER IS UNUSED IN THIS FUNCTION
-            'thisSpkr% := recSpeakerList%[i%][thisTrial%];
-            'thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker (also this doesn't get used!)
             
             'Set rec2StimTransfer%[] to zeros
             arrconst(rec2StimTransfer%[][],0);  
             
             docase
-                'case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this enables testing, currently no double-barreled PWA experiments allow generated stimuli
-                'don't do anything, just pretend all is OK - ACTUALLY, AGAIN NOT SURE THIS IS NEEDED AS GENERATED STIM THROWS AN ERROR BELOW
+            case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this enables testing, currently no double-barreled PWA experiments allow generated stimuli
+                'don't do anything, just pretend all is OK
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 'Really, this isn't a boo-boo we should expect, but I'm leaving it in in case it's useful down the road
-                message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
+                message("Holy crap, I can't generate the stimulus because Matlab has not been initialized!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 SafeSampleKey("M");  'Turn off LED
                 Stop%();
                 return -1;
-            case recMatGenStim% = 1 then  'this is a different boo-boo
-                'We shouldn't get here but just in case
-                message("There are currently no experiments designed to GENERATE stims for a double-barreled PWA!  Quitting!");
-                recReadyToQuit% := 1;  'This will allow the entire thing to quit
-                SafeSampleKey("M");  'Turn off LED
-                Stop%();
-                return -1;    
+            case recMatGenStim% = 1 then  'Generate stimuli if Matlab is present (even if CED isn't!)
+                
+                'get speaker of trial, used to calculate attenuation 
+                thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
+                
+                'Generate the stimulus, for stereo dis this will be an AM
+                
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",recTrialGenTonePhaseDeg[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",recTrialGenGauss%[ind%]);  
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",recTrialGenRampMS[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueInt%("seed",recTrialGenSeed%[ind%]);  
+                matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxPoints%);
+                matPutOK% := matPutOK% + PutMatlabValueInt%("spk",thisSpkr%);
+                
+                if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+                    message("There has been an error in sending data to Matlab!  Quitting!");
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SafeSampleKey("M");  'Turn off LED
+                    Stop%();
+                    return -1;
+                endif;
+                
+                'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
+                if recCalibIsPresent% = 1 then
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,stAFFT(1,spk));";  'this is for the FFT filtering method, for the standalone
+                    'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                else
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                endif;
+                EvalMatlabStatement%(statement$);
+                'printlog("%s\n",statement$);
+                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+                
+                
+                'Get the stimulus and the seed back from Matlab
+                matGetStimOK%:= GetMatlabValueIntArray%("stimulus",rec2StimTransfer%[][1]);  '<----- NOTE THAT STIMULUS GOES TO DAC1, BECAUSE DAC1 IS CONNECTED TO THE STANDALONE
+                matGetAttenOK% := GetMatlabValueFloat%("atten65",recStereoDisGeneratedAttenList[i%][1]);  'put current random seed into variable for setting PA4
+                matGetSeedOK% := GetMatlabValueInt%("seed",recStereoDisSeedList%[i%][1]);  'put current random seed into variable for NameThatStimulus
+                
+                docase
+                case matGetStimOK% < 0 then 'error
+                    message("There has been an error in getting stimulus data from Matlab!");
+                case matGetAttenOK% < 0 then 'error
+                    message("There has been an error in getting atten data from Matlab!");
+                case matGetSeedOK% < 0 then 'error
+                    message("There has been an error in getting seed data from Matlab!");
+                endcase;
+                
+                
+                
+                'Generate the distractor, but only during the S2 (or subsequent S1s, which is something Dominique talked about briefly, dunno if those will be implemented ever)
+                if i% > 0 then  'do not generate a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes
+                    
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[indD%]);  'Ditto
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",recTrialGenTonePhaseDeg[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",recTrialGenGauss%[indD%]);  
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",recTrialGenRampMS[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueInt%("seed",recTrialGenSeed%[indD%]);  
+                    matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxPoints%);
+                    matPutOK% := matPutOK% + PutMatlabValueInt%("spk",thisSpkr%);
+                    
+                    if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+                        message("There has been an error in sending data to Matlab!  Quitting!");
+                        recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                        SafeSampleKey("M");  'Turn off LED
+                        Stop%();
+                        return -1;
+                    endif;
+                    
+                    'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
+                    if recCalibIsPresent% = 1 then
+                        statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method, for the current Array
+                        'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                    else
+                        statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                    endif;
+                    EvalMatlabStatement%(statement$);
+                    'printlog("%s\n",statement$);
+                    'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                    'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                    'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+                    
+                    
+                    'Get the stimulus and the seed back from Matlab
+                    matGetStimOK%:= GetMatlabValueIntArray%("stimulus",rec2StimTransfer%[][0]);  '<----- NOTE THAT DISTRACTOR GOES TO DAC0, BECAUSE DAC0 IS CONNECTED TO THE PM1
+                    matGetAttenOK% := GetMatlabValueFloat%("atten65",recStereoDisGeneratedAttenList[i%][0]);
+                    matGetSeedOK% := GetMatlabValueInt%("seed",recStereoDisSeedList%[i%][0]);  'put current random seed into variable for NameThatStimulus
+                    
+                    docase
+                    case matGetStimOK% < 0 then 'error
+                        message("There has been an error in getting stimulus data from Matlab!");
+                    case matGetAttenOK% < 0 then 'error
+                        message("There has been an error in getting atten data from Matlab!");
+                    case matGetSeedOK% < 0 then 'error
+                        message("There has been an error in getting seed data from Matlab!");
+                    endcase;
+                    
+                    
+                    
+                endif;
+                
+                
+                
+                
+                
             else  'Load stimuli from file (which is the ONLY thing we can legally do right now for this double-wide PWA thingy)
                 
                 if i% > 0 then  'do not load a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes
@@ -2670,7 +2796,9 @@ func PrepareNextTrial2PWAs%(loadPWAs%)
                     'Stop%();
                     'return -1;
                 endif;
-                SafeSampleKey("X");  'This puts in a delay (timed on the sequencer) to prevent 'too fast' calls to play the stim after loading
+                if i% = recTrialTerminalIndex%[thisTrial%] then
+                    SafeSampleKey("X");  'This puts in a delay (timed on the sequencer) to prevent 'too fast' calls to play the stim after loading, only do for last PWA
+                endif;
             endif;
             
         next;
@@ -2681,6 +2809,7 @@ func PrepareNextTrial2PWAs%(loadPWAs%)
     return ok%;
     
 end
+
 
 
 
@@ -2852,7 +2981,8 @@ func IdleLoop%()
             tNow += .05;  'simulate 50 ms between loops
         endif
         
-        'Don't repeat this (internal) loop unless there is a state change or specifically asked to below for timing purposes
+        'Don't repeat this (internal) loop unless there is a state change (ChangeStateTo() will set to 1)
+        'or specifically asked to below for timing purposes
         nextStateImmed% := 0; 
         
         
@@ -2915,7 +3045,7 @@ func IdleLoop%()
                 
                 docase
                 case recExpToRun% = recExpStereoDisButton% then
-                    stmp% := PrepareNextTrial2PWAs%(1);
+                    stmp% := PrepareNextTrial2PWAs(1);
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then
                     stmp% := PrepareNextTrial%(1); 'load PWAs, should gracefully pass through in debug mode as well
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 0 then    
@@ -2937,7 +3067,7 @@ func IdleLoop%()
                     RecLogStatus("PrepareNextTrial", "Error return value from PrepareNextTrial%");
                     ChangeStateTo(stateCodingError%);
                 else
-                    recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful load of new trial.
+                    recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful PWA load of new trial.
                     docase
                     case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then 
                         recAudiogramStartNewTrial% := 0;  'the increment above has been accepted, don't let it increment again until new frequency is needed
@@ -2945,7 +3075,7 @@ func IdleLoop%()
                         'recCurrentTrial% -= 1;  'if we are not starting a new trial on audiogram, undo increment of trial counter (now more correctly done earlier -jj 8/21/17)
                     endcase;
                     RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
-                    RecLogStatus("Passive task", "True: " + str$(recAMSPPassiveTask%));
+                    RecLogStatus("Passive task", "True: " + str$(recAMSPPassiveTask%));  'seems pretty unnecessary, not dealing with it now just in case (jj 2/13/2020)
                     ChangeStateTo(stateDetermineRewardType);  'We are no longer DeterminingRewardType as microstim is dead, just sampletexting at this point
                 endcase
             else  'but if paused, check to see if we have a call out to a dialog box to change values
@@ -3258,7 +3388,7 @@ func IdleLoop%()
             '                tNextTrial := tNow;
             '            endif
             ChangeStateTo(stateDetermineRewardType);  'we should not enter this state
-            RecLogStatus("LazyMonkeyTimeout","Entered Lazy Monkey Timeout!  This should currently be disabled, so WTF?!?");
+            RecLogStatus("LazyMonkeyTimeout","Entered Lazy Monkey Timeout!  This should currently be disabled, so WTF?!?"); 'log status that cannot be reached put in for...reasons, I guess
             
             
             
@@ -3280,7 +3410,7 @@ func IdleLoop%()
                 'for all other experiments we are generous and treat this as a slip
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 SafeSampleKey("M");  'turn off LED
-                ChangeStateTo(stateDetermineRewardType);  'no interrupt penalty, it's probably a slip, just start over
+                ChangeStateTo(stateDetermineRewardType);  'no interrupt penalty, it's probably a slip, just start over, trial already loaded
                 tNextTrial := tNow;
                 recDelayIntervalInterrupt% := 1;
             case tNow - tStateStart >= recDelayIntervalTime then
