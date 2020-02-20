@@ -2618,12 +2618,12 @@ func PrepareNextTrial2PWAs(loadPWAs%)
             case recMatGenStim% = 1 then  'Generate stimuli if Matlab is present (even if CED isn't!)
                 
                 'get speaker of trial, used to calculate attenuation 
-                thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
+                thisSpkr% := recSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
                 
                 'Generate the stimulus, for stereo dis this will be an AM
-                
+                'printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]*1000);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
@@ -2654,7 +2654,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 endif;
                 EvalMatlabStatement%(statement$);
                 'printlog("%s\n",statement$);
-                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("Values are %d %d %d %d ",recTrialDur[ind%]*1000,recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
                 'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
@@ -2678,8 +2678,11 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 'Generate the distractor, but only during the S2 (or subsequent S1s, which is something Dominique talked about briefly, dunno if those will be implemented ever)
                 if i% > 0 then  'do not generate a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes
                     
+                    'get speaker of trial, used to calculate attenuation 
+                    thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
+                    'printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialDur[indD%]);
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]*1000);  'size of trial is variable, that's OK
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[indD%]);  'Ditto
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[indD%]);
