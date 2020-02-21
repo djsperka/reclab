@@ -1043,7 +1043,7 @@ Func PlayTwoSounds%(whichStim%)
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         if recMatGenStim% = 1 then
-            calattenArray := recStereoDisGeneratedAttenList[whichStim%][0];
+            calattenArray := recStereoDisGeneratedAttenList[whichStim%][0] - recStereoDisdB + 65;
         else  'loading stimulus, cal value was in stimcal file
             printlog("CAL ATTEN INDICES ARE:  thisStimArray %d, sprkArray %d\n",thisStimArray%,spkrArray%-1);
             calattenArray := recTrialStimCalDistractor[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
@@ -1055,7 +1055,7 @@ Func PlayTwoSounds%(whichStim%)
         'Get total attenuation
         printlog("for distractor, cal atten is %f and trial atten is %f\n",calattenArray,trlattenArray);
         attenArray := calattenArray + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
-        targdBArray := 65 - trlattenArray;  'convinced myself this is right
+        targdBArray := recStereoDisdB - trlattenArray;  'convinced myself this is right
         
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(whichStim%);
@@ -1068,7 +1068,7 @@ Func PlayTwoSounds%(whichStim%)
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         if recMatGenStim% = 1 then
-            calattenSA := recStereoDisGeneratedAttenList[whichStim%][1];
+            calattenSA := recStereoDisGeneratedAttenList[whichStim%][1] - recStereoDisdB + 65;
         else  'loading stimulus, cal value was in stimcal file
             calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
         endif;
@@ -1077,7 +1077,7 @@ Func PlayTwoSounds%(whichStim%)
         trlattenSA := recDeltadBList[whichStim%][playInd%];
         
         attenSA := calattenSA + trlattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
-        targdBSA := 65 - trlattenSA;  'convinced myself this is right
+        targdBSA := recStereoDisdB - trlattenSA;  'convinced myself this is right
         
         'Get total attenuation
         docase
@@ -1223,7 +1223,7 @@ Func PlayTwoSounds%(whichStim%)
             s2$ := Print$("Sound %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
         endcase            
         SampleText(s$, StimOn);
-        if whichStim% > 1 then 'only sampletext the distractor stimulus if it is playing
+        if whichStim% >= 1 then 'only sampletext the distractor stimulus if it is playing
             SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
         endif;
         
@@ -1233,8 +1233,10 @@ Func PlayTwoSounds%(whichStim%)
     docase
     case recExpToRun% = recExpFRAButton% then
         recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms 
-    case recExpToRun% = recExpStereoDisButton% then  
+    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then  
         recPlayPoints% := recPlayRateHz*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms
+    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then  
+        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms
     endcase
     
     return status%;
@@ -2621,9 +2623,9 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 thisSpkr% := recSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
                 
                 'Generate the stimulus, for stereo dis this will be an AM
-                'printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
+                printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]*1000);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
@@ -2653,10 +2655,10 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 endif;
                 EvalMatlabStatement%(statement$);
-                'printlog("%s\n",statement$);
-                'printlog("Values are %d %d %d %d ",recTrialDur[ind%]*1000,recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
-                'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
-                'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+                printlog("%s\n",statement$);
+                printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
                 
                 'Get the stimulus and the seed back from Matlab
@@ -2680,9 +2682,9 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     
                     'get speaker of trial, used to calculate attenuation 
                     thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
-                    'printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialDur[indD%]);
+                    printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialDur[indD%]);
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]*1000);  'size of trial is variable, that's OK
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[indD%]);  'Ditto
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[indD%]);
@@ -2712,10 +2714,10 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                         statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                     endif;
                     EvalMatlabStatement%(statement$);
-                    'printlog("%s\n",statement$);
-                    'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
-                    'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
-                    'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+                    printlog("%s\n",statement$);
+                    printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHz,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
+                    printlog("%d %d %d %d %d ",recTrialGenIsSweep%[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
+                    printlog("%d %d %d %d %d \n",recTrialGenGauss%[indD%],recTrialGenRampMS[indD%],recTrialGenSeed%[indD%],recMaxPoints%,thisSpkr%);
                     
                     
                     'Get the stimulus and the seed back from Matlab
@@ -5581,13 +5583,18 @@ proc WriteExpParamsSampleText()
                   
         
     case recExpToRun% = recExpStereoDisButton% then 
-        s$ := Print$("ParamStD1 DoForcedChoice=%d,DoGoNoGo=%d,RepeatsPerStim=%d",
-        recStereoDisExpDoFC%,recStereoDisExpDoGNG%,recStereoDisRepeatsPerStim%); 
+        s$ := Print$("ParamStD1 DoForcedChoice=%d,DoLoad=%d,RepeatsPerStim=%d",
+        recStereoDisExpDoFC%,recStereoDisExpDoLoad%,recStereoDisRepeatsPerStim%); 
         SampleText(s$);
         yield(0.01); 
         
-        s$ := Print$("ParamStD2 =%s,=%s,=%s",
-        recSelectedStimFile$,recSelectedStimDistractorFile$,recSelectedTrialsFile$); 
+        if recStereoDisExpDoLoad% = 1 then
+            s$ := Print$("ParamStD2 StimFile=%s,DistractorFile=%s,TrialsFile=%s",
+            recSelectedStimFile$,recSelectedStimDistractorFile$,recSelectedTrialsFile$); 
+        else
+            s$ := Print$("ParamStD2 StimFile=%s,TrialsFile=%s",
+            recSelectedStimFile$,recSelectedTrialsFile$);
+        endif;
         SampleText(s$);
         yield(0.01); 
         

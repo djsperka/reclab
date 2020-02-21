@@ -171,7 +171,8 @@ var recFRAExpIndexLoad%;         'Experiment index, for loading stims, helps us 
 var recFRAExpIndexGen%;          'Experiment index, for generating stims, etc. 
 var recFRARepeatsPerStim% := 1;       'Number of repeats for each stimulus defined in the trials file   
 var recStereoDisRepeatsPerStim% := 1;  
-var recStereoDisGNGRepeatsPerStim% := 1;    
+var recStereoDisGNGRepeatsPerStim% := 1; 
+var recStereoDisdB := 65;   'we may change the intended dB 
 var recRepeatsPerStim%;       'Number of repeats for each stimulus defined in the trials file    
 var recFRAText2%;    
 var recFRALoadStim% := 1;
@@ -1654,9 +1655,11 @@ proc RecStereoDisSaveParams()
     key$:="Reclab\\HumanFCParam";  'renamed experiment from HumanFC to StereoDis, just keep old name for registry, it's easier
     
     SetIntRegistryValue(key$, "HumanFCExpIndexLoad", recStereoDisExpIndexLoad%); 
+    SetIntRegistryValue(key$, "HumanFCExpIndexGen", recStereoDisExpIndexGen%);
     SetIntRegistryValue(key$, "HumanFCRepeatsPerStim", recStereoDisRepeatsPerStim%);
     SetIntRegistryValue(key$, "StereoDisExpDoFC", recStereoDisExpDoFC%);
     SetIntRegistryValue(key$, "StereoDisExpDoGen", recStereoDisExpDoGen%);
+    SetFloatRegistryValue(key$, "StereoDisdB", recStereoDisdB);
     
     
 	return;
@@ -1674,9 +1677,11 @@ proc RecStereoDisGetParams()
     key$:="Reclab\\HumanFCParam";  'renamed experiment from HumanFC to StereoDis, just keep old name for registry, it's easier
     
     recStereoDisExpIndexLoad% := GetIntRegistryValue%(key$, "HumanFCExpIndexLoad", recStereoDisExpIndexLoad%); 
+    recStereoDisExpIndexGen% := GetIntRegistryValue%(key$, "HumanFCExpIndexGen", recStereoDisExpIndexGen%);
     recStereoDisRepeatsPerStim% := GetIntRegistryValue%(key$, "HumanFCRepeatsPerStim", recStereoDisRepeatsPerStim%);
     recStereoDisExpDoFC% := GetIntRegistryValue%(key$, "StereoDisExpDoFC", recStereoDisExpDoFC%);
     recStereoDisExpDoGen% := GetIntRegistryValue%(key$, "StereoDisExpDoGen", recStereoDisExpDoGen%);
+    recStereoDisdB := GetFloatRegistryValue(key$, "StereoDisdB", recStereoDisdB);
     
 	return;
 end
@@ -1695,6 +1700,7 @@ proc RecStereoDisGNGSaveParams()
     key$:="Reclab\\StereoDisParam";  
     
     SetIntRegistryValue(key$, "StereoDisGNGExpIndexLoad", recStereoDisGNGExpIndexLoad%); 
+    SetIntRegistryValue(key$, "StereoDisGNGExpIndexGen", recStereoDisGNGExpIndexGen%);
     SetIntRegistryValue(key$, "StereoDisGNGRepeatsPerStim", recStereoDisGNGRepeatsPerStim%);
     SetIntRegistryValue(key$, "StereoDisExpDoGNG", recStereoDisExpDoGNG%);
     
@@ -1713,6 +1719,7 @@ proc RecStereoDisGNGGetParams()
     key$:="Reclab\\StereoDisParam";  
     
     recStereoDisGNGExpIndexLoad% := GetIntRegistryValue%(key$, "StereoDisGNGExpIndexLoad", recStereoDisGNGExpIndexLoad%); 
+    recStereoDisGNGExpIndexGen% := GetIntRegistryValue%(key$, "StereoDisGNGExpIndexGen", recStereoDisGNGExpIndexGen%);
     recStereoDisGNGRepeatsPerStim% := GetIntRegistryValue%(key$, "StereoDisGNGRepeatsPerStim", recStereoDisGNGRepeatsPerStim%);   
     recStereoDisExpDoGNG% := GetIntRegistryValue%(key$, "StereoDisExpDoGNG", recStereoDisExpDoGNG%);
     
@@ -3592,10 +3599,11 @@ func RecExpStereoDisDialog%()
     DlgButton(recExpStereoDisGNGDeleteExpButton%, "Delete Experiment ", RecStereoDisGNGDeleteExp%,53,7);
     
     DlgInteger(7,"Repeats Per Stim",1,1000,18,9);
+    DlgReal(8,"dB",1,100,18,10);
     DlgAllow(0xffff, 0, RecExpStereoDisDialogChanged%);   
     
     
-    i%:=DlgShow(recStereoDisExpDoFC%,recStereoDisExpDoGen%,recStereoDisExpIndexGen%,recStereoDisExpIndexLoad%,recStereoDisGNGExpIndexGen%,recStereoDisGNGExpIndexLoad%,recStereoDisRepeatsPerStim%);   'Yes, that's it!
+    i%:=DlgShow(recStereoDisExpDoFC%,recStereoDisExpDoGen%,recStereoDisExpIndexGen%,recStereoDisExpIndexLoad%,recStereoDisGNGExpIndexGen%,recStereoDisGNGExpIndexLoad%,recStereoDisRepeatsPerStim%,recStereoDisdB);   'Yes, that's it!
 
     
     ' If user hit OK then save parameters (and return 1). 
