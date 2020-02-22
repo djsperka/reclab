@@ -97,7 +97,11 @@ end
 
 func recAttenByID%(atten, whichPA4%)
     
-    return PA4AttenByID%(atten, whichPA4%);
+    if whichPA4% > -1 then
+        return PA4AttenByID%(atten, whichPA4%);
+    else
+        return 0;  'return "success"
+    endif;
     
 end
 

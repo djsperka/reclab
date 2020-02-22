@@ -1782,12 +1782,13 @@ func RecExpSelectDialog%()
     var i%;
     var j%;
     var status% := 0;  
-    var spkArr$[4];
+    var spkArr$[5];
     var levText$;
     spkArr$[0] := "None";
     spkArr$[1] := "15";
     spkArr$[2] := "16";
-    spkArr$[3] := "Standalone";
+    spkArr$[3] := "StandAlone";
+    spkArr$[4] := "StdAlNoPA4";
     
     RecExpSelectDialogGetParams();
     

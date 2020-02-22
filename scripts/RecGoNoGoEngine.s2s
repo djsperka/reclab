@@ -1138,7 +1138,7 @@ Func PlayTwoSounds%(whichStim%)
             endif; 
             
             'Note that we are NOT setting any attenuation for the standalone speaker, so let's do it, even if we're only playing silence for right now
-            if standalonePA4ID% > -1 then  'this should always be true...
+            if standalonePA4ID% > -1 then  
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
                 if status% <> 0 then
                     printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
@@ -1233,10 +1233,14 @@ Func PlayTwoSounds%(whichStim%)
     docase
     case recExpToRun% = recExpFRAButton% then
         recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms 
+    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
+        recPlayPoints% := recPlayRateHz*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then  
-        recPlayPoints% := recPlayRateHz*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms
+        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
+    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
+        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then  
-        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms
+        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
     endcase
     
     return status%;
@@ -2551,6 +2555,9 @@ func PrepareNextTrial2PWAs(loadPWAs%)
     var matGetAttenOK%;
     var matGetSeedOK%;
     var playWaveCopyOK%;
+    var frontPadMs;
+    var frontPadPoints%;
+    var isWrapped%;
     var ok% := 1;  'by default, return 1 (success)
     
     
@@ -2622,6 +2629,17 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 'get speaker of trial, used to calculate attenuation 
                 thisSpkr% := recSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
                 
+                'determine if S2 should be wrapped by a distractor; if the distractor is longer, wrap it; S1s (i% = 0) do not have a distractor
+                if i% > 0 and recTrialDur[indD%] > recTrialDur[ind%] then
+                    isWrapped% := 1;
+                    frontPadMs := (recTrialDur[indD%]-recTrialDur[ind%])/2;  'The front padding, in ms, is half of the excess
+                    frontPadPoints% := recPlayRateHz*frontPadMs/1000;
+                    matPutOK% := matPutOK% + PutMatlabValueInt%("fpp",frontPadPoints%);  'And put this in the matlab!
+                else
+                    isWrapped% := 0;
+                endif
+
+                
                 'Generate the stimulus, for stereo dis this will be an AM
                 printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
@@ -2648,12 +2666,22 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 endif;
                 
                 'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
-                if recCalibIsPresent% = 1 then
-                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,stAFFT(1,spk));";  'this is for the FFT filtering method, for the standalone
-                    'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
-                else
-                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                if isWrapped% = 0 then 'This is the standard version
+                    if recCalibIsPresent% = 1 then
+                        statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,stAFFT(1,spk));";  'this is for the FFT filtering method, for the standalone
+                        'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                    else
+                        statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                    endif;
+                else  'If the S2 is wrapped by a distractor, we have to "start it late" by FPP points, this syntax will allow such, FPP calculated/placed above when isWrapped% is 1
+                    if recCalibIsPresent% = 1 then
+                        statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,[fpp pad],stAFFT(1,spk));";  'this is for the FFT filtering method, for the standalone
+                        'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                    else
+                        statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,[fpp pad]);";
+                    endif;
                 endif;
+                
                 EvalMatlabStatement%(statement$);
                 printlog("%s\n",statement$);
                 printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
