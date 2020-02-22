@@ -1917,9 +1917,9 @@ func RecExpSelectDialogChanged%(item%)
     'Identifying legal speaker setups
     'Basically, at least one must be an array, they can't both be arrays
     docase
-    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(5) = 0 or DlgValue(5) = 3) then
+    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(5) = 0 or DlgValue(5) = 3 or DlgValue(5) = 4) then
         speakersOK% := 1;
-    case (DlgValue(5) = 1 or DlgValue(5) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3) then
+    case (DlgValue(5) = 1 or DlgValue(5) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3 or DlgValue(4) = 4) then
         speakersOK% := 1;    
     endcase
     'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
