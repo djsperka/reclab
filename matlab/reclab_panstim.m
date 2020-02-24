@@ -39,8 +39,11 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %                     tone or tone carrier.  Also not currently implemented
 %                     for tone sweeps
 %         GAUSS     - If 1, use Gaussian distributed noise.  If 0, use
-%                     uniformly distributed noise.  Default = 1.  Only
-%                     applies to BB/BP noise or carrier.
+%                     uniformly distributed noise.  If 2 <= N <= 100, use 
+%                     Gaussian noise cut off at Nth percentile value of 
+%                     stimulus (note that default scaling is to max value 
+%                     of stimulus).  Default = 1.  Only applies to BB/BP 
+%                     noise or carrier.
 %         RAMP      - Duration, in ms, of onset/offset ramps using a cos^2
 %                     function.  Default = 0.  Ramping is applied after all
 %                     other manipulations.
@@ -53,8 +56,11 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %                     the same size as the Matlab variable, but unlike
 %                     Matlab, CED can't generate arbitrary-sized arrays.
 %                     This variable tells us how big the CED destination
-%                     variable is, and pads zeros longer than that.  If
-%                     empty, no padding.
+%                     variable is, and pads zeros longer than that.  If a
+%                     1x2 vector, interpret as [FPP PAD] where FPP is front
+%                     pad points, a zero buffer in points attached in front
+%                     of the stimulus, PAD remains total length.  If empty,
+%                     no padding.
 %         CALIB     - A cell array containing the B/A coefficients for STF
 %                     filtering.  If empty, there will be no calibration,
 %                     but that shouldn't happen
@@ -93,10 +99,29 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %requires moving into the Fourier domain for the BP noise), and it's still
 %plenty fast.
 %
+%When creating Gaussian noise, scaling can become an issue.  Typically we
+%scale the maximum absolute value of the stimulus to the maximum output
+%value (here, usually +/- 2^15-1 = +/- 32767).  This works great for
+%uniform white noise, but Gaussian noise has the additional complication
+%that the maximum value is on the extreme tail of the distribution and can
+%vary substantially across random exemplars.  For most applications, this
+%is not a problem because here we calculate and supply an attenuation value 
+%for each created stimulus which can be used to bring the stimuli into 
+%approximate register in volume.  However, for some purposes - specifically 
+%in this case Gregg's LongNoise paradigm (which plays successive 1-second 
+%stretches of Gaussian noise but cannot readjust the attenuation on the 
+%fly) - we want the Gaussian noise to be approximately  equal in intensity 
+%from the start. By setting the Gauss to "99", we now construct a longer
+%stimulus than requested (100/99 longer) and then remove the extreme 1% of
+%values to remove the large variability in scaling values.  Other values
+%than "99" may be similarly requested (down to 2, which is surely not
+%useful, but whatever). 
+%
 %Dependencies: CLOCKSEED, FFTAX, MYRAMP
 %
 %Written by Jeffrey Johnson, 6/5/2012
 %Updated 12/4/2012 to include FM sweeps
+%Updated 1/22/2020 to allow percentile cutoff of Gaussian noise
 
 
 %% Do Argument Checking, Preliminaries
@@ -141,6 +166,10 @@ if nargin < 10 || isempty(gauss)
     gauss = 1;
 end
 
+if gauss >= 100  %if alternate scaling is requested, but is set to 100 (full scaling) or greater than 100 (error) set to full scaling
+    gauss = 1;
+end
+
 if nargin < 11 || isempty(ramp)
     ramp = 0;
 end
@@ -149,8 +178,19 @@ if nargin < 12 || isempty(seed)
     seed = 0;
 end
 
-if nargin < 13 || isempty(pad) || pad == 0
+if nargin < 13 || isempty(pad)
     pad = nan;
+end
+
+fpp = 0;
+
+if length(pad) == 1 && pad == 0
+    pad = nan;
+elseif length(pad) == 2
+    fpp = pad(1);
+    pad = pad(2);
+elseif length(pad) > 2
+    error('Value for PAD cannot have more than two values!')
 end
 
 no_calib = 0;  %by default, we return a calibration value
@@ -216,15 +256,28 @@ if do_tone
     stimulus = sin(linspace(0,tonefreq*2*pi*dur,num_samples)+tonephase);
 elseif do_FM
     stimulus = logsweep(lohz,hihz,dur,sampfreq);  %logarithmic sweep
-elseif gauss %BP or BB, create noise
+elseif gauss == 1 %BP or BB, create noise
     stimulus = randn(1,num_samples);  %Gaussian-distributed noise
+elseif gauss > 1 %BP or BB, create noise with percentile cutoff
+    stimulus = randn(1,round(num_samples*100/gauss));  %Gaussian-distributed noise, create extra samples, will cut out extremes before scaling
+    %stimulus = randn(1,num_samples);
 else
     stimulus = rand(1,num_samples)-0.5;  %Uniform-distributed noise
 end
 
 %Scale stimulus to 16 bits before doing AM
-stimulus = stimulus / max(abs(stimulus));  
-stimulus = stimulus * scale_val;
+%if gauss >= 2 && do_bb == 1 %if using alternate Gaussian scaling, scale broadband here
+if gauss >= 2
+    [~,inds] = sort(abs(stimulus));
+    stimulus = stimulus(sort(inds(1:num_samples)));  %cut out extreme samples, return to original random order
+    stimulus = stimulus / max(abs(stimulus));  
+    stimulus = stimulus * scale_val;     
+%elseif gauss >= 2 && do_bp == 1  %no scaling at all, we'll do that later
+    %do nothing
+else
+    stimulus = stimulus / max(abs(stimulus));  
+    stimulus = stimulus * scale_val;
+end
 
 
 %% Add AM envelope, if appropriate
@@ -257,7 +310,22 @@ if do_bp
     stimulus = real(ifft(f,'symmetric'));
     
     %Rescale BP stimulus to 16 bits
-    stimulus = stimulus / max(abs(stimulus));  
+    if gauss >= 2 %if using alternate Gaussian scaling, scale bandpass here NO THIS IS AWFUL IT JUST CRACKLES LIKE MAD
+%         [~,inds] = sort(abs(stimulus));
+%         stimulus = stimulus(sort(inds(1:num_samples)));  %cut out extreme samples, return to original random order
+%         stimulus = stimulus / max(abs(stimulus));
+%         stimulus = stimulus * scale_val;
+
+%         srt = sort(abs(stimulus));
+%         stimulus = stimulus / srt(length(srt)-100);
+%         stimulus(stimulus>1) = 1;
+%         stimulus(stimulus<-1) = -1;
+%         stimulus = stimulus * scale_val;
+    else
+%         stimulus = stimulus / max(abs(stimulus));
+%         stimulus = stimulus * scale_val;
+    end
+    stimulus = stimulus / max(abs(stimulus));
     stimulus = stimulus * scale_val;
 end
 
@@ -370,8 +438,11 @@ end
 
 %don't add any pad until after we've estimated the SPL, if appropriate
 if ~isnan(pad)     
+    if fpp+length(stimulus) > pad
+        error('Front pad plus stimulus exceeds requested length!')
+    end
     temp = zeros(1,pad);
-    temp(1:length(stimulus)) = stimulus;
+    temp(fpp+1:fpp+length(stimulus)) = stimulus;  %Put on front-end padding, if requested
     stimulus = temp;
 end
 
@@ -389,7 +460,6 @@ stimulus = stimulus';
 %% Subfunction FILT_STIM %%%
 %so we don't have to repeat the code a bunch of times
 function out = filt_stim(in,fs,stf,stfax)
-
 [stimfft stimax] = fftax(in,fs,1);  %get FFT of stimulus
 stimamp = abs(stimfft);  %get amplitude of FFT
 stimphase = angle(stimfft)';  %get phase of FFT, columnize it
