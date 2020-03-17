@@ -896,3 +896,40 @@ func Shuffle%(n%, list%[])
     endif
     return status%;
 end
+
+
+
+
+'
+'
+'===== SelectDirectory$ =====
+
+'Spike2 does not have a built in function that allows you to select a folder from a GUI.
+'This function finds a way around that, and returns the full path of the folder selected
+'from the GUI.  It is possible to create a new folder.
+func SelectDirectory$()
+    
+    var currentPath$;
+    var tempPath$;
+    var result%;
+
+    currentPath$ := FilePath$(0);  'Get current directory
+    result% := FilePathSet("",0,"Select a directory",1);  'Allow user to select a directory
+    if result% < 0 then 
+        message("There has been an error, please see log window");
+        printlog("There has been an error attempting to select a directory, error is %s\n",Error$(result%));
+        tempPath$ := "";
+    else
+        tempPath$ := FilePath$(0);  'Get the path that was just selected in the dialog
+    endif;
+    
+    FilePathSet(currentPath$);  'Set the file path for new Spike2 data files back to what it was, regardless of success
+    
+    return tempPath$;
+
+end
+
+
+'===== End SelectDirectory$ =====
+'
+'
