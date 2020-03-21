@@ -419,9 +419,21 @@ if no_calib == 0
         %adjust that here.
         %atten_baseline = 0;  %no longer necessary
         
-        stimulus_STF = filt_stim(stimulus,sampfreq,stf,xax);   %this does the actual filtering
-%figure, hold on, plot(xax,stf)
-        spl_guess = calc_spl_wfm(stimulus_STF,calib.dB,sampfreq,400,0,1);  %calib.dB is directly calculated
+        %We are having memory issues, and I think this is the problematic
+        %line.  If the stimulus is too long, only use a subset of the
+        %stimulus, since in these cases (100 sec noise) the statistics are
+        %plenty stationary
+        
+        if length(stimulus) <= 1000000  %10 seconds at 100kHz seems fine
+            stimulus_STF = filt_stim(stimulus,sampfreq,stf,xax);   %this does the actual filtering
+            %figure, hold on, plot(xax,stf)
+            spl_guess = calc_spl_wfm(stimulus_STF,calib.dB,sampfreq,400,0,1);  %calib.dB is directly calculated
+        else
+            stimulus_STF = filt_stim(stimulus(1:1000000),sampfreq,stf,xax);   %this does the actual filtering
+            %figure, hold on, plot(xax,stf)
+            spl_guess = calc_spl_wfm(stimulus_STF,calib.dB,sampfreq,400,0,1);  %calib.dB is directly calculated
+        end
+            
         
         %atten65 = spl_guess-65+atten_baseline;  %no longer necessary
         atten65 = spl_guess-65;
