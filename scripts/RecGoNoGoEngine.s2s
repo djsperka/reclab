@@ -5409,7 +5409,7 @@ end
 'Since we are trying to include all of the info in the .smr file, dump it in a series of sampletexts we will never read
 proc WriteExpParamsSampleText()
     var s$;
-    s$ := Print$("Date %s, Time %s\n",date$(2,2,3,1,"/"),time$(2,15,1,":"));
+    s$ := Print$("Date %s, Time %s",date$(2,2,3,1,"/"),time$(2,15,1,":"));
     SampleText(s$);
     yield(0.01);
     
@@ -5428,7 +5428,7 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param4 RewardType%=%d,PctJuice=%d,PctStimRew=%d,JuiceToStimDelay",
+    s$ := Print$("Param4 RewardType=%d,PctJuice=%d,PctStimRew=%d,JuiceToStimDelay=%d",
     recRewardType%,recPctJuice%,recPctStimulation%,recJuiceToStimDelay%);
     SampleText(s$);
     yield(0.01);
@@ -5555,7 +5555,7 @@ proc WriteExpParamsSampleText()
         
         
     case recExpToRun% = recExpJoyTrnButton% then 
-        s$ := Print$("ParamJT HitRewardmL=%.2f,HitRewardIncmL=.2f,MinOnsetDelay=%.2f,TrialInitPosition=%d,DoIncrements=%d",
+        s$ := Print$("ParamJT HitRewardmL=%.2f,HitRewardIncmL=%.2f,MinOnsetDelay=%.2f,TrialInitPosition=%d,DoIncrements=%d",
         recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay, recTrialInitPosition%, recDoIncrements%); 
         SampleText(s$);
         yield(0.01); 
@@ -5567,7 +5567,7 @@ proc WriteExpParamsSampleText()
         SampleText(s$);
         yield(0.01); 
         
-        s$ := Print$("ParamAMD2 MinS1=%d,VarS1=%d,pCatch=%,2f,dBLevel=%.2f,RepeatsPerStim=%d,TrialInitReward=%d,TrialHoldReward=%d,Passive=%d",
+        s$ := Print$("ParamAMD2 MinS1=%d,VarS1=%d,pCatch=%.2f,dBLevel=%.2f,RepeatsPerStim=%d,TrialInitReward=%d,TrialHoldReward=%d,Passive=%d",
         recAMDiscMinS1%,recAMDiscVarS1%,recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recAMDiscTrialInitReward%, recAMDiscTrialHoldReward%, recAMSPPassiveTask%); 
         SampleText(s$);
         yield(0.01);        
@@ -5578,7 +5578,7 @@ proc WriteExpParamsSampleText()
         SampleText(s$);
         yield(0.01); 
         
-        s$ := Print$("ParamSpD2 MinS1=%d,VarS1=%d,pCatch=%,2f,dBLevel=%.2f,RepeatsPerStim=%d,TrialInitReward=%d,TrialHoldReward=%d,Passive=%d",
+        s$ := Print$("ParamSpD2 MinS1=%d,VarS1=%d,pCatch=%.2f,dBLevel=%.2f,RepeatsPerStim=%d,TrialInitReward=%d,TrialHoldReward=%d,Passive=%d",
         recSpaceDisMinS1%,recSpaceDisVarS1%,recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recSpaceDisTrialInitReward%, recSpaceDisTrialHoldReward%, recAMSPPassiveTask%); 
         SampleText(s$);
         yield(0.01); 

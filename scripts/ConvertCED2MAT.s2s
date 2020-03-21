@@ -1,0 +1,153 @@
+var ConvertSaveDir$ := "None Selected";
+var ConvertSaveFileName$ := "";
+var SaveName$;
+var Text1%;
+var datawindow%;
+var chanToExport%[100];
+var nChanFound%;
+
+#include "recfuncs.s2s"
+
+
+'Run dialog to select save location for .mat file
+SaveLocationDialog();
+
+'Select and open desired .smr file
+datawindow% := FileOpen("*",0,9);
+
+'Determine save name, based on current .smr file, if not specified
+if ConvertSaveFileName$ = "" then  'use filename from just-opened file
+    SaveName$ := ConvertSaveDir$ + FileName$(3) + ".mat";
+    printlog("save name is %s\n",SaveName$);
+else  'use filename from dialog
+    SaveName$ := ConvertSaveDir$ + ConvertSaveFileName$  + ".mat";
+    printlog("save name is %s\n",SaveName$);
+endif;
+
+'Save correct channels
+'We are going to go through possible channels that we might have, and determine if they exist on any given file,
+'if they exist, we will add them to the list of channels to be exported
+'At first glance, it doesn't appear that one can loop through a vector, so...
+'Go through this based on known channels from CreateSampleConfiguration
+AddChanIfPresent(33);  'Lever channel       ("Lever")
+AddChanIfPresent(34);  'JoystickX channel   ("JoystikX")
+AddChanIfPresent(35);  'JoystickY channel   ("JoystikY")
+AddChanIfPresent(37);  'BAK1 channel        ("BAK1")
+AddChanIfPresent(38);  'BAK2 channel        ("BAK2")
+ChanTitle$(30,"TextMark");  'Sometimes, it's "untitled", change to "TextMark"
+AddChanIfPresent(30);  'Textmark channel (may list as "untitled")
+AddChanIfPresent(31);  'Keyboard channel    ("Keyboard")
+AddChanIfPresent(36);  'Audio copy channel  ("Audio")
+AddChanIfPresent(3);   'Electrode channel 1 ("Trode_3")
+AddChanIfPresent(4);   'Electrode channel 2 ("Trode_4")
+AddChanIfPresent(5);   'Electrode channel 3  etc.
+AddChanIfPresent(6);   'Electrode channel 4  So, yeah, useful to note that electrode channel numbers in the ChanTitles start at 3.
+AddChanIfPresent(7);   'Electrode channel 5
+AddChanIfPresent(8);   'Electrode channel 6
+AddChanIfPresent(9);   'Electrode channel 7
+AddChanIfPresent(10);   'Electrode channel 8
+AddChanIfPresent(11);   'Electrode channel 9
+AddChanIfPresent(12);   'Electrode channel 10
+AddChanIfPresent(13);   'Electrode channel 11
+AddChanIfPresent(14);   'Electrode channel 12
+AddChanIfPresent(15);   'Electrode channel 13
+AddChanIfPresent(16);   'Electrode channel 14
+AddChanIfPresent(17);   'Electrode channel 15
+AddChanIfPresent(18);   'Electrode channel 16
+AddChanIfPresent(19);   'Electrode channel 17
+AddChanIfPresent(20);   'Electrode channel 18
+AddChanIfPresent(21);   'Electrode channel 19
+AddChanIfPresent(22);   'Electrode channel 20
+AddChanIfPresent(23);   'Electrode channel 21
+
+chanToExport%[0] := nChanFound%;
+
+ExportChanList();  'clear ExportChanList options, necessary step!
+ExportChanList(0,view(datawindow%).maxtime(),chanToExport%[]);  'set channel list for export of all channels at times 0 to maxtime()
+'FileSaveAs(SaveName$,100,1,"",0,"UseSName=0|UseCName=1");  'flag of 1 in position three forces overwrite without asking user
+FileSaveAs(ConvertSaveDir$ + "*",100,1,"",0,"UseSName=0|UseCName=1");  'flag of 1 in position three forces overwrite without asking user
+
+'Close file
+FileClose();  'close the file we just opened
+
+
+
+
+
+'
+'
+'===== AddChanIfPresent =====
+proc AddChanIfPresent(chan%)
+    if ChanTitle$(chan%) <> "" then
+        nChanFound% += 1;
+        chanToExport%[nChanFound%] := chan%;
+    endif; 
+end
+'===== End AddChanIfPresent =====
+'
+'
+
+
+
+
+
+'
+'
+'===== SaveLocationDialog =====
+
+'A simple dialog box which allows us to select the location/filename of the file to write
+proc SaveLocationDialog()
+    var i%;
+    var key$;
+    
+    
+    key$:="Reclab\\ConvertCED2MAT";
+    
+    ConvertSaveDir$ := GetStringRegistryValue$(key$, "SaveDir", ConvertSaveDir$);
+    
+    DlgCreate("Select Save Location");
+    
+    Text1% := DlgText( "Last Save Directory: " + ConvertSaveDir$,2,1,100);
+    DlgButton(2, "Select New Save Directory",SelectSaveDir%,2,2);
+    
+    DlgString(1,"File save name (if different than filename)",25,"",0,4);
+    
+    DlgButton(1, "Select Data File", 0);
+    
+    i% := DlgShow(ConvertSaveFileName$);
+    
+    if i% = 1 then  'if user hit "Select Data File"
+        printlog("Save directory is %s and file name is %s\n",ConvertSaveDir$,ConvertSaveFileName$);
+    
+        SetStringRegistryValue(key$, "SaveDir", ConvertSaveDir$);
+    else
+        halt;
+    endif;
+    
+    
+end
+
+
+'===== End SaveLocationDialog =====
+'
+'
+
+
+
+
+'
+'
+'===== SelectSaveDir =====
+
+func SelectSaveDir%()
+
+    ConvertSaveDir$ := SelectDirectory$();  'This will have the ending slash
+    DlgValue$(Text1%,ConvertSaveDir$);  'update value in calling dialog
+    
+	return 1;  'return 1 so calling dialog doesn't close
+    
+end;
+
+'===== End SelectSaveDir =====
+'
+'
