@@ -914,7 +914,8 @@ func SelectDirectory$()
     var result%;
 
     currentPath$ := FilePath$(0);  'Get current directory
-    result% := FilePathSet("",0,"Select a directory",1);  'Allow user to select a directory
+    'result% := FilePathSet("",0,"Select a directory",1);  'Cannot use "make" capability in Spike6, changed by Spike8
+    result% := FilePathSet("",0,"Select a directory");  'Allow user to select a directory
     if result% < 0 then 
         message("There has been an error, please see log window");
         printlog("There has been an error attempting to select a directory, error is %s\n",Error$(result%));
