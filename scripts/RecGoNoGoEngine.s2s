@@ -9,6 +9,8 @@
 ' channel numbers ***and window handles***??
 ' there are 1-32 max # electrodes on our probe, so reserve these channel numbers for electrodes and don't use them elsewhere
 ' as far as I can tell, channel numbers are arbitrary (as opposed to Ports#s), so use channel #s 40 and up for non-electrodes
+const configEyeXChannel% := 28;       ' Channel for eye tracking (X, not yet used)
+const configEyeYChannel% := 29;       ' Channel for eye tracking (Y, not yet used)
 const recLeverChannel% := 33;         ' Channel for behavioral lever recording
 const configJoyXChannel% := 34;       ' Channel for JoystickX
 const configJoyYChannel% := 35;       ' Channel for JoystickY
@@ -29,6 +31,8 @@ const recBAK1Port% := 0;        'Event port
 const recBAK2Port% := 1;        'Event port  --  Note that recLeverPort% and BAK2Port conflict for now.  It is anticipated that there should not be recording+lever until late 2020
 const configJoyXPort% := 0;  'A2D port
 const configJoyYPort% := 1;  'A2D port
+'const configEyeXPort% := 2;  'A2D port  'not yet implemented
+'const configEyeYPort% := 3;  'A2D port
 
 ' memory channels
 var recMemChanLeverDebounce%;
@@ -318,6 +322,8 @@ end
 ' experiments! So, don't fuck with it unless you are sure you know what you're doing!
 ' ~jao 2014 Aug 21
 ' -jj fucked with it because he knows what he's doing 2019 Nov 6
+' Please note that we will have to change the first electrode port to probably port 5 if we add
+' eye tracking.
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func SetTrodeChannels()
     'make a func so that if you want to make this a dialog function its easier
@@ -325,12 +331,18 @@ func SetTrodeChannels()
     var portNum%;
     var trodeNum%;
     
+    var firstElectrodePort% := 3;  'first electrode is on Port 3 (no eyetracking)
+   '%var firstElectrodePort% := 5;  'first electrode is on Port 3 (eyetracking)  'we have to figure out an electrode configuration convention if eyetracking is implemented
+    var chanAdjust% := 0;
+    'var chanAdjust% := 2;  'Adjusts channel number to start at 3 if ports are moved for eye tracking, as 3 is expected starting port for electrodes
+    
+    
     'TrodePorts will not change! same as TrodeChans, unless TrodeChannels changes/becomes configurable 
     for i% := 0 to maxTrodes%-1 do 'maxTrodes = 21, limited by available ports excluding JoyX/JoyY/AudioCopy
-        portNum% := i%+3; 'first electrode is on Port 3
+        portNum% := i% + firstElectrodePort%; 
         recTrodePort%[i%] := portNum%;
-        recTrodePosition%[i%] := portNum%; 'this way all the numbers are the same! easyPeasy!
-        recTrodeChannel%[i%] := portNum%;
+        recTrodePosition%[i%] := portNum% - chanAdjust%; 'this way all the numbers are the same! easyPeasy! (until eyetracking!)
+        recTrodeChannel%[i%] := portNum% - chanAdjust%;
     next;
     
 end
@@ -403,6 +415,24 @@ proc CreateSampleConfiguration()
         XYColour(joydatachan%,16);  'set a colo(u)r for joydatachan%
         XYSize(joydatachan%,-1); 'for channel joydatachan%, plot only one point at a time (-1)
     endif
+    
+    'This is placeholder code for eye tracking
+'    if eyetracking% then
+'        'create eye tracking channels
+'        'X
+'        SampleWaveform(configEyeXChannel%,configEyeXPort%,5000);   'these will need uncommenting (search variables above as well)
+'        SampleComment$(configEyeXChannel%,"EyeX");                 'Eye position expected to be on ports 2/3 if present
+'        SampleTitle$(configEyeXChannel%,"EyeX");
+'        'Y
+'        SampleWaveform(configEyeYChannel%,configEyeYPort%,5000); 
+'        SampleComment$(configEyeYChannel%,"EyeY");
+'        SampleTitle$(configEyeYChannel%,"EyeY");
+'        
+'        'Any offsets?
+'        
+'        'Create XY view for eye display??
+'    endif
+    
     
     docase
     case recNBAKs% = 1 then
@@ -1219,13 +1249,14 @@ Func PlayTwoSounds%(whichStim%)
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, NameThatStimulusStereoDis$(recStimList%[whichStim%][playInd%],whichStim%,1));  
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulusStereoDis$(recDistractorStimList%[whichStim%][playInd%],whichStim%,0));  
         case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then
-            s$ := Print$("Sound2 %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
-            s2$ := Print$("Sound %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
+            s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
+            s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
         endcase            
         SampleText(s$, StimOn);
-        if whichStim% >= 1 then 'only sampletext the distractor stimulus if it is playing
-            SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
-        endif;
+        SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
+        'if whichStim% >= 1 then 'only sampletext the distractor stimulus if it is playing - this fails for signoise and seems generally like a bad idea.
+        '    SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
+        'endif;
         
     endif
     
@@ -1340,7 +1371,7 @@ func StimComplete%(isS2local%, success%)
         endif;
         
     case isS2local% = 2 and recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 then  'If this is the final stimulus in the Stereo Distractor FC experiment, S2 Same
-        printlog("Stereo Distractor FC Low!, current trial is %d\n", recCurrentTrial%); 
+        printlog("Stereo Distractor FC Same!, current trial is %d\n", recCurrentTrial%); 
         if success% = 1 then '1 indicates response was S2 High, 0 indicates response was S2 Low
             resultCode$ := "SH";  'Same, response was high
         else
@@ -4734,7 +4765,7 @@ func IdleLoop%()
             '    tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 1 then 'only difference is in sampletexting
-                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[]);
                 printlog("Starting BB noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event();
