@@ -4765,7 +4765,7 @@ func IdleLoop%()
             '    tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 1 then 'only difference is in sampletexting
-                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[]);
+                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BB noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event();
