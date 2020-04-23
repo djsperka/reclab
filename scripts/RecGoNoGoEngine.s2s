@@ -1045,6 +1045,7 @@ Func PlayTwoSounds%(whichStim%)
         'Get total attenuation
         printlog("cal atten is %f and trial atten is %f\n",calattenArray,trlattenArray);
         attenArray := calattenArray + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
+        targdBArray := 65 - trlattenArray;  'convinced myself this is right
         
         'Get identity of stimulus on standalone as well, even though for now we're not actually playing anything
         thisStimSA% := rec2StimList%[playInd%][1];  
