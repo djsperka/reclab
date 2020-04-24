@@ -4765,7 +4765,7 @@ func IdleLoop%()
             '    
             '    tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
-            case recLongToneType% = 1 then 'only difference is in sampletexting
+            case recLongToneType% = 1 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then 'only difference is in sampletexting
                 pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BB noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
@@ -4777,10 +4777,10 @@ func IdleLoop%()
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
-            case recLongToneType% = 2 then
+            case recLongToneType% = 2 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then
                 pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BP noise \n");
-                SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
+                SampleKey(LCase$(pwChar$));  'Start bp noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event();
                 
                 s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s,%s,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
@@ -4789,6 +4789,16 @@ func IdleLoop%()
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
+            case recLongToneType% >= 1 and recLongToneDurationIndex%[recCurrentTrial%] = 4 then 'only difference is in sampletexting
+                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                printlog("Starting silent trial \n");
+                SampleKey(LCase$(pwChar$));  'Start silent, use LOWER to activate correct portion of sequencer code
+                StimOn := GetTimeOfLast1401Event();
+                
+                s$ := Print$("Sound %s,SilentTrial,%d,0,0,0,%s,0Hz", recCurrentTrial%, Str$(recLongToneDuration) + "s");
+                SampleText(s$,StimOn);
+                
+                tLongToneStart :=  View(recDataWindowView%).MaxTime();                
             endcase;
             
 
