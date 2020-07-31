@@ -95,7 +95,7 @@ chanToExport%[0] := nChanFound%;
 
 ExportChanList();  'clear ExportChanList options, necessary step!
 ExportChanList(0,view(datawindow%).maxtime(),chanToExport%[]);  'set channel list for export of all channels at times 0 to maxtime()
-FileSaveAs(SaveName$,100,0,"",0,"UseSName=0|UseCName=1");  'flag of 1 in position three forces overwrite without asking user
+FileSaveAs(SaveName$,100,0,"",0,"UseSName=0|UseCName=1|WaveData=1");  'flag of 1 in position three forces overwrite without asking user, WaveData=1 forces data into "single" to save space
 'FileSaveAs(ConvertSaveDir$ + "*",100,1,"",0,"UseSName=0|UseCName=1");  'flag of 1 in position three forces overwrite without asking user
 
 
