@@ -4037,6 +4037,7 @@ func IdleLoop%()
             'If sound is still playing, see if it should be over, stop it if so
             if recPointsPlayed% >= recPlayPoints%  then
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
+                printlog("At time %f, recPointsPlayed is %d and recPlayPoints is %d\n",tNow,recPointsPlayed%,recPlayPoints%);
             endif;
             
             'Check again to see if sound is playing
@@ -4048,6 +4049,7 @@ func IdleLoop%()
             
             if PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundE", "Sound done playing.");
+                printlog("Current time is %f\n",tNow);
                 'ChangeStateTo(stateTrialHoldReward%);  'Not doing a trial hold reward in FRA for now -jj
             endif;
             
