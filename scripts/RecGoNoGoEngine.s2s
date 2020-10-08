@@ -3588,15 +3588,15 @@ func IdleLoop%()
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             endif;
             
-            'Check again to see if sound is playing
-            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
-                PWA$ := PlayWaveStatus$(recPointsPlayed%);
-                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
-                endif
-            else
-                PWA$ := "";  'if CED is absent simulate end of stimulus
-            endif;
+'            'Check again to see if sound is playing
+'            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+'                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+'                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
+'                    recPointsPlayed% := recPointsPlayed%/2;
+'                endif
+'            else
+'                PWA$ := "";  'if CED is absent simulate end of stimulus
+'            endif;
             
             CheckLever%("inTrialInit%",1);
             
@@ -3742,15 +3742,15 @@ func IdleLoop%()
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             endif;
             
-            'Check again to see if sound is playing
-            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
-                PWA$ := PlayWaveStatus$(recPointsPlayed%);
-                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
-                endif
-            else
-                PWA$ := "";  'if CED is absent simulate end of stimulus
-            endif;
+'            'Check again to see if sound is playing
+'            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+'                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+'                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
+'                    recPointsPlayed% := recPointsPlayed%/2;
+'                endif
+'            else
+'                PWA$ := "";  'if CED is absent simulate end of stimulus
+'            endif;
             
             CheckLever%("inResponse1%",0);  'default is no early hit
             docase
@@ -3845,15 +3845,15 @@ func IdleLoop%()
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             endif;
             
-            'Check again to see if sound is playing
-            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
-                PWA$ := PlayWaveStatus$(recPointsPlayed%);
-                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
-                endif
-            else
-                PWA$ := "";  'if CED is absent simulate end of stimulus
-            endif;
+'            'Check again to see if sound is playing
+'            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+'                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+'                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
+'                    recPointsPlayed% := recPointsPlayed%/2;
+'                endif
+'            else
+'                PWA$ := "";  'if CED is absent simulate end of stimulus
+'            endif;
             
             CheckLever%("inResponse1%",0);  'default no false alarm
             docase
@@ -3949,15 +3949,15 @@ func IdleLoop%()
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
             endif;
             
-            'Check again to see if sound is playing
-            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
-                PWA$ := PlayWaveStatus$(recPointsPlayed%);
-                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
-                endif
-            else
-                PWA$ := "";  'if CED is absent simulate end of stimulus
-            endif;
+'            'Check again to see if sound is playing
+'            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+'                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+'                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
+'                    recPointsPlayed% := recPointsPlayed%/2;
+'                endif
+'            else
+'                PWA$ := "";  'if CED is absent simulate end of stimulus
+'            endif;
             
             CheckLever%("inResponse2%",0);  'default is no early hit 'switched to Response2 for S3 *jao
             docase
@@ -4055,7 +4055,9 @@ func IdleLoop%()
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
                 if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
+                    'printlog("check 1 points played starts as %d\n",recPointsPlayed%);
                     recPointsPlayed% := recPointsPlayed%/2;
+                    'printlog("check 1 points played ends as %d\n",recPointsPlayed%);
                 endif
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
@@ -4067,15 +4069,17 @@ func IdleLoop%()
                 printlog("At time %f, recPointsPlayed is %d and recPlayPoints is %d\n",tNow,recPointsPlayed%,recPlayPoints%);
             endif;
             
-            'Check again to see if sound is playing
-            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
-                PWA$ := PlayWaveStatus$(recPointsPlayed%);
-                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
-                endif
-            else
-                PWA$ := "";  'if CED is absent simulate end of stimulus
-            endif;
+'            'Check again to see if sound is playing
+'            if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
+'                PWA$ := PlayWaveStatus$(recPointsPlayed%);
+'                if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
+'                    printlog("check 2 points played starts as %d\n",recPointsPlayed%);
+'                    recPointsPlayed% := recPointsPlayed%/2;
+'                    printlog("check 2 points played ends as %d\n",recPointsPlayed%);
+'                endif
+'            else
+'                PWA$ := "";  'if CED is absent simulate end of stimulus
+'            endif;
             
             if PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundE", "Sound done playing.");

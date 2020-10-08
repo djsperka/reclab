@@ -603,8 +603,10 @@ endif
 'Note absence of CED 1401 if necessary
 if recCEDIsPresent% = 0 then
     LogInfo("Client is in testing mode. CED 1401 is not present.");
-    U1401Open(0,type1401%);  'Open comms to first available 1401 (we only have one 1401 per rig) and get type of 1401 - needed to interpret PlayWaveStatus$ return
+else
+    type1401% := U1401Open(0);  'Open comms to first available 1401 (we only have one 1401 per rig) and get type of 1401 - needed to interpret PlayWaveStatus$ return
     U1401Close();  'Close comms to the 1401
+    printlog("1401 type is %d\n",type1401%);
 endif
 
 
