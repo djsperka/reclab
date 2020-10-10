@@ -3577,7 +3577,7 @@ func IdleLoop%()
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
                 if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
+                    'recPointsPlayed% := recPointsPlayed%/2;
                 endif
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
@@ -3731,7 +3731,7 @@ func IdleLoop%()
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
                 if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
+                    'recPointsPlayed% := recPointsPlayed%/2;
                 endif
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
@@ -3834,7 +3834,7 @@ func IdleLoop%()
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
                 if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
+                    'recPointsPlayed% := recPointsPlayed%/2;
                 endif
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
@@ -3938,7 +3938,7 @@ func IdleLoop%()
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
                 if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
-                    recPointsPlayed% := recPointsPlayed%/2;
+                    'recPointsPlayed% := recPointsPlayed%/2;
                 endif
             else
                 PWA$ := "";  'if CED is absent simulate end of stimulus
@@ -4056,7 +4056,7 @@ func IdleLoop%()
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
                 if type1401% >= 5 then 'later 1401s return BYTES instead of POINTS PLAYED starting with Spike2 v7.
                     'printlog("check 1 points played starts as %d\n",recPointsPlayed%);
-                    recPointsPlayed% := recPointsPlayed%/2;
+                    'recPointsPlayed% := recPointsPlayed%/2;
                     'printlog("check 1 points played ends as %d\n",recPointsPlayed%);
                 endif
             else
