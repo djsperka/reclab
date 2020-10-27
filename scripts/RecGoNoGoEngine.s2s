@@ -3079,8 +3079,8 @@ func IdleLoop%()
         'Update the joystick plot every 5 ms
         'printlog("recUseJoystick% is %d and tNow is %f and tLastJoyUpdate is %f\n",recUseJoystick%,tNow,tLastJoyUpdate);
         if recUseJoystick% <> 0 and tNow-tLastJoyUpdate > .005 and recCEDIsPresent% = 1 and tNow > .002 then
-            XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.001,tNow-.006);
-            YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.001,tNow-.006);
+            XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.006,tNow-.001);
+            YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.006,tNow-.001);
             View(joyview%).XYAddData(joydatachan%,XJoy,YJoy);  'do not need to flip axis values
             tLastJoyUpdate := tNow;
             'printlog("Updated joystick voltage with x voltage %f and y voltage %f\n",XJoy,YJoy);
