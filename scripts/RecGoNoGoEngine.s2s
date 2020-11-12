@@ -3859,7 +3859,7 @@ func IdleLoop%()
             docase
             case PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundC", "Sound done playing.");
-                if isEarlyFA% = 1 then
+                if isEarlyFA% = 1 and recIsGoNoGo% = 0 then  'isEarlyFA% means something different (early response) in FC tasks
                     ChangeStateTo(stateInResponseWindow%);  'this will just shunt to the FA penalty, but it keeps the logic consistent
                 else
                     ChangeStateTo(stateTrialHoldReward%);
@@ -4345,7 +4345,7 @@ func IdleLoop%()
                     'want to keep track of which response happened in output...
                 endif;
                 recPreciseTrialTime := recLeverTime;  'time response occurred
-                if recExpToRun% = recExpStereoDisButton% then
+                if recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpAMDiscButton% then
                     'Cheating here, and passing a value OTHER THAN actual success, so that we can know which direction the human actually responded, as that seems important
                 '    StimComplete%(2, inResponse1%);  '1 indicates response was S2 High, 0 indicates response was S2 Low
                 'else
