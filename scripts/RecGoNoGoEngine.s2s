@@ -1504,6 +1504,7 @@ end
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Start%()
+    var notYet5Seconds;
     
     ' Disable start button, enable stop and pause
     view(recLog%).print("In Start%(). About to enable Toolbar.\n");
@@ -1524,6 +1525,16 @@ func Start%()
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         view(recLog%).print("Sampling started.\n");
         recCurrentlySampling% := 1;  'don't start sampling again
+        'Make sure sampling has started before moving forward
+        while samplestatus() <> 2 and notYet5Seconds < 5 do
+            yield(0.1);
+            notYet5Seconds += 0.1;
+        wend
+        'If sampling doesn't start in the infinity of 5 seconds, give up
+        if samplestatus() <> 2 then
+            message("Sampling has not started within 5 seconds!  Quitting!");
+            halt
+        endif;        
         SequencerPeriodMS := SampleSeqClock(1);  'Get the clock period of the sequencer, in MS, must do this after starting sampling
         TimePerADC := SampleTimePerAdc();  'get AD conversion rate
         UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
