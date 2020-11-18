@@ -1,0 +1,936 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CEDResources App="Spike2" AppVer="819">
+	<Sample S2Ver="819" ARange="5">
+		<!--Sampling configuration saved to G:\Recanzone\sdfsdfsdf.s2cx on Wednesday, November 18, 2020 11:06:32 AM-->
+		<SampCtl t="114" b="0" l="377" r="2"/>
+		<SeqCtl t="84" b="0" l="377" r="2"/>
+		<SampSta t="144" b="0" l="377" r="2"/>
+		<Chans BigFile="0" IdealWMRate="50000">
+			<Chan id="1" Type="1" Title="sound  in" Traces="1" Rate="100000" ActRate="100000" Comment="No comment" Units=" volt" SerBaud="9600" SerHand="1"/>
+			<Chan id="30" Type="5" Title="Keyboard" ActRate="100" Comment="No comment" Units=" volt" Divide="0" SerBaud="9600" SerHand="1"/>
+		</Chans>
+		<Resol uspt="5" recalc="0" Assume1401="2" OptUSFrom="2" OptUSTo="50" GrpRates="1" CompFlgs="14"/>
+		<Mode For="60" EveryUn="1">
+			<Trigs id="0" Chan="30" Code="-1" Post="1" Chans="1"/>
+			<Trigs id="1" Chan="-4" Code="-1" Post="1" Chans="-1"/>
+			<Trigs id="2" Chan="-4" Code="-1" Post="1" Chans="-1"/>
+			<Trigs id="3" Chan="-4" Code="-1" Post="1" Chans="-1"/>
+		</Mode>
+		<Seq OutType="3" SeqFile="c:\experiments\ced_seq\seq_control_strf.PLS" SeqFlags="4" DacMask="3" DigMask="3" DacUnits="V">
+			<Pulses States="27">
+				<State id="1">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="A" Before="0" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="2">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="B" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="3">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="C" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="4">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="D" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="5">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="E" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="6">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="F" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="7">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="G" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="8">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="H" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="9">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="I" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="10">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="J" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="11">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="K" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="12">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="L" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="13">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="M" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="14">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="N" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="15">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="O" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="16">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="P" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="17">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="Q" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="18">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="R" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="19">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="S" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="20">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="T" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="21">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="U" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="22">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="V" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="23">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="W" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="24">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="X" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="25">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="Y" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+				<State id="26">
+					<PulseList id="0">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="1">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="2">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="3">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="4">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="5">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="6">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="7">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="8">
+						<Pulse id="0" Type="0" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+					<PulseList id="9">
+						<Pulse id="0" Type="0" Name="Z" Before="0.20000000298023224" Length="0.10000000149011612" Delta="1"/>
+					</PulseList>
+				</State>
+			</Pulses>
+		</Seq>
+		<Waves>
+			<Wave id="0" Type="3" Chans="1" Used="1" Label="Stim" Cycle="1" Rate="100000" PtsPer="100000" Key="83"/>
+		</Waves>
+		<Auto/>
+		<CondPorts Count="32">
+			<c id="0" Source="2"/>
+			<c id="1" Source="2"/>
+			<c id="2" Source="2"/>
+			<c id="3" Source="2"/>
+			<c id="4" Source="2"/>
+			<c id="5" Source="2"/>
+			<c id="6" Source="2"/>
+			<c id="7" Source="2"/>
+			<c id="8" Source="2"/>
+			<c id="9" Source="2"/>
+			<c id="10" Source="2"/>
+			<c id="11" Source="2"/>
+			<c id="12" Source="2"/>
+			<c id="13" Source="2"/>
+			<c id="14" Source="2"/>
+			<c id="15" Source="2"/>
+			<c id="16" Source="2"/>
+			<c id="17" Source="2"/>
+			<c id="18" Source="2"/>
+			<c id="19" Source="2"/>
+			<c id="20" Source="2"/>
+			<c id="21" Source="2"/>
+			<c id="22" Source="2"/>
+			<c id="23" Source="2"/>
+			<c id="24" Source="2"/>
+			<c id="25" Source="2"/>
+			<c id="26" Source="2"/>
+			<c id="27" Source="2"/>
+			<c id="28" Source="2"/>
+			<c id="29" Source="2"/>
+			<c id="30" Source="2"/>
+			<c id="31" Source="2"/>
+		</CondPorts>
+		<ForceOP/>
+		<Talkers/>
+	</Sample>
+	<DocTime>
+		<Templates/>
+		<View>
+			<WPlace flags="0" showc="1" minx="-1" miny="-1" maxx="-1" maxy="-1" t="93" b="576" l="134" r="1014"/>
+			<Font hgt="-11" hthou="-115" wgt="400" paf="16" fnam="Times New Roman"/>
+			<Chan Chan="30" DMode="9" DWidth="-4.9999999999999996e-6" DTrig="65535" DBoth="1" DHLine="1" DSubMd="2" Ax="0" AdcAxMax="1" ChType="5"/>
+			<Chan Chan="1" DMode="11" DWidth="-4.9999999999999996e-6" DDSize="-1" DSubMd="2" AxMin="-5" AxMax="5" AdcAxMin="-5" AdcAxMax="5" AxType="1" ChType="1"/>
+			<XInfo Left="1.2296774892684992" Right="2.229677546123784" XAxSmall="5" CRBack="0" VCLabMode="2" HCLabMode="1" VCCount="1">
+				<VCur id="0" LabMode="2" LabPos="0.2" Num="0"/>
+			</XInfo>
+			<ChOrder Chans="2">
+				<c id="0" Chan="30"/>
+				<c id="1" Chan="1"/>
+			</ChOrder>
+			<CursVals XZero="0" YZero="0"/>
+			<CursRegs XZero="0" YZero="0"/>
+			<OvDraw3d YProp="0.5" XScale="0.5" YScale="0.5"/>
+		</View>
+		<ProcR Name="SetPower" Type="0">
+			<SetPower CSCod="1" CSMsk="268436513" Bins="2048"/>
+			<m Start="0.0" End="5.78059" Opt="1"/>
+			<u Mode="2" Per="0.9999999999999999" SwpLen="1.4999999999999998" PreTrig="0" TrChan="30" TrCode="83" PrePost="0.49999999999999994"/>
+			<DocRes>
+				<View>
+					<WPlace flags="0" showc="1" minx="-1" miny="-1" maxx="-1" maxy="-1" t="29" b="512" l="22" r="902"/>
+					<Font hgt="-11" hthou="-115" wgt="400" paf="16" fnam="Times New Roman"/>
+					<Chan Chan="0" DMode="1" DWidth="-1" DDSize="-1" DError="1" DSubMd="2" AxMax="100" AxType="1" ChType="127"/>
+					<XInfo Right="50000.00000000001" XAxSmall="5" CRBack="0" VCLabMode="2" HCLabMode="1"/>
+					<ChOrder Chans="1">
+						<c id="0"/>
+					</ChOrder>
+					<CursVals XZero="0" YZero="0"/>
+					<CursRegs XZero="0" YZero="0"/>
+				</View>
+			</DocRes>
+		</ProcR>
+	</DocTime>
+	<App>
+		<WPlace flags="0" showc="1" minx="-1" miny="-1" maxx="-1" maxy="-1" t="33" b="882" l="371" r="1417"/>
+	</App>
+</CEDResources>
