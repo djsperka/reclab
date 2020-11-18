@@ -21,7 +21,7 @@ DrivePath$ := GetDrivePath$();
 
 var ConfigFileName$;
 'ConfigFileName$ := DrivePath$ + "Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
-ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
+ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2cx";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
 var i%;
 var j%;
 var SeqFileName$;
@@ -185,7 +185,9 @@ if ok% < 0 then
     message("The requested sequencer file %s\nwas not found!  Quitting!",SeqFileName$);
     return 0;
 endif;
-
+    
+'SampleWaveform(2,0,100000);     
+    
 'make sure there's a textmark channel
 SampleTextMark(200);  'Set Channel 30 as textmark channel, 200 characters per 
 
@@ -216,10 +218,21 @@ MChanStimOn% := MemChan(5);
 ChanTitle$(MChanStimOn%, "StimOnTime");
 ChanShow(MChanStimOn%);
     
-   
+  
     
 'Start sampling
 samplestart();
+    
+    var fivesecs;
+    while SampleStatus() <> 2 and fivesecs > 5 do
+        yield(0.1);
+        fivesecs := fivesecs + 0.1;
+    wend
+    if fivesecs >= 5 then
+        message("Sampling did not start!");
+        halt
+    endif
+    
 
 'Make sure to display the channel with the input data.  Channel is "2" because channel 1 was originally a WaveMark channel (now deleted)
 chanshow(2);
