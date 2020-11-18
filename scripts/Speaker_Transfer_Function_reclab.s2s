@@ -346,7 +346,7 @@ FileSaveAs(SavePath$,100,0,"Save FFT Data",0,"UseSName=0|UseCName=0");  'Same th
 end  'this ends ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
 
 
-halt();
+halt
 
 
 'for dialog creation
