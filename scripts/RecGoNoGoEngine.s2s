@@ -822,6 +822,7 @@ Func PlaySound%(isS2local%)
     var atten;
     var calatten;
     var trlatten;
+    var roveatten;
     var s$;
     var playChar$;
     var spkr%;
@@ -866,15 +867,22 @@ Func PlaySound%(isS2local%)
     'Get trial-based attenuation for current stimulus
     trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
     
+    'Get trial-based roving attenuation for current stimulus
+    if recDoRove% = 1 then
+        roveatten := Rand(2*recRovedB,-recRovedB);
+    else
+        roveatten := 0;
+    endif
+    
     'Get total attenuation
     if recExpToRun% = recExpAudiogramButton% then
         printlog("cal atten is %f and current db is %f\n",calatten,recAudiogramCurrentdB);
         atten := 65 + calatten - recAudiogramCurrentdB;
         targdB := recAudiogramCurrentdB;  'convinced myself this is right
     else
-        printlog("cal atten is %f and trial atten is %f\n",calatten,trlatten);
-        atten := calatten + trlatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
-        targdB := 65 - trlatten;  'convinced myself this is right
+        printlog("cal atten is %f and trial atten is %f and roving atten is %f\n",calatten,trlatten,roveatten);
+        atten := calatten + trlatten + roveatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation + roving attenuation
+        targdB := 65 - trlatten - roveatten;  'convinced myself this is right
     endif;
     
     'It is possible that due to the maximum intensity of the stimulus that the requested attenuation
@@ -891,7 +899,7 @@ Func PlaySound%(isS2local%)
         else
             'Removing message box because it is causing issues with experimentation
             'message("Requested attenuation was negative, has been reset to 0!");
-            printlog("Requested attenuation (%f dB) was negative for this stimulus (%s), has been reset to 0!",calatten + trlatten,NameThatStimulus$(thisStim%));
+            printlog("Requested attenuation (%f dB) was negative for this stimulus (%s), has been reset to 0!",calatten + trlatten + roveatten,NameThatStimulus$(thisStim%));
         endif;
     endif;
     
@@ -1002,6 +1010,8 @@ Func PlayTwoSounds%(whichStim%)
     var calattenSA;
     var trlattenArray;  'necessary to printlog both trial-based attenuations near bottom of function, otherwise we could just reuse trlatten
     var trlattenSA;
+    'var roveattenArray;  'For now we will NOT rove the array
+    var roveattenSA;
     var s$;
     var s2$;
     var playChar$;
@@ -1047,7 +1057,7 @@ Func PlayTwoSounds%(whichStim%)
         attenArray := calattenArray + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
         targdBArray := 65 - trlattenArray;  'convinced myself this is right
         
-        'Get identity of stimulus on standalone as well, even though for now we're not actually playing anything
+        'Get identity of stimulus on standalone as well, even though for now we're not actually playing anything (Dominique did this, I don't know why)
         thisStimSA% := rec2StimList%[playInd%][1];  
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
@@ -1056,8 +1066,11 @@ Func PlayTwoSounds%(whichStim%)
         'Get trial-based attenuation for current stimulus
         trlattenSA := rec2DeltadBList[playInd%][1];
         
-        attenSA := calattenSA + trlattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
-        targdBSA := 65 - trlattenSA;  'convinced myself this is right
+        'Just to be explicit, we do not rove on FRA - especially on stimuli that aren't playing.
+        roveattenSA := 0;
+        
+        attenSA := calattenSA + trlattenSA + roveattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
+        targdBSA := 65 - trlattenSA - roveattenSA;  'convinced myself this is right
         
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
@@ -1091,7 +1104,7 @@ Func PlayTwoSounds%(whichStim%)
         'Get play wave area with current stimulus
         playChar$ := GetPlayWaveKey$(whichStim%);
         
-        '''FOR S1, WHICH IS ON STANDALONE
+        '''FOR S1/S2, WHICH IS ON STANDALONE
         'Get this stimulus index
         thisStimSA% := recStimList%[whichStim%][playInd%];
         
@@ -1107,20 +1120,27 @@ Func PlayTwoSounds%(whichStim%)
         'Get trial-based attenuation for current stimulus
         trlattenSA := recDeltadBList[whichStim%][playInd%];
         
-        attenSA := calattenSA + trlattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
-        targdBSA := recStereoDisdB - trlattenSA;  'convinced myself this is right
+        'Get trial-based roving attenuation for current stimulus (S1/S2 roving only)
+        if recDoRove% = 1 then
+            roveattenSA := Rand(2*recRovedB,-recRovedB);
+        else
+            roveattenSA := 0;
+        endif
+        
+        attenSA := calattenSA + trlattenSA + roveattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
+        targdBSA := recStereoDisdB - trlattenSA - roveattenSA;  'convinced myself this is right
         
         'Get total attenuation
         docase
         case whichStim% = 0 then
             isS2$ := "S1";
-            printlog("for S1, cal atten is %f and trial atten is %f\n",calattenSA,trlattenSA);
+            printlog("for S1, cal atten is %f and trial atten is %f and roving atten is %f\n",calattenSA,trlattenSA,roveattenSA);
         case whichStim% = recTrialTerminalIndex%[playInd%] then
             isS2$ := "S2";
-            printlog("for S2, cal atten is %f and trial atten is %f\n",calattenSA,trlattenSA);
+            printlog("for S2, cal atten is %f and trial atten is %f and roving atten is %f\n",calattenSA,trlattenSA,roveattenSA);
         else
             isS2$ := "S1." + Str$(whichStim%);
-            printlog("for S1.n #%d, cal atten is %f and trial atten is %f\n",whichStim%,calattenSA,trlattenSA);
+            printlog("for S1.n #%d, cal atten is %f and trial atten is %f and roving atten is %f\n",whichStim%,calattenSA,trlattenSA,roveattenSA);
         endcase;
         
         
@@ -5602,6 +5622,11 @@ proc WriteExpParamsSampleText()
     RightThreshInnerMax,RightThreshInnerMin,RightThreshOuterMax,RightThreshOuterMin); 
     SampleText(s$);
     yield(0.01);    
+    
+    s$ := Print$("Param16 RoveLeveldB=%.2f",
+    recRovedB); 
+    SampleText(s$);
+    yield(0.01); 
     
     
     docase
