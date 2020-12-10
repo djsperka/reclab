@@ -119,7 +119,7 @@ var incrementDialogItem%;
 'var allInnerMin;
 'var allOuterMax;
 'var allOuterMin;
-const joystickMaxDegrees := 20;  'hardcode this based on the actual max
+const joystickMaxDegrees := 30;  'hardcode this based on the actual max
 var joystickVoltageConversionFactor := .09;  'conversion of degrees to voltage, .09 should about work for a 4.5V power supply
 var joystickThreshInDegrees% := 0;
 var joystickIncInDegrees% := 0;
