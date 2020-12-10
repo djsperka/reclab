@@ -7616,7 +7616,7 @@ func GenTrialsDis%(recExpToRun%)
     var nS2%;
     var RepeatsPerStim%;
     var responseTrial%; '1 if hit/miss, 0 if catch
-    const dBrove% := 5; 'Rand(dBrove%,0) = 0,1,2,3,4 dB ; set to 0 to turn roving off
+    const dBrove% := 0; 'Rand(dBrove%,0) = 0,1,2,3,4 dB ; set to 0 to turn roving off
     
     'global vars set up in RecLoadTrialsFile: 
     '            recTrialS1%
