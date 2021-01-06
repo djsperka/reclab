@@ -206,7 +206,7 @@ var LongNoiseCounter%;
 var numHits% := 0;
 var numMisses% := 0;
 var numFPs% := 0;
-var numFAs% := 0; 'need a CR counter too... (NOT USED NOW)
+'numFAs% has been removed because it was unused
 var numHiResps% := 0; 'reset after each block?
 var numLoResps% := 0; 'reset after each block? (kind of redundant, but that's OK)
 var percentUPthisBlock;
@@ -4262,10 +4262,13 @@ func IdleLoop%()
                 StimComplete%(2, inResponse1%+(10*coinFlipResult%));   'terminal S1
                 SafeSampleKey("M");  'Turn off LED
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
+                'NEW NOTE: OK, let's change that directive and increment hit/miss counter.
                 if coinFlipResult% = 1 then
                     ChangeStateTo(stateHitReward%);
+                    numHits% += 1; 'increment HIT counter
                 else
                     ChangeStateTo(stateMissTimeout%);
+                    numMisses% += 1;  'increment MISS counter
                 endif;
                 
                 'Early FA, interrupted final stimulus before actual response window
@@ -4274,7 +4277,7 @@ func IdleLoop%()
                 'time of early FA is recorded above
                 StimComplete%(2, 0);  'terminal S1
                 SafeSampleKey("M");  'Turn off LED
-                numFAs% += 1;  'increment FA counter
+                numFPs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
                 'Early CR, interrupted final stimulus, this is OK   
             case isEarlyCR% = 1 then  'we don't care about the state of the lever; it was already released early
@@ -4282,7 +4285,9 @@ func IdleLoop%()
                 'time of early hit is recorded above
                 StimComplete%(2, 1);   'terminal S1
                 SafeSampleKey("M");  'Turn off LED
-                'CR counter?
+                'CR counter?  For now, just call a CR a hit
+                numHits% += 1; 'increment HIT counter
+                
                 ChangeStateTo(stateHitReward%);   
                 
                 
@@ -4385,10 +4390,13 @@ func IdleLoop%()
                 endif;
                 SafeSampleKey("M");  'Turn off LED
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
+                'NEW NOTE: OK, do increment hit/miss counter
                 if coinFlipResult% = 1 then
                     ChangeStateTo(stateHitReward%);
+                    numHits% += 1; 'increment HIT counter
                 else
                     ChangeStateTo(stateMissTimeout%);
+                    numMisses% += 1; 'increment MISS counter
                 endif;
                 
                 'the original code for SAME/DIFF:
@@ -4408,7 +4416,7 @@ func IdleLoop%()
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(2, 0);  'terminal S1
                 SafeSampleKey("M");  'Turn off LED
-                numFAs% += 1;  'increment FA counter
+                numFPs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
                 'CR in response window    
             case inResponse2% = 1 and isTerminalS1% = 1 then  'forced choice only
@@ -4417,7 +4425,8 @@ func IdleLoop%()
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 StimComplete%(2, 1);    'terminal S1
                 SafeSampleKey("M");  'Turn off LED
-                'CR counter?
+                'CR counter?  Call it a hit for now
+                numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateHitReward%);
                 'Miss in response window    
             case inResponse2% = 1 and isTerminalS1% = 0 then  'forced choice only
@@ -4454,7 +4463,7 @@ func IdleLoop%()
                     SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
                 endif;
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
-                'numFPs% += 1;  'increment FP counter   'NOTE: NOT SURE WHETHER TO INCREMENT FA COUNTER HERE OR NOT
+                numMisses% += 1;  'increment miss counter
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response --> OR, delete reshuffling above and do FA timeout
                 
                 'ACTIVE StereoDis HI Miss, GNG only
@@ -4494,7 +4503,8 @@ func IdleLoop%()
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 StimComplete%(2, 1);  'terminal S1
                 SafeSampleKey("M");  'Turn off LED
-                'CR counter?
+                'CR counter?  Call it a hit for now
+                numHits% += 1; 'increment HIT counter
                 ChangeStateTo(stateCRReward%);  
                 'Otherwise, the response window is still open and the lever is still down    
             else
