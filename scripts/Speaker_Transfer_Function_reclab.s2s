@@ -6,29 +6,26 @@
 #include "RegistryUtils.s2s"
 #include "recfuncs.s2s"
 #include "filesystemvars.s2s"
-var rigPort%;                       'port number for this rig that is held in the registry
-var keyGlob$;                       'registry key, "Glob" to make it different from local key$s
+
+'The purpose of these variables appears to have been deprecated
+'var rigPort%;                       'port number for this rig that is held in the registry
+'var keyGlob$;                       'registry key, "Glob" to make it different from local key$s
 
 var absolutelynothing%;
 absolutelynothing% := ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%();
-var SetPA5sLoc$;
+
 
 func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
 
 'First off, get the drive path
 var DrivePath$;
 DrivePath$ := GetDrivePath$();
-
+    
+var DriveLetter$;
 var ConfigFileName$;
-'ConfigFileName$ := DrivePath$ + "Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2c";  'trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
-'ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2cx";  'For Big booth; trying the 2chan (= raw + keyboard marker) config to get rid of "error" when saving unused channels 
-ConfigFileName$ := "C:\\work\\reclab\\scripts\\strf_config_2chan.s2cx";  'For small booth
+var SeqFileName$;
 var i%;
 var j%;
-var SeqFileName$;
-'SeqFileName$ := DrivePath$ + "Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";
-'SeqFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";  'for big booth
-SeqFileName$ := "C:\\work\\reclab\\scripts\\seq_control_strf_2.PLS";  'for small booth
 var ctview%;
 var NumRepeats% := 5;
 var fs;             'sample rate to play stims at, real version
@@ -67,13 +64,27 @@ var StimOn;
 var PrevStimOn;
 var MChanStimOn%;
 var TF;
-
-'SetPA5sLoc$ := DrivePath$+"experiments\\SetPA5\\Release\\SetPA5s";  'Path to SetPA5s program, sets multiple PA5s
-
-
-'Set the PA5 to 0 off the bat - not present in reclab, set PA4 is below
-'SetPA5(0,0);
     
+    
+    
+'Get correct location of sequencer and config file, regardless of booth  
+'Note that in both cases, the location of the Config/Sequencer files is on the system drive, not the data drive.  It is what it is.   
+DriveLetter$ := Left$(DrivePath$,1);    
+docase
+case DriveLetter$ = "I" then  '"I" is the data drive path for the big booth
+    ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2cx";  'For Big booth
+    SeqFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";  'for big booth    
+case DriveLetter$ = "D" then  '"D" is the data drive path for the small booth
+    ConfigFileName$ := "C:\\work\\reclab\\scripts\\strf_config_2chan.s2cx";  'For small booth    
+    SeqFileName$ := "C:\\work\\reclab\\scripts\\seq_control_strf_2.PLS";  'for small booth    
+else
+    Message("Drive path '" + DrivePath$ + "' is not recognized as a known drive path for the big or small booths!  Quitting!");    
+    halt    
+endcase        
+        
+        
+        
+        
 
 'Dialog Creation Stuff
 DlgCreate("Specify stimulus for speaker transfer function");  'First step to create dialog box
@@ -167,9 +178,11 @@ endif;
 'If loading stimulus, the stimulus is loaded into Wav[]
 'If noise (either type) noise is still waiting to be created (we don't want "frozen noise")
 'If tone, tone is created and loaded into Wav[]
-
-keyGlob$:="Reclab";
-rigPort% := GetIntRegistryValue%(keyGlob$, "UseComPort", rigPort%); 'get port num for this rig from the registry
+    
+'rigPort% appears to be unused, perhaps it had a function which is now deprecated    
+'keyGlob$:="Reclab";
+'rigPort% := GetIntRegistryValue%(keyGlob$, "UseComPort", rigPort%); 'get port num for this rig from the registry
+    
 RecInitTDT%();
 
 'set speaker and attenuation, now is as good a time as any    
@@ -187,8 +200,7 @@ if ok% < 0 then
     message("The requested sequencer file %s\nwas not found!  Quitting!",SeqFileName$);
     return 0;
 endif;
-    
-'SampleWaveform(2,0,100000);     
+      
     
 'make sure there's a textmark channel
 SampleTextMark(200);  'Set Channel 30 as textmark channel, 200 characters per 
@@ -225,15 +237,15 @@ ChanShow(MChanStimOn%);
 'Start sampling
 samplestart();
     
-    var fivesecs;
-    while SampleStatus() <> 2 and fivesecs > 5 do
-        yield(0.1);
-        fivesecs := fivesecs + 0.1;
-    wend
-    if fivesecs >= 5 then
-        message("Sampling did not start!");
-        halt
-    endif
+var fivesecs;
+while SampleStatus() <> 2 and fivesecs > 5 do
+    yield(0.1);
+    fivesecs := fivesecs + 0.1;
+wend
+if fivesecs >= 5 then
+    message("Sampling did not start!");
+    halt
+endif
     
 
 'Make sure to display the channel with the input data.  Channel is "2" because channel 1 was originally a WaveMark channel (now deleted)
@@ -285,7 +297,7 @@ while j% < 1200 and break% = 0 do
         if donormalize% = 1 then
             ArrConst(Wav2[],Wav[]);  'make copy of wav
             abs(Wav2[]);  'make Wav2[] absolute value of Wav[]
-            mymax := Wav[max(Wav2[])];  'get absolute value of stimulus maximum
+            mymax := Wav2[max(Wav2[])];  'get absolute value of stimulus maximum
             normfac := 32767/mymax;  'get normalization factor
             ArrMul(Wav[],normfac);  'Scale Wav[]
             ArrConst(Wav%[],Wav[]);  'Move float Wav[] values into integer array Wav%[], will floor the absolute value
@@ -325,7 +337,7 @@ wend;
 
 
 
-'Check to make sure the stimulus actually got through (no "plugging" errors)
+'Check to make sure the stimulus actually got through (no "cable plugging" errors)
 minmax(2,0,maxtime(),recordedmin,recordedmax);  'get minimum and maximum in recordedmin, recordedmax
 if recordedmax-recordedmin < 0.006 then  'this looks like a "safe" value larger than random noise and WAY smaller than expected recording levels
     message("There is very little variation in the data.  Please make sure the B&K is plugged in to the CED!");
@@ -389,56 +401,3 @@ var v%;  'holds value of list box, if necessary
     return 1;
 
 end
-
-
-
-''For setting PA5
-'func SetPA5(Attenuation,Attenuation2)
-'
-''The "catch" portions of this file are intended to allow a non-force-quit situation if
-''the PA5 becomes unresponsive.  However, they have not been tested as replication of PA5
-''unresponsiveness has not occurred.
-'
-'var PA5Handle%;
-'var SetPA5Killed%;   'have we killed the SetPA5 program?
-'var TimeCount%;      'How long has SetPa5 been running?
-'var QueryResult%;     
-'
-'
-'    'Put ceiling on PA5 setting - anytime atten is set to 120 dB or more (calibration dB + trial-based dB)
-'    'because this is the limit of the PA5.  Requests to set PA5 to higher values will result in NO VALUE
-'    'BEING SET
-'if Attenuation > 120 then
-'    Attenuation := 120;
-'endif;
-'if Attenuation2 > 120 then
-'    Attenuation2 := 120;
-'endif;
-'
-'	'Run program to set attenuation at the PA5
-'PA5Handle%:=ProgRun(SetPA5sLoc$+" "+str$(Attenuation)+" "+str$(Attenuation2));  'format for SetPA5s
-'
-'
-'	'Wait for program changing the PA5 level to finish. This takes about .15 seconds.
-'while ProgStatus(PA5Handle%) > 0 and SetPA5Killed% = 0 do 
-'	Yield(.001); 
-'	TimeCount% := TimeCount% + 1;
-'	if TimeCount% > 1000 then  'if we've waited a whole second the PA5 is probably down
-'		ProgKill(PA5Handle%);   'kill SetPA5
-'		SetPA5Killed% := 1;
-'	endif;
-'wend;
-'
-'
-'if SetPA5Killed% = 1 then
-'	QueryResult% := query("The PA5 appears to be down.  Please cycle the PA5 and click OK, or press END to quit.","OK","END");
-'	if QueryResult% = 1 then
-'		SetPA5(Attenuation,Attenuation2);  'try again
-'	else
-'		printlog("Quitting because the user chose to quit rather than cycle the PA5\n");
-'        Halt();
-'	endif;
-'endif;
-'
-'return 1;
-'end;
