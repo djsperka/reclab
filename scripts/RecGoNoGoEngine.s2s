@@ -1545,6 +1545,16 @@ func Start%()
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         view(recLog%).print("Sampling started.\n");
         recCurrentlySampling% := 1;  'don't start sampling again
+        
+        if recUseJoystick% <> 0 then
+            'Must clear the channel of all processes, because for some reason these persist across Spike2 sessions.
+            ChanProcessClear(configJoyXChannel%,-1);
+            ChanProcessClear(configJoyYChannel%,-1);
+            'This adds smoothing to the joystick channels, seems to work really well.
+            ChanProcessAdd(configJoyXChannel%,1,0.005);  'Try smoothing at 5 ms
+            ChanProcessAdd(configJoyYChannel%,1,0.005);  'Try smoothing at 5 ms
+        endif
+        
         'Make sure sampling has started before moving forward
         while samplestatus() <> 2 and notYet5Seconds < 5 do
             yield(0.1);
@@ -1611,6 +1621,11 @@ func Stop%()
             SampleKey("K");  'Kill reward, just in case, do not use "safe" version
         endif;
         
+        if recUseJoystick% <> 0 then  'if the response device is the joystick, we may have set up a channel process to smooth the data
+            'Clear any channel process on the joystick channels
+            ChanProcessClear(configJoyXChannel%,-1);
+            ChanProcessClear(configJoyYChannel%,-1);
+        endif;
         
         var retVal2%;
         retVal2% := SampleStop();
