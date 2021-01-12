@@ -5484,11 +5484,20 @@ end
 'we are liable to get the wrong time.
 func GetTimeOfLast1401Event()
     var seqtime;
+    var firstCheckTime;
     
     seqtime := SampleSeqVar(3)*UsPerTime/1000000;  'Now, seqtime holds actual most recent time, usually
     
+    firstCheckTime :=  View(recDataWindowView%).MaxTime();
+    
     'if recAMSPPassiveTask% = 0 then  'It's not clear why this excludes the Passive task
-    while seqtime = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts
+    while seqtime = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts 
+        if View(recDataWindowView%).MaxTime() > firstCheckTime + 10 then
+            'if we waited 10 seconds for the stimulus to start, something is very wrong!
+            message("The Stimulus did not start within 10 seconds!  Dismiss this dialog to quit!  Tell Jeff!!!");
+            stop%();  'This function will stop sampling but will not exit the toolbar
+            halt;  'Shut them down!  Shut them ALL down!
+        endif;
         yield(.001,1023);  'yield a millisecond until the stimulus starts playing
         seqtime := SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
     wend; 

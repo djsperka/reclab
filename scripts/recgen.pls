@@ -34,7 +34,7 @@
 ;0014            MOVI   V2,0            ;Allow sequencer access
 ;0015            JUMP   NEXT
 0005 PLAYAA: 'a MOVI   V2,1            ;Do not allow sequencer access
-0006            WAVEGO A               ;Play wave area A
+0006            WAVEGO A,W             ;Play wave area A
 0007 AAWAIT:    WAVEBR AAWAIT,T        ;Wait until area A begins playing
 0008            MARK   1               ;Use digital marker as in long tone
 0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -44,7 +44,7 @@
 0013            MOVI   V2,0            ;Allow sequencer access
 0014            JUMP   NEXT
 0015 PLAYBB: 'b MOVI   V2,1            ;Do not allow sequencer access
-0016            WAVEGO B               ;Play wave area B
+0016            WAVEGO B,W             ;Play wave area B
 0017 BBWAIT:    WAVEBR BBWAIT,T        ;Wait until area B begins playing
 0018            MARK   1               ;Use digital marker as in long tone
 0019            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -54,7 +54,7 @@
 0023            MOVI   V2,0            ;Allow sequencer access
 0024            JUMP   NEXT
 0025 PLAYCC: 'c MOVI   V2,1            ;Do not allow sequencer access
-0026            WAVEGO C               ;Play wave area C
+0026            WAVEGO C,W             ;Play wave area C
 0027 CCWAIT:    WAVEBR CCWAIT,T        ;Wait until area C begins playing
 0028            MARK   1               ;Use digital marker as in long tone
 0029            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -64,7 +64,7 @@
 0033            MOVI   V2,0            ;Allow sequencer access
 0034            JUMP   NEXT
 0035 PLAYDD: 'd MOVI   V2,1            ;Do not allow sequencer access
-0036            WAVEGO D               ;Play wave area D
+0036            WAVEGO D,W             ;Play wave area D
 0037 DDWAIT:    WAVEBR DDWAIT,T        ;Wait until area D begins playing
 0038            MARK   1               ;Use digital marker as in long tone
 0039            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -74,7 +74,7 @@
 0043            MOVI   V2,0            ;Allow sequencer access
 0044            JUMP   NEXT
 0045 PLAYEE: 'e MOVI   V2,1            ;Do not allow sequencer access
-0046            WAVEGO E               ;Play wave area E
+0046            WAVEGO E,W             ;Play wave area E
 0047 EEWAIT:    WAVEBR EEWAIT,T        ;Wait until area E begins playing
 0048            MARK   1               ;Use digital marker as in long tone
 0049            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -84,61 +84,61 @@
 0053            MOVI   V2,0            ;Allow sequencer access
 0054            JUMP   NEXT
 0055 PLAYA:  'A MOVI   V2,1            ;Do not allow sequencer access
-0056            WAVEGO A               ;Play wave area A
+0056            WAVEGO A,W             ;Play wave area A
 0057 AWAIT:     WAVEBR AWAIT,T         ;Wait until area A begins playing
 0058            TICKS  V3              ;Place # of ticks at time of play into V3
 0059            MOVI   V2,0            ;Allow sequencer access
 0060            JUMP   NEXT
 0061 PLAYB:  'B MOVI   V2,1            ;See PLAYA
-0062            WAVEGO B
+0062            WAVEGO B,W
 0063 BWAIT:     WAVEBR BWAIT,T
 0064            TICKS  V3
 0065            MOVI   V2,0
 0066            JUMP   NEXT
 0067 PLAYC:  'C MOVI   V2,1            ;See PLAYA
-0068            WAVEGO C
+0068            WAVEGO C,W
 0069 CWATT:     WAVEBR CWATT,T         ;note label "CWAIT" is reserved and disallowed
 0070            TICKS  V3
 0071            MOVI   V2,0
 0072            JUMP   NEXT
 0073 PLAYD:  'D MOVI   V2,1            ;See PLAYA
-0074            WAVEGO D
+0074            WAVEGO D,W
 0075 DWATT:     WAVEBR DWATT,T         ;note label "DWAIT" is reserved and disallowed
 0076            TICKS  V3
 0077            MOVI   V2,0
 0078            JUMP   NEXT
 0079 PLAYE:  'E MOVI   V2,1            ;See PLAYA
-0080            WAVEGO E
+0080            WAVEGO E,W
 0081 EWAIT:     WAVEBR EWAIT,T
 0082            TICKS  V3
 0083            MOVI   V2,0
 0084            JUMP   NEXT
 0085 PLAYF:  'F MOVI   V2,1            ;See PLAYA
-0086            WAVEGO F
+0086            WAVEGO F,W
 0087 FWAIT:     WAVEBR FWAIT,T
 0088            TICKS  V3
 0089            MOVI   V2,0
 0090            JUMP   NEXT
 0091 PLAYS:  'G MOVI   V2,1            ;See PLAYA
-0092            WAVEGO G
+0092            WAVEGO G,W
 0093 GWAIT:     WAVEBR GWAIT,T
 0094            TICKS  V3
 0095            MOVI   V2,0
 0096            JUMP   NEXT
 0097 PLAYH:  'H MOVI   V2,1            ;See PLAYA
-0098            WAVEGO H
+0098            WAVEGO H,W
 0099 HWAIT:     WAVEBR HWAIT,T
 0100            TICKS  V3
 0101            MOVI   V2,0
 0102            JUMP   NEXT
 0103 PLAYI:  'I MOVI   V2,1            ;See PLAYA
-0104            WAVEGO I
+0104            WAVEGO I,W
 0105 IWAIT:     WAVEBR IWAIT,T
 0106            TICKS  V3
 0107            MOVI   V2,0
 0108            JUMP   NEXT
 0109 PLAYJ:  'J MOVI   V2,1            ;See PLAYA
-0110            WAVEGO J
+0110            WAVEGO J,W
 0111 JWAIT:     WAVEBR JWAIT,T
 0112            TICKS  V3
 0113            MOVI   V2,0
