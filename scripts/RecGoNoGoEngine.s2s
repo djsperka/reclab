@@ -4090,11 +4090,11 @@ func IdleLoop%()
         case iState% = stateTrialInitReward% then
             
             ' Are we giving trial init rewards? If we are, then do so, otherwise we just pass on through. 
-            if recTrialInitReward% = 1 and recTrainingRewardmL > 0 and recTurnOffReward% = 0 then
-                RecLogStatus("TrialInitReward", "Giving trial init reward, size " + str$(recTrainingRewardmL) + " mLs");
-                amountRewarded += recTrainingRewardmL;  'add reward to juice counter
+            if recTrialInitReward% = 1 and recInitRewardmL > 0 and recTurnOffReward% = 0 then
+                RecLogStatus("TrialInitReward", "Giving trial init reward, size " + str$(recInitRewardmL) + " mLs");
+                amountRewarded += recInitRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
-                    recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
+                    recRewardMs% := ConvertmLToSeconds(recInitRewardmL)*1000;
                     recRewardMs := recRewardMs%;  'we need a float version for later math
                     
                     stmp% := Reward%();
@@ -4116,7 +4116,7 @@ func IdleLoop%()
             endif
             if recTrialInitReward% = 1 then
                 recTrialInitReward% := -1; 'so that after soundA we can pass by this and move forward!! *jao (i feel smart!)
-                printlog("INIT REWARD? recTrainingRewardmL= %f and recTrialInitReward= %d\n", recTrainingRewardmL,recTrialInitReward%);
+                printlog("INIT REWARD? recInitRewardmL= %f and recTrialInitReward= %d\n", recInitRewardmL,recTrialInitReward%);
                 ChangeStateTo(stateStartSoundA%);
             else
                 ChangeStateTo(stateInResponseWindow%);
@@ -4126,11 +4126,11 @@ func IdleLoop%()
         case iState% = stateTrialHoldReward% then
             
             ' Are we giving trial hold rewards? Was stimulus held all the way through? If yes, then give reward, otherwise we just pass on through. 
-            if recTrialHoldReward% = 1 and isEarlyHit% = 0 and isEarlyMiss% = 0 and isEarlyCR% = 0 and recTrainingRewardmL > 0 and recTurnOffReward% = 0 then
-                RecLogStatus("TrialHoldReward", "Giving trial hold reward, size " + str$(recTrainingRewardmL) + " mLs");
-                amountRewarded += recTrainingRewardmL;  'add reward to juice counter
+            if recTrialHoldReward% = 1 and isEarlyHit% = 0 and isEarlyMiss% = 0 and isEarlyCR% = 0 and recHoldRewardmL > 0 and recTurnOffReward% = 0 then
+                RecLogStatus("TrialHoldReward", "Giving trial hold reward, size " + str$(recHoldRewardmL) + " mLs");
+                amountRewarded += recHoldRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
-                    recRewardMs% := ConvertmLToSeconds(recTrainingRewardmL)*1000;
+                    recRewardMs% := ConvertmLToSeconds(recHoldRewardmL)*1000;
                     recRewardMs := recRewardMs%;  'we need a float version for later math
                     
                     stmp% := Reward%();
@@ -5301,7 +5301,7 @@ func BehOutput(resultCode$, isS2local%)
         view(fh%).print("Trials file: %s\n",recSelectedTrialsFile$);
         view(fh%).print("Joy Init = %d\nResponse1 = %d\nResponse2 = %d\n", recTrialInitPosition%,recTrialResponsePosition1%,recTrialResponsePosition2%);
         'header cont... miss repeats and training reward (i.e., is this a training file or real behavior)
-        view(fh%).print("Miss repeats max = %d\ntraining reward = %.2f\n", missReps%, recTrainingRewardmL);
+        view(fh%).print("Miss repeats max = %d\ninit reward = %.2f\nhold reward = %.2f\n", missReps%, recInitRewardmL, recHoldRewardmL);
         'header for trial by trial info
         view(fh%).print("Speaker array = %d\n",recNSpeakers%); 
         'for AMDis and SpaceDis... (case this bitch to add experiment formats)
@@ -5553,8 +5553,8 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param5 TrainingRewardML=%.2f,HitRewardML=%.2f,CRRewardML=%.2f,MaxHitRewardML=%.2f,MaxCRRewardML=%.2f,HitRewardIncML=%.2f,S1RewardIncML=%.2f",
-    recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,recS1RewardIncmL);
+    s$ := Print$("Param5 InitRewardML=%.2f,HoldRewardML=%.2f,HitRewardML=%.2f,CRRewardML=%.2f,MaxHitRewardML=%.2f,MaxCRRewardML=%.2f,HitRewardIncML=%.2f,S1RewardIncML=%.2f",
+    recInitRewardmL,recHoldRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,recS1RewardIncmL);
     SampleText(s$);
     yield(0.01);
     

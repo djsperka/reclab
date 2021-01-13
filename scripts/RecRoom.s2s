@@ -510,7 +510,8 @@ var recHitRewardDur;                'Duration of hit reward, seconds
 var recCRRewardDur;                 'Duration of correct rejection reward, seconds
 'var recMaxHitRewardDur;             'Max duration of hit reward, seconds
 'var recMaxCRRewardDur;              'Max duration of CR reward, seconds
-var recTrainingRewardmL;            'Volume of training reward, milliliters
+var recInitRewardmL;                'Volume of init training reward, milliliters
+var recHoldRewardmL;                'Volume of "hold" training reward, milliliters
 var recHitRewardmL;                 'Volume of hit reward, milliliters
 var recCRRewardmL;                  'Volume of correct rejection reward, milliliters
 var recMaxHitRewardmL;              'Max volume of hit reward, milliliters
@@ -1556,7 +1557,6 @@ proc RecAMDiscGetParams()
     recAMDiscDoRove% := GetIntRegistryValue%(key$, "DoRove", recAMDiscDoRove%);
     recAMDiscRovedB := GetFloatRegistryValue(key$, "RovedB", recAMDiscRovedB);
     
-    'recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);
     recAMSPPassiveTask% := GetIntRegistryValue%(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
 
 	return;
@@ -1590,7 +1590,6 @@ proc RecAMDiscSaveParams()
     SetIntRegistryValue(key$, "TrialHoldReward", recAMDiscTrialHoldReward%);
     SetIntRegistryValue(key$, "DoRove", recAMDiscDoRove%);
     SetFloatRegistryValue(key$, "RovedB", recAMDiscRovedB);
-    'SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
     SetIntRegistryValue(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
     
 	return;
@@ -1623,7 +1622,6 @@ proc RecSpaceDisGetParams()
     recSpaceDisTrialHoldReward% := GetIntRegistryValue%(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);
     recSpaceDisDoRove% := GetIntRegistryValue%(key$, "DoRove", recSpaceDisDoRove%);
     recSpaceDisRovedB := GetFloatRegistryValue(key$, "RovedB", recSpaceDisRovedB);
-    'recTrainingRewardmL := GetIntRegistryValue%(key$, "TrainingRewardmL", recTrainingRewardmL);
     recAMSPPassiveTask% := GetIntRegistryValue%(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
 
 	return;
@@ -1654,8 +1652,7 @@ proc RecSpaceDisSaveParams()
     SetIntRegistryValue(key$, "SpaceDisExpIndexGen", recSpaceDisExpIndexGen%);
     SetIntRegistryValue(key$, "SpaceDisExpIndexLoad", recSpaceDisExpIndexLoad%);
     SetIntRegistryValue(key$, "TrialInitReward", recSpaceDisTrialInitReward%);
-    SetIntRegistryValue(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);
-    'SetIntRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);  
+    SetIntRegistryValue(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);  
     SetIntRegistryValue(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
 
 	return;
@@ -3328,7 +3325,6 @@ func RecExpAMDiscDialog%()
     recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recAMDiscTrialInitReward%, 
     recAMDiscTrialHoldReward%, recAMSPPassiveTask%, recAMDiscDoRove%, recAMDiscRovedB);  'not setting recAMDiscS1Speaker% in this version
 
-    'printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -3478,7 +3474,6 @@ func RecExpSpaceDisDialog%()
     recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recSpaceDisTrialInitReward%, 
     recSpaceDisTrialHoldReward%, recAMSPPassiveTask%, recSpaceDisDoRove%, recSpaceDisRovedB);  'not setting recAMDiscS1Speaker% in this version
 
-    'printlog("recTrainingRewardmL %f\n", recTrainingRewardmL);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -3815,14 +3810,15 @@ func RecExpTimingRewardDialog%()
     endif;
     
     'Set up container for reals so we can have more than 20 elements in the dialog
-    var sevenReals[7];
-    sevenReals[0] := recTrainingRewardmL;
-    sevenReals[1] := recHitRewardmL;
-    sevenReals[2] := recCRRewardmL;
-    sevenReals[3] := recMaxHitRewardmL;
-    sevenReals[4] := recMaxCRRewardmL;
-    sevenReals[5] := recHitRewardIncmL;
-    sevenReals[6] := recS1RewardIncmL;
+    var eightReals[8];
+    eightReals[0] := recInitRewardmL;
+    eightReals[1] := recHoldRewardmL;
+    eightReals[2] := recHitRewardmL;
+    eightReals[3] := recCRRewardmL;
+    eightReals[4] := recMaxHitRewardmL;
+    eightReals[5] := recMaxCRRewardmL;
+    eightReals[6] := recHitRewardIncmL;
+    eightReals[7] := recS1RewardIncmL;
     
     'This will tell us how much is neither juice nor Stimulation
     var pctBoth%;
@@ -3862,45 +3858,42 @@ func RecExpTimingRewardDialog%()
     DlgInteger(19,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
     
     DlgGroup("Rewards",1,11,trwid%-2,7);
-    DlgReal(9,12,0,3,c1%+20,12); DlgText("Training Reward, mL",c1txt%+20,12); 'recTrainingRewardmL
-    DlgReal(10,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
-    DlgReal(11,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
-    DlgReal(12,12,0,3,c1%,14); DlgText("Max Hit Reward, mL",c1txt%,14);
-    DlgReal(13,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
-    DlgReal(14,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
-    DlgReal(15,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
-    DlgList(20,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);
-    DlgInteger(21,12,0,100,c1%-15,17); DlgText("Pct Juice",c1txt%,17);  'note that these are on a three-per line and use different values
-    DlgInteger(22,12,0,100,c1%+15,17); DlgText("Pct Stimulation",c1%+1,17);
-    DlgLabel(23,"Pct Juice+Stimulation = "+Str$(pctBoth%),c1%+29,17);
-    DlgInteger(24,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
+    DlgReal(9,12,0,3,c1%,12); DlgText("Init Training Reward, mL",c1txt%,12); 'recInitRewardmL
+    DlgReal(10,12,0,3,c2%,12); DlgText("Hold Training Reward, mL",c2txt%,12); 'recHoldRewardmL
+    DlgReal(11,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
+    DlgReal(12,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
+    DlgReal(13,12,0,3,c1%,14); DlgText("Max Hit Reward, mL",c1txt%,14);
+    DlgReal(14,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
+    DlgReal(15,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
+    DlgReal(16,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
+    DlgList(21,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);
+    DlgInteger(22,12,0,100,c1%-15,17); DlgText("Pct Juice",c1txt%,17);  'note that these are on a three-per line and use different values
+    DlgInteger(23,12,0,100,c1%+15,17); DlgText("Pct Stimulation",c1%+1,17);
+    DlgLabel(24,"Pct Juice+Stimulation = "+Str$(pctBoth%),c1%+29,17);
+    DlgInteger(25,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
     
     DlgGroup("Interrupts",1,19,trwid%-2,2);
-    DlgList(16,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
-    DlgList(17,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
+    DlgList(17,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
+    DlgList(18,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
     
     DlgAllow(0xffff, 0, RecExpTimingRewardDialogChanged%);
-    
-    ' Show the dialog. 
-'    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
-'                recTrainingRewardmL,recHitRewardmL,recCRRewardmL,recMaxHitRewardmL,recMaxCRRewardmL,recHitRewardIncmL,
-'                recS1RewardIncmL,recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, recRewardType%);',recMinJoystickRespTime);
-    
+        
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
-                sevenReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
+                eightReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
                 recRewardType%,recPctJuice%,recPctStimulation%,dummy%,recJuiceToStimDelay%);
     
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        'unpack sevenReals
-        recTrainingRewardmL := sevenReals[0];
-        recHitRewardmL := sevenReals[1];
-        recCRRewardmL := sevenReals[2];
-        recMaxHitRewardmL := sevenReals[3];
-        recMaxCRRewardmL := sevenReals[4];
-        recHitRewardIncmL := sevenReals[5];
-        recS1RewardIncmL := sevenReals[6];
+        'unpack eightReals
+        recInitRewardmL := eightReals[0];
+        recHoldRewardmL := eightReals[1];
+        recHitRewardmL := eightReals[2];
+        recCRRewardmL := eightReals[3];
+        recMaxHitRewardmL := eightReals[4];
+        recMaxCRRewardmL := eightReals[5];
+        recHitRewardIncmL := eightReals[6];
+        recS1RewardIncmL := eightReals[7];
         
         'make sure that probability values are valid
         if recRewardType% = 4 then
@@ -3978,17 +3971,17 @@ func RecExpTimingRewardDialogChanged%(item%)
 '        DlgEnable(1,24); 'Enable stim delay
 '    endif;
     
-    DlgEnable(0,20); 'Disable stimulation reward
-    DlgEnable(0,21); 'Disable juice pct
-    DlgEnable(0,22); 'Disable stim pct
-    DlgEnable(0,23); 'Disable label
-    DlgEnable(0,24); 'Disable stim delay
+    DlgEnable(0,21); 'Disable stimulation reward
+    DlgEnable(0,22); 'Disable juice pct
+    DlgEnable(0,23); 'Disable stim pct
+    DlgEnable(0,24); 'Disable label
+    DlgEnable(0,25); 'Disable stim delay
     
     
     'update value in text label
-    if item% = 21 or item% = 22 then
-        printlog("val should be %s\n",Str$(100-DlgValue(21)-DlgValue(22)));
-        DlgValue$(23,"Pct Juice+Stimulation = "+Str$(100-DlgValue(21)-DlgValue(22)));
+    if item% = 22 or item% = 23 then
+        printlog("val should be %s\n",Str$(100-DlgValue(22)-DlgValue(23)));
+        DlgValue$(24,"Pct Juice+Stimulation = "+Str$(100-DlgValue(22)-DlgValue(23)));
     endif;
     
     return 1;
@@ -4023,7 +4016,8 @@ proc RecTimingRewardGetParams()
     recMissTO := GetFloatRegistryValue(key$, "MissTO", recMissTO);
     recFalseAlarmTO := GetFloatRegistryValue(key$, "FalseAlarmTO", recFalseAlarmTO);
     recInterruptTO := GetFloatRegistryValue(key$, "InterruptTO", recInterruptTO);
-    recTrainingRewardmL := GetFloatRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
+    recInitRewardmL := GetFloatRegistryValue(key$, "InitRewardmL", recInitRewardmL);
+    recHoldRewardmL := GetFloatRegistryValue(key$, "HoldRewardmL", recHoldRewardmL);
     recHitRewardmL := GetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
     recCRRewardmL := GetFloatRegistryValue(key$, "CRRewardmL", recCRRewardmL);
     recMaxHitRewardmL := GetFloatRegistryValue(key$, "MaxHitRewardmL", recMaxHitRewardmL);
@@ -4069,7 +4063,8 @@ proc RecTimingRewardSaveParams()
     SetFloatRegistryValue(key$, "MissTO", recMissTO);
     SetFloatRegistryValue(key$, "FalseAlarmTO", recFalseAlarmTO);
     SetFloatRegistryValue(key$, "InterruptTO", recInterruptTO);
-    SetFloatRegistryValue(key$, "TrainingRewardmL", recTrainingRewardmL);
+    SetFloatRegistryValue(key$, "InitRewardmL", recInitRewardmL);
+    SetFloatRegistryValue(key$, "HoldRewardmL", recHoldRewardmL);
     SetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
     SetFloatRegistryValue(key$, "CRRewardmL", recCRRewardmL);
     SetFloatRegistryValue(key$, "MaxHitRewardmL", recMaxHitRewardmL);
@@ -7202,7 +7197,8 @@ func GenTrialsAudiogram%()
     var status% := 1;
     
     recNTrials% := recAudiogramNFreqs%;  'one trial for each tone
-    recTrainingRewardmL := 0;  'hard code training reward to OFF
+    recInitRewardmL := 0;  'hard code training reward to OFF
+    recHoldRewardmL := 0;  'hard code training reward to OFF
     recTrialInitReward% := 0;  'hard code init reward to OFF -  this actually won't matter unless somebody goes through the AMDisc/SpaceDis dialogs first
     
     'recAudiogramNFreqs%,recAudiogramToneFreqLow,recAudiogramToneFreqHigh,recAudiogramFreqList[]  'values are already calculated  
