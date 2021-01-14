@@ -944,7 +944,7 @@ Func PlaySound%(isS2local%)
         
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         SafeSampleKey(playChar$);
-        StimOn := GetTimeOfLast1401Event();
+        StimOn := GetTimeOfLast1401Event(1);
         
         'determine S1/S2 status
         docase
@@ -1237,18 +1237,8 @@ Func PlayTwoSounds%(whichStim%)
         'printlog("Sending SafeSampleKey %s at time %f\n",playChar$,seconds());
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         SafeSampleKey(playChar$);
-        'printlog("SafeSampleKey has finished at time %f\n",seconds());
         
-        '        StimOn := SampleSeqVar(3)*UsPerTime/1000000;  'Now, StimOn holds actual presentation time, usually
-        '        printlog("Stim on (first try) at %f (SampleSeqVar3) and %f (system time)\n",StimOn,seconds());
-        '        while StimOn = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts
-        '            yield(.001,1023);  'yield a millisecond until the stimulus starts playing
-        '            StimOn := SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
-        '            printlog("Stim on (subsequent try) at %f (SampleSeqVar3) and %f (system time)\n",StimOn,seconds());
-        '        wend;          
-        '        PrevSequencerTime := StimOn;  'keep track of most recent StimOn
-        
-        StimOn := GetTimeOfLast1401Event();
+        StimOn := GetTimeOfLast1401Event(1);
         
         'write stimulus to sampletext, we need to separate this out based on experiment type
         ' The sample text string contains the following (comma-separated) fields:
@@ -1567,8 +1557,8 @@ func Start%()
         endif;        
         SequencerPeriodMS := SampleSeqClock(1);  'Get the clock period of the sequencer, in MS, must do this after starting sampling
         TimePerADC := SampleTimePerAdc();  'get AD conversion rate
-        UsPerTime := SampleUsPerTime();  'get # of microseconds per sample
-        SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample
+        UsPerTime := SampleUsPerTime();  'get # of microseconds per 1401 clock tick (NOT the output sequencer period)
+        SecPerSample := TimePerADC*UsPerTime/1000000; 'get seconds per sample 
         SampleText(recExptText$+"Block: "+blockTag$);  'put in the experiment type
         Yield(0.10);
         WriteExpParamsSampleText();  'Write a ton of parameters
@@ -4105,7 +4095,7 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
-                    RewardOn := GetTimeOfLast1401Event();
+                    RewardOn := GetTimeOfLast1401Event(0);
                     s$ := Print$("InitReward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -4141,7 +4131,7 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
-                    RewardOn := GetTimeOfLast1401Event();
+                    RewardOn := GetTimeOfLast1401Event(0);
                     s$ := Print$("HoldReward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -4587,7 +4577,7 @@ func IdleLoop%()
                     
                     stmp% := Reward%();
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event();
+                    RewardOn := GetTimeOfLast1401Event(0);
                     s$ := Print$("Reward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -4630,7 +4620,7 @@ func IdleLoop%()
 
                     stmp% := Reward%();
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event();
+                    RewardOn := GetTimeOfLast1401Event(0);
                     s$ := Print$("Reward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
 
@@ -4668,7 +4658,7 @@ func IdleLoop%()
                     stmp% := Reward%();
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
                     s$ := Print$("Reward %d", recRewardMs%);
-                    RewardOn := GetTimeOfLast1401Event();
+                    RewardOn := GetTimeOfLast1401Event(0);
                     SampleText(s$, RewardOn);
  
                     if stmp% <> 0 then
@@ -4751,7 +4741,7 @@ func IdleLoop%()
                     recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
                     stmp% := Reward%();
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event();
+                    RewardOn := GetTimeOfLast1401Event(0);
                     s$ := Print$("Reward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -4791,7 +4781,7 @@ func IdleLoop%()
                 
                 printlog("Starting tone \n");
                 SampleKey("T");  'Start tone
-                StimOn := GetTimeOfLast1401Event();
+                StimOn := GetTimeOfLast1401Event(1);
             
                 s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
                 SampleText(s$,StimOn);
@@ -4804,7 +4794,7 @@ func IdleLoop%()
                 
                 printlog("Starting silent trial \n");
                 SampleKey("U");  'Start silent period
-                StimOn := GetTimeOfLast1401Event();
+                StimOn := GetTimeOfLast1401Event(1);
                 
                 'For this Sampletext, only the duration is variable
                 s$ := Print$("Sound U,SilentTrial,%d,0,0,0,%s,0Hz", recCurrentTrial%, Str$(recLongToneDuration) + "s");
@@ -4826,7 +4816,7 @@ func IdleLoop%()
             '    
             '    printlog("Starting BB noise \n");
             '    SampleKey("N");  'Start noise
-            '    StimOn := GetTimeOfLast1401Event();
+            '    StimOn := GetTimeOfLast1401Event(1);
             '    recLongToneCycleStartTime := StimOn;
             '    
             '    s$ := Print$("Sound N,LongNoiseBB,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
@@ -4838,7 +4828,7 @@ func IdleLoop%()
                 pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BB noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
-                StimOn := GetTimeOfLast1401Event();
+                StimOn := GetTimeOfLast1401Event(1);
             
                 s$ := Print$("Sound %s,LongNoiseBB,%d,%d,%.1f,%.1f,%s,BB,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
                 recLongToneTargetdB, Str$(recLongToneDuration) + "s",recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]);
@@ -4850,7 +4840,7 @@ func IdleLoop%()
                 pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BP noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bp noise, use LOWER to activate correct portion of sequencer code
-                StimOn := GetTimeOfLast1401Event();
+                StimOn := GetTimeOfLast1401Event(1);
                 
                 s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s,%s,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
                 recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz",recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]);
@@ -4862,7 +4852,7 @@ func IdleLoop%()
                 pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting silent trial \n");
                 SampleKey(LCase$(pwChar$));  'Start silent, use LOWER to activate correct portion of sequencer code
-                StimOn := GetTimeOfLast1401Event();
+                StimOn := GetTimeOfLast1401Event(1);
                 
                 s$ := Print$("Sound %s,SilentTrial,%d,0,0,0,%s,0Hz", recCurrentTrial%, Str$(recLongToneDuration) + "s");
                 SampleText(s$,StimOn);
@@ -5496,12 +5486,14 @@ end
 
 'This function grabs the most recent time the sequencer on the 1401 has logged into SampleSeqVar(3)
 'We don't HAVE to call this function any time we run a SampleKey that updates SSV3, but if we don't
-'we are liable to get the wrong time.
-func GetTimeOfLast1401Event()
+'we are liable to get the wrong time.  We will check the TICKS output to see if it is "approaching"
+'overflow if CheckTick% is > 0.  CheckTick% should be set to 0 following a call to Reward%() to avoid
+'stalling in a SafeSampleKey.
+func GetTimeOfLast1401Event(CheckTick%)
     var seqtime;
     var firstCheckTime;
     
-    seqtime := SampleSeqVar(3)*UsPerTime/1000000;  'Now, seqtime holds actual most recent time, usually
+    seqtime := SampleSeqTick0() + SampleSeqVar(3)*UsPerTime/1000000;  'Now, seqtime holds actual most recent time, usually
     
     firstCheckTime :=  View(recDataWindowView%).MaxTime();
     
@@ -5514,11 +5506,31 @@ func GetTimeOfLast1401Event()
             halt;  'Shut them down!  Shut them ALL down!
         endif;
         yield(.001,1023);  'yield a millisecond until the stimulus starts playing
-        seqtime := SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
+        seqtime := SampleSeqTick0() + SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
     wend; 
     'endif;
     
     PrevSequencerTime := seqtime;  'keep track of most recent StimOn
+    
+    'The TICKS operation, which is used in the sample sequencer to note the precise time of
+    'the onset of a stimulus or reward, can overflow starting with Spike2 v8, because file
+    'sizes have become longer due to the move to 64-bit but sample sequencer variables remain
+    '32-bit values.  Here we will occasionally use the TICK0 operation to "reset" the TICKS
+    'reference so that overflow does not happen.  The maximum allowable output from TICKS is
+    '2147483648, which corresponds to about 4295 seconds under typical recording conditions.
+    'However, since recording conditions may change, we will reset based on the TICKS output
+    'and not a time value to be safe.  When the TICKS output is greater than 1000000000 (a bit
+    'less than half of the allowable value) we will reset.  This is not *perfect* because if
+    'the animal initiates no trials for 2100+ seconds (35+ minutes) it will be possible to 
+    'break.  That said, it seems better to do this rarely rather than, say, every trial.
+    if CheckTick% > 0 then  'don't do this unless we ask (we don't want to do it after a Reward%() call)
+        if SampleSeqVar(3) > 1000000000 then
+            SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+        endif;
+    endif;
+    
+    
+    
     
     return seqtime;
 end
