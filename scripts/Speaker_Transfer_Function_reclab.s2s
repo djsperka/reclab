@@ -4,6 +4,7 @@
 
 'set FSD to 100, set Frequency Weighting to A, plug AC out to ADC0
 #include "RegistryUtils.s2s"
+#include "matlab.s2s"
 #include "recfuncs.s2s"
 #include "filesystemvars.s2s"
 
@@ -16,360 +17,408 @@ absolutelynothing% := ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSiz
 
 
 func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
-
-'First off, get the drive path
-var DrivePath$;
-DrivePath$ := GetDrivePath$();
     
-var DriveLetter$;
-var ConfigFileName$;
-var SeqFileName$;
-var i%;
-var j%;
-var ctview%;
-var NumRepeats% := 5;
-var fs;             'sample rate to play stims at, real version
-var fs% := 100000;  'integer version of sampling rate
-var spkr%;
-var ok% := 0;
-var mymax;          'For normalizing generated stimuli
-var normfac;        'For normalizing generated stimuli
-var onsets[1200];   'potential onset times for stimuli, a bit bigger to allow for tone series at small freq diffs
-var currtime;
-var loopnum%;
-var delay;
-var ffthandle%;      'a handle for the power spectrum analysis
-var break%;         'because you can't naturally break a while loop, apparently!
-var SavePath$;
-SavePath$ := DrivePath$ + "data\\Calib\\*.mat";  'this will bring up a dialog box to select the location to save
-var recordedmin;
-var recordedmax;
-var fh%;            'for "constant stimulus" version
-var StimPath$;      
-StimPath$ := DrivePath$ + "data\\Calib\\*";
-var StimName$;
-var ec;
-var MaxPoint;
-var MaxPoint%;
-var pi;
-pi := 4.0*ATan(1.0);  'That's silly, why can't they just give us that?
-var inc;
-var StimType%;
-var duration := 1;
-var ToneFreq := 1000;
-var fname$;
-var filebytes%;
-var donormalize% := 1;  'whether or not to normalize, there's no point in doing it every time if the stimulus is the same
-var StimOn;
-var PrevStimOn;
-var MChanStimOn%;
-var TF;
+    'First off, get the drive path
+    var DrivePath$;
+    DrivePath$ := GetDrivePath$();
+    
+    var DriveLetter$;
+    var ConfigFileName$;
+    var SeqFileName$;
+    var i%;
+    var j%;
+    var ctview%;
+    var NumRepeats% := 5;
+    var fs;             'sample rate to play stims at, real version
+    var fs% := 100000;  'integer version of sampling rate
+    var spkr%;
+    var ok% := 0;
+    var mymax;          'For normalizing generated stimuli
+    var normfac;        'For normalizing generated stimuli
+    var onsets[1200];   'potential onset times for stimuli, a bit bigger to allow for tone series at small freq diffs
+    var currtime;
+    var loopnum%;
+    var delay;
+    var ffthandle%;      'a handle for the power spectrum analysis
+    var break%;         'because you can't naturally break a while loop, apparently!
+    var SavePath$;
+    SavePath$ := DrivePath$ + "data\\Calib\\*.mat";  'this will bring up a dialog box to select the location to save
+    var recordedmin;
+    var recordedmax;
+    var fh%;            'for "constant stimulus" version
+    var StimPath$;      
+    StimPath$ := DrivePath$ + "data\\Calib\\*";
+    var StimName$;
+    var ec;
+    var MaxPoint;
+    var MaxPoint%;
+    var pi;
+    pi := 4.0*ATan(1.0);  'That's silly, why can't they just give us that?
+    var inc;
+    var StimType%;
+    var duration := 1;
+    var ToneFreq := 1000;
+    var fname$;
+    var filebytes%;
+    var donormalize% := 1;  'whether or not to normalize, there's no point in doing it every time if the stimulus is the same
+    var StimOn;
+    var PrevStimOn;
+    var MChanStimOn%;
+    var TF;
+    
+    
+    'Open matlab, for testing intensity of Matlab-generated sound, temporary    
+    var matlabOpenSuccess%;   
+    ToolbarText("Opening Matlab, this could take up to 30 seconds");
+    matlabOpenSuccess% := OpenMatlab%();
+    if matlabOpenSuccess% < 0 then
+        printlog("Open Matlab FAILED!\n");
+        halt;
+    endif;
+    ToolbarText("");  
+    var statement$;
+    'var calibOK%;
+    'var recCalibLoc$;    
+    'recCalibLoc$ := DrivePath$ + "Data\\Calib\\";
+    'statement$ := "load('" + recCalibLoc$ + "Array15.mat');";
+    'calibOK% := EvalMatlabStatement%(statement$);
+    'printlog("Matlab statement for load is: %s\n",statement$);
+    'printlog("CalibOK is %d where 0 is OK and -1 is not OK\n",calibOK%); 
+    
+    
+    'Get correct location of sequencer and config file, regardless of booth  
+    'Note that in both cases, the location of the Config/Sequencer files is on the system drive, not the data drive.  It is what it is.   
+    DriveLetter$ := Left$(DrivePath$,1);    
+    docase
+    case DriveLetter$ = "I" then  '"I" is the data drive path for the big booth
+        ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2cx";  'For Big booth
+        SeqFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";  'for big booth    
+    case DriveLetter$ = "D" then  '"D" is the data drive path for the small booth
+        ConfigFileName$ := "C:\\work\\reclab\\scripts\\strf_config_2chan.s2cx";  'For small booth    
+        SeqFileName$ := "C:\\work\\reclab\\scripts\\seq_control_strf_2.PLS";  'for small booth    
+    else
+        Message("Drive path '" + DrivePath$ + "' is not recognized as a known drive path for the big or small booths!  Quitting!");    
+        halt    
+    endcase        
     
     
     
-'Get correct location of sequencer and config file, regardless of booth  
-'Note that in both cases, the location of the Config/Sequencer files is on the system drive, not the data drive.  It is what it is.   
-DriveLetter$ := Left$(DrivePath$,1);    
-docase
-case DriveLetter$ = "I" then  '"I" is the data drive path for the big booth
-    ConfigFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\strf_config_2chan.s2cx";  'For Big booth
-    SeqFileName$ := "C:\\Users\\reclab\\reclab\\scripts\\seq_control_strf_2.PLS";  'for big booth    
-case DriveLetter$ = "D" then  '"D" is the data drive path for the small booth
-    ConfigFileName$ := "C:\\work\\reclab\\scripts\\strf_config_2chan.s2cx";  'For small booth    
-    SeqFileName$ := "C:\\work\\reclab\\scripts\\seq_control_strf_2.PLS";  'for small booth    
-else
-    Message("Drive path '" + DrivePath$ + "' is not recognized as a known drive path for the big or small booths!  Quitting!");    
-    halt    
-endcase        
+    
+    
+    'Dialog Creation Stuff
+    DlgCreate("Specify stimulus for speaker transfer function");  'First step to create dialog box
+    DlgInteger(1,"Number of repeats",1,100);  'Integer field from entering number of repeats, max = 100
+    DlgList(2,"Stimulus","Load File...|Gaussian Noise|Uniform Noise|Tone|Tone Series");  'List field to identify type of stimulus
+    DlgReal(3,"Duration (sec)",0.05,10);  'Real box to specify duration of stimulus (if generated) min = 50ms, max = 10s
+    DlgReal(4,"Frequency (Hz)",20,50000);  'Real box to specify frequency of stimulus (if tone) min = 20 Hz, max = 50 kHz
+    DlgInteger(5,"Sampling Frequency (Hz)",20000,200000);  'Integer box to specify sampling frequency of stimulus, if loaded
+    DlgInteger(6,"Which Speaker",1,32); 'integer specifies which speaker
+    
+    DlgAllow(0x3ff,0,Change%);  'Allow all interaction, on idle time function, change function is Change%
+    ok% := DlgShow(NumRepeats%,StimType%,duration,ToneFreq,fs%,spkr%);
+    'if user clicked cancel, close out
+    if ok% = 0 then
+        return 0;
+    endif;
+    
+    fs := fs%;  'set the real version of FS to the integer result
+    
+    
+    'if we're supposed to load a stimulus, we need to know how big it is
+    if StimType% = 0 then  
+        fh%:=FileOpen(StimPath$,9,0);  'identify which stimulus to get from disk
+        fname$ := FileName$();  'get full path and filename of file just opened, we have to open it again unfortunately
+        filebytes% := BSeek(0,2);  'Gives the number of bytes in the file, total
+        FileClose();  'close the file
+        MaxPoint% := filebytes%/2;  'get the number of points in the stimulus, integer form
+        MaxPoint := MaxPoint%;  'set real version for later math
+    endif;
+    
+    'if we're not supposed to load a stimulus, figure out how many points it will be
+    if StimType% > 0 then 'for either noise type, or for tone
+        MaxPoint% := duration*fs%;  'set MaxPoint, make sure it's an integer
+        MaxPoint := MaxPoint%;  'set real version for later math   
+    endif;
+    
+    'Create Wav%[] and Wav[] regardless of stimulus type
+    var Wav%[MaxPoint%];  'Create integer Wav%[] for loading stimulus
+    var Wav[MaxPoint%];   'Create float Wav[] for creating noise
+    var Wav2[MaxPoint%];  'Create copy of Wav[] for getting ABS
+    
+    'if we're loading a stimulus, now load it and put it in Wav%[] and Wav[]
+    if StimType% = 0 then
+        fh%:=FileOpen(fname$,9,0);  'Open the same file we just opened    
+        breadsize(2,Wav%[]);  'puts data into Wav%[]
+        FileClose();  'close the file
+        ArrConst(Wav[],Wav%[]);  'Put integer values into real array, will be used for scaling later
+        'then put back into integer array
+    endif;
+    
+    'for tone type, create tone now (noise created later so it is not "frozen")
+    'for tone series, make ramp now, we'll have to make each stimulus along the way
+    if StimType% = 3 or StimType% = 4 then 
+        'tone = cos(linspace(0,freq*2*pi*tone_dur,num_samples_tone)+phase); 
+        inc := (duration*2*pi*ToneFreq)/(len(Wav[])-1);
+        for i% := 1 to len(Wav[])-1 do
+            Wav[i%] := Wav[i%-1] + inc;
+        next;
+        cos(Wav[]);
         
+        'also create ramp, here are the prelims
+        var ramp[MaxPoint%];  'Create variable to hold ramp
+        ArrConst(ramp[],1);  'fill ramp with ones
+        'var rampdur := 0.010;  'Make ten millisecond ramp
+        var rampdur := 0.002;  'Make two millisecond ramp    
+        var ramppts;
+        ramppts := rampdur*fs;  'get number of points in ramp
+        round(ramppts);  'round ramp points, just in case
+        var ramp2[ramppts];  'create variable that is size of ramping portion
+        var ramp3[ramppts];  'just make it easier for the back half
         
+        'now the actual creation, on and off
+        inc := (pi/2)/(ramppts-1);  'create increment
+        for i% := 1 to ramppts-1 do
+            ramp2[i%] := ramp2[i%-1] + inc;
+        next;
+        ArrConst(ramp3[],ramp2[]);  'make a copy for the closing ramp
+        sin(ramp2[]);  'Ramp2 goes from 0 to pi/2, so sin is appropriate to open
+        ArrConst(ramp[0:ramppts],ramp2[]); 'put the opening ramp in
+        cos(ramp3[]);  'Ramp3 goes from 0 to pi/2, so cos is appropriate to close
+        ArrConst(ramp[len(ramp[])-ramppts:ramppts],ramp3[]);  'put the closing ramp in
         
+        'now ramp the stimulus
+        ArrMul(Wav[],ramp[]);  
         
-
-'Dialog Creation Stuff
-DlgCreate("Specify stimulus for speaker transfer function");  'First step to create dialog box
-DlgInteger(1,"Number of repeats",1,100);  'Integer field from entering number of repeats, max = 100
-DlgList(2,"Stimulus","Load File...|Gaussian Noise|Uniform Noise|Tone|Tone Series");  'List field to identify type of stimulus
-DlgReal(3,"Duration (sec)",0.05,10);  'Real box to specify duration of stimulus (if generated) min = 50ms, max = 10s
-DlgReal(4,"Frequency (Hz)",20,50000);  'Real box to specify frequency of stimulus (if tone) min = 20 Hz, max = 50 kHz
-DlgInteger(5,"Sampling Frequency (Hz)",20000,200000);  'Integer box to specify sampling frequency of stimulus, if loaded
-DlgInteger(6,"Which Speaker",1,32); 'integer specifies which speaker
-
-DlgAllow(0x3ff,0,Change%);  'Allow all interaction, on idle time function, change function is Change%
-ok% := DlgShow(NumRepeats%,StimType%,duration,ToneFreq,fs%,spkr%);
-'if user clicked cancel, close out
-if ok% = 0 then
-    return 0;
-endif;
-
-fs := fs%;  'set the real version of FS to the integer result
-
-
-'if we're supposed to load a stimulus, we need to know how big it is
-if StimType% = 0 then  
-    fh%:=FileOpen(StimPath$,9,0);  'identify which stimulus to get from disk
-    fname$ := FileName$();  'get full path and filename of file just opened, we have to open it again unfortunately
-    filebytes% := BSeek(0,2);  'Gives the number of bytes in the file, total
-    FileClose();  'close the file
-    MaxPoint% := filebytes%/2;  'get the number of points in the stimulus, integer form
-    MaxPoint := MaxPoint%;  'set real version for later math
-endif;
-
-'if we're not supposed to load a stimulus, figure out how many points it will be
-if StimType% > 0 then 'for either noise type, or for tone
-    MaxPoint% := duration*fs%;  'set MaxPoint, make sure it's an integer
-    MaxPoint := MaxPoint%;  'set real version for later math   
-endif;
-
-'Create Wav%[] and Wav[] regardless of stimulus type
-var Wav%[MaxPoint%];  'Create integer Wav%[] for loading stimulus
-var Wav[MaxPoint%];   'Create float Wav[] for creating noise
-var Wav2[MaxPoint%];  'Create copy of Wav[] for getting ABS
-
-'if we're loading a stimulus, now load it and put it in Wav%[] and Wav[]
-if StimType% = 0 then
-    fh%:=FileOpen(fname$,9,0);  'Open the same file we just opened    
-    breadsize(2,Wav%[]);  'puts data into Wav%[]
-    FileClose();  'close the file
-    ArrConst(Wav[],Wav%[]);  'Put integer values into real array, will be used for scaling later
-                             'then put back into integer array
-endif;
-
-'for tone type, create tone now (noise created later so it is not "frozen")
-'for tone series, make ramp now, we'll have to make each stimulus along the way
-if StimType% = 3 or StimType% = 4 then 
-    'tone = cos(linspace(0,freq*2*pi*tone_dur,num_samples_tone)+phase); 
-    inc := (duration*2*pi*ToneFreq)/(len(Wav[])-1);
-    for i% := 1 to len(Wav[])-1 do
-        Wav[i%] := Wav[i%-1] + inc;
+    endif;
+    
+    
+    'At this point:
+    'Wav[], Wav%[], MaxPoint, MaxPoint% all exist (and are the right size)
+    'If loading stimulus, the stimulus is loaded into Wav[]
+    'If noise (either type) noise is still waiting to be created (we don't want "frozen noise")
+    'If tone, tone is created and loaded into Wav[]
+    
+    'rigPort% appears to be unused, perhaps it had a function which is now deprecated    
+    'keyGlob$:="Reclab";
+    'rigPort% := GetIntRegistryValue%(keyGlob$, "UseComPort", rigPort%); 'get port num for this rig from the registry
+    
+    RecInitTDT%();
+    
+    'set speaker and attenuation, now is as good a time as any    
+    recSpeaker%(spkr%);
+    recAtten%(0);  'set PA4 to zero
+    
+    'Load configuration and sequencer files
+    if FileOpen(ConfigFileName$,6) < 0 then
+        Message("Cannot find config file " + ConfigFileName$);
+        halt;
+    endif
+    
+    ok% := samplesequencer(SeqFileName$);
+    if ok% < 0 then
+        message("The requested sequencer file %s\nwas not found!  Quitting!",SeqFileName$);
+        return 0;
+    endif;
+    
+    
+    'make sure there's a textmark channel
+    SampleTextMark(200);  'Set Channel 30 as textmark channel, 200 characters per 
+    
+    'Prepare a PlayWave buffer on the 1401
+    PlayWaveDelete(); 
+    PlayWaveAdd("S","Stim",0,fs,MaxPoint);  'must be called before FileNew()
+    
+    'Open a new data window
+    ctview%:=FileNew(0,1+4);  'here the 4 is irrelevant because there are no WaveMark channels
+    
+    
+    
+    'Set stimulus onset times, hold in ONSETS[]
+    view(ctview%);  'must return to having the data window as the front view!
+    currtime := 0;  'since we haven't started sampling yet, current time is zero
+    if StimType% = 4 then
+        delay := (Maxpoint/fs)+0.2;  'blast 'em on this one
+    else
+        delay := (Maxpoint/fs)+0.5;  '500 ms longer than stimulus
+    endif;
+    for i% := 1 to NumRepeats% do
+        onsets[i%-1] := currtime + (delay*(i%-1)) + 1;  'give 1 second for first stimulus, 0.5 sec between stimuli
     next;
-    cos(Wav[]);
     
-    'also create ramp, here are the prelims
-    var ramp[MaxPoint%];  'Create variable to hold ramp
-    ArrConst(ramp[],1);  'fill ramp with ones
-    'var rampdur := 0.010;  'Make ten millisecond ramp
-    var rampdur := 0.002;  'Make two millisecond ramp    
-    var ramppts;
-    ramppts := rampdur*fs;  'get number of points in ramp
-    round(ramppts);  'round ramp points, just in case
-    var ramp2[ramppts];  'create variable that is size of ramping portion
-    var ramp3[ramppts];  'just make it easier for the back half
     
-    'now the actual creation, on and off
-    inc := (pi/2)/(ramppts-1);  'create increment
-    for i% := 1 to ramppts-1 do
-        ramp2[i%] := ramp2[i%-1] + inc;
-    next;
-    ArrConst(ramp3[],ramp2[]);  'make a copy for the closing ramp
-    sin(ramp2[]);  'Ramp2 goes from 0 to pi/2, so sin is appropriate to open
-    ArrConst(ramp[0:ramppts],ramp2[]); 'put the opening ramp in
-    cos(ramp3[]);  'Ramp3 goes from 0 to pi/2, so cos is appropriate to close
-    ArrConst(ramp[len(ramp[])-ramppts:ramppts],ramp3[]);  'put the closing ramp in
+    'make a memory channel
+    MChanStimOn% := MemChan(5);
+    ChanTitle$(MChanStimOn%, "StimOnTime");
+    ChanShow(MChanStimOn%);
     
-    'now ramp the stimulus
-    ArrMul(Wav[],ramp[]);  
     
-endif;
-
-
-'At this point:
-'Wav[], Wav%[], MaxPoint, MaxPoint% all exist (and are the right size)
-'If loading stimulus, the stimulus is loaded into Wav[]
-'If noise (either type) noise is still waiting to be created (we don't want "frozen noise")
-'If tone, tone is created and loaded into Wav[]
     
-'rigPort% appears to be unused, perhaps it had a function which is now deprecated    
-'keyGlob$:="Reclab";
-'rigPort% := GetIntRegistryValue%(keyGlob$, "UseComPort", rigPort%); 'get port num for this rig from the registry
+    'Start sampling
+    samplestart();
     
-RecInitTDT%();
-
-'set speaker and attenuation, now is as good a time as any    
-recSpeaker%(spkr%);
-recAtten%(0);  'set PA4 to zero
-
-'Load configuration and sequencer files
-if FileOpen(ConfigFileName$,6) < 0 then
-    Message("Cannot find config file " + ConfigFileName$);
-    halt;
-endif
+    var fivesecs;
+    while SampleStatus() <> 2 and fivesecs > 5 do
+        yield(0.1);
+        fivesecs := fivesecs + 0.1;
+    wend
+    if fivesecs >= 5 then
+        message("Sampling did not start!");
+        halt
+    endif
+    
+    
+    'Make sure to display the channel with the input data.  Channel is "2" because channel 1 was originally a WaveMark channel (now deleted)
+    chanshow(2);
+    chanshow(30);  'show the textmark channel
+    
+    'Set up the power spectrum analysis, part 1
+    ffthandle% := SetPower(2,16384,1);
+    WindowVisible(1);  'Make the window visible, that's important.
+    
+    'Set up the power spectrum analysis, part 2
+    'Process(0,maxtime(),0,1,0,31,1,0,83);  'OK, let's try this.  Take from 0 to maxtime(), do not clear result view
+    'optimize the result view, no destination, gate by channel 31, one second,
+    'zero seconds presamples, use marker 83 (char(83) = "S") as gate.
+    'We might need to do this AFTER all the sounds are played...
+    ProcessTriggered(1,0,31,0,1,83);
+    
+    view(ctview%);  'Without this line it's a complete bomb
+    
+    'Loop through each (possible) onset
+    j% := 0;
+    break% := 0;
+    while j% < 1200 and break% = 0 do
+        if onsets[j%] > 0 then  
+            docase
+            case StimType% = 2 then
+                'Create stimulus in Matlab
+                var matPutOK%;
+                printlog("Creating stimulus in Matlab!\n"); 'Trust nothing...
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",fs%);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",duration*1000);  'size of trial is variable, that's OK
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",-1);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",-1);  'Ditto
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",0);
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",0);
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",0);
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",0);  
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",5);
+                'matPutOK% := matPutOK% + PutMatlabValueInt%("seed",2233);  
+                'matPutOK% := matPutOK% + PutMatlabValueInt%("pad",0);
+                'matPutOK% := matPutOK% + PutMatlabValueInt%("spk",spkr%); 
+                if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+                    message("There has been an error in sending data to Matlab!  Quitting!");
+                    halt
+                endif;
+                statement$ := "stimulus = reclab_panstim(dur,fs,-1,-1,0,0,0,0,0,0,5,2233,0,[]);";
+                EvalMatlabStatement%(statement$);
+                matPutOK% := GetMatlabValueIntArray%("stimulus",Wav%[]);
+                if matPutOK% < 0 then 'error
+                    message("There has been an error in getting stimulus data from Matlab!");
+                    halt
+                endif;
+                donormalize% := 0;  'No normalization, stimulus is ready to load
+                
+                'Create random uniform noise stimulus in Wav[] - array can't be integer or values will be truncated
+                'Rand(0.0);  'set Rand seed to the system clock
+                'Rand(Wav[]);  'Fill Wav[] with uniform random numbers
+                'donormalize% := 1;  'Force normalization
+            case StimType% = 1 then
+                RandNorm(0.0);  'Set RandNorm seed to the system clock
+                RandNorm(Wav[]);  'Fill Wav[] with Gaussian random numbers
+                donormalize% := 1;  'Force normalization
+            case StimType% = 4 then
+                TF += ToneFreq;  'increment TF by the value in ToneFreq; TF initializes to zero so we start at ToneFreq
+                inc := (duration*2*pi*TF)/(len(Wav[])-1);
+                arrconst(Wav[],0);
+                for i% := 1 to len(Wav[])-1 do
+                    Wav[i%] := Wav[i%-1] + inc;
+                next;
+                cos(Wav[]); 
+                'now ramp the stimulus
+                ArrMul(Wav[],ramp[]);  
+                donormalize% := 1;            
+            endcase;
             
-ok% := samplesequencer(SeqFileName$);
-if ok% < 0 then
-    message("The requested sequencer file %s\nwas not found!  Quitting!",SeqFileName$);
-    return 0;
-endif;
-      
-    
-'make sure there's a textmark channel
-SampleTextMark(200);  'Set Channel 30 as textmark channel, 200 characters per 
-
-'Prepare a PlayWave buffer on the 1401
-PlayWaveDelete(); 
-PlayWaveAdd("S","Stim",0,fs,MaxPoint);  'must be called before FileNew()
-
-'Open a new data window
-ctview%:=FileNew(0,1+4);  'here the 4 is irrelevant because there are no WaveMark channels
-
-
-
-'Set stimulus onset times, hold in ONSETS[]
-view(ctview%);  'must return to having the data window as the front view!
-currtime := 0;  'since we haven't started sampling yet, current time is zero
-if StimType% = 4 then
-    delay := (Maxpoint/fs)+0.2;  'blast 'em on this one
-else
-    delay := (Maxpoint/fs)+0.5;  '500 ms longer than stimulus
-endif;
-for i% := 1 to NumRepeats% do
-	onsets[i%-1] := currtime + (delay*(i%-1)) + 1;  'give 1 second for first stimulus, 0.5 sec between stimuli
-next;
-
-
-'make a memory channel
-MChanStimOn% := MemChan(5);
-ChanTitle$(MChanStimOn%, "StimOnTime");
-ChanShow(MChanStimOn%);
-    
-  
-    
-'Start sampling
-samplestart();
-    
-var fivesecs;
-while SampleStatus() <> 2 and fivesecs > 5 do
-    yield(0.1);
-    fivesecs := fivesecs + 0.1;
-wend
-if fivesecs >= 5 then
-    message("Sampling did not start!");
-    halt
-endif
-    
-
-'Make sure to display the channel with the input data.  Channel is "2" because channel 1 was originally a WaveMark channel (now deleted)
-chanshow(2);
-chanshow(30);  'show the textmark channel
-
-'Set up the power spectrum analysis, part 1
-ffthandle% := SetPower(2,16384,1);
-WindowVisible(1);  'Make the window visible, that's important.
-
-'Set up the power spectrum analysis, part 2
-'Process(0,maxtime(),0,1,0,31,1,0,83);  'OK, let's try this.  Take from 0 to maxtime(), do not clear result view
-                                       'optimize the result view, no destination, gate by channel 31, one second,
-                                       'zero seconds presamples, use marker 83 (char(83) = "S") as gate.
-                                       'We might need to do this AFTER all the sounds are played...
-ProcessTriggered(1,0,31,0,1,83);
-
-view(ctview%);  'Without this line it's a complete bomb
-
-'Loop through each (possible) onset
-j% := 0;
-break% := 0;
-while j% < 1200 and break% = 0 do
-	if onsets[j%] > 0 then  
-        docase
-        case StimType% = 2 then
-        'Create random uniform noise stimulus in Wav[] - array can't be integer or values will be truncated
-            Rand(0.0);  'set Rand seed to the system clock
-            Rand(Wav[]);  'Fill Wav[] with uniform random numbers
-            donormalize% := 1;  'Force normalization
-        case StimType% = 1 then
-            RandNorm(0.0);  'Set RandNorm seed to the system clock
-            RandNorm(Wav[]);  'Fill Wav[] with Gaussian random numbers
-            donormalize% := 1;  'Force normalization
-        case StimType% = 4 then
-            TF += ToneFreq;  'increment TF by the value in ToneFreq; TF initializes to zero so we start at ToneFreq
-            inc := (duration*2*pi*TF)/(len(Wav[])-1);
-            arrconst(Wav[],0);
-            for i% := 1 to len(Wav[])-1 do
-                Wav[i%] := Wav[i%-1] + inc;
-            next;
-            cos(Wav[]); 
-            'now ramp the stimulus
-            ArrMul(Wav[],ramp[]);  
-            donormalize% := 1;            
-        endcase;
-        
-        'Normalize stimulus to 16-bit output, regardless of stimulus type, if it isn't already done
-        if donormalize% = 1 then
-            ArrConst(Wav2[],Wav[]);  'make copy of wav
-            abs(Wav2[]);  'make Wav2[] absolute value of Wav[]
-            mymax := Wav2[max(Wav2[])];  'get absolute value of stimulus maximum
-            normfac := 32767/mymax;  'get normalization factor
-            ArrMul(Wav[],normfac);  'Scale Wav[]
-            ArrConst(Wav%[],Wav[]);  'Move float Wav[] values into integer array Wav%[], will floor the absolute value
-            donormalize% := 0;  'Turn off normalization, will be turned back on if another noise stim is loaded        
+            'Normalize stimulus to 16-bit output, regardless of stimulus type, if it isn't already done
+            if donormalize% = 1 then
+                ArrConst(Wav2[],Wav[]);  'make copy of wav
+                abs(Wav2[]);  'make Wav2[] absolute value of Wav[]
+                mymax := Wav2[max(Wav2[])];  'get absolute value of stimulus maximum
+                normfac := 32767/mymax;  'get normalization factor
+                ArrMul(Wav[],normfac);  'Scale Wav[]
+                ArrConst(Wav%[],Wav[]);  'Move float Wav[] values into integer array Wav%[], will floor the absolute value
+                donormalize% := 0;  'Turn off normalization, will be turned back on if another noise stim is loaded        
+            endif;
+            
+            while maxtime() < onsets[j%] do  'wait for the time to reach the designated start point
+                yield(.001,1023);
+            wend;
+            'Then load stimulus to 1401, otherwise we will change the sound while it's playing!
+            'I don't want to double-buffer because I'm not sure how to set up the FFT analysis
+            'with two different Samplekey codes and it's OK if there's a tiny delay here.
+            PlayWaveCopy("S",Wav%[]);
+            
+            SampleKey("S");  'Play sound, the samplekey will also trigger the FFT if analysis is set up as above
+            StimOn := SampleSeqVar(1)*SampleUsPerTime()/1000000;  'StimOn holds actual presentation time
+            while StimOn = PrevStimOn do  'This will happen if the above line occurs before the stim starts
+                printlog("\n\n\n\n\nHey, the stimulus apparently hasn't started!\n\n\n\n\n");  'just to see it happen, remove
+                yield(.001,1023);  'yield a millisecond until the stimulus starts playing
+                StimOn := SampleSeqVar(1)*SampleUsPerTime()/1000000;  'Keep checking until StimOn is updated
+            wend;        
+            PrevStimOn := StimOn;  'keep track of most recent StimOn
+            
+            MemSetItem(MChanStimOn%,0,StimOn);
+            SampleText(Str$(TF),StimOn);  'textmark will be easier    
+            
+            j% := j% + 1;
+            
+        else  'once we are out of onset times, stop sampling and begin the process of quitting
+            yield(duration+1,1023);  'wait stim length plus one second to allow the stimulus to finish
+            samplestop();
+            break% := 1;
         endif;
-        
-		while maxtime() < onsets[j%] do  'wait for the time to reach the designated start point
-			yield(.001,1023);
-		wend;
-        'Then load stimulus to 1401, otherwise we will change the sound while it's playing!
-        'I don't want to double-buffer because I'm not sure how to set up the FFT analysis
-        'with two different Samplekey codes and it's OK if there's a tiny delay here.
-        PlayWaveCopy("S",Wav%[]);
-        
-		SampleKey("S");  'Play sound, the samplekey will also trigger the FFT if analysis is set up as above
-        StimOn := SampleSeqVar(1)*SampleUsPerTime()/1000000;  'StimOn holds actual presentation time
-        while StimOn = PrevStimOn do  'This will happen if the above line occurs before the stim starts
-            printlog("\n\n\n\n\nHey, the stimulus apparently hasn't started!\n\n\n\n\n");  'just to see it happen, remove
-            yield(.001,1023);  'yield a millisecond until the stimulus starts playing
-            StimOn := SampleSeqVar(1)*SampleUsPerTime()/1000000;  'Keep checking until StimOn is updated
-        wend;        
-        PrevStimOn := StimOn;  'keep track of most recent StimOn
-        
-        MemSetItem(MChanStimOn%,0,StimOn);
-        SampleText(Str$(TF),StimOn);  'textmark will be easier    
-        
-        j% := j% + 1;
-
-	else  'once we are out of onset times, stop sampling and begin the process of quitting
-        yield(duration+1,1023);  'wait stim length plus one second to allow the stimulus to finish
-        samplestop();
-		break% := 1;
-	endif;
-wend;
-
-
-
-
-
-'Check to make sure the stimulus actually got through (no "cable plugging" errors)
-minmax(2,0,maxtime(),recordedmin,recordedmax);  'get minimum and maximum in recordedmin, recordedmax
-if recordedmax-recordedmin < 0.006 then  'this looks like a "safe" value larger than random noise and WAY smaller than expected recording levels
-    message("There is very little variation in the data.  Please make sure the B&K is plugged in to the CED!");
-endif
-
-printlog("about to save\n");
-'save the raw data
-view(ctview%);
-MemSave(MChanStimOn%,36,5);
-ExportChanList();  'clear the export channel list
-ExportChanList(0,maxtime(),2,30);  'do not export textmark channel as MChanStimOn% is what we want
-ec := FileSaveAs(SavePath$,100,0,"Save Raw Data",0,"UseSName=0|UseCName=0");  'Trying to: get a dialog box to give a name to our .mat
-                                                           'file, save as Matlab, do not automatically overwrite,
-                                                           'no text, (unused), Matlab options
-printlog("Should have saved\n");
-printlog("Error code is %d\nError is %s\n",ec,Error$(ec));
-
-'save the result view (the power spectrum)
-view(ffthandle%);
-FileSaveAs(SavePath$,100,0,"Save FFT Data",0,"UseSName=0|UseCName=0");  'Same thing should work
-
-
-'For some reason, the windows don't close by these commands...but whatever
-'view(ffthandle%);
-'FileClose(1); 'should close the FFT window but doesn't
-
-'close all the windows associated with the time view
-'view(ctview%);
-'FileClose(1);  'should close the data window
-
-
-
+    wend;
+    
+    
+    
+    
+    
+    'Check to make sure the stimulus actually got through (no "cable plugging" errors)
+    minmax(2,0,maxtime(),recordedmin,recordedmax);  'get minimum and maximum in recordedmin, recordedmax
+    if recordedmax-recordedmin < 0.006 then  'this looks like a "safe" value larger than random noise and WAY smaller than expected recording levels
+        message("There is very little variation in the data.  Please make sure the B&K is plugged in to the CED!");
+    endif
+    
+    printlog("about to save\n");
+    'save the raw data
+    view(ctview%);
+    MemSave(MChanStimOn%,36,5);
+    ExportChanList();  'clear the export channel list
+    ExportChanList(0,maxtime(),2,30);  'do not export textmark channel as MChanStimOn% is what we want
+    ec := FileSaveAs(SavePath$,100,0,"Save Raw Data",0,"UseSName=0|UseCName=0");  'Trying to: get a dialog box to give a name to our .mat
+    'file, save as Matlab, do not automatically overwrite,
+    'no text, (unused), Matlab options
+    printlog("Should have saved\n");
+    printlog("Error code is %d\nError is %s\n",ec,Error$(ec));
+    
+    'save the result view (the power spectrum)
+    view(ffthandle%);
+    FileSaveAs(SavePath$,100,0,"Save FFT Data",0,"UseSName=0|UseCName=0");  'Same thing should work
+    
+    
+    'For some reason, the windows don't close by these commands...but whatever
+    'view(ffthandle%);
+    'FileClose(1); 'should close the FFT window but doesn't
+    
+    'close all the windows associated with the time view
+    'view(ctview%);
+    'FileClose(1);  'should close the data window
+    
+    
+    
 end  'this ends ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
 
 
@@ -378,7 +427,7 @@ halt
 
 'for dialog creation
 func Change%(item%)
-var v%;  'holds value of list box, if necessary
+    var v%;  'holds value of list box, if necessary
     docase
     case item% = 0 then 'if it's the first call of the function
         DlgEnable(0,3,4);  'Disable duration and frequency to start
@@ -399,5 +448,5 @@ var v%;  'holds value of list box, if necessary
         endcase
     endcase
     return 1;
-
+    
 end
