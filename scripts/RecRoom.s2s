@@ -7706,7 +7706,7 @@ func GenTrialsDis%(recExpToRun%)
                 recStimList%[j%][k%] := recTrialS1%[i%]; 'this is stimulus index, all stims considered "unique" (?)
                 recSpeakerList%[j%][k%] := recTrialS1Spkr%[i%];  'And speaker
                 'recDeltadBList[j%][k%] := recTrialS1DeltadB[i%];  'And dB 'this is the value from the input tables
-                recDeltadBList[j%][k%] := recDeltadBLevel+Rand(dBrove%,0); 'this is the value from the GUI - use this instead! (different for each monkey)
+                recDeltadBList[j%][k%] := recTrialS1DeltadB[i%]+recDeltadBLevel+Rand(dBrove%,0); 'this is the value from the GUI - use this instead! (different for each monkey)
                 recPWAList%[j%][k%] := j%;  'this is PWA to play, just PWA in order
             next;
             
@@ -7717,7 +7717,7 @@ func GenTrialsDis%(recExpToRun%)
             recStimList%[j%][k%] := recTrialS2%[i%];  'S2 stimulus for this trial
             recSpeakerList%[j%][k%] := recTrialS2Spkr%[i%]; 'S2 speaker
             'recDeltadBList[j%][k%] := recTrialS2DeltadB[i%];  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
-            recDeltadBList[j%][k%] := recDeltadBLevel+Rand(dBrove%,0); 'value from GUI, use this intead (different for each monkey)
+            recDeltadBList[j%][k%] := recTrialS2DeltadB[i%]+recDeltadBLevel+Rand(dBrove%,0); 'value from GUI, use this intead (different for each monkey)
             recPWAList%[j%][k%] := j%;  'this is PWA to play, just play in order
             
             'And finally the number of unique stims - all stims are treated as unique (i.e. loaded into their own PWA) even if they're technically "not"

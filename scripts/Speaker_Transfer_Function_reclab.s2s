@@ -68,15 +68,16 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     
     
     'Open matlab, for testing intensity of Matlab-generated sound, temporary    
-    var matlabOpenSuccess%;   
-    ToolbarText("Opening Matlab, this could take up to 30 seconds");
-    matlabOpenSuccess% := OpenMatlab%();
-    if matlabOpenSuccess% < 0 then
-        printlog("Open Matlab FAILED!\n");
-        halt;
-    endif;
-    ToolbarText("");  
-    var statement$;
+    'var matlabOpenSuccess%;   
+    'ToolbarText("Opening Matlab, this could take up to 30 seconds");
+    'matlabOpenSuccess% := OpenMatlab%();
+    'if matlabOpenSuccess% < 0 then
+    '    printlog("Open Matlab FAILED!\n");
+    '    halt;
+    'endif;
+    'ToolbarText("");  
+    'var statement$;
+    
     'var calibOK%;
     'var recCalibLoc$;    
     'recCalibLoc$ := DrivePath$ + "Data\\Calib\\";
@@ -292,10 +293,11 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
             docase
             case StimType% = 2 then
                 'Create stimulus in Matlab
-                var matPutOK%;
-                printlog("Creating stimulus in Matlab!\n"); 'Trust nothing...
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",fs%);  'on any fail, matPutOK% will increment (negative ones)
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",duration*1000);  'size of trial is variable, that's OK
+                'var matPutOK%;
+                'printlog("Creating stimulus in Matlab!\n"); 'Trust nothing...
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",fs%);  'on any fail, matPutOK% will increment (negative ones)
+                'matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",duration*1000);  'size of trial is variable, that's OK
+                
                 'matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",-1);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 'matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",-1);  'Ditto
                 'matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
@@ -308,23 +310,24 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
                 'matPutOK% := matPutOK% + PutMatlabValueInt%("seed",2233);  
                 'matPutOK% := matPutOK% + PutMatlabValueInt%("pad",0);
                 'matPutOK% := matPutOK% + PutMatlabValueInt%("spk",spkr%); 
-                if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
-                    message("There has been an error in sending data to Matlab!  Quitting!");
-                    halt
-                endif;
-                statement$ := "stimulus = reclab_panstim(dur,fs,-1,-1,0,0,0,0,0,0,5,2233,0,[]);";
-                EvalMatlabStatement%(statement$);
-                matPutOK% := GetMatlabValueIntArray%("stimulus",Wav%[]);
-                if matPutOK% < 0 then 'error
-                    message("There has been an error in getting stimulus data from Matlab!");
-                    halt
-                endif;
-                donormalize% := 0;  'No normalization, stimulus is ready to load
+                
+                'if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+                '    message("There has been an error in sending data to Matlab!  Quitting!");
+                '    halt
+                'endif;
+                'statement$ := "stimulus = reclab_panstim(dur,fs,-1,-1,0,0,0,0,0,0,5,2233,0,[]);";
+                'EvalMatlabStatement%(statement$);
+                'matPutOK% := GetMatlabValueIntArray%("stimulus",Wav%[]);
+                'if matPutOK% < 0 then 'error
+                '    message("There has been an error in getting stimulus data from Matlab!");
+                '    halt
+                'endif;
+                'donormalize% := 0;  'No normalization, stimulus is ready to load
                 
                 'Create random uniform noise stimulus in Wav[] - array can't be integer or values will be truncated
-                'Rand(0.0);  'set Rand seed to the system clock
-                'Rand(Wav[]);  'Fill Wav[] with uniform random numbers
-                'donormalize% := 1;  'Force normalization
+                Rand(0.0);  'set Rand seed to the system clock
+                Rand(Wav[]);  'Fill Wav[] with uniform random numbers
+                donormalize% := 1;  'Force normalization
             case StimType% = 1 then
                 RandNorm(0.0);  'Set RandNorm seed to the system clock
                 RandNorm(Wav[]);  'Fill Wav[] with Gaussian random numbers

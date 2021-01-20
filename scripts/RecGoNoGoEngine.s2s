@@ -934,7 +934,8 @@ Func PlaySound%(isS2local%)
         endif;
         
         'status% := recAtten%(atten);
-        status% := recAttenByID%(atten,arrayPA4ID%);
+        'status% := recAttenByID%(atten,arrayPA4ID%);
+        status% := recAttenByID%(trlatten,arrayPA4ID%);
         if status% <> 0 then
             return status%;
         endif;  
@@ -2555,6 +2556,20 @@ func PrepareNextTrial%(loadPWAs%)
                     'Stop%();
                     'return -1;
                 endcase;
+                
+                'var Wav[recMaxPoints%];
+                'var Wav2[recMaxPoints%];
+                'Rand(0.0);  'set Rand seed to the system clock
+                'Rand(Wav[]);  'Fill Wav[] with uniform random numbers
+                'ArrConst(Wav2[],Wav[]);  'make copy of wav
+                'abs(Wav2[]);  'make Wav2[] absolute value of Wav[]
+                'var mymax;
+                'mymax := Wav2[max(Wav2[])];  'get absolute value of stimulus maximum
+                'var normfac;
+                'normfac := 32767/mymax;  'get normalization factor
+                'ArrMul(Wav[],normfac);  'Scale Wav[]
+                'ArrConst(recStimTransfer%[],Wav[]);
+                'printlog("Successfully replaced matlab noise with CED noise")
                 
                 'printlog("gen values are %d\n",recStimTransfer%[4000:50]);   
                 
