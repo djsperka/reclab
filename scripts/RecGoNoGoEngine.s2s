@@ -862,10 +862,12 @@ Func PlaySound%(isS2local%)
     else
         'calatten := recGeneratedAtten[recStimCount%];  'value created at time of stimulus generation
         calatten := recGeneratedAtten[thisPWAIndex%];  'value created at time of stimulus generation
+        printlog("Calibrating attenuation is %f\n",calatten);
     endif;
     
     'Get trial-based attenuation for current stimulus
     trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
+    printlog("Trial-based attenuation is %f\n",trlatten);
     
     'Get trial-based roving attenuation for current stimulus
     if recDoRove% = 1 then
@@ -873,6 +875,7 @@ Func PlaySound%(isS2local%)
     else
         roveatten := 0;
     endif
+    printlog("Roving attenuation is %f\n",roveatten);
     
     'Get total attenuation
     if recExpToRun% = recExpAudiogramButton% then
@@ -883,6 +886,8 @@ Func PlaySound%(isS2local%)
         printlog("cal atten is %f and trial atten is %f and roving atten is %f\n",calatten,trlatten,roveatten);
         atten := calatten + trlatten + roveatten;  'for all other cases, attenuation is calibrating attenuation + trial attenuation + roving attenuation
         targdB := 65 - trlatten - roveatten;  'convinced myself this is right
+        printlog("Overall attenuation is %f\n",atten);
+        printlog("Target dB is %f\n",targdB);
     endif;
     
     'It is possible that due to the maximum intensity of the stimulus that the requested attenuation
@@ -2407,6 +2412,7 @@ func PrepareNextTrial%(loadPWAs%)
     var matGetSeedOK%;
     var playWaveCopyOK%;
     var ok% := 1;  'by default, return 1 (success)
+    var tempfloat;
     
     
     ' Check to see if we are done
@@ -2513,6 +2519,8 @@ func PrepareNextTrial%(loadPWAs%)
                     statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 endif;
                 EvalMatlabStatement%(statement$);
+                statement$ := "calibval = AFFT(spk).dB;";
+                EvalMatlabStatement%(statement$);
                 'printlog("%s\n",statement$);
                 'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
                 'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
@@ -2522,6 +2530,9 @@ func PrepareNextTrial%(loadPWAs%)
                 'Get the stimulus and the seed back from Matlab
                 matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
                 matGetAttenOK% := GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
+                matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
+                printlog("Matlab's calib value is %f\n",tempfloat);
+                printlog("Value to get Matlab stim to 65 dB is %f\n",recGeneratedAtten[i%]);
                 matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
                 
                 docase
