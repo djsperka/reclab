@@ -934,8 +934,8 @@ Func PlaySound%(isS2local%)
         endif;
         
         'status% := recAtten%(atten);
-        'status% := recAttenByID%(atten,arrayPA4ID%);
-        status% := recAttenByID%(trlatten,arrayPA4ID%);
+        status% := recAttenByID%(atten,arrayPA4ID%);
+        'status% := recAttenByID%(trlatten,arrayPA4ID%);  'testing
         if status% <> 0 then
             return status%;
         endif;  
