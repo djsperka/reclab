@@ -16,16 +16,16 @@ function create_reclab_speaker_filters
 stf_pulse_duration = 5;  %set this appropriately, in seconds, will throw an error in subfunction if less than 2
 
 %mydir = 'E:\Core Grant\reclab\Calib4_newamp\';  %directory which contains speaker transfer information
-%mydir = 'D:\Data\Calib\array15calib\';  %directory for Recanzone lab, make this different than the write directory
-%mydir = 'D:\Data\Calib\standaloneCalib\';
-mydir = 'D:\Data\Calib\array16calib\';
+%mydir = 'I:\Data\Calib\Array15Calib\';  %directory for Recanzone lab, make this different than the write directory
+%mydir = 'I:\Data\Calib\standaloneCalib\';
+mydir = 'I:\Data\Calib\Array16Calib\';
 
 %write16File = 'E:\Core Grant\reclab\Calib4_newamp\Array16.mat';  %filename for writing, Kershaw
 %write15File = 'E:\Core Grant\reclab\Calib4_newamp\Array15.mat';
 
-%writeFile = 'D:\Data\Calib\Array15.mat';  %filename for writing, Recanzone lab
-%writeFile = 'D:\Data\Calib\Standalone.mat';
-writeFile = 'D:\Data\Calib\Array16.mat';
+%writeFile = 'I:\Data\Calib\Array15.mat';  %filename for writing, Recanzone lab
+%writeFile = 'I:\Data\Calib\Standalone.mat';
+writeFile = 'I:\Data\Calib\Array16.mat';
 %write15File = 'C:\Data\Calib\Array15.mat';  %do this separately, from a different directory
 
 AFFT = [];  %initialize structure for A data, using Fourier filtering
