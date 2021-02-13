@@ -7963,13 +7963,34 @@ end
 '===== ConvertmLToSeconds =====
 func ConvertmLToSeconds(mL)
     var sec;
-    if mL <= 0.417 then
-        sec := (mL + 0.072)/13; 'The relationships in this function have been painstakingly calculated for the
-    else                        'Recanzone juicer on the left-hand booth.  The relationship between TDT reward time
-        sec := (mL - 0.24)/4.7; 'and output is best described by two linear functions which intersect at a delivery
-    endif                       'of 0.417 mL (which corresponds to 0.0376 seconds of requested reward.
-    return sec;                 'If this script is used on another booth or the juicer is changed, the function will 
-end                             'need to be recalculated.
+    
+    
+    ''''Old calculation based on pump juicer
+    'if mL <= 0.417 then
+    '    sec := (mL + 0.072)/13; 'The relationships in this function have been painstakingly calculated for the
+    'else                        'Recanzone juicer on the left-hand booth.  The relationship between TDT reward time
+    '    sec := (mL - 0.24)/4.7; 'and output is best described by two linear functions which intersect at a delivery
+    'endif                       'of 0.417 mL (which corresponds to 0.0376 seconds of requested reward.
+    'return sec;                 'If this script is used on another booth or the juicer is changed, the function will 
+                                 'need to be recalculated.
+    
+    '''For the new(er, man, they're not that new) solenoid juicers, there is a fresh calculation
+    '''The juicers on both booths actually deliver a very similar amount, close enough that we can
+    '''totally use one averaged calculation for both booths (technically, I just plotted the data
+    '''from both booths together and did a single linear fit using it.
+    '''Here, we will not use an inflection point.
+    '''The equation we will use is: mL = 2.643*sec - 0.1191
+    '''or: sec = (mL + 0.1191)/2.643
+    if mL <= 0 then  'if we ask for 0 mL, don't give anything
+        sec := 0;
+    else
+        sec := (mL + 0.1191)/2.643
+    endif
+    return sec;
+    
+    
+    
+end                             
 
 
 '===== RecLEDReminderDialog =====
