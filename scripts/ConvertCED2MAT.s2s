@@ -45,6 +45,9 @@ AddChanIfPresent(28);  'EyeX channel        ("EyeX")  'currently EyeX/Y channels
 AddChanIfPresent(29);  'EyeY channel        ("EyeY")
 AddChanIfPresent(32);  'Digital marker      ("ToneStar" - is requested to be "ToneStartStop" but of course it's limited to 8 chars)
 
+'Note that there is a convention for electrodes to begin on channel 3.  This is an awkward convention, because one day somebody
+'will think..."gee, why don't electrodes start on channel 1" and break everything.  I've added a note to the GNGEngine at the right
+'spot.  Hopefully that prevents me (or anybody else) from messing this up.
 for i% := 3 to 23 do
     ChanTitle$(i%,"Trode_"+Str$(i%-2));  'Change chan title to be 1 to 21, if present
     AddChanIfPresent(i%);

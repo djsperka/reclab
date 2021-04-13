@@ -195,7 +195,7 @@ var nextStateImmed% := 1;  'when we are changing to a new state, by default we c
 var coinFlipResult%;    'to reward SAME trials for AMDis Hi/Lo *jao
 var responseMode%;                  'branched from isS2% (IdleLoop) for Hi/Lo responses, has to be global to work
 var isS2%;              'man, this thing's gotta be global, not local in IdleLoop!  It gets reset to zero every time IdleLoop is called!
-var recStimOn;
+'var recStimOn;  'Appears to be redundant
 var recFRAPWAIndex% := 0;
 var recLongAtten;
 var recLoadLongNoise%;
@@ -331,6 +331,14 @@ func SetTrodeChannels()
     var portNum%;
     var trodeNum%;
     
+    '===== IMPORTANT =====
+    '
+    '
+    'Although it would seem to make sense that the first electrode be recorded on channel 1, for historical reasons, the first
+    'electrode has been recorded on channel *3*.  The code which automatically creates the Matlab file from the SMR file expects
+    'this convention.  Thus, any change here to alter ports (such as the potential addition of eyetracking) must be accompanied 
+    'by an adjustment to ensure that channel numbers for electrodes begin at 3 and extend as high as 23.  Currently the value of
+    'chanAdjust% is 0, because electrode *ports* also begin at 3, but this could change in the future.  Don't break the conversion!
     var firstElectrodePort% := 3;  'first electrode is on Port 3 (no eyetracking)
    '%var firstElectrodePort% := 5;  'first electrode is on Port 3 (eyetracking)  'we have to figure out an electrode configuration convention if eyetracking is implemented
     var chanAdjust% := 0;
@@ -344,6 +352,9 @@ func SetTrodeChannels()
         recTrodePosition%[i%] := portNum% - chanAdjust%; 'this way all the numbers are the same! easyPeasy! (until eyetracking!)
         recTrodeChannel%[i%] := portNum% - chanAdjust%;
     next;
+    '
+    '
+    '===== END IMPORTANT =====
     
 end
 '======  end SetTrodeChannels() ======================
@@ -3006,7 +3017,7 @@ func FRAPrepareNextTrial%(loadPWAs%)
     printlog("Current trial is %d\n",recCurrentTrial%);
     
     'get stim number by calling tria`numth entry
-    recCurrentTrial% := recCurrentTrial%;
+    recCurrentTrial% := recCurrentTrial%;  '???
     printlog("Stim number is %d\n",recCurrentTrial%);
     
     recDur := recTrialDur[rec2StimList%[recTrialOrder%[recCurrentTrial%]][0]];  
@@ -3595,7 +3606,7 @@ func IdleLoop%()
                     stmp% := PlaySound%(isS2%);
                 endif;
                 
-                recStimOn := StimOn;   
+                'recStimOn := StimOn;   'redundant
                 
                 RecLogStatus("stmp", "stmp%=" + str$(stmp%));
             else
@@ -3735,7 +3746,7 @@ func IdleLoop%()
             if tNow - StimStopped > recISI then
                 RecLogStatus("FRA WaitISI", "ISI done.");
                 recPreciseTrialTime := tNow;  'time ISI is complete
-                if recFRAreward%[recCurrentTrial%] then 'if this trial is rewarded
+                if recFRAReward%[recCurrentTrial%-2] then 'if this trial is rewarded, is -2 because recCurrentTrial% is a zero-based index (-1) AND has been incremented already, even though we associate the reward with the previous trial (-1)
                     ChangeStateTo(stateFRAHitReward%);
                 else 'if not keep going
                     ChangeStateTo(stateStartSoundE%);
@@ -3759,7 +3770,7 @@ func IdleLoop%()
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
-                recStimOn := StimOn;
+                'recStimOn := StimOn;  'redundant
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -3851,7 +3862,7 @@ func IdleLoop%()
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
-                recStimOn := StimOn;  
+                'recStimOn := StimOn;  'redundant
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -3949,7 +3960,7 @@ func IdleLoop%()
                 else
                     stmp% := PlaySound%(isS2%);
                 endif;
-                recStimOn := StimOn;  
+                'recStimOn := StimOn;  'redundant
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
@@ -4034,7 +4045,7 @@ func IdleLoop%()
             if recCEDIsPresent% = 1 then
                 stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
                 StimStoppedNotSet% := 1; ' now that we played a sound we need to set the time of that sound stopping again (for ISI)
-                recStimOn := StimOn;  
+                'recStimOn := StimOn;  'redundant
                 'dummy% := fraStimComplete%();  'This was not the right time to run this function
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
@@ -5350,16 +5361,18 @@ func BehOutput(resultCode$, isS2local%)
     'for AMDis and SpaceDis... (case this bitch to add experiment formats)(casing this bitch -jj)
     docase
     case recExpToRun% = recExpAudiogramButton% then
-        view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$,recStimOn,recLeverTime);
+        view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$,StimOn,recLeverTime);
     case recExpToRun% = recExpFRAButton% then
         'calc dB for each one
-        dB1 := 65-rec2DeltadBList[recCurrentTrial%][0];
+        dB1 := 65-rec2DeltadBList[recCurrentTrial%-1][0];
         dB2 := 70; 'no PA4 for the standalone, so we just set the amplifier so the sounds would come out at ~70dB unattenuated.
         
-        view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][0],rec2SpeakerList%[recCurrentTrial%][0]);
-        view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][1],rec2SpeakerList%[recCurrentTrial%][1]);
+        'view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][0],rec2SpeakerList%[recCurrentTrial%][0]);  'this was not fixed until 3-31-21
+        'view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][1],rec2SpeakerList%[recCurrentTrial%][1]);
+        view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[recCurrentTrial%-1]][0],rec2SpeakerList%[recTrialOrder%[recCurrentTrial%-1]][0]);
+        view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[recCurrentTrial%-1]][1],rec2SpeakerList%[recTrialOrder%[recCurrentTrial%-1]][1]);
         view(fh%).print("%f\t%f\t",dB1,dB2);
-        view(fh%).print("%f\t%d\n",StimOn,recFRAreward%[recCurrentTrial%]);
+        view(fh%).print("%f\t%d\n",StimOn,recFRAReward%[recCurrentTrial%-1]);
     case recExpToRun% = recExpStereoDisButton% then
         'This line is apparently not too long, but man, it's gotta be close.
         view(fh%).print("%d\t%d\t%f\t%s\t%f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2local%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],

@@ -7587,7 +7587,7 @@ func GenTrialsFRALoad%()
 
     for i% := 0 to 78 do
         rewardIndex% += rewardArray%[i%];   'add the next interval to rewardIndex to determine the next trial to be rewarded
-        recFRAReward%[rewardIndex%] := 1;
+        recFRAReward%[rewardIndex%-1] := 1;
     next;
         
     return status%;
