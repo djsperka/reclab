@@ -326,7 +326,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
                 
                 'Create random uniform noise stimulus in Wav[] - array can't be integer or values will be truncated
                 Rand(0.0);  'set Rand seed to the system clock
-                Rand(Wav[]);  'Fill Wav[] with uniform random numbers
+                Rand(Wav[],1,-0.5);  'Fill Wav[] with uniform random numbers
                 donormalize% := 1;  'Force normalization
             case StimType% = 1 then
                 RandNorm(0.0);  'Set RandNorm seed to the system clock
