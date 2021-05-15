@@ -2,6 +2,19 @@
 'using Gaussian noise, uniform noise, an arbitrary tone, or a stimulus loaded from disk.  There is a 
 'dialog box at the beginning which allows you to specify the stimulus
 
+'I have now added two more paradigms which should allow us to do sanity checks on the amplifier and on 
+'the PA4.  The Amplifier sanity check will simply play the requested stimulus on the requested speaker
+'the requested number of times, but it will not do all of the FFT and save portions of the script.  The
+'idea here is that at each new stimulus we change the output level of the amplifier to see that the
+'amplifier is in a linear range/not saturating.  The Pioneer amplifiers have a digital volume level that
+'may (or may not!) correspond to dB, but because it is digital it will be easy to check the linearity.
+'The gap between stimuli will be set to 2 seconds for the amplifier sanity check to allow manual adjustment
+'of the amplifier volume.
+'The PA4 sanity check will play the requested stimulus while stepping the PA4 through an additional dB of
+'attenuation at each step, starting at 0, and ending at numRepeats%-1 dB.  The idea here is to see if the
+'PA4 is applying attenuation linearly.  If not, we can compensate.  The gap between stimuli is set to 1 
+'second for now, if it turns out that is too fast, it is easily fixable.
+
 'set FSD to 100, set Frequency Weighting to A, plug AC out to ADC0
 #include "RegistryUtils.s2s"
 #include "matlab.s2s"
@@ -107,6 +120,8 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     
     
     'Dialog Creation Stuff
+    var paradigm% := 0;
+    
     DlgCreate("Specify stimulus for speaker transfer function");  'First step to create dialog box
     DlgInteger(1,"Number of repeats",1,100);  'Integer field from entering number of repeats, max = 100
     DlgList(2,"Stimulus","Load File...|Gaussian Noise|Uniform Noise|Tone|Tone Series");  'List field to identify type of stimulus
@@ -114,13 +129,20 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     DlgReal(4,"Frequency (Hz)",20,50000);  'Real box to specify frequency of stimulus (if tone) min = 20 Hz, max = 50 kHz
     DlgInteger(5,"Sampling Frequency (Hz)",20000,200000);  'Integer box to specify sampling frequency of stimulus, if loaded
     DlgInteger(6,"Which Speaker",1,32); 'integer specifies which speaker
+    DlgList(7,"Paradigm","Spkr Transfer Func|Amplifier Check|PA4 Check");
     
     DlgAllow(0x3ff,0,Change%);  'Allow all interaction, on idle time function, change function is Change%
-    ok% := DlgShow(NumRepeats%,StimType%,duration,ToneFreq,fs%,spkr%);
+    ok% := DlgShow(NumRepeats%,StimType%,duration,ToneFreq,fs%,spkr%,paradigm%);
     'if user clicked cancel, close out
     if ok% = 0 then
         return 0;
     endif;
+    
+    var currAtten;
+    if paradigm% = 2 then
+        currAtten := 0;
+    endif
+    
     
     fs := fs%;  'set the real version of FS to the integer result
     
@@ -237,11 +259,16 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     'Set stimulus onset times, hold in ONSETS[]
     view(ctview%);  'must return to having the data window as the front view!
     currtime := 0;  'since we haven't started sampling yet, current time is zero
-    if StimType% = 4 then
+    docase
+    case paradigm% = 1 then
+        delay := (Maxpoint/fs)+2;  'Go real slow on this, need time to adjust amplifier manually
+    case paradigm% = 2 then
+        delay := (Maxpoint/fs)+1;  'Go kinda slow on this so user can keep up with reading PA4/B&K
+    case StimType% = 4 then
         delay := (Maxpoint/fs)+0.2;  'blast 'em on this one
     else
         delay := (Maxpoint/fs)+0.5;  '500 ms longer than stimulus
-    endif;
+    endcase;
     for i% := 1 to NumRepeats% do
         onsets[i%-1] := currtime + (delay*(i%-1)) + 1;  'give 1 second for first stimulus, 0.5 sec between stimuli
     next;
@@ -272,16 +299,19 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     chanshow(2);
     chanshow(30);  'show the textmark channel
     
-    'Set up the power spectrum analysis, part 1
-    ffthandle% := SetPower(2,16384,1);
-    WindowVisible(1);  'Make the window visible, that's important.
+    if paradigm% = 0 then  'don't do the power spectrum if we are checking amplifier or PA4
+        'Set up the power spectrum analysis, part 1
+        ffthandle% := SetPower(2,16384,1);
+        WindowVisible(1);  'Make the window visible, that's important.
+        
+        'Set up the power spectrum analysis, part 2
+        'Process(0,maxtime(),0,1,0,31,1,0,83);  'OK, let's try this.  Take from 0 to maxtime(), do not clear result view
+        'optimize the result view, no destination, gate by channel 31, one second,
+        'zero seconds presamples, use marker 83 (char(83) = "S") as gate.
+        'We might need to do this AFTER all the sounds are played...
+        ProcessTriggered(1,0,31,0,1,83);
+    endif;
     
-    'Set up the power spectrum analysis, part 2
-    'Process(0,maxtime(),0,1,0,31,1,0,83);  'OK, let's try this.  Take from 0 to maxtime(), do not clear result view
-    'optimize the result view, no destination, gate by channel 31, one second,
-    'zero seconds presamples, use marker 83 (char(83) = "S") as gate.
-    'We might need to do this AFTER all the sounds are played...
-    ProcessTriggered(1,0,31,0,1,83);
     
     view(ctview%);  'Without this line it's a complete bomb
     
@@ -356,6 +386,12 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
                 donormalize% := 0;  'Turn off normalization, will be turned back on if another noise stim is loaded        
             endif;
             
+            'If we are testing the PA4, increment the attenuation by 1 dB
+            if paradigm% = 2 then
+                RecAtten%(currAtten);
+                currAtten += 1;
+            endif;
+            
             while maxtime() < onsets[j%] do  'wait for the time to reach the designated start point
                 yield(.001,1023);
             wend;
@@ -385,7 +421,10 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
         endif;
     wend;
     
-    
+    'If we are doing the amplifier or PA4 check, we can quit now, the remainder is saving data, etc. and we don't care
+    if paradigm% > 0 then
+        halt
+    endif
     
     
     
