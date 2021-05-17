@@ -319,7 +319,12 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     j% := 0;
     break% := 0;
     while j% < 1200 and break% = 0 do
-        if onsets[j%] > 0 then  
+        if onsets[j%] > 0 then 
+            
+            while maxtime() < onsets[j%]-delay do  'wait for the previous stimulus to finish
+                yield(.001,1023);
+            wend;
+            
             docase
             case StimType% = 2 then
                 'Create stimulus in Matlab
