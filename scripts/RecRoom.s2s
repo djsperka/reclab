@@ -2120,7 +2120,7 @@ func RecExpSearchDialog%()
             arrconst(recTrialGenAMDepthPct[0:2],0);      'A list of AM depth values in percent, if 0 no depth
             arrconst(recTrialGenAMPhaseDeg[0:2],0);      'A list of AM phases, 0 = AM starts low, 90 = AM starts middle and rising, 180 = AM starts high, 270 = AM starts middle, falling
             arrconst(recTrialGenTonePhaseDeg[0:2],0);    'A list of tone phases, 0 = tone starts middle, rising (sine phase), 90 = tone starts high (cosine phase), note different than AM phase, only used for tone, not noise
-            arrconst(recTrialGenGauss%[0:2],0);          'If 1 create Gaussian noise, if 0 create uniform noise
+            arrconst(recTrialGenGauss%[0:2],1);          'If 1 create Gaussian noise, if 0 create uniform noise
             arrconst(recTrialGenSeed%[0:2],0);           'Seed for random number generator, 0 = unspecified, will make own random number
             docase
             case recSearchStimType% = 0 then 'for tones
