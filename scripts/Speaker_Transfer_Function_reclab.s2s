@@ -319,7 +319,18 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     j% := 0;
     break% := 0;
     while j% < 1200 and break% = 0 do
-        if onsets[j%] > 0 then  
+        if onsets[j%] > 0 then 
+            
+            while maxtime() < onsets[j%]-delay do  'wait for the previous stimulus to finish
+                yield(.001,1023);
+            wend;
+            
+            'If we are testing the PA4, set it
+            if paradigm% = 2 then
+                RecAtten%(currAtten);
+                'currAtten += 1;  'This may happen too fast?
+            endif;
+            
             docase
             case StimType% = 2 then
                 'Create stimulus in Matlab
@@ -386,11 +397,11 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
                 donormalize% := 0;  'Turn off normalization, will be turned back on if another noise stim is loaded        
             endif;
             
-            'If we are testing the PA4, increment the attenuation by 1 dB
+            'If we are testing the PA4, increment the attenuation by 1 dB for the next time
             if paradigm% = 2 then
-                RecAtten%(currAtten);
-                currAtten += 1;
+                currAtten += 1;  'This may happen too fast up top, update here?
             endif;
+            
             
             while maxtime() < onsets[j%] do  'wait for the time to reach the designated start point
                 yield(.001,1023);
