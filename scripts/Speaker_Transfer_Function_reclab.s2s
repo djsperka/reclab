@@ -140,7 +140,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     
     var currAtten;
     if paradigm% = 2 then
-        currAtten := 0;
+        currAtten := -1;  'now trying random stuff
     endif
     
     
@@ -327,6 +327,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
             
             'If we are testing the PA4, set it
             if paradigm% = 2 then
+                currAtten += 1;
                 RecAtten%(currAtten);
                 'currAtten += 1;  'This may happen too fast?
             endif;
@@ -397,10 +398,11 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
                 donormalize% := 0;  'Turn off normalization, will be turned back on if another noise stim is loaded        
             endif;
             
+            'I'm SO confused!  Why is there more attenuation than I expect?            
             'If we are testing the PA4, increment the attenuation by 1 dB for the next time
-            if paradigm% = 2 then
-                currAtten += 1;  'This may happen too fast up top, update here?
-            endif;
+            'if paradigm% = 2 then
+            '    currAtten += 1;  'This may happen too fast up top, update here?
+            'endif;
             
             
             while maxtime() < onsets[j%] do  'wait for the time to reach the designated start point
