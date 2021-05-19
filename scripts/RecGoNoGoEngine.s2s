@@ -1630,6 +1630,7 @@ func Stop%()
         
         if recUseJoystick% <> 0 then  'if the response device is the joystick, we may have set up a channel process to smooth the data
             'Clear any channel process on the joystick channels
+            View(recDataWindowView%);  'Explicitly set view
             ChanProcessClear(configJoyXChannel%,-1);
             ChanProcessClear(configJoyYChannel%,-1);
         endif;

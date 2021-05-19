@@ -49,7 +49,6 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     var mymax;          'For normalizing generated stimuli
     var normfac;        'For normalizing generated stimuli
     var onsets[1200];   'potential onset times for stimuli, a bit bigger to allow for tone series at small freq diffs
-    var currtime;
     var loopnum%;
     var delay;
     var ffthandle%;      'a handle for the power spectrum analysis
@@ -78,6 +77,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     var PrevStimOn;
     var MChanStimOn%;
     var TF;
+    var attenInc := 1;
     
     
     'Open matlab, for testing intensity of Matlab-generated sound, temporary    
@@ -130,9 +130,10 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     DlgInteger(5,"Sampling Frequency (Hz)",20000,200000);  'Integer box to specify sampling frequency of stimulus, if loaded
     DlgInteger(6,"Which Speaker",1,32); 'integer specifies which speaker
     DlgList(7,"Paradigm","Spkr Transfer Func|Amplifier Check|PA4 Check");
+    DlgReal(8,"PA4 increment (dB)",0.1,10);
     
     DlgAllow(0x3ff,0,Change%);  'Allow all interaction, on idle time function, change function is Change%
-    ok% := DlgShow(NumRepeats%,StimType%,duration,ToneFreq,fs%,spkr%,paradigm%);
+    ok% := DlgShow(NumRepeats%,StimType%,duration,ToneFreq,fs%,spkr%,paradigm%,attenInc);
     'if user clicked cancel, close out
     if ok% = 0 then
         return 0;
@@ -258,19 +259,18 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     
     'Set stimulus onset times, hold in ONSETS[]
     view(ctview%);  'must return to having the data window as the front view!
-    currtime := 0;  'since we haven't started sampling yet, current time is zero
     docase
     case paradigm% = 1 then
-        delay := (Maxpoint/fs)+2;  'Go real slow on this, need time to adjust amplifier manually
+        delay := 2;  'Go real slow on this, need time to adjust amplifier manually
     case paradigm% = 2 then
-        delay := (Maxpoint/fs)+1;  'Go kinda slow on this so user can keep up with reading PA4/B&K
+        delay := 1;  'Go kinda slow on this so user can keep up with reading PA4/B&K
     case StimType% = 4 then
-        delay := (Maxpoint/fs)+0.2;  'blast 'em on this one
+        delay := 0.2;  'blast 'em on this one
     else
-        delay := (Maxpoint/fs)+0.5;  '500 ms longer than stimulus
+        delay := 0.5;  '500 ms longer than stimulus
     endcase;
     for i% := 1 to NumRepeats% do
-        onsets[i%-1] := currtime + (delay*(i%-1)) + 1;  'give 1 second for first stimulus, 0.5 sec between stimuli
+        onsets[i%-1] := 1 + (((Maxpoint/fs)+delay)*(i%-1));  'First stimulus comes at 1, second stimulus comes at 1+1(stim+delay), third at 1+2(stim+delay), etc.
     next;
     
     
@@ -327,7 +327,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
             
             'If we are testing the PA4, set it
             if paradigm% = 2 then
-                currAtten += 1;
+                currAtten += attenInc;
                 RecAtten%(currAtten);
                 'currAtten += 1;  'This may happen too fast?
             endif;
@@ -485,7 +485,7 @@ func Change%(item%)
     var v%;  'holds value of list box, if necessary
     docase
     case item% = 0 then 'if it's the first call of the function
-        DlgEnable(0,3,4);  'Disable duration and frequency to start
+        DlgEnable(0,3,4,8);  'Disable duration and frequency, PA4 increment to start
     case item% = 2 then
         v% := DlgValue(2);  'get value of list box
         docase
@@ -501,6 +501,13 @@ func Change%(item%)
             DlgEnable(0,5);  'Disable sampling frequency
             DlgValue(5,100000);  'Return sampling frequency to 100 kHz if tone is selected
         endcase
+    case item% = 7 then
+        v% := DlgValue(7);  'get value of list box
+        if v% = 2 then
+            DlgEnable(1,8);
+        else
+            DlgEnable(0,8);
+        endif
     endcase
     return 1;
     
