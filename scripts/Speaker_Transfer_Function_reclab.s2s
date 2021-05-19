@@ -141,7 +141,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     
     var currAtten;
     if paradigm% = 2 then
-        currAtten := -1;  'now trying random stuff
+        currAtten := 0;  'now trying random stuff
     endif
     
     
@@ -327,9 +327,8 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
             
             'If we are testing the PA4, set it
             if paradigm% = 2 then
-                currAtten += attenInc;
                 RecAtten%(currAtten);
-                'currAtten += 1;  'This may happen too fast?
+                currAtten += attenInc;
             endif;
             
             docase
@@ -401,7 +400,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
             'I'm SO confused!  Why is there more attenuation than I expect?            
             'If we are testing the PA4, increment the attenuation by 1 dB for the next time
             'if paradigm% = 2 then
-            '    currAtten += 1;  'This may happen too fast up top, update here?
+            '    currAtten += attenInc;  'This may happen too fast up top, update here?
             'endif;
             
             
