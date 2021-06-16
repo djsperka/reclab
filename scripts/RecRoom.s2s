@@ -3854,8 +3854,8 @@ func RecExpTimingRewardDialog%()
     
     DlgReal(7,12,0,300,c1%,7); DlgText("Miss TO, s",c1txt%,7);
     DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
-    DlgCheck(18,"Do Miss Repeats?",c2txt%+8,7);
-    DlgInteger(19,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
+    DlgCheck(19,"Do Miss Repeats?",c2txt%+8,7);
+    DlgInteger(20,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
     
     DlgGroup("Rewards",1,11,trwid%-2,7);
     DlgReal(9,12,0,3,c1%,12); DlgText("Init Training Reward, mL",c1txt%,12); 'recInitRewardmL

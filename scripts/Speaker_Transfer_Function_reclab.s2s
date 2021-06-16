@@ -328,7 +328,8 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
             'If we are testing the PA4, set it
             if paradigm% = 2 then
                 RecAtten%(currAtten);
-                currAtten += attenInc;
+                currAtten -= attenInc;  'Note that RecAtten% has been updated to compensate for the attenuation shortfalls derived from this function. 
+                                        'Negative attenuation values are converted to positive WITHOUT adjustment, which is the point of the code here.
             endif;
             
             docase

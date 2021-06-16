@@ -73,11 +73,36 @@ recTDTCOMPort% := GetIntRegistryValue%("Reclab", "UseComPort", recTDTCOMPort%);
 ' recAtten
 '
 ' Set attenuation to the value supplied. Returns 0 on success, nonzero on error (see tdtPA4Atten%). 
-'
+' 
+' PA4 attenuation at low values (below ~1.2 dB requested atten) has a slope (actual dB/requested dB)
+' of about 0.75, resulting in a shortfall of 0-0.4 dB.  PA4 attenuation at higher values has a slope
+' of about 1.00 but the actual dB is offset from the requested dB by about 0.4 dB due to the shortfall
+' over the first ~1.2 dB requested.  Here we will adjust the requested attenuation to produce the 
+' desired output.  Note that the dB value of attenuation displayed on the PA4 LED will in most cases 
+' be 0.4 dB greater than requested, however the requested dB attenuation should be reflected in any 
+' plots, calculations, etc., the adjustment here is only to get the PA4 to give us the attenuation we 
+' requested.
+' Note that negative attenuation values (normally nonsense) will be converted to positive values but 
+' NOT ADJUSTED.  Use negative attenuation values to directly set the attenuation without adjustment.
+' -jj 5-19-2021
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recAtten%(atten)
+    
+    docase
+    case atten > 1.2 then
+        atten := atten + 0.4;
+    case atten > 0.9 then
+        atten := atten + 0.3;
+    case atten > 0.6 then
+        atten := atten + 0.2;
+    case atten > 0.3 then
+        atten := atten + 0.1;
+    case atten < 0 then
+        atten := -atten;
+    endcase
+    
     
     return PA4Atten%(atten);
     
@@ -91,11 +116,35 @@ end
 ' Set attenuation to the value supplied, on the PA4 device found at the x location number given.
 ' (whichPA4% should be xlnFirstPA4% or xlnSecondPA4%)
 ' Returns 0 on success, nonzero on error (see tdtPA4Atten%). 
-'
+' 
+' PA4 attenuation at low values (below ~1.2 dB requested atten) has a slope (actual dB/requested dB)
+' of about 0.75, resulting in a shortfall of 0-0.4 dB.  PA4 attenuation at higher values has a slope
+' of about 1.00 but the actual dB is offset from the requested dB by about 0.4 dB due to the shortfall
+' over the first ~1.2 dB requested.  Here we will adjust the requested attenuation to produce the 
+' desired output.  Note that the dB value of attenuation displayed on the PA4 LED will in most cases 
+' be 0.4 dB greater than requested, however the requested dB attenuation should be reflected in any 
+' plots, calculations, etc., the adjustment here is only to get the PA4 to give us the attenuation we 
+' requested.
+' Note that negative attenuation values (normally nonsense) will be converted to positive values but 
+' NOT ADJUSTED.  Use negative attenuation values to directly set the attenuation without adjustment.
+' -jj 5-19-2021
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recAttenByID%(atten, whichPA4%)
+    
+    docase
+    case atten > 1.2 then
+        atten := atten + 0.4;
+    case atten > 0.9 then
+        atten := atten + 0.3;
+    case atten > 0.6 then
+        atten := atten + 0.2;
+    case atten > 0.3 then
+        atten := atten + 0.1;
+    case atten < 0 then
+        atten := -atten;
+    endcase
     
     if whichPA4% > -1 then
         return PA4AttenByID%(atten, whichPA4%);
@@ -112,11 +161,36 @@ end
 '
 ' Set attenuation to the value supplied, on the PA4 device found at the rack/position number given. 
 ' Returns 0 on success, nonzero on error (see tdtPA4Atten%). 
-'
+' 
+' PA4 attenuation at low values (below ~1.2 dB requested atten) has a slope (actual dB/requested dB)
+' of about 0.75, resulting in a shortfall of 0-0.4 dB.  PA4 attenuation at higher values has a slope
+' of about 1.00 but the actual dB is offset from the requested dB by about 0.4 dB due to the shortfall
+' over the first ~1.2 dB requested.  Here we will adjust the requested attenuation to produce the 
+' desired output.  Note that the dB value of attenuation displayed on the PA4 LED will in most cases 
+' be 0.4 dB greater than requested, however the requested dB attenuation should be reflected in any 
+' plots, calculations, etc., the adjustment here is only to get the PA4 to give us the attenuation we 
+' requested.
+' Note that negative attenuation values (normally nonsense) will be converted to positive values but 
+' NOT ADJUSTED.  Use negative attenuation values to directly set the attenuation without adjustment.
+' -jj 5-19-2021
 '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 func recAttenByRackPosition%(atten, rackNumber%, positionNumber%)
+    
+    docase
+    case atten > 1.2 then
+        atten := atten + 0.4;
+    case atten > 0.9 then
+        atten := atten + 0.3;
+    case atten > 0.6 then
+        atten := atten + 0.2;
+    case atten > 0.3 then
+        atten := atten + 0.1;
+    case atten < 0 then
+        atten := -atten;
+    endcase
+    
     
     return PA4AttenByRackPosition%(atten, rackNumber%, positionNumber%);
     
