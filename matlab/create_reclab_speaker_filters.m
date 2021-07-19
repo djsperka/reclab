@@ -16,17 +16,17 @@ function create_reclab_speaker_filters
 stf_pulse_duration = 5;  %set this appropriately, in seconds, will throw an error in subfunction if less than 2
 
 %mydir = 'E:\Core Grant\reclab\Calib4_newamp\';  %directory which contains speaker transfer information
-%mydir = 'I:\Data\Calib\Array15Calib\';  %directory for Recanzone lab, make this different than the write directory
-%mydir = 'I:\Data\Calib\standaloneCalib\';
-mydir = 'I:\Data\Calib\Array15Calib\';
+%mydir = 'C:\Data\Calib\Array16Calib\';  %directory for Recanzone lab, make this different than the write directory
+%mydir = 'E:\Core Grant\reclab2017\StandaloneCalib\';  %directory which contains speaker transfer information
+mydir = 'E:\testingshit\RecLab\CalibrationTest\test\';
 
 %write16File = 'E:\Core Grant\reclab\Calib4_newamp\Array16.mat';  %filename for writing, Kershaw
 %write15File = 'E:\Core Grant\reclab\Calib4_newamp\Array15.mat';
 
-%writeFile = 'I:\Data\Calib\Array15.mat';  %filename for writing, Recanzone lab
-%writeFile = 'I:\Data\Calib\Standalone.mat';
-writeFile = 'I:\Data\Calib\Array15.mat';
+%writeFile = 'C:\Data\Calib\Array16.mat';  %filename for writing, Recanzone lab
+%writeFile = 'E:\Core Grant\reclab2017\StandaloneCalib\Standalone.mat';  %filename for writing, Recanzone lab
 %write15File = 'C:\Data\Calib\Array15.mat';  %do this separately, from a different directory
+writeFile = 'E:\testingshit\RecLab\CalibrationTest\test\testfile.mat';
 
 AFFT = [];  %initialize structure for A data, using Fourier filtering
 
@@ -57,18 +57,19 @@ speaker = 0;
 isAweight = 0;
 dB = 0;
 isFFT = 0;
-sampfreq = 100000; %should be 50000?? Jeff help!
+
 numSpeakersProcessed = 0;
 
 %for filtering filter the speaker transfer function (raw version), because damn is it noisy
-h=fdesign.lowpass('Fp,Fst,Ap,Ast',0.01,0.1,1,60);
+%h=fdesign.lowpass('Fp,Fst,Ap,Ast',0.01,0.1,1,60);
+h=fdesign.lowpass('Fp,Fst,Ap,Ast',0.001,0.01,.1,100);  %this is quite a bit smoother - dialing in parameters on this is quite difficult, but this looks OK
 des=design(h,'equiripple'); %Lowpass FIR filter
 
 
 x = dir(mydir);
 for i = 3:length(x)  %skip '.' and '..'
     %% parse filename
-    fname = x(i).name
+    fname = x(i).name;
     %get speaker number
     [spkr remainder] = strtok(fname,'_');
     r = findstr(spkr,'r');
@@ -109,12 +110,18 @@ for i = 3:length(x)  %skip '.' and '..'
     if isFFT == 0
         [outdB outax] = speaker_transfer_function2([mydir fname],stf_pulse_duration);  %load raw file, get speaker transfer function in dB down
 
+        %outdB2 = outdB;  %do not zero-phase filter the STF
         outdB2=filtfilt(des.Numerator,1,outdB); %zero-phase filter the STF
         
         %this allows us to look at the filtering result against the
         %original STF
         %figure, plot(outax,outdB,'b'), hold on, plot(outax,outdB2,'r')
         %title(['speaker ' num2str(speaker) ', Aweight = ' num2str(isAweight)]);
+        
+        %We may want to set a seed so all STFs have the same basis
+        seed = 9488477;
+        s = RandStream.create('mt19937ar','seed',seed);  %seed with system clock
+        RandStream.setGlobalStream(s);
         
         %we need to know what spl level that calc_spl_wfm thinks a
         %full-scale white noise is.
@@ -123,9 +130,12 @@ for i = 3:length(x)  %skip '.' and '..'
         stimulus = stimulus / max(abs(stimulus));  %scale to -1 to 1
         stimulus = stimulus * 32767;  %scale to 16 bit
         stimulus_STF = filt_stim(stimulus,sampfreq,outdB2,outax);   %filter with the speaker transfer function
+        %hmm = filt_stim(stimulus,sampfreq,outdB,outax);   %filter with the unadjusted speaker transfer function
         spl_guess = calc_spl_wfm(stimulus_STF,[],sampfreq,400,0,1); %and get an spl guess with no reference adjustment
+        %hmm = calc_spl_wfm(hmm,[],sampfreq,400,0,1)
+        %spl_guess_orig = calc_spl_wfm(stimulus,[],sampfreq,400,0,1)
         adj = dB - spl_guess;  %this ADJ value can now be fed to calc_spl_wfm to get values in "real" dB
-        
+
         %and put the stuff in a structure
         if isAweight
             AFFT(speaker).stf = outdB2;
@@ -134,7 +144,13 @@ for i = 3:length(x)  %skip '.' and '..'
             numSpeakersProcessed = numSpeakersProcessed + 1;  %keep count of the number of figures processed
         end        
     end
-    
+%     max(stimulus)
+%     min(stimulus)
+%     max(stimulus_STF)
+%     min(stimulus_STF)
+%     figure, plot(stimulus(1:1000)), hold on, plot(stimulus_STF(1:1000),'r')
+%assignin('base','AFFT',AFFT);
+%    error('testing')
 
 end
 
@@ -480,84 +496,3 @@ function t = isrowvector(x)
 %   URL:         http://home.online.no/~pjacklam
 
    t = ndims(x) == 2 & size(x, 1) == 1;
-
-
-   
-   %% subfunction db2ratio 
-   
-   function out = db2ratio(in,power)
-%DB2RATIO - A super simple function that converts a dB value to a ratio
-%
-%Usage OUT = DB2RATIO(IN,POWER), where IN is a dB value and OUT is a ratio
-%    If POWER is non-zero, will compute ratio in power, otherwise will compute
-%    ratio in amplitude (default = amplitude)
-%
-%Also see: ratio2db
-
-if nargin < 2 || isempty(power)
-    power = 0;
-end
-
-if power  %do power version
-    out = 10.^(in./10);
-else  %do amplitude version
-    out = 10.^(in./20);
-end
-   
-   
-   
- %% subfunction mag_phase2sin_cos  
-   
-   function out = mag_phase2sin_cos(mag,phs)
-
-%MAG_PHASE2SIN_COS is a super-simple function that converts a magnitude/phase pair
-%to the sine/cosine complex value as output by Matlab's FFT and expected by IFFT.
-%
-%Usage: OUT = MAG_PHASE2SIN_COS(MAG,PHS)
-%
-%Inputs:  MAG - The magnitude values (see M below, in M-file)
-%         PHS - The phase values (see THETA below, in M-file)
-%Outputs: OUT - The sine/cosine complex value (see Z below, in M-file)
-%
-%I do this because I can never remember this conversion and I don't want to look it up every
-%time.
-
-%The remedial math (for remedial mathematicians like myself):
-%Take a vector X in the time domain
-%Let Z be the Fourier Transform of X,       Z = FFT(X);
-%Z will be a complex vector the same length as X.  The first value in Z will be the DC
-%component (real), and subsequent values (complex) will correspond to 1 cycle/vector, 
-%2 cycles/vector, etc. up to the Nyquist frequency (N/2 cycles/vector).  Beyond the 
-%Nyquist frequency, values are reflected (if the Nyquist actually exists - vector is of
-%even length - the Nyquist is not reflected; if the Nyquist does not exist - vector is of
-%odd length - the final value is reflected).  Reflected values are usually disposed of.
-%The complex values have (as all complex values do) a real and an imaginary component.
-%The real component   REAL(Z)   is the magnitude of the sine wave at the corresponding
-%frequency and the imaginary component   IMAG(Z)  is the same, but for the cosine wave.
-%However, the REAL and IMAG components (the sine/cosine pair) are not usually terribly 
-%useful.  Rather, it is usually preferable to convert things into terms of a single 
-%sinusoidal wave which has magnitude M and initial phase THETA (where the initial phase
-%of a sine wave is 0 and the initial phase of a cosine wave is pi/2).  This is done by:
-%M = ABS(Z);   %The magnitude of the sinusoid
-%THETA = ANGLE(Z);  %The phase of the sinusoid
-%This magnitude/phase pair form a frequency-based representation ("frequency space") of
-%the original vector, and the magnitudes are often useful in transforming a stimulus
-%(e.g. a speaker transfer function or a head-related transfer function).  However, if we
-%wish to reconstruct a transformed version of our vector, we have to convert the 
-%magnitude/phase pair into a complex sine/cosine pair Z2 for use by IFFT.  This is the step
-%with the difficult-to-remember math.  The formula is:   Z2 = M2.*(exp(1i*THETA));
-%Then, the transformed vector in the time domain can be found by:   X2 = IFFT(Z2,'symmetric');
-%where the 'symmetric' argument tells IFFT to treat the input Z2 as symmetric even if there
-%are round-off errors.  I have found that occasionally even explicitly reflected vectors
-%have strange, small round-off errors which result in the result of IFFT being complex (with
-%very small values in the imaginary domain).  The 'symmetric' option avoids this problem.
-%So, in summary:
-%1) Z = FFT(X);  %The sine/cosine complex pair
-%2) M = ABS(Z);  %Extract the magnitude component
-%3) THETA = ANGLE(Z);  %Extract and store the phase component
-%4) M2 = (Operations with M)  %Alter M, restore DC component and reflected portion if necessary
-%5) Z2 = M2.*(exp(1i*THETA));  %Convert magnitude/phase pair to complex sine/cosine pair
-%6) X2 = IFFT(Z2,'symmetric');  %Return modified X in time domain
-%This function does only step 5).  It's just that step 5) is the hard one to remember.
-
-out = mag.*(exp(1i*phs));  %There you go, one functional line and 49 lines of comments.  So it goes.
