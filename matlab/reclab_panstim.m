@@ -12,10 +12,14 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %         SAMPFREQ  - Sampling frequency, in Hz.  No default
 %         LOHZ      - For tones, tone frequency (set HIHZ = LOHZ); for BP
 %                     noise, frequency of low cutoff; for no limit or BB
-%                     noise, use -1.  No default.
+%                     noise, use -1.  For comb, will be the CF of the
+%                     lowest tooth.  No default, unless doing comb, where
+%                     default (for empty, 0, or -1) is 125 Hz.
 %         HIHZ      - For tones, tone frequency (set LOHZ = HIHZ); for BP
 %                     noise, frequency of high cutoff; for no limit or BB
-%                     noise, use -1.  No default.
+%                     noise, use -1.  For comb, will be the CF of the
+%                     highest tooth.  No default, unless doing comb, where
+%                     default (for empty, 0, or -1) is 30000 Hz.
 %         ISSWEEP   - Determines how to deal with LOHZ/HIHZ. If LOHZ = HIHZ
 %                     then ISSWEEP is ignored, tone is created. If ISSWEEP
 %                     is 0 (default) then values will represent frequency
@@ -23,7 +27,16 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %                     be the start and end points of an FM sweep.  Note
 %                     that this is the only circumstance under which LOHZ
 %                     can be greater than HIHZ - that would indicate a
-%                     downward sweep.  Sweep will be logarithmic.
+%                     downward sweep.  Sweep will be logarithmic. If
+%                     ISSWEEP is -2/2, will apply a COMB (-2: lower comb, 
+%                     2: upper comb) to a broadband noise stimulus based on
+%                     DUR, SAMPFREQ, GAUSS.  CFs of comb teeth will range
+%                     between LOHZ and HIHZ.  Bandwidth of each tooth will
+%                     default to 0.33333 octaves, and distance between CFs
+%                     of each tooth will default to 0.41504 octaves.  If
+%                     ISSWEEP is a three-element vector, the first element
+%                     must be -2/2, and the elements will represent:
+%                     [lower/upper  tooth_bw_oct  tooth_CFspacing_oct]. 
 %         AMFREQ    - Frequency in Hz of amplitude modulation to apply to
 %                     the stimulus.  Default = 0, no modulation.
 %         AMDEPTH   - Depth in percent (0-100) of amplitude modulation to
@@ -42,8 +55,8 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %                     uniformly distributed noise.  If 2 <= N <= 100, use 
 %                     Gaussian noise cut off at Nth percentile value of 
 %                     stimulus (note that default scaling is to max value 
-%                     of stimulus).  Default = 1.  Only applies to BB/BP 
-%                     noise or carrier.
+%                     of stimulus).  if -1, use Pink noise.  Default = 1.  
+%                     Only applies to BB/BP noise or carrier.
 %         RAMP      - Duration, in ms, of onset/offset ramps using a cos^2
 %                     function.  Default = 0.  Ramping is applied after all
 %                     other manipulations.
@@ -63,7 +76,7 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %                     no padding.
 %         CALIB     - A cell array containing the B/A coefficients for STF
 %                     filtering.  If empty, there will be no calibration,
-%                     but that shouldn't happen
+%                     but that shouldn't happen if called from RecRoom.s2s
 %
 %Outputs: STIMULUS  - The stimulus, returned in 16-bit integer form.
 %         ATTEN65   - Approximate value used to attenuate to 65 dB, not yet
@@ -122,9 +135,18 @@ function [stimulus atten65 seed] = reclab_panstim(dur,sampfreq,lohz,hihz,issweep
 %Written by Jeffrey Johnson, 6/5/2012
 %Updated 12/4/2012 to include FM sweeps
 %Updated 1/22/2020 to allow percentile cutoff of Gaussian noise
+%Updated 4/19/2021 to add Pink Noise as a carrier
+%Updated 7/7/2021 to add combed noise carriers, ISSWEEP is now a mess!
 
 
 %% Do Argument Checking, Preliminaries
+
+%Set comb tooth default values in octaves, will only be used if comb is
+%requested
+toothBW = 1/3;
+toothCFSpacing = log2(1 + 1/3);  %multiplicative value is 1.3333, but we will have the PANSTIM entry of these values be in octaves, which makes it much easier to determine overlap/distance between teeth, default corresponds to 0.41504 octaves
+toothLoHz = 125;
+toothHiHz = 30000;
 
 if nargin < 4
     error('There must be at least four input arguments!')
@@ -132,16 +154,55 @@ end
 
 dur = dur/1000;  %convert to seconds
 
-if lohz == 0  %0, -1 are the same for LoHz
+%This is a complicated mess!
+%ISSWEEP can be:
+%1 - create an FM sweep
+%0 - create tone (lohz==hihz and lohz/hihz > -1) or noise (otherwise lohz/hihz represent bandlimits or no limit if -1)
+%2/-2 - create comb
+if nargin < 5 || isempty(issweep)  %by default if ISSWEEP is not specified, set for tone/noise
+    issweep = 0;
+elseif numel(issweep) == 3  %if there are three elements in ISSWEEP, this must be a comb spec, the remaining values in ISSWEEP are toothBW and toothCFSpacing
+                            %and lohz/hihz correspond to the low and high tooth CFs.  The comb stimulus is generated from broadband white noise, so we have to
+                            %reset lohz/hihz to create bb noise
+    toothBW = issweep(2);  %get tooth BW
+    toothCFSpacing = issweep(3);  %get toothCFSpacing
+    issweep = issweep(1);  %cut ISSWEEP to its first element
+    if abs(issweep) ~= 2  %make sure ISSWEEP is 2/-2, there are no other legal options when it is a three-element vector    
+        error('If ISSWEEP is a vector, the first element must be 2 or -2!')
+    end
+    %have to swap lohz/hihz into tooth CFs if they are specified, then set carrier for broadband 
+    if ~isempty(lohz) && lohz > 0  %if this value indicates a tooth CF
+        toothLoHz = lohz;  %grab tooth CF
+        lohz = -1;  %set LOHZ for broadband
+    end
+    if ~isempty(hihz) && hihz > 0  %if this value indicates a tooth CF
+        toothHiHz = hihz;  %grab tooth CF
+        hihz = -1;  %set HIHZ for broadband
+    end  
+elseif numel(issweep) == 1 && (issweep == -2 || issweep == 2) %if it is a comb
+    %have to swap lohz/hihz into tooth CFs if they are specified, then set carrier for broadbandd
+    if ~isempty(lohz) && lohz > 0  %if this value indicates a tooth CF
+        toothLoHz = lohz;  %grab tooth CF
+        lohz = -1;  %set LOHZ for broadband
+    end
+    if ~isempty(hihz) && hihz > 0  %if this value indicates a tooth CF
+        toothHiHz = hihz;  %grab tooth CF
+        hihz = -1;  %set HIHZ for broadband
+    end
+elseif numel(issweep) == 1 && (issweep == 0 || issweep == 1) %if it is tone/noise/bp noise
+    %do nothing, just avoid invalid format error
+else
+    error('Invalid format for ISSWEEP!')
+end
+
+if isempty(lohz) || lohz == 0  %0, -1 are the same for LoHz (HiHz), [] can happen if there are at least five entries
     lohz = -1;
 end
-if hihz == 0 || hihz > 100000  %again, these values are out of range; over 100kHz is unexpected and hardcoded out
+if isempty(hihz) || hihz == 0 || hihz > 100000  %again, these values are out of range; over 100kHz is unexpected and hardcoded out
     hihz = -1;
 end
 
-if nargin < 5 || isempty(issweep)
-    issweep = 0;
-end
+
 
 if nargin < 6 || isempty(amfreq)
     amfreq = 0;
@@ -261,15 +322,27 @@ elseif gauss == 1 %BP or BB, create noise
 elseif gauss > 1 %BP or BB, create noise with percentile cutoff
     stimulus = randn(1,round(num_samples*100/gauss));  %Gaussian-distributed noise, create extra samples, will cut out extremes before scaling
     %stimulus = randn(1,num_samples);
+elseif gauss == -1 %BP or BB, create Pink Noise carrier
+    stimulus = pinknoise(num_samples,1)';  %PINKNOISE properly creates columnwise pink stimuli, convert to row vector 
 else
     stimulus = rand(1,num_samples)-0.5;  %Uniform-distributed noise
 end
 
-%Scale stimulus to 16 bits before doing AM
+
+%% Add comb to carrier if requested
+if abs(issweep) == 2
+    if issweep == -2  %if it's 2, it should stay 2, make upper comb
+        issweep = 1;  %make lower comb
+    end
+    stimulus = GenerateCombPanstim(stimulus,issweep,sampfreq,toothLoHz,toothHiHz,toothBW,2^toothCFSpacing);  %note that currently the CFSpacing is specified in octaves for RECLAB_PANSTIM but in multiplicative units in GENERATECOMBPANSTIM.  Maybe this changes?  Dunno.
+end
+
+
+%% Scale stimulus to 16 bits before doing AM
 %if gauss >= 2 && do_bb == 1 %if using alternate Gaussian scaling, scale broadband here
 if gauss >= 2
     [~,inds] = sort(abs(stimulus));
-    stimulus = stimulus(sort(inds(1:num_samples)));  %cut out extreme samples, return to original random order
+    stimulus = stimulus(sort(inds(1:num_samples)));  %cut out extreme samples, return to original random order...this isn't DOING anything?
     stimulus = stimulus / max(abs(stimulus));  
     stimulus = stimulus * scale_val;     
 %elseif gauss >= 2 && do_bp == 1  %no scaling at all, we'll do that later
@@ -302,7 +375,7 @@ end
 
 
 if do_bp
-    [f ax] = fftax(stimulus,sampfreq);
+    [f,ax] = fftax(stimulus,sampfreq);
     lolim = find(ax<lohz,1,'last');
     hilim = find(ax>hihz,1,'first');
     f(2:lolim) = 0;
@@ -484,9 +557,11 @@ stimdB = 20*log10(stimamp);  %convert stimulus to dB
 %stimdB = stimdB + stf2';  %filter in dB/frequency space
 %figure, plot(stimax,stf2,'g')
 %hold on, plot(stfax,stf,'k')
+%hold on, plot(stimdB,'b')
 %figure, plot(stimdB,'b')
 stimdB = stimdB' + stf2';  %filter in dB/frequency space, so for some reason now I double swap orientation
 %figure, plot(stimdB,'r')
+%hold on, plot(stimdB,'r')
 stimamp2 = db2ratio(stimdB);  %get filtered stim in amplitude/frequency space
 %stimamp2 = stimamp2.*(mean(stimamp)/mean(stimamp2));  %equalize the overall amplitude or it won't be close
 if mod(length(in),2)  %if it's odd, we'll need to reflect the last Fourier value
@@ -498,6 +573,7 @@ stimamp2 = [DC; stimamp2; stimamp2(myend:-1:1)];   %concatenate DC component, re
 stimphase = [stimphase; stimphase(myend:-1:1)];  %reflect phase component as well (reflection removed by FFTAX)
 stimfft2 = mag_phase2sin_cos(stimamp2,stimphase);
 out = ifft(stimfft2,'symmetric');
+%figure, plot(in), hold on, plot(out,'r')
 
 
 

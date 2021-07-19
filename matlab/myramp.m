@@ -1,10 +1,11 @@
-function out = myramp(in,sample_rate,ramp_dur)
+function out = myramp(in,sample_rate,ramp_dur,is_cos)
 
 %a quick cosine-squared ramp
 %OUT = MYRAMP(IN,SAMPLE_RATE,RAMP_DUR)
 %IN is the signal
 %SAMPLE_RATE defaults to 44100
 %RAMP_DUR is in milliseconds, defaults to 10
+%IS_COS - if 1, do cosine ramp instead of cosine-squared ramp, default = 0
 
 if nargin < 2
     sample_rate = 44100;
@@ -14,10 +15,18 @@ if nargin < 3
     ramp_dur = 10;  %in ms
 end
 
+if nargin < 4 || isempty(is_cos)
+    is_cos = 0;
+end
+
 
 ramp_samp = ceil(sample_rate*ramp_dur/1000);  %number of samples in ramp
 ramp = cos(linspace(0,pi/2,ramp_samp));
-ramp = 1-ramp.^2;
+if is_cos == 0
+    ramp = 1-ramp.^2;
+else
+    ramp = 1-ramp;
+end
 
 %check size of input
 if min(size(in)) > 1 || length(size(in)) > 2  %if it's not a vector
