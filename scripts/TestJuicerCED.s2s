@@ -10,18 +10,21 @@ var recRewardMs%;
 var recChanTM%;
 
 var i%;
-const nRepeats% := 100;
+var nRepeats% := 100;
 var dur[nRepeats%];
 var on;
 var off;
 var mymin;
 var mymax;
 var mymean;
+var data$;
+var result%;
 
 'meat of code
 'RecInitTDT%();
-if myDialog%() = 1 then
-    
+result% := myDialog2%(nRepeats%,recRewardMs%);
+if result% = 1 then
+'if myDialog%() = 1 then
     
     ' Since we are opening files here, set the path. 
     FilePathSet(data$, 1, 1);  'Sets path for new data files
@@ -149,6 +152,28 @@ return i%
 end
 
 
+
+func mydialog2%(&nRepeatsLocal%,&recRewardMsLocal%)
+    DlgCreate("Juicer Volume/Timing Dialog",0,0);
+    
+    'DlgString(1,"FileName",30,"",0,2);  'don't need it
+    'DlgList(1,"Duration",dur$[],15,0);
+    
+    DlgInteger(1,"Number of reward deliveries",1,1000);
+    DlgInteger(2,"Duration of reward, ms",1,1000);
+    
+    ' Show the dialog. 
+    i%:=DlgShow(nRepeatsLocal%,recRewardMsLocal%);
+    
+    
+    return i%
+end
+
+
+
+
+
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' Reward%()
@@ -167,7 +192,7 @@ func Reward%(&on,&off)
     tStart := View(recDataWindowView%).MaxTime();  'this is the time that the reward command was sent, roughly
     sampletext("on " + str$(tStart), tStart);
 
-    stmp% := recReward%(recRewardMs%,0); '0, we're not using TDT
+    stmp% := recReward%(recRewardMs%,0,0,0); '0, we're not using TDT
 
     'have to wait for juicer to stop, keep looking for TDT return on serial port until then.
     'stmp% := -1;  'by default, assume failure
