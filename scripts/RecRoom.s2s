@@ -525,6 +525,9 @@ var recS1RewardIncmL;               'Reward increment per S1 stimulus, millilite
 var lastHitReward; 'holds last hit reward given so that it can be incremented
 var thisHitReward; 'initialize to base level
 var recRewardType%;                 '0 = juice, 1 = Stimulation, 2 = cycle through on error, 3 = select via probability on error
+var recJuiceWaterBooth%;            '0 = water/small booth, 1 = juice/small booth, 2 = water/big booth, 3 = juice/big booth
+var recInitialJuiceVolumemL;        'How many mL did we start with in the bottle?
+var recCurrentJuiceVolumemL;        'How many mL do we believe is in the bottle now?
 var recCurrentRewardType%;          'Type of reward this trial, 0 = juice, 1 = stim, 2 = both
 var recPctJuice%;                   'percentage of time variable reward will be juice    
 var recPctStimulation%;             'percentage of time variable reward will be a Stimulation    
@@ -3792,13 +3795,20 @@ func RecExpTimingRewardDialog%()
     var c2txt%;
     c2txt% := trwid%-40;
     
-    var rewardType$[6];
-    rewardType$[0] := "Juice Only";
-    rewardType$[1] := "Stimulation Only";
-    rewardType$[2] := "Juice+Stim";
-    rewardType$[3] := "Cycle J/Stim/J+Stim";
-    rewardType$[4] := "Set probabilities";
-    rewardType$[5] := "Juice + Stim(sometimes)";
+    var rewardType$[4];
+    rewardType$[0] := "Water/Small Booth";
+    rewardType$[1] := "Juice/Small Booth";
+    rewardType$[2] := "Water/Big Booth";
+    rewardType$[3] := "Juice/Big Booth";
+    
+'Retained code for using stimulation reward that will probably never ever come back     
+'    var rewardType$[6];
+'    rewardType$[0] := "Juice Only";
+'    rewardType$[1] := "Stimulation Only";
+'    rewardType$[2] := "Juice+Stim";
+'    rewardType$[3] := "Cycle J/Stim/J+Stim";
+'    rewardType$[4] := "Set probabilities";
+'    rewardType$[5] := "Juice + Stim(sometimes)";
     
     intStr$[0] := "Stop Sound";
     intStr$[1] := "Complete Sound";
@@ -3866,11 +3876,15 @@ func RecExpTimingRewardDialog%()
     DlgReal(14,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
     DlgReal(15,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
     DlgReal(16,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
-    DlgList(21,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);
-    DlgInteger(22,12,0,100,c1%-15,17); DlgText("Pct Juice",c1txt%,17);  'note that these are on a three-per line and use different values
-    DlgInteger(23,12,0,100,c1%+15,17); DlgText("Pct Stimulation",c1%+1,17);
-    DlgLabel(24,"Pct Juice+Stimulation = "+Str$(pctBoth%),c1%+29,17);
-    DlgInteger(25,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
+    DlgList(21,19,rewardType$[],4,c1%-7,16); DlgText("Reward Type",c1txt%,16);
+    DlgReal(22,12,0,500,c2%,16); DlgText("Start Water/Juice Volume (mL)", c2txt%,16);
+    
+'Retained code for using stimulation reward that will probably never ever come back    
+'    DlgList(21,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);    
+'    DlgInteger(22,12,0,100,c1%-15,17); DlgText("Pct Juice",c1txt%,17);  'note that these are on a three-per line and use different values
+'    DlgInteger(23,12,0,100,c1%+15,17); DlgText("Pct Stimulation",c1%+1,17);
+'    DlgLabel(24,"Pct Juice+Stimulation = "+Str$(pctBoth%),c1%+29,17);
+'    DlgInteger(25,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
     
     DlgGroup("Interrupts",1,19,trwid%-2,2);
     DlgList(17,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
@@ -3880,8 +3894,12 @@ func RecExpTimingRewardDialog%()
         
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
                 eightReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
-                recRewardType%,recPctJuice%,recPctStimulation%,dummy%,recJuiceToStimDelay%);
+                recJuiceWaterBooth%,recInitialJuiceVolumemL);
     
+'Retained code for using stimulation reward that will probably never ever come back    
+'    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
+'                eightReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
+'                recRewardType%,recPctJuice%,recPctStimulation%,dummy%,recJuiceToStimDelay%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -3895,26 +3913,29 @@ func RecExpTimingRewardDialog%()
         recHitRewardIncmL := eightReals[6];
         recS1RewardIncmL := eightReals[7];
         
-        'make sure that probability values are valid
-        if recRewardType% = 4 then
-            if recPctJuice% + recPctStimulation% > 100 then
-                message("The percentage of Juice + Stimulation is greater than 100!  Reverting to 'cycled' reward! \nPlease re-try dialog!");
-                recRewardType% := 3;
-            endif;
-        endif;
+        recCurrentJuiceVolumemL := recInitialJuiceVolumemL;  'Set the volume of juice in the juicer, current volume will be updated continuously
         
-        'set first reward type randomly if cycling (this will actually be cycled before the first trial, but it gets us a random start point
-        'also, set reward type permanently if not changing
-        docase
-        case recRewardType% = 3 then
-            recCurrentRewardType% := Floor(Rand(3,0));  'will give [0, 1, 2] for [juice, stim, both]
-        case recRewardType% = 2 then 
-            recCurrentRewardType% := 2;  'if juice + stim, set to juice + stim
-        case recRewardType% = 1 then
-            recCurrentRewardType% := 1;  'if only stim, set to stim
-        case recRewardType% = 0 then
-            recCurrentRewardType% := 0;  'if only juice, set to juice
-        endcase;
+'Retained code for using stimulation reward that will probably never ever come back         
+'        'make sure that probability values are valid
+'        if recRewardType% = 4 then
+'            if recPctJuice% + recPctStimulation% > 100 then
+'                message("The percentage of Juice + Stimulation is greater than 100!  Reverting to 'cycled' reward! \nPlease re-try dialog!");
+'                recRewardType% := 3;
+'            endif;
+'        endif;
+'        
+'        'set first reward type randomly if cycling (this will actually be cycled before the first trial, but it gets us a random start point
+'        'also, set reward type permanently if not changing
+'        docase
+'        case recRewardType% = 3 then
+'            recCurrentRewardType% := Floor(Rand(3,0));  'will give [0, 1, 2] for [juice, stim, both]
+'        case recRewardType% = 2 then 
+'            recCurrentRewardType% := 2;  'if juice + stim, set to juice + stim
+'        case recRewardType% = 1 then
+'            recCurrentRewardType% := 1;  'if only stim, set to stim
+'        case recRewardType% = 0 then
+'            recCurrentRewardType% := 0;  'if only juice, set to juice
+'        endcase;
         
         'set maximum number of electrodes allowed, based on whether we need stimulation ports
         'if recRewardType% > 0 then 'if stimulating
@@ -3971,18 +3992,31 @@ func RecExpTimingRewardDialogChanged%(item%)
 '        DlgEnable(1,24); 'Enable stim delay
 '    endif;
     
-    DlgEnable(0,21); 'Disable stimulation reward
-    DlgEnable(0,22); 'Disable juice pct
-    DlgEnable(0,23); 'Disable stim pct
-    DlgEnable(0,24); 'Disable label
-    DlgEnable(0,25); 'Disable stim delay
+    
+'Retained code for using stimulation reward that will probably never ever come back 
+'    DlgEnable(0,21); 'Disable stimulation reward
+'    DlgEnable(0,22); 'Disable juice pct
+'    DlgEnable(0,23); 'Disable stim pct
+'    DlgEnable(0,24); 'Disable label
+'    DlgEnable(0,25); 'Disable stim delay
     
     
-    'update value in text label
-    if item% = 22 or item% = 23 then
-        printlog("val should be %s\n",Str$(100-DlgValue(22)-DlgValue(23)));
-        DlgValue$(24,"Pct Juice+Stimulation = "+Str$(100-DlgValue(22)-DlgValue(23)));
+'    'update value in text label
+'    if item% = 22 or item% = 23 then
+'        printlog("val should be %s\n",Str$(100-DlgValue(22)-DlgValue(23)));
+'        DlgValue$(24,"Pct Juice+Stimulation = "+Str$(100-DlgValue(22)-DlgValue(23)));
+'    endif;
+    
+    DlgEnable(0,14); 'Disable max CR reward, not implemented
+    DlgEnable(0,16); 'Disable increment on S1, not implemented    
+    
+    'Set max CR reward to whatever the current CR reward is
+    if item% = 12 then
+        DlgValue(14,DlgValue(12));
     endif;
+    
+    'And zero out the increment on S1 value - hate to do it every single time the dialog is updated, but whatevs.
+    DlgValue(16,0);
     
     return 1;
 end
@@ -4033,7 +4067,8 @@ proc RecTimingRewardGetParams()
     recPctJuice% := GetIntRegistryValue%(key$, "PctJuice", recPctJuice%);
     recPctStimulation% := GetIntRegistryValue%(key$, "PctStimulation", recPctStimulation%);
     recJuiceToStimDelay% := GetIntRegistryValue%(key$, "JuiceToStimDelay", recJuiceToStimDelay%);
-    
+    recJuiceWaterBooth% := GetIntRegistryValue%(key$, "JuiceWaterBooth", recJuiceWaterBooth%);
+    recInitialJuiceVolumemL := GetFloatRegistryValue(key$, "InitialJuiceVolumemL", recInitialJuiceVolumemL);
     
 	return;
 end
@@ -4080,6 +4115,8 @@ proc RecTimingRewardSaveParams()
     SetIntRegistryValue(key$, "PctJuice", recPctJuice%);
     SetIntRegistryValue(key$, "PctStimulation", recPctStimulation%);
     SetIntRegistryValue(key$, "JuiceToStimDelay", recJuiceToStimDelay%);
+    SetIntRegistryValue(key$, "JuiceWaterBooth", recJuiceWaterBooth%);
+    SetFloatRegistryValue(key$, "InitialJuiceVolumemL", recInitialJuiceVolumemL);
     
 	return;
 end
@@ -6824,7 +6861,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
             lineCount% -= 1;  'Decrement to get correct count on EOF
             status% := 1;
         else
-            message("Starting over!|Failure to successfully read file with 10 fields despite initial check!");
+            message("Starting over!|Failure to successfully read file with 11 fields despite initial check!");
             keepGoing% := 0;
         endcase;    
     wend;    
@@ -7963,6 +8000,9 @@ end
 '===== ConvertmLToSeconds =====
 func ConvertmLToSeconds(mL)
     var sec;
+    var a;
+    var b;
+    var c;
     
     
     ''''Old calculation based on pump juicer
@@ -7981,11 +8021,75 @@ func ConvertmLToSeconds(mL)
     '''Here, we will not use an inflection point.
     '''The equation we will use is: mL = 2.643*sec - 0.1191
     '''or: sec = (mL + 0.1191)/2.643
-    if mL <= 0 then  'if we ask for 0 mL, don't give anything
-        sec := 0;
-    else
-        sec := (mL + 0.1191)/2.643
-    endif
+    '''
+    '''This equation is...not great.  We get quite a bit less than we asked for.  There may be several
+    '''issues.  First, we most likely did our calculations with water, not juice.  Water deliveries will 
+    '''be maybe 15% more than juice due to viscosity.  Second, I suspect the juicer lick tube was set on
+    '''the ground for the measurement, which may affect the water column.  Together these might account
+    '''for the fact that deliveryis about 4x less than request.  I mean, maybe that plus bad calculations
+    '''when measuring?  We're doing it again, and we're being thorough.
+'    if mL <= 0 then  'if we ask for 0 mL, don't give anything
+'        sec := 0;
+'    else
+'        sec := (mL + 0.1191)/2.643
+'    endif
+    
+    
+    
+    'And it's time for YET ANOTHER REVISIT on this.
+    'Things will be super complicated, because we're going to have an estimate of delivery size for
+    'water and juice separately, and small booth and big booth separately.  Furthermore, we want to 
+    'characterize the delivery across the entire volume of the bottle (it looks like it does change
+    'somewhat, on the order of maybe (by eyeball and from memory) 20% from the top to the bottom. 
+    'We also want to try to characterize by open duration.  Hopefully we choose some decent endpoints.
+    'It appears that 275 ms is a fairly long open duration, it gives as much as 0.3 mL per hit.
+    'Ballpark range is like 150-350 mL (depends on size of monkey, if good worker).  Still 0.3 mL per
+    'hit at 500 trials worth would be 150 mL so maybe that's not so, so long after all.  Perhaps
+    'Recanzone monkeys work drier than Usrey monkeys.  Or maybe they're getting a lot more than 500
+    'trials in, which is certainly possible.
+    'For whatever reason, our initial estimate above was that we were getting about 2.6 mL per second
+    'of open time.  This does not appear to be very accurate, and it would seem that more accurately
+    'we are getting roughly 0.8-1.2 mL per second of open time - point being, if that number is not
+    'around 1 mL per second, take a more careful look.
+    
+    'OK.  I did some janky modeling of the juicer response.  It appears that we can adequately describe
+    'the FLOW (that is mL/sec) with an equation that looks like this:
+    '
+    'Flow = baseline + (volume in bottle * fill factor) + (open duration * open factor)
+    'Flow: y (mL/sec) [ranges from about 0.6 - 1.3 in realistic scenarios]
+    'Baseline: c (mL/sec) [ranges from about 0.34 - 0.45]
+    'Volume in bottle: x (mL) [ranges from 0 - 600]
+    'Fill factor: m (mL/sec*mL) [ranges from 0.00025 - 0.0004]
+    'Open duration: t (sec) [ranges from about 0.1 - 0.4]
+    'Open factor: n (mL/sec^2) [ranges from about 1.5 to 2]  Note that this is calculated for msec in juicerCalib2021.m,  have to multiply by 1000
+    '
+    'y = mx + nt + c
+    '
+    'Now mL delivered = y*t, or 
+    'mL = t(mx + nt +c)
+    '0 = nt^2 + (mx+c)t - mL
+    'This is a quadratic equation, easy enough, a --> n, b --> mx+c, c --> -mL
+    
+    'Calculate using quadratic equation, we want the positive root (of course)
+    c := -mL;  'c is just requested mL, but negative
+    docase
+    case recJuiceWaterBooth% = 0 then 'Water, small booth
+        a := 2;  'this is swn*1000 from juicerCalib2021.m
+        b := 0.444 + (recCurrentJuiceVolumemL*0.000365);  'these are swc and swm from juicerCalib2021.m
+    case recJuiceWaterBooth% = 1 then 'Juice, small booth
+        a := 1.6;  'this is sjn*1000 from juicerCalib2021.m
+        b := 0.415 + (recCurrentJuiceVolumemL*0.000397);  'these are sjc and sjm from juicerCalib2021.m
+    case recJuiceWaterBooth% = 2 then 'Water, big booth
+        a := 1.7;  'this is bwn*1000 from juicerCalib2021.m
+        b := 0.340 + (recCurrentJuiceVolumemL*0.000383);  'these are bwc and bwm from juicerCalib2021.m
+    case recJuiceWaterBooth% = 3 then 'Juice, big booth
+        a := 1.4;  'this is bjn*1000 from juicerCalib2021.m
+        b := 0.395 + (recCurrentJuiceVolumemL*0.000277);  'these are bjc and bjm from juicerCalib2021.m
+    endcase            
+    
+    'Solve using quadratic formula, positive root only
+    sec := (-b + sqrt((b*b)-(4*a*c)))/(2*a);  
+    
     return sec;
     
     
