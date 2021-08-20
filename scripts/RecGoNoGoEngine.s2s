@@ -5001,6 +5001,7 @@ func IdleLoop%()
             
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
+            message("A TDT error has occurred!  Quitting!");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version, we are quitting
             iStatus% := 0;
@@ -5014,6 +5015,7 @@ func IdleLoop%()
             
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A coding Error has occurred!", "");
+            message("A coding error has occurred! Quitting!");
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version, we are quitting
@@ -5136,11 +5138,13 @@ func DebounceLever%(Now)
         if ValueCount% <> EventCount% then
             if ValueCount% > EventCount% then
                 printlog("Quitting because we have found more real lever presses than real events.  This is a serious bug!\n");
+                message("Quitting because we have found more real lever presses than real events.  This is a serious bug!");
                 'view(HiddenLogHandle%).print("Quitting because we have found more real lever presses than real events.  This is a serious bug!\r");
                 Stop%();
             endif;
             if ValueCount% < EventCount%-1 then
                 printlog("Quitting because we have found more than one event which does not correspond to a stable lever press!\n");
+                message("Quitting because we have found more than one event which does not correspond to a stable lever press!");
                 'view(HiddenLogHandle%).print("Quitting because we have found more than one event which does not correspond to a stable lever press!\r");
                 Stop%();
             else
