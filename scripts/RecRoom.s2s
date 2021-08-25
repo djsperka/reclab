@@ -377,7 +377,7 @@ var arrayPA4ID%;                    'What is the PA4 ID for the PA4 connected to
 var standalonePA4ID%;               'What is the PA4 ID for the PA4 connected to the standalone speaker?    
     
 'Trial list generation variables
-const recMaxStim%:=1000;            'Maximum number of stimuli, 1000 is probably overlarge
+const recMaxStim%:=5000;            'Maximum number of stimuli, 1000 is probably overlarge, nope not if you do the "designate each AM individually for trial file ease"
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
 const recMaxTrial%:=5000;           'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
