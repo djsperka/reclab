@@ -685,6 +685,7 @@ Proc InitializePlayWaveAreas()
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, recMaxPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+            view(recLog%).print("ERROR: InitializePlayWaveAreas failed, quitting!\n");
             halt;
         else
             PlayWaveTrigger(GetPlayWaveKey$(i%), 1);  'set playwave area to triggered mode
@@ -742,6 +743,7 @@ Proc InitializePlayWaveAreasLongBP()
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, nPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
             halt;
         else
             PlayWaveTrigger(GetPlayWaveKey$(i%), 1);  'set playwave area to triggered mode
@@ -778,6 +780,7 @@ Proc InitializeParallelPlayWaveAreas()
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), DACchannels%, recPlayRateHz, recMaxPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
             halt;
         else
             PlayWaveTrigger(GetPlayWaveKey$(i%), 1); 'set playwave area to triggered mode
@@ -811,6 +814,7 @@ Proc InitializeMultipleParallelPlayWaveAreas()
         st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), DACchannels%, recPlayRateHz, recMaxPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
             halt;
         else
             PlayWaveTrigger(GetPlayWaveKey$(i%), 1); 'set playwave area to triggered mode
@@ -1570,6 +1574,7 @@ func Start%()
         'If sampling doesn't start in the infinity of 5 seconds, give up
         if samplestatus() <> 2 then
             message("Sampling has not started within 5 seconds!  Quitting!");
+            view(recLog%).print("ERROR: Sample start failed, quitting!\n");
             halt
         endif;        
         SequencerPeriodMS := SampleSeqClock(1);  'Get the clock period of the sequencer, in MS, must do this after starting sampling
@@ -1968,6 +1973,7 @@ func PrepareLongTone()
         
         if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
             message("There has been an error in sending data to Matlab!  Quitting!");
+            view(recLog%).print("ERROR: PrepareLongTone - Error in sending data to Matlab, quitting!\n");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version as we are quitting
             Stop%();
@@ -2277,6 +2283,7 @@ func PrepareLongNoiseAllAtOnce()
                 
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
+                    view(recLog%).print("ERROR: PrepareLongNoiseAllAtOnce - Error in sending data to Matlab, quitting!\n");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                     Stop%();
@@ -2338,6 +2345,7 @@ func PrepareLongNoiseAllAtOnce()
         
     else
         message("Matlab/CED/Calibration values are necessary for Long Noise!  Quitting!");
+        view(recLog%).print("ERROR: PrepareLongNoiseAllAtOnce - Calibration values are necessary for Long Noise, quitting!\n");
         recReadyToQuit% := 1;  'This will allow the entire thing to quit
         SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
         Stop%();
@@ -2501,6 +2509,7 @@ func PrepareNextTrial%(loadPWAs%)
                 'don't do anything, just pretend all is OK
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
+                view(recLog%).print("ERROR: PrepareNextTrial - Matlab not open, cannot generate stimulus, quitting!\n");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                 Stop%();
@@ -2531,6 +2540,7 @@ func PrepareNextTrial%(loadPWAs%)
                 
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
+                    view(recLog%).print("ERROR: PrepareNextTrial - error sending data to Matlab, quitting!\n");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                     Stop%();
@@ -2620,6 +2630,7 @@ func PrepareNextTrial%(loadPWAs%)
                 if fh%<0 then
                     message("Warning Message | failed to load the stimulus waveform!");
                     printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
+                    view(recLog%).print("ERROR: PrepareNextTrial - Stimulus waveform " + file$ + " failed to load, quitting!\n");
                     Stop%();
                     return -1;
                 endif;
@@ -2642,6 +2653,7 @@ func PrepareNextTrial%(loadPWAs%)
                 if playWaveCopyOK% < 0 then 'error
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+                    view(recLog%).print("ERROR: PrepareNextTrial - Error in PlayWaveCopy " + Str$(playWaveCopyOK%) + ", Error text:" + Error$(playWaveCopyOK%) + ", NOT quitting!\n");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
@@ -2765,6 +2777,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 'Really, this isn't a boo-boo we should expect, but I'm leaving it in in case it's useful down the road
                 message("Holy crap, I can't generate the stimulus because Matlab has not been initialized!");
+                view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Matlab not open, cannot generate stimulus, quitting!\n");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                 Stop%();
@@ -2804,6 +2817,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
+                    view(recLog%).print("ERROR: PrepareNextTrial2PWAs - error sending data to Matlab, quitting!\n");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                     Stop%();
@@ -2873,6 +2887,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     
                     if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                         message("There has been an error in sending data to Matlab!  Quitting!");
+                        view(recLog%).print("ERROR: PrepareNextTrial2PWAs - error sending data to Matlab, quitting!\n");
                         recReadyToQuit% := 1;  'This will allow the entire thing to quit
                         SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                         Stop%();
@@ -2928,6 +2943,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     if fh%<0 then
                         message("Warning Message | failed to load the stimulus waveform!");
                         printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
+                        view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Stimulus waveform " + file$ + " failed to load, quitting!\n");
                         Stop%();
                         return -1;
                     endif;
@@ -2951,6 +2967,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 if fh%<0 then
                     message("Warning Message | failed to load the stimulus waveform!");
                     printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
+                    view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Stimulus waveform " + file$ + " failed to load, quitting!\n");
                     Stop%();
                     return -1;
                 endif;
@@ -2969,6 +2986,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 if playWaveCopyOK% < 0 then 'error
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+                    view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Error in PlayWaveCopy " + Str$(playWaveCopyOK%) + ", Error text:" + Error$(playWaveCopyOK%) + ", NOT quitting!\n");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
@@ -3082,6 +3100,7 @@ func FRAPrepareNextTrial%(loadPWAs%)
             if fh%<0 then
                 message("Warning Message | failed to load the stimulus waveform!");
                 printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
+                view(recLog%).print("ERROR: FRAPrepareNextTrial - Stimulus waveform " + file$ + " failed to load, quitting!\n");
                 Stop%();
                 return -1;
             endif;
@@ -3111,6 +3130,7 @@ func FRAPrepareNextTrial%(loadPWAs%)
             if playWaveCopyOK% < 0 then 'error
                 message("There has been an error in PlayWaveCopy!  Check Log File!");
                 printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+                view(recLog%).print("ERROR: FRAPrepareNextTrial - Error in PlayWaveCopy " + Str$(playWaveCopyOK%) + ", Error text:" + Error$(playWaveCopyOK%) + ", NOT quitting!\n");
                 'recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 'SafeSampleKey("M");  'Turn off LED
                 'Stop%();
@@ -3243,6 +3263,7 @@ func IdleLoop%()
                     'Note that we can't actually get here from Search, the user simply hits the NewExpt. button to end search and move on
                 case stmp% < 0 then
                     RecLogStatus("PrepareNextTrial", "Error return value from PrepareNextTrial%");
+                    view(recLog%).print("ERROR: PrepareNextTrial -- PrepareNextTrial returned negative value: " + Str$(stmp%) + "\n");
                     ChangeStateTo(stateCodingError%);
                 else
                     recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful PWA load of new trial.
@@ -3305,6 +3326,7 @@ func IdleLoop%()
                     'Note that we can't actually get here from Search, the user simply hits the NewExpt. button to end search and move on
                 case stmp% < 0 then
                     RecLogStatus("FRA PrepareNextTrial", "Error return value from PrepareNextTrial%");
+                    view(recLog%).print("ERROR: FRAPrepareNextTrial -- FRAPrepareNextTrial returned negative value: " + Str$(stmp%) + "\n");
                     ChangeStateTo(stateCodingError%);
                 else
                     recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful load of new trial.
@@ -3642,9 +3664,11 @@ func IdleLoop%()
                 ChangeStateTo(stateSoundAPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundA", "PlaySound returned negative value.");
+                view(recLog%).print("ERROR: TrialSoundA -- PlaySound returned negative value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundA", "PlaySound returned unknown value (>0).");
+                view(recLog%).print("ERROR: TrialSoundA -- PlaySound returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             endcase
             
@@ -3754,6 +3778,7 @@ func IdleLoop%()
                     else
                         RecLogStatus("WaitISI", "Unknown return value from StimComplete");
                         Message("Error in StimComplete%()!!!");
+                        view(recLog%).print("ERROR: StimComplete -- StimComplete% returned unknown value of isS2%: " + Str$(isS2%) + "\n");
                         ChangeStateTo(stateCodingError%);
                     endcase
                 endif
@@ -3798,9 +3823,11 @@ func IdleLoop%()
                 ChangeStateTo(stateSoundBPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundB", "PlaySound returned negative value.");
+                view(recLog%).print("ERROR: TrialSoundB -- PlaySound returned negative value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundB", "PlaySound returned unknown value (>0).");
+                view(recLog%).print("ERROR: TrialSoundB -- PlaySound returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             endcase
             
@@ -3890,9 +3917,11 @@ func IdleLoop%()
                 ChangeStateTo(stateSoundCPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundC", "PlaySound returned negative value.");
+                view(recLog%).print("ERROR: TrialSoundC -- PlaySound returned negative value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundC", "PlaySound returned unknown value (>0).");
+                view(recLog%).print("ERROR: TrialSoundC -- PlaySound returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             endcase            
             
@@ -3988,9 +4017,11 @@ func IdleLoop%()
                 ChangeStateTo(stateSoundDPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundD", "PlaySound returned negative value.");
+                view(recLog%).print("ERROR: TrialSoundD -- PlaySound returned negative value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundD", "PlaySound returned unknown value (>0).");
+                view(recLog%).print("ERROR: TrialSoundD -- PlaySound returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             endcase     'exactly the same as stateStartSoundB *jao
             
@@ -4074,9 +4105,11 @@ func IdleLoop%()
                 ChangeStateTo(stateSoundEPlaying%);
             case stmp% < 0 then
                 RecLogStatus("TrialSoundE", "PlayTwoSounds returned negative value.");
+                view(recLog%).print("ERROR: TrialSoundE -- PlaySound returned negative value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             else
                 RecLogStatus("TrialSoundE", "PlayTwoSounds returned unknown value (>0).");
+                view(recLog%).print("ERROR: TrialSoundE -- PlaySound returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             endcase    
             
@@ -4147,6 +4180,7 @@ func IdleLoop%()
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
+                        view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
@@ -4183,6 +4217,7 @@ func IdleLoop%()
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
+                        view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
@@ -4639,6 +4674,7 @@ func IdleLoop%()
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! STMP is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!");
+                        view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     else
                         ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
@@ -4682,6 +4718,7 @@ func IdleLoop%()
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! STMP is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!");
+                        view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     else
                         ChangeStateTo(stateFRAJuiceBreak%);  'move to next trial after reward is done
@@ -4719,6 +4756,7 @@ func IdleLoop%()
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!!\n");
                         Message("Error in recREWARD%()!!!");
+                        view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                 endif
@@ -4803,6 +4841,7 @@ func IdleLoop%()
                     if stmp% <> 0 then
                         PrintLog("ERROR in recREWARD%()!!! Value of stmp is %d\n",stmp%);
                         Message("Error in recREWARD%()!!!  stmp is" + str$(stmp%));
+                        view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
@@ -5001,6 +5040,7 @@ func IdleLoop%()
             
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A TDT Error has occurred!", "");
+            view(recLog%).print("ERROR: A TDT error has occurred, quitting!\n");
             message("A TDT error has occurred!  Quitting!");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version, we are quitting
@@ -5015,6 +5055,7 @@ func IdleLoop%()
             
             'This is temporary so it does something logical but should be updated eventually
             RecLogStatus("A coding Error has occurred!", "");
+            view(recLog%).print("ERROR: A coding error has occurred, quitting!\n");
             message("A coding error has occurred! Quitting!");
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
@@ -5026,6 +5067,7 @@ func IdleLoop%()
         else
             
             RecLogStatus("UNKNOWN STATE", "iState%=" + str$(iState%));
+            view(recLog%).print("ERROR: Unknown state, iState% = " + Str$(iState%) + ", quitting!\n");
             Message("Unknown state (%d)!", iState%);
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
@@ -5139,12 +5181,14 @@ func DebounceLever%(Now)
             if ValueCount% > EventCount% then
                 printlog("Quitting because we have found more real lever presses than real events.  This is a serious bug!\n");
                 message("Quitting because we have found more real lever presses than real events.  This is a serious bug!");
+                view(recLog%).print("ERROR: DebounceLever% -- found more real lever presses than real events.  Quitting!\n");
                 'view(HiddenLogHandle%).print("Quitting because we have found more real lever presses than real events.  This is a serious bug!\r");
                 Stop%();
             endif;
             if ValueCount% < EventCount%-1 then
                 printlog("Quitting because we have found more than one event which does not correspond to a stable lever press!\n");
                 message("Quitting because we have found more than one event which does not correspond to a stable lever press!");
+                view(recLog%).print("ERROR: DebounceLever% -- found more than one event which does not correspond to a stable lever press.  Quitting!\n");
                 'view(HiddenLogHandle%).print("Quitting because we have found more than one event which does not correspond to a stable lever press!\r");
                 Stop%();
             else
@@ -5563,6 +5607,7 @@ func GetTimeOfLast1401Event(CheckTick%)
         if View(recDataWindowView%).MaxTime() > firstCheckTime + 10 then
             'if we waited 10 seconds for the stimulus to start, something is very wrong!
             message("The Stimulus did not start within 10 seconds!  Dismiss this dialog to quit!  Tell Jeff!!!");
+            view(recLog%).print("ERROR: GetTimeOfLast1401Event -- The Stimulus did not start within 10 seconds!  Quitting!\n");
             stop%();  'This function will stop sampling but will not exit the toolbar
             halt;  'Shut them down!  Shut them ALL down!
         endif;

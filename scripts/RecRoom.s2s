@@ -581,7 +581,7 @@ else
     recLog% := FileOpen(recFileSaveLoc$+recPrintLog$+".txt",8,3); 'open recLog, create if DNE (first time called)
     printlog("RecLog location is %s\n",recFileSaveLoc$+recPrintLog$+".txt");
 endif;
-view(recLog%).print("running RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
+view(recLog%).print("\nrunning RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 
 
 'Open a Matlab instantiation, if present
@@ -590,6 +590,7 @@ if recMatlabIsPresent% = 1 then
     matlabOpenSuccess% := OpenMatlab%();
     if matlabOpenSuccess% < 0 then
         LogInfo("Open Matlab FAILED!");
+        view(recLog%).print("ERROR: Open Matlab failed, quitting!\n");
         halt;
     endif;
     ToolbarText("");
@@ -603,6 +604,7 @@ if recTDTIsPresent% = 1 then
     ToolbarText("Initializing TDT, this could take up to 5 seconds");    
     if RecInitTDT%() < 0 then  'RecInitTDT%() is in recfuncs
         LogInfo("Init TDT FAILED!");
+        view(recLog%).print("ERROR: Init TDT failed, quitting!\n");
         CloseMatlab(matlabOpenSuccess%);  'close Matlab if it is open and we are quitting
         halt;
     endif
@@ -1899,6 +1901,7 @@ func RecExpSelectDialog%()
             arrayPA4ID% := xlnSecondPA4%;
         else
             message("Whoa! There does not appear to be an array selected and you should not have gotten this far!");
+            view(recLog%).print("ERROR: Array not selected, quitting!\n");
             halt;
         endcase
         
