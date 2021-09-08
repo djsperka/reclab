@@ -18,7 +18,9 @@ stf_pulse_duration = 5;  %set this appropriately, in seconds, will throw an erro
 %mydir = 'E:\Core Grant\reclab\Calib4_newamp\';  %directory which contains speaker transfer information
 %mydir = 'C:\Data\Calib\Array16Calib\';  %directory for Recanzone lab, make this different than the write directory
 %mydir = 'E:\Core Grant\reclab2017\StandaloneCalib\';  %directory which contains speaker transfer information
-mydir = 'I:\Data\Calib\Array16Calib\';
+%mydir = 'I:\Data\Calib\Array15Calib\';
+%mydir = 'I:\Data\Calib\Array16Calib\';
+mydir = 'I:\Data\Calib\StandaloneCalib\';
 
 %write16File = 'E:\Core Grant\reclab\Calib4_newamp\Array16.mat';  %filename for writing, Kershaw
 %write15File = 'E:\Core Grant\reclab\Calib4_newamp\Array15.mat';
@@ -26,7 +28,9 @@ mydir = 'I:\Data\Calib\Array16Calib\';
 %writeFile = 'C:\Data\Calib\Array16.mat';  %filename for writing, Recanzone lab
 %writeFile = 'E:\Core Grant\reclab2017\StandaloneCalib\Standalone.mat';  %filename for writing, Recanzone lab
 %write15File = 'C:\Data\Calib\Array15.mat';  %do this separately, from a different directory
-writeFile = 'I:\Data\Calib\Array16Calib\';
+%writeFile = 'I:\Data\Calib\Array15.mat\';
+%writeFile = 'I:\Data\Calib\Array16.mat\';
+writeFile = 'I:\Data\Calib\Standalone.mat\';
 
 AFFT = [];  %initialize structure for A data, using Fourier filtering
 
