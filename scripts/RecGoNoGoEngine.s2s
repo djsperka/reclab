@@ -945,6 +945,7 @@ Func PlaySound%(isS2local%)
     if recTDTIsPresent% = 1  and recCEDIsPresent% = 1 then
         status% := recSpeaker%(spkr%);
         if status% <> 0 then
+            status% := 5;  'Arbitrary value that is 1337 "S"
             return status%;
         endif;
         
@@ -952,6 +953,7 @@ Func PlaySound%(isS2local%)
         status% := recAttenByID%(atten,arrayPA4ID%);
         'status% := recAttenByID%(trlatten,arrayPA4ID%);  'testing
         if status% <> 0 then
+            status% := 810;  '810 = "atten", see?
             return status%;
         endif;  
     endif;
@@ -1201,11 +1203,13 @@ Func PlayTwoSounds%(whichStim%)
         case recExpToRun% = recExpFRAButton% then
             status% := recSpeaker%(spkrArray%);
             if status% <> 0 then
+                status% := 5;
                 return status%;
             endif;
             
             status% := recAttenByID%(attenArray,arrayPA4ID%);
             if status% <> 0 then
+                status% := 810;
                 return status%;
             endif; 
             
@@ -1214,6 +1218,7 @@ Func PlayTwoSounds%(whichStim%)
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
                 if status% <> 0 then
                     printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
+                    status% := 8102;
                     return status%;
                 endif;
             endif;
@@ -1226,12 +1231,14 @@ Func PlayTwoSounds%(whichStim%)
             status% := recSpeaker%(spkrArray%);
             if status% <> 0 then
                 printlog("recSpeaker returned status of %d!! Failing!!\n",status%);
+                status% := 5;
                 return status%;
             endif;
             
             status% := recAttenByID%(attenArray,arrayPA4ID%);
             if status% <> 0 then
                 printlog("recAttenByID (Array) returned status of %d!! Failing!!\n",status%);
+                status% := 810;
                 return status%;
             endif;
             
@@ -1239,6 +1246,7 @@ Func PlayTwoSounds%(whichStim%)
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
                 if status% <> 0 then
                     printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
+                    status% := 8102;
                     return status%;
                 endif;
             endif;
@@ -2407,7 +2415,8 @@ func LoadLongNoiseToPWA%()
     status% := recAttenByID%(recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]],arrayPA4ID%);
     if status% <> 0 then
         printlog("Problem setting attenuation for long noise!\n");
-        return 0;
+        status% := 810;
+        return status%;
     endif; 
     'endif
     
@@ -4789,7 +4798,8 @@ func IdleLoop%()
                 status% := recAttenByID%(recLongAtten,arrayPA4ID%);
                 if status% <> 0 then
                     printlog("Problem setting attenuation for long tone!\n");
-                    return 0;
+                    status% := 810;
+                    return status%;
                 endif; 
             else 
                 PrepareLongNoiseAllAtOnce();  'Fill all noise, atten, seed variables before doing anything else - will be slow
@@ -4812,7 +4822,8 @@ func IdleLoop%()
                 status% := recSpeaker%(recLongToneSpeaker%);
                 if status% <> 0 then
                     printlog("Problem setting speaker for long tone!\n");
-                    return 0;
+                    status% := 5;
+                    return status%;
                 endif;
                 
             endif;
