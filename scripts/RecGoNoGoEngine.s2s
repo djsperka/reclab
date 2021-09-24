@@ -981,6 +981,8 @@ Func PlaySound%(isS2local%)
             isS2$ := "S1T";  'indicates terminal S1, trial terminates on CR/FA, will be rewarded for CR
         case isS2local% = 3 then
             isS2$ := "S2L";  'indicates S2-Low, trial terminates on H/M, will be rewarded for H
+        case isS2local% = 100 then
+            isS2$ := "FRA";  'indicates generated FRA stimulus
         endcase
         
         
@@ -2469,7 +2471,7 @@ func PrepareNextTrial%(loadPWAs%)
     printlog("Current trial is %d\n",recCurrentTrial%);
     
     ' Get index of current trial
-    thisTrial% :=  recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
+    thisTrial% := recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
     
     
     
@@ -3212,7 +3214,7 @@ func IdleLoop%()
             'This state is only entered once per "experiment" - once per each time the template file passes control
             RecLogStatus("Start", "Starting state logic loop.");
             docase
-            case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
+            case recExpToRun% = recExpFRAButton% then
                 ChangeStateTo(stateFRAInitializeTrials%);
             case recExpToRun% = recExpLongToneButton% then
                 ChangeStateTo(statePrepareTone%);
@@ -3326,7 +3328,11 @@ func IdleLoop%()
             'only original check for pause location....
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
-                stmp% := FRAPrepareNextTrial%(1);
+                if recFRALoadStim% = 1 then
+                    stmp% := FRAPrepareNextTrial%(1); 'Does double-sound prep
+                else
+                    stmp% := PrepareNextTrial%(1); 'Does single sound prep
+                endif;
                 
                 docase
                 case stmp% = 0 then
@@ -3414,6 +3420,7 @@ func IdleLoop%()
                 
                 'do state stuff here...
                 ChangeStateTo(stateStartCEDBlink%);
+                
                 
             else  'but if paused, check to see if we have a call out to a dialog box to change values
                 if recRunTimeCall% = 1 then
@@ -4101,10 +4108,16 @@ func IdleLoop%()
         case iState% = stateStartSoundE% then
             RecLogStatus("TrialSoundE", "Call expt function");
             if recCEDIsPresent% = 1 then
-                stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
+                
+                if recFRALoadStim% = 1 then
+                    stmp% := PlayTwoSounds%(recStimCount%);  'For FRA, we need to pass a value, but it will be ignored
+                else
+                    stmp% := PlaySound%(100);  '100 indicates an FRA
+                endif
+                
                 StimStoppedNotSet% := 1; ' now that we played a sound we need to set the time of that sound stopping again (for ISI)
                 'recStimOn := StimOn;  'redundant
-                'dummy% := fraStimComplete%();  'This was not the right time to run this function
+
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
                 printlog("No CED, stim would be [this code is incomplete and I'm not fixing it now]");
@@ -4112,12 +4125,20 @@ func IdleLoop%()
             docase
             case stmp% = 0 then
                 ChangeStateTo(stateSoundEPlaying%);
-            case stmp% < 0 then
+            case stmp% < 0 and recFraLoadStim% = 1 then
                 RecLogStatus("TrialSoundE", "PlayTwoSounds returned negative value.");
+                view(recLog%).print("ERROR: TrialSoundE -- PlayTwoSounds returned negative value: " + Str$(stmp%) + "\n");
+                ChangeStateTo(stateTDTError%);
+            case stmp% < 0 then
+                RecLogStatus("TrialSoundE", "PlaySound returned negative value.");
                 view(recLog%).print("ERROR: TrialSoundE -- PlaySound returned negative value: " + Str$(stmp%) + "\n");
+                ChangeStateTo(stateTDTError%);   
+            case recFraLoadStim% = 1 then
+                RecLogStatus("TrialSoundE", "PlayTwoSounds returned unknown value (>0).");
+                view(recLog%).print("ERROR: TrialSoundE -- PlayTwoSounds returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             else
-                RecLogStatus("TrialSoundE", "PlayTwoSounds returned unknown value (>0).");
+                RecLogStatus("TrialSoundE", "PlaySound returned unknown value (>0).");
                 view(recLog%).print("ERROR: TrialSoundE -- PlaySound returned unknown value: " + Str$(stmp%) + "\n");
                 ChangeStateTo(stateTDTError%);
             endcase    
@@ -4141,9 +4162,9 @@ func IdleLoop%()
                 '    recFRAPWAIndex% += 1;
                 'endif;
                 
-                dummy% := fraStimComplete%();  'This is a better time to run this function
-                
+                dummy% := fraStimComplete%();  
                 ChangeStateTo(stateFRAInitializeTrials%);
+                
 
             endif;
             
@@ -4295,9 +4316,21 @@ func IdleLoop%()
                 else
                     StimComplete%(1, 0);  'must come after UpdateAudiogram()
                 endcase
+                
+                if recMissRepeats% = 1 and recMissRepeatsCounter% <= recMissRepeatsMax% then 'might need a -1 here
+                    'Decrement current trial index (which was incremented above in stateInitializeTrials)
+                    recCurrentTrial% := recCurrentTrial% - 1; 'this should do it!?
+                    '**increment recMissRepeatsCounter HERE and reset to 0 in StateHitReward**
+                    printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
+                    recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
+                    printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
+                else
+                    printlog("not repeating missed trials \n");
+                endif
+                
                 SafeSampleKey("S");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
-                ChangeStateTo(stateFalsePositive%);
+                ChangeStateTo(stateFalsePositive%);  'Early miss may be an interrupt, which are called FPs here for...reasons?
                 
                 'AMDis Hi/Lo or StereoDis --> SAME trials early response
             case (isEarlyFA% = 1 or isEarlyCR% = 1) and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then  'AMDis Hi/Lo --> SAME trial, inResponse1% OR 2                 
@@ -4636,7 +4669,7 @@ func IdleLoop%()
                 RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
                 recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
                 
-                if recDoNotShuffle% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                if recDoNotShuffle% = 0 and recMissRepeats% = 0 then  'if we are specifically ordering the trials, or if we are repeating on error (!!) do not send current trial to a random location!
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1;
                     'Send current trial to "middle" of remaining trials
