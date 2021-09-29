@@ -6672,6 +6672,8 @@ func RecVerifyInputFile%(fileIn$)
         printlog("File %s appears to be a Stim/Cal file\n",fileIn$);
     case temp$ = "Dur" then
         printlog("File %s appears to be a Tone/Noise/AM generation file\n",fileIn$);
+    case temp$ = "DurMS" then
+        printlog("File %s appears to be a Stimulus file\n",fileIn$);
     else
         printlog("File %s does not appear to have a header line!  Failure to read!\n",fileIn$);
         message("Starting over!|File %s does not appear to have a header line!",fileIn$);
