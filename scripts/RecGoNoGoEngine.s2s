@@ -1983,9 +1983,11 @@ func PrepareLongTone()
     if recCalibIsPresent% = 1 then
         'Use speaker calibration to determine attenuation
         matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+        printlog("recPlayRateHz is %f\n",recPlayRateHz);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",500);  'duration doesn't matter, but it is in MILLISECONDS
         matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneFreq);  'Set tone frequency
         matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneFreq);  'Ditto
+        printlog("recLongToneFreq is %f\n",recLongToneFreq);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",1);
@@ -4579,6 +4581,7 @@ func IdleLoop%()
                     recCurrentTrial% := recCurrentTrial% - 1;
                     'Send current trial to "middle" of remaining trials
                     SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
+                    
                 endif;
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
                 numMisses% += 1;  'increment miss counter

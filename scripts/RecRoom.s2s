@@ -1531,6 +1531,7 @@ proc RecFRAGetParams()
     recFRAFMSweepDur5% := GetIntRegistryValue%(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
     recFRAActive% := GetIntRegistryValue%(key$, "recFRAActive", recFRAActive%);
     recFRAExpIndexLoad% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recFRAExpIndexLoad%);
+    recFRALoadStim% := GetIntRegistryValue%(key$, "FRALoadStim", recFRALoadStim%);
 	return;
 end
 
@@ -1573,6 +1574,7 @@ proc RecFRASaveParams()
     SetIntRegistryValue(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
     SetIntRegistryValue(key$, "recFRAActive", recFRAActive%);
     SetIntRegistryValue(key$, "FRAExpIndexLoad", recFRAExpIndexLoad%);
+    SetIntRegistryValue(key$, "FRALoadStim", recFRALoadStim%);
 	return;
 end
 
@@ -1594,7 +1596,7 @@ proc RecFRALoadSaveParams()
 	return;
 end
 
-'===== End RecAMDiscSaveParams =====
+'===== End RecFRALoadSaveParams =====
 '
 '
 '
