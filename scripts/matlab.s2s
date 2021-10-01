@@ -115,8 +115,10 @@ end
 func PutMatlabValueFloat%(matVarName$,floatToPut)
     
     var getOK% := -1;
+    var forceToFloat;
+    forceToFloat := floatToPut;  'if an integer is entered here, it is placed as an int32 in matlab, not as a float, so move it into a float first
     
-    getOK% := MatLabPut(matVarName$,floatToPut); 
+    getOK% := MatLabPut(matVarName$,forceToFloat,8); '8 forces the float to be placed as a double
     if getOK% = -1 then
         printlog("Failure in placing variable " + matVarName$ + "!\n");
     endif
@@ -141,7 +143,7 @@ func PutMatlabValueFloatArray%(matVarName$,floatToPut[])
     
     var getOK% := -1;
     
-    getOK% := MatLabPut(matVarName$,floatToPut[]); 
+    getOK% := MatLabPut(matVarName$,floatToPut[],8);  '8 forces to be placed as a double
     if getOK% = -1 then
         printlog("Failure in placing variable " + matVarName$ + "!\n");
     endif
@@ -156,6 +158,9 @@ end
 '
 'Puts an int variable into Matlab.  Places the value in intToPut% into matVarName$
 'returns 0 if success, -1 if failure.
+'
+'Please note that this function will place variables into an INT32 class in Matlab, which can
+'result in class conflicts.
 '
 '----------------------------------------------------------------------------------------------
 
@@ -180,6 +185,9 @@ end
 'returns 0 if success, -1 if failure.
 '
 'Note that the default behavior will put the array into a Matlab column vector.
+'
+'Please note that this function will place variables into an INT32 class in Matlab, which can
+'result in class conflicts.
 '
 '----------------------------------------------------------------------------------------------
 
