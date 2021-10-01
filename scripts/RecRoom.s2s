@@ -8297,10 +8297,12 @@ func GenTrialsFRAGen%()
         miniTrialOrder%[i%] := i%;
     next;    
 
-    for i% := 0 to recTotalTrials% do    '2. save values into recStimList, recSpeakerList, recDeltadBList
+    for i% := 0 to recTotalTrials%-1 do    '2. save values into recStimList, recSpeakerList, recDeltadBList
         recStimList%[0][i%] := recTrialS1%[i%];                                            
         recSpeakerList%[0][i%] := recTrialS1Spkr%[i%];
         recDeltadBList[0][i%] := recTrialS1DeltadB[i%];
+        
+        recNUniqueStims%[i%] := 1;
     next;
 
     for i% := 0 to recFRARepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
