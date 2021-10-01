@@ -1983,11 +1983,9 @@ func PrepareLongTone()
     if recCalibIsPresent% = 1 then
         'Use speaker calibration to determine attenuation
         matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
-        printlog("recPlayRateHz is %f\n",recPlayRateHz);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",500);  'duration doesn't matter, but it is in MILLISECONDS
         matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneFreq);  'Set tone frequency
         matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneFreq);  'Ditto
-        printlog("recLongToneFreq is %f\n",recLongToneFreq);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",0);
         matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",1);
@@ -1998,6 +1996,40 @@ func PrepareLongTone()
         matPutOK% := matPutOK% + PutMatlabValueInt%("seed",0);  
         matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxPoints%);
         matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recLongToneSpeaker%);
+        
+        'Here I am trying to see what Matlab thinks these values are, by value and by class
+        var thingy$[15];
+        thingy$[0] := "fs";
+        thingy$[1] := "dur";
+        thingy$[2] := "lohz";
+        thingy$[3] := "hihz";
+        thingy$[4] := "issweep";
+        thingy$[5] := "amfreq";
+        thingy$[6] := "amdepth";
+        thingy$[7] := "amphase";
+        thingy$[8] := "tonephase";
+        thingy$[9] := "gauss";
+        thingy$[10] := "ramp";
+        thingy$[11] := "seed";
+        thingy$[12] := "pad";
+        thingy$[13] := "spk";
+        thingy$[14] := "pi";
+        var jj%;
+        var myres$;
+        var matGetThingyOK%;
+        var myvar;
+        for jj% := 0 to 14 do
+            matGetThingyOK% := GetMatlabValueFloat%(thingy$[jj%],myvar);
+            statement$ := "myclass = class(" + thingy$[jj%] + ");";
+            EvalMatlabStatement%(statement$);
+            matGetThingyOK% := GetMatlabValueString%("myclass",myres$);
+            printlog("For variable %s, value is %f and class is %s\n",thingy$[jj%],myvar,myres$);
+        next
+        statement$ := "myclass = version;";
+        EvalMatlabStatement%(statement$);
+        matGetThingyOK% := GetMatlabValueString%("myclass",myres$);
+        printlog("Matlab Version is %s\n",myres$);
+        
         
         if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
             message("There has been an error in sending data to Matlab!  Quitting!");
