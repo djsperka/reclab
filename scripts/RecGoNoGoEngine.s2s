@@ -1036,7 +1036,7 @@ Func PlayTwoSounds%(whichStim%)
     var calattenSA;
     var trlattenArray;  'necessary to printlog both trial-based attenuations near bottom of function, otherwise we could just reuse trlatten
     var trlattenSA;
-    'var roveattenArray;  'For now we will NOT rove the array
+    var roveattenArray;  
     var roveattenSA;
     var s$;
     var s2$;
@@ -1073,26 +1073,36 @@ Func PlayTwoSounds%(whichStim%)
         spkrArray% := rec2SpeakerList%[playInd%][0];
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
-        calattenArray := recTrialStimCal[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
-        
+        if recMatGenStim% = 0 then  'get attenuation from StimCal file
+            calattenArray := recTrialStimCal[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
+        else
+            calattenArray := recGeneratedAtten[0];  'First value in recGeneratedAtten is for the array speaker
+        endif
+            
         'Get trial-based attenuation for current stimulus
         trlattenArray := rec2DeltadBList[playInd%][0];  
         
         'Get total attenuation
         printlog("cal atten is %f and trial atten is %f\n",calattenArray,trlattenArray);
-        attenArray := calattenArray + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
-        targdBArray := 65 - trlattenArray;  'convinced myself this is right
+        'Just to be explicit, we do not rove on FRA
+        roveattenArray := 0;
+        attenArray := calattenArray + trlattenArray + roveattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
+        targdBArray := 65 - trlattenArray - roveattenArray;  'convinced myself this is right
         
-        'Get identity of stimulus on standalone as well, even though for now we're not actually playing anything (Dominique did this, I don't know why)
+        'Get identity of stimulus on standalone
         thisStimSA% := rec2StimList%[playInd%][1];  
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
-        calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
+        if recMatGenStim% = 0 then  'get attenuation from StimCal file
+            calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
+        else
+            calattenArray := recGeneratedAtten[1];  'Second value in recGeneratedAtten is for the standalone speaker
+        endif
         
         'Get trial-based attenuation for current stimulus
         trlattenSA := rec2DeltadBList[playInd%][1];
         
-        'Just to be explicit, we do not rove on FRA - especially on stimuli that aren't playing.
+        'Just to be explicit, we do not rove on FRA
         roveattenSA := 0;
         
         attenSA := calattenSA + trlattenSA + roveattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
@@ -1216,7 +1226,6 @@ Func PlayTwoSounds%(whichStim%)
                 return status%;
             endif; 
             
-            'Note that we are NOT setting any attenuation for the standalone speaker, so let's do it, even if we're only playing silence for right now
             if standalonePA4ID% > -1 then  
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
                 if status% <> 0 then
@@ -1285,9 +1294,12 @@ Func PlayTwoSounds%(whichStim%)
         
         
         docase
-        case recExpToRun% = recExpFRAButton% then
+        case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then  'This is for the "old style" loaded FRA  that has a "silent" second stim, note that this should NEVER be used for SigNoise
             s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
             s2$ := Print$("Sound2 %s,silence,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]); 'This is weird to point out "silence" but the placeholder might be useful in the future.        
+        case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 3 then  'This is for *generated* SigNoise
+            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulus$(rec2StimList%[playInd%][0]));  
+            s2$ := Print$("Sound2 %s,%s,%d,1,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlAttenSA, targdBSA, NameThatStimulus$(rec2StimList%[playInd%][1]));
         case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then   
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, NameThatStimulusStereoDis$(recStimList%[whichStim%][playInd%],whichStim%,1));  
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulusStereoDis$(recDistractorStimList%[whichStim%][playInd%],whichStim%,0));  
@@ -1305,8 +1317,10 @@ Func PlayTwoSounds%(whichStim%)
     
     'Calculate the duration in points of the stimulus 
     docase
-    case recExpToRun% = recExpFRAButton% then
-        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms 
+    case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
+        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms
+    case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 3 then 
+        recPlayPoints% := recPlayRateHz*Max(recTrialDur[rec2StimList%[playInd%][0]],recTrialDur[rec2StimList%[playInd%][1]]);
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
         recPlayPoints% := recPlayRateHz*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then  
@@ -3041,9 +3055,9 @@ end
 
 
 
-'------- FRAPrepareNextTrial% --------------------------------------------------------
+'------- PrepareNextTrialParallel% --------------------------------------------------------
 ' 
-' Called prior to initiating a set of S1/S2 stimuli. 
+' Called prior to initiating a set of S1/S2 stimuli from a parallel PWA. 
 ' Return 1 if all is well, 0 if all trials are done, negative for error. 
 '
 ' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
@@ -3051,13 +3065,13 @@ end
 ' trial is running should be done here. 
 
 
-func FRAPrepareNextTrial%(loadPWAs%)
+func PrepareNextTrialParallel%(loadPWAs%)
     var ind%;
     var i%;
     var thisSpkr%;
     var thisTrial%;
     var thisPWA%;
-    var nread%:= 0;  'looks unused but won't hurt
+    var nread%:= 0;
     var file$;
     var fh%;
     var statement$;
@@ -3067,11 +3081,17 @@ func FRAPrepareNextTrial%(loadPWAs%)
     var matGetAttenOK%;
     var matGetSeedOK%;
     var playWaveCopyOK%;
+    var tempfloat;
     var ok% := 1;  'by default, return 1 (success)
     
     ' Set pwChar$ array to DAC0 and DAC1
-    pwChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
-    printlog("PWA index is %d\n", recFRAPWAIndex%);
+    'pwChar$ := GetPlayWaveKey$(recFRAPWAIndex%);  'Note that recFRAPWAIndex% is defined as 0 and never changed
+    'printlog("PWA index is %d\n", recFRAPWAIndex%);
+    
+    'Note that unlike PrepareNextTrial%(), which is designed to potentially fill multiple PWAs, 
+    'PrepareNextTrialParallel%() only has a single PWA, so pwChar$ can be set once, and recNUniqueStims%[] 
+    '(which would be = 1) does not need to be set/checked.
+    pwChar$ := GetPlayWaveKey$(0);
     
     ' Check to see if we are done
     if recCurrentTrial% >= recNTrials% then
@@ -3081,10 +3101,11 @@ func FRAPrepareNextTrial%(loadPWAs%)
     'Printlog current trial
     printlog("Current trial is %d\n",recCurrentTrial%+1);
     
-    'get stim number by calling tria`numth entry -  I'm not sure what was intended here
-    'printlog("Stim number is %d\n",recCurrentTrial%);
+    ' Get index of current trial
+    thisTrial% := recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
     
-    recDur := recTrialDur[rec2StimList%[recTrialOrder%[recCurrentTrial%]][0]];  
+    'recDur := recTrialDur[rec2StimList%[thisTrial%][0]]; 
+    recDur := Max(recTrialDur[rec2StimList%[thisTrial%][0]],recTrialDur[rec2StimList%[thisTrial%][1]]);  'Just in case stimuli are different durations   
     
     ' Put current trial sequence into log file
     if recDebug% > 0 then
@@ -3092,65 +3113,168 @@ func FRAPrepareNextTrial%(loadPWAs%)
         PrintLog("Stimuli: ");
         PrintLog("\n");
         ' Print stimulus number
-        PrintLog("16 array: " + str$(rec2StimList%[recTrialOrder%[recCurrentTrial%]][0]) + ", Standalone: " + str$(rec2StimList%[recTrialOrder%[recCurrentTrial%]][1]));
+        PrintLog("16 array: " + str$(rec2StimList%[thisTrial%][0]) + ", Standalone: " + str$(rec2StimList%[thisTrial%][1]));
         PrintLog("\n");
         printLog("stimulus duration is %f\n",recDur);
     endif
     
     
     if loadPWAs% = 1 then
-        ' Generate/Load stimuli and put them into PlayWaveAreas
+        'Generate/Load stimuli and put them into PlayWaveArea
         
         'get speaker on array for this trial (second stimulus plays on stand-alone)
-        thisSpkr% := rec2SpeakerList%[recTrialOrder%[recCurrentTrial%]][0];
+        thisSpkr% := rec2SpeakerList%[thisTrial%][0];
         printlog("Array speaker: " + str$(thisSpkr%));
         printlog("\n");
         
         'Set rec2StimTransfer%[] to zeros
         arrconst(rec2StimTransfer%[][],0); 
         
-        seconds(0);  'set "seconds" time to zero, for testing
+        'Testing lines, can get transfer time below if all uncommented
+        'seconds(0);  'set "seconds" time to zero, for testing
         'seconds(0,1);  'set resolution to hi-res, not legal in Spike6
         
-        for i% := 0 to 1 do
+        docase
+        case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this is testing
+            'don't do anything, just pretend all is OK
+        case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
+            message("Holy crap, I can't generate the stimulus because you said there's no Matlab!");
+            view(recLog%).print("ERROR: PrepareNextTrial - Matlab not open, cannot generate stimulus, quitting!\n");
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+            SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+            Stop%();
+            return -1;
+        case recMatGenStim% = 1 and recSearchStimType% = 3 then  'Matlab is not set up to generate clicks; the parallel PWA design is not set up to deal with them either
+            'There currently is no path into this CASE, placing this to make sure that if one does get set up, we know the
+            'click won't work without further coding
+            message("Click stimulus is incompatible with Parallel PWA!");
+            view(recLog%).print("ERROR: PrepareNextTrialParallel - Click stimulus is incompatible with Parallel PWA, quitting!\n");
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+            SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+            Stop%();
+            return -1;
             
-            printlog("Loading file for DAC" + str$(i%));
-            printlog("\n"); 
+        case recMatGenStim% = 1  then  'Generate stimuli using Matlab - even something CED can do like tones.  Just easier to be consistent.  
+            for i% := 0 to 1 do
+                'get index of trial
+                ind% := rec2StimList%[thisTrial%][i%]; 
+                
+                'get speaker of trial
+                thisSpkr% := rec2SpeakerList%[thisTrial%][i%];  'this should just be ones for i% = 1, because it's the standalone
+                
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("tonephase",recTrialGenTonePhaseDeg[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("gauss",recTrialGenGauss%[ind%]);  
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("ramp",recTrialGenRampMS[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueInt%("seed",recTrialGenSeed%[ind%]);  
+                matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recMaxPoints%);
+                matPutOK% := matPutOK% + PutMatlabValueInt%("spk",thisSpkr%);
+                
+                if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
+                    message("There has been an error in sending data to Matlab!  Quitting!");
+                    view(recLog%).print("ERROR: PrepareNextTrial - error sending data to Matlab, quitting!\n");
+                    recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+                    Stop%();
+                    return -1;
+                endif;
+                
+                'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
+                'NOTE THAT WITHOUT THE CALIB VARIABLE, THE FULL STATEMENT DOES NOT WORK PROPERLY
+                'USE THE TRUNCATED STATEMENT WITH NO CALIB UNTIL CALIBRATION IS IMPLEMENTED
+                docase
+                case recCalibIsPresent% = 1  and i% = 0 then
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
+                    'statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
+                case recCalibIsPresent% = 1  and i% = 1 then  'for standalone, calibration is in a different variable
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,stAFFT(1,spk));";  'this is for the FFT filtering method
+                else
+                    statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
+                endcase;
+                EvalMatlabStatement%(statement$);
+                statement$ := "calibval = AFFT(spk).dB;";
+                EvalMatlabStatement%(statement$);
+                
+                
+                'Get the stimulus and the seed back from Matlab
+                matGetStimOK%:= GetMatlabValueIntArray%("stimulus",rec2StimTransfer%[][i%]);
+                matGetAttenOK% := GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
+                matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
+                printlog("Matlab's calib value is %f\n",tempfloat);
+                printlog("Value to get Matlab stim to 65 dB is %f\n",recGeneratedAtten[i%]);
+                matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
+                
+                docase
+                case matGetStimOK% < 0 then 'error
+                    message("There has been an error in getting stimulus data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");  'Turn off LED
+                    'Stop%();
+                    'return -1;
+                case matGetAttenOK% < 0 then 'error
+                    message("There has been an error in getting atten data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");  'Turn off LED
+                    'Stop%();
+                    'return -1;
+                case matGetSeedOK% < 0 then 'error
+                    message("There has been an error in getting seed data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");  'Turn off LED
+                    'Stop%();
+                    'return -1;
+                endcase;
+                
+            next
             
-            'Load stimuli from file
+        else  'Load stimuli from file
             
-            'get filename
-            file$ := recTrialLoadLoc$[rec2StimList%[recTrialOrder%[recCurrentTrial%]][i%]];
-            printlog("Current file loading: " + file$);
-            printlog("\n");
-            
-            'open current stimulus
-            fh%:=fileopen(file$,9,0);
-            
-            if fh%<0 then
-                message("Warning Message | failed to load the stimulus waveform!");
-                printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
-                view(recLog%).print("ERROR: FRAPrepareNextTrial - Stimulus waveform " + file$ + " failed to load, quitting!\n");
-                Stop%();
-                return -1;
-            endif;
-            
-            'reads fh% two bytes at a time, puts in recStimTransfer%[]
-            'printlog("Time before BReadSize is %f\n",seconds());
-            nread%:=breadsize(2,rec2StimTransfer%[][i%]); 
-            'printlog("BReadSize returned at %f\n",seconds());
-            if nread% < 0 then
-                printlog("There was an error in reading the binary file!  The error is number %d and the text of the error is '%s'\n",nread%,Error$(nread%));
-            else
-                printlog("Number of bytes read = %d\n",nread%);
-            endif;
-            
-            
-            'close current stimulus
-            fileclose();  'close fh%
-        next
+            for i% := 0 to 1 do
+                
+                printlog("Loading file for DAC" + str$(i%));
+                printlog("\n"); 
+                
+                'Load stimuli from file
+                
+                'get filename
+                file$ := recTrialLoadLoc$[rec2StimList%[thisTrial%][i%]];
+                printlog("Current file loading: " + file$);
+                printlog("\n");
+                
+                'open current stimulus
+                fh%:=fileopen(file$,9,0);
+                
+                if fh%<0 then
+                    message("Warning Message | failed to load the stimulus waveform!");
+                    printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
+                    view(recLog%).print("ERROR: FRAPrepareNextTrial - Stimulus waveform " + file$ + " failed to load, quitting!\n");
+                    Stop%();
+                    return -1;
+                endif;
+                
+                'reads fh% two bytes at a time, puts in recStimTransfer%[]
+                'printlog("Time before BReadSize is %f\n",seconds());
+                nread%:=breadsize(2,rec2StimTransfer%[][i%]); 
+                'printlog("BReadSize returned at %f\n",seconds());
+                if nread% < 0 then
+                    printlog("There was an error in reading the binary file!  The error is number %d and the text of the error is '%s'\n",nread%,Error$(nread%));
+                else
+                    printlog("Number of bytes read = %d\n",nread%);
+                endif;
+                
+                
+                'close current stimulus
+                fileclose();  'close fh%
+            next
         
-        
+        endcase
         
         'Finally, place the stimulus into the appropriate Play Wave Area
         if recCEDIsPresent% = 1 then
@@ -3348,23 +3472,23 @@ func IdleLoop%()
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 
                 if recUse2PWAs% = 1 then
-                    stmp% := FRAPrepareNextTrial%(1); 'Does double-sound prep, only relevant to trials files where stimuli are loaded from disk
+                    stmp% := PrepareNextTrialParallel%(1); 'Does double-sound prep, only relevant to trials files where stimuli are loaded from disk
                 else
                     stmp% := PrepareNextTrial%(1); 'Does single sound prep
                 endif;
                 
                 docase
                 case stmp% = 0 then
-                    RecLogStatus("FRA PrepareNextTrial", "All trials are done!");
+                    RecLogStatus("FRA PrepareNextTrial(Parallel)", "All trials are done!");
                     ChangeStateTo(stateDone%);
                     'Note that we can't actually get here from Search, the user simply hits the NewExpt. button to end search and move on
                 case stmp% < 0 then
-                    RecLogStatus("FRA PrepareNextTrial", "Error return value from PrepareNextTrial%");
-                    view(recLog%).print("ERROR: FRAPrepareNextTrial -- FRAPrepareNextTrial returned negative value: " + Str$(stmp%) + "\n");
+                    RecLogStatus("FRA PrepareNextTrial(Parallel)", "Error return value from PrepareNextTrial(Parallel)");
+                    view(recLog%).print("ERROR: FRA PrepareNextTrial(Parallel) returned negative value: " + Str$(stmp%) + "\n");
                     ChangeStateTo(stateCodingError%);
                 else
                     recCurrentTrial% += 1;  'recCurrentTrial% only incremented here, upon successful load of new trial.
-                    RecLogStatus("FRA PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
+                    RecLogStatus("FRA PrepareNextTrial(Parallel)", "Trial #" + str$(recCurrentTrial%) + " ready.");
                     if recCurrentTrial% = 1 then ' if this is the first trial go right to playing
                         ChangeStateTo(stateStartSoundE%);
                     else
@@ -5500,6 +5624,8 @@ func BehOutput(resultCode$, isS2local%)
         docase
         case recExpToRun% = recExpAudiogramButton% then
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\n","Spkr","Freq","dB","Result","StimOnset","LeverTime"); 'header for trial vars
+        case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 2 then  'Generated FRA
+            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\n","Stim1","Spkr1","dB1","StimOnset","Reward");
         case recExpToRun% = recExpFRAButton% then
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Stim1","Spkr1","Stim2","Spkr2","dB1","dB2","StimOnset","Reward");
         case recExpToRun% = recExpStereoDisButton% then
@@ -5519,10 +5645,17 @@ func BehOutput(resultCode$, isS2local%)
     docase
     case recExpToRun% = recExpAudiogramButton% then
         view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$,StimOn,recLeverTime);
-    case recExpToRun% = recExpFRAButton% then
+    case recExpToRun% = recExpFRAButton% and recFRALoadStim% =  2 then  'generated FRA
         'calc dB for each one
         dB1 := 65-rec2DeltadBList[recCurrentTrial%-1][0];
-        dB2 := 70; 'no PA4 for the standalone, so we just set the amplifier so the sounds would come out at ~70dB unattenuated.
+
+        view(fh%).print("%d\t%d\t",recStimList%[0][recTrialOrder%[recCurrentTrial%-1]],recSpeakerList%[0][recTrialOrder%[recCurrentTrial%-1]]);
+        view(fh%).print("%f\t",dB1);
+        view(fh%).print("%f\t%d\n",StimOn,recFRAReward%[recCurrentTrial%-1]);
+    case recExpToRun% = recExpFRAButton% then  'loaded FRA/signoise, generated signoise
+        'calc dB for each one
+        dB1 := 65-rec2DeltadBList[recCurrentTrial%-1][0];
+        dB2 := 65-rec2DeltadBList[recCurrentTrial%-1][1];
         
         'view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][0],rec2SpeakerList%[recCurrentTrial%][0]);  'this was not fixed until 3-31-21
         'view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][1],rec2SpeakerList%[recCurrentTrial%][1]);

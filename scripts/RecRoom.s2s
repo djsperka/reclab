@@ -782,8 +782,19 @@ while recReadyToQuit% = 0 do
             'Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
-                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                    statement$ := "load('" + recCalibLoc$ + "Standalone.mat');"; 
                     calibOK% := EvalMatlabStatement%(statement$);
+                    'standalone is in 'AFFT', move to 'stAFFT'
+                    if calibOK% = 0 then
+                        statement$ := "stAFFT = AFFT;";
+                        calibOK% := EvalMatlabStatement%(statement$);
+                        'Only load array calibration if the standalone load/rename was successful
+                        if calibOK% = 0 then
+                            'Then load array into AFFT as expected
+                            statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                            calibOK% := EvalMatlabStatement%(statement$);
+                        endif;
+                    endif;
                 else
                     printlog("Calibration is not present, stimuli will be uncalibrated!\n");
                     calibOK% := 0;
@@ -986,12 +997,18 @@ while recReadyToQuit% = 0 do
             'Load calibration file into Matlab's workspace, same details as above in Search
             if recMatlabIsPresent% = 1 then
                 if recCalibIsPresent% = 1 then
-                    statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                    statement$ := "load('" + recCalibLoc$ + "Standalone.mat');"; 
                     calibOK% := EvalMatlabStatement%(statement$);
-                    'Only load standalone calibration if the array load was successful
+                    'standalone is in 'AFFT', move to 'stAFFT'
                     if calibOK% = 0 then
-                        statement$ := "load('" + recCalibLoc$ + "Standalone.mat');";  'make sure variable inside this is "stAFFT"
+                        statement$ := "stAFFT = AFFT;";
                         calibOK% := EvalMatlabStatement%(statement$);
+                        'Only load array calibration if the standalone load/rename was successful
+                        if calibOK% = 0 then
+                            'Then load array into AFFT as expected
+                            statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                            calibOK% := EvalMatlabStatement%(statement$);
+                        endif;
                     endif;
                 else
                     printlog("Calibration is not present, stimuli will be uncalibrated!\n");
