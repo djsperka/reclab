@@ -1094,9 +1094,9 @@ Func PlayTwoSounds%(whichStim%)
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         if recMatGenStim% = 0 then  'get attenuation from StimCal file
-            calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
+            calattenSA := recTrialStimCalDistractor[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
         else
-            calattenArray := recGeneratedAtten[1];  'Second value in recGeneratedAtten is for the standalone speaker
+            calattenSA := recGeneratedAtten[1];  'Second value in recGeneratedAtten is for the standalone speaker
         endif
         
         'Get trial-based attenuation for current stimulus
@@ -1106,6 +1106,7 @@ Func PlayTwoSounds%(whichStim%)
         roveattenSA := 0;
         
         attenSA := calattenSA + trlattenSA + roveattenSA;  'for all cases, attenuation is calibrating attenuation + trial attenuation
+        printlog("Trial Atten SA = %f with calattenSA %f and trlattenSA %f\n",attenSA,calattenSA,trlattenSA);
         targdBSA := 65 - trlattenSA - roveattenSA;  'convinced myself this is right
         
         'Get play wave area with current stimulus
@@ -1150,7 +1151,7 @@ Func PlayTwoSounds%(whichStim%)
         if recMatGenStim% = 1 then
             calattenSA := recStereoDisGeneratedAttenList[whichStim%][1] - recStereoDisdB + 65;
         else  'loading stimulus, cal value was in stimcal file
-            calattenSA := recTrialStimCal[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
+            calattenSA := recTrialStimCalDistractor[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
         endif;
         
         'Get trial-based attenuation for current stimulus
@@ -3185,6 +3186,21 @@ func PrepareNextTrialParallel%(loadPWAs%)
                     Stop%();
                     return -1;
                 endif;
+                
+'                printlog("Sampling freq %f\n",recPlayRateHz);
+'                printlog("dur %f\n",recTrialDur[ind%]);  'size of trial is variable, that's OK
+'                printlog("lohz %f\n",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
+'                printlog("hihz %f\n",recTrialGenHighpassHz[ind%]);  'Ditto
+'                printlog("issweep %d\n",recTrialGenIsSweep%[ind%]);
+'                printlog("amfreq %f\n",recTrialGenAMFreqHz[ind%]);
+'                printlog("amdepth %f\n",recTrialGenAMDepthPct[ind%]);
+'                printlog("amphase %f\n",recTrialGenAMPhaseDeg[ind%]);
+'                printlog("tonephase %f\n",recTrialGenTonePhaseDeg[ind%]);
+'                printlog("gauss %d\n",recTrialGenGauss%[ind%]);  
+'                printlog("ramp %f\n",recTrialGenRampMS[ind%]);
+'                printlog("seed %d\n",recTrialGenSeed%[ind%]);  
+'                printlog("pad %d\n",recMaxPoints%);
+'                printlog("spk %d\n",thisSpkr%);
                 
                 'Ask Matlab to create the stimulus - reclab_panstim can make just about anything
                 'NOTE THAT WITHOUT THE CALIB VARIABLE, THE FULL STATEMENT DOES NOT WORK PROPERLY
