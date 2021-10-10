@@ -373,8 +373,8 @@ var recSearchLoaded%;               'Allows PWAs to be loaded only once for SEAR
 var trialsOK%;                      'If 1, successfully loaded trials file
 var stimOK%;                        'If 1, successfully loaded stim or stim/cal file
 var calibOK%;                       'If 1, successfully loaded calibration file
-const recPlayRateHz:=100000;         'Set stimulus play rate to 50 kHz, this will need to be constant   
-const recMaxStimLengthSec:=1.6;       'Set maximum length of each individual stimulus, in seconds
+var recPlayRateHz:=100000;         'Set stimulus play rate to 50 kHz, this will need to be constant - in Spike2v10 you can initialize variables with a variable  
+const recMaxStimLengthSec:=4.0;       'Set maximum length of each individual stimulus, in seconds
 const recDAC0% := 0;                'Set output channel to DAC 0, don't let this change
 const recDAC1% := 1;    
 var recExptText$ := "";             'text that describes this expt, for a SampleText
@@ -440,24 +440,7 @@ var recTrialDistractorDeltadB[recMaxTrial%][recMaxDistractor%];  'Allows a singl
     
 var recPlayPoints%;                 'Holds the number of points to play for each stimulus    
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
-const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus, must be a constant   
-'const recMaxLongNoiseBPPoints% := recPlayRateHz*100;
-'const recMaxLongNoisePoints% := recPlayRateHz;   'Not doing multiplication by seconds because seconds is by definition 1.
-const LongPoints0% := LongDur0*recPlayRateHz;
-const LongPoints1% := LongDur1*recPlayRateHz;
-const LongPoints2% := LongDur2*recPlayRateHz;
-const LongPoints3% := LongDur3*recPlayRateHz;
-var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
-var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
-'var recStimTransferLongNoise%[recMaxLongNoisePoints%];  
-'var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    
-var recStimTransferLongNoise2%[LongPoints3%];
-var recLongNoise3%[8][LongPoints3%];   'variables to hold long noises
-var recLongNoise2%[8][LongPoints2%];    
-var recLongNoise1%[8][LongPoints1%];
-var recLongNoise0%[8][LongPoints0%];    
-var recLongNoiseAtten[8][nLongTones%];                       'variables to hold long noise attenuation    
-var recLongNoiseSeed[8][nLongTones%];                        'variables to hold long noise attenuation    
+   
     
 'Trial list variables
 var recPWAList%[recMaxStimPerTrial%][recMaxTrial%];     'Holds indices to which PWA to use on each trial, and therefore also indexes recStimList%[][]    
@@ -568,9 +551,7 @@ endif;
 '
 
 
-'Include files that depend on global variables
-#include "RecGoNoGoEngine.s2s"
-'#include "RecJoystickFuncs.s2s" -- must be included in recGoNoGoEngine!!  Noted here for info purposes
+
 
 '
 '
@@ -597,6 +578,31 @@ else
 endif;
 view(recLog%).print("\nrunning RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 
+
+'After the initial Debug dialog (where we allow setting of the sampling rate now), set various MaxPoint values based on the sampling rate
+const recMaxPoints% := recPlayRateHz*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus   
+'const recMaxLongNoiseBPPoints% := recPlayRateHz*100;
+'const recMaxLongNoisePoints% := recPlayRateHz;   'Not doing multiplication by seconds because seconds is by definition 1.
+const LongPoints0% := LongDur0*recPlayRateHz;
+const LongPoints1% := LongDur1*recPlayRateHz;
+const LongPoints2% := LongDur2*recPlayRateHz;
+const LongPoints3% := LongDur3*recPlayRateHz;
+var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
+var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
+'var recStimTransferLongNoise%[recMaxLongNoisePoints%];  
+'var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    
+var recStimTransferLongNoise2%[LongPoints3%];
+var recLongNoise3%[8][LongPoints3%];   'variables to hold long noises
+var recLongNoise2%[8][LongPoints2%];    
+var recLongNoise1%[8][LongPoints1%];
+var recLongNoise0%[8][LongPoints0%];    
+var recLongNoiseAtten[8][nLongTones%];                       'variables to hold long noise attenuation    
+var recLongNoiseSeed[8][nLongTones%];                        'variables to hold long noise attenuation 
+
+
+'Include files that depend on global variables - have to move this below the creation of above constants!
+#include "RecGoNoGoEngine.s2s"
+'#include "RecJoystickFuncs.s2s" -- must be included in recGoNoGoEngine!!  Noted here for info purposes
 
 'Open a Matlab instantiation, if present
 if recMatlabIsPresent% = 1 then 
@@ -1347,7 +1353,7 @@ func RecDebugDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Debug Dialog",0,0,40,8);
+    DlgCreate("Debug Dialog",0,0,40,9);
     DlgCheck(1, "Matlab is present");
     DlgCheck(2, "TDT is present");
     DlgCheck(3, "CED 1401 is present");
@@ -1355,9 +1361,10 @@ func RecDebugDialog%()
     DlgCheck(5, "Do Sound Recording");
     'DlgCheck(6, "Do Debug Logging");
     DlgList(6,30,debugLoc$[],3);
+    DlgReal(7,"Stimulus play rate (Hz)",1000,100000);  'Note, NOT saving value to registry, must explicitly override 100kHz every time you override
     
     ' Show the dialog. 
-    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%);
+    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%, recPlayRateHz);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
