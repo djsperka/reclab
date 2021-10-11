@@ -741,7 +741,7 @@ while recReadyToQuit% = 0 do
             recSelectedStimFile$ := recFRAStimcalNameLoad$[recFRAExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
             recSelectedTrialsFile$ := recFRATrialsNameLoad$[recFRAExpIndexLoad%]; 'ditto. for BehOutput
             'Load trials file, stim/cal file
-            trialsOK% := RecLoadTrialsFile%(recSelectedTrialsFile$,recTotalTrials%);
+            trialsOK% := RecLoadTrialsFile6ColOr3Col%(recSelectedTrialsFile$,recTotalTrials%);
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
                 stimOK% := RecLoadStimCalFile%(recSelectedStimFile$,recNSpeakers%,recTotalStim%);
             endif;
@@ -6918,6 +6918,95 @@ func RecLoadTrialsFile3Col%(fileLoc$,&totalTrials%)
     
 end
 '===== End RecLoadTrialsFile3Col =====
+'
+'
+
+
+'
+'
+'===== RecLoadTrialsFile6ColOr3Col =====
+func RecLoadTrialsFile6ColOr3Col%(fileLoc$,&totalTrials%)
+'the idea here is that for some characterization experiments, we have the "old" 6-column trials files (even though
+'we weren't using the other column) and in the future (particularly for doing calibration) a 3-column file will be
+'more convenient, but we don't want to have to make a whole separate GUI category for the two, this will let us do
+'either
+    
+    var status%;
+    var lineCount%;
+    var keepGoing% := 1;
+    var numRead%;
+    var readLine$[7];
+    var fh0%;
+    
+    status% := 0;  'begin with "failure", change to success if success
+    
+    printlog("Loading Trial File: %s\n",fileLoc$);
+    
+    'First, make sure the file won't barf on us
+    numRead% := RecVerifyInputFile%(fileLoc$);
+    if numRead% <> 6 and numRead% <> 3 then
+        if numRead% = -1 then
+            message("Starting over!|Failure to read trials file!");
+        else
+            message("Starting over!|Incorrect number of fields in trials file (expected 3 or 6 fields, got "+Str$(numRead%)+")!");
+        endif
+        return status%;  'returns failure
+    endif;
+        
+    'Then read the file
+    fh0%:=FileOpen(fileLoc$,8,0);
+    
+    'readsetup(""," ","","","	");
+    readsetup(""," "+Chr$(9),"","","	");  'Making tab -- Chr$(9) -- a soft separator, so extra tabs for lining up rows will be skipped
+    
+    'Skip past the header line
+    numRead% := read(readLine$[0:7]);
+    
+    while keepGoing% do
+        'Read the next line in the file, return line and number of fields read
+        numRead% := read(readLine$[0:7]);  'reading as many as seven lines as a check - if seven successfully read, something is wrong with the file
+        lineCount% += 1;
+        
+        'Place values into global variables
+        docase
+        case numRead% = 6 then
+            recTrialS1%[lineCount%-1] := val(readLine$[0]);
+            recTrialS2%[lineCount%-1] := val(readLine$[1]);
+            recTrialS1Spkr%[lineCount%-1] := val(readLine$[2]);
+            recTrialS2Spkr%[lineCount%-1] := val(readLine$[3]);
+            recTrialS1DeltadB[lineCount%-1] := val(readLine$[4]);
+            recTrialS2DeltadB[lineCount%-1] := val(readLine$[5]);
+        case numRead% = 3 then
+            recTrialS1%[lineCount%-1] := val(readLine$[0]);
+            recTrialS2%[lineCount%-1] := 0;
+            recTrialS1Spkr%[lineCount%-1] := val(readLine$[1]);
+            recTrialS2Spkr%[lineCount%-1] := 0;
+            recTrialS1DeltadB[lineCount%-1] := val(readLine$[2]);
+            recTrialS2DeltadB[lineCount%-1] := 0;
+        case numRead%<0 then
+            keepGoing% := 0;
+            totalTrials% := lineCount%-1;  'set to return the number of lines read, this will be useful
+            status% := 1;  'not sure that will work with the other logic
+        else
+            message("Starting over!|Failure to successfully read file with three or six fields despite initial check!");
+            keepGoing% := 0;
+        endcase;    
+    wend;    
+    
+    fileclose();  'close fh0%, the currently open file
+    
+    'Just some debugging code, correct read is verified
+'    printlog("Column 1 was %d\n",recTrialS1%[]);
+'    printlog("Column 2 was %d\n",recTrialS2%[]);
+'    printlog("Column 3 was %d\n",recTrialS1Spkr%[]);
+'    printlog("Column 4 was %d\n",recTrialS2Spkr%[]);
+'    printlog("Column 5 was %f\n",recTrialS1DeltadB[]);
+'    printlog("Column 6 was %f\n",recTrialS2DeltadB[]);
+    
+    return status%;
+    
+end
+'===== End RecLoadTrialsFile6ColOr3Col =====
 '
 '
 
