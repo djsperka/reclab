@@ -276,11 +276,9 @@ var recAMDiscExpIndexLoad%;         'Experiment index, for loading stims, helps 
 var recAMDiscExpIndexGen%;          'Experiment index, for generating stims, etc.
 var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
 var recAMDiscTrialInitReward%;      'Separate out training reward for AMDisc
-var recSpaceDisTrialInitReward%;    'Separate out training reward for SpaceDisc
 var recTrialHoldReward%;            'Give training reward for successful trial hold through stimulus, without response
 var recAMDiscTrialHoldReward%;      'Separate out training reward for AMDisc
-var recSpaceDisTrialHoldReward%;    'Separate out training reward for SpaceDisc
-var recAMSPPassiveTask%;            'Passive version of am / sp        
+var recAMDiscActive%;               'Holds AMDisc active 
     
     
 'Space Discrimination Dialog variables (unused or reused vars are commented out)
@@ -306,6 +304,9 @@ var recSpaceDisStimcalNameGen$[recAMDiscNumExps%];   'Stim file names, generatin
 var recSpaceDisTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generating stims
 var recSpaceDisExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recSpaceDisExpIndexGen%;          'Experiment index, for generating stims, etc.
+var recSpaceDisTrialInitReward%;    'Separate out training reward for SpaceDisc
+var recSpaceDisTrialHoldReward%;    'Separate out training reward for SpaceDisc    
+var recSpaceDisActive%;             'Holds SpaceDis active     
     
     
 'Stereo Distractor Dialog variables
@@ -1662,7 +1663,7 @@ proc RecAMDiscGetParams()
     recAMDiscDoRove% := GetIntRegistryValue%(key$, "DoRove", recAMDiscDoRove%);
     recAMDiscRovedB := GetFloatRegistryValue(key$, "RovedB", recAMDiscRovedB);
     
-    recAMSPPassiveTask% := GetIntRegistryValue%(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
+    recAMDiscActive% := GetIntRegistryValue%(key$, "ActiveTask", recAMDiscActive%);
 
 	return;
 end
@@ -1695,7 +1696,7 @@ proc RecAMDiscSaveParams()
     SetIntRegistryValue(key$, "TrialHoldReward", recAMDiscTrialHoldReward%);
     SetIntRegistryValue(key$, "DoRove", recAMDiscDoRove%);
     SetFloatRegistryValue(key$, "RovedB", recAMDiscRovedB);
-    SetIntRegistryValue(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
+    SetIntRegistryValue(key$, "ActiveTask", recAMDiscActive%);
     
 	return;
 end
@@ -1727,7 +1728,7 @@ proc RecSpaceDisGetParams()
     recSpaceDisTrialHoldReward% := GetIntRegistryValue%(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);
     recSpaceDisDoRove% := GetIntRegistryValue%(key$, "DoRove", recSpaceDisDoRove%);
     recSpaceDisRovedB := GetFloatRegistryValue(key$, "RovedB", recSpaceDisRovedB);
-    recAMSPPassiveTask% := GetIntRegistryValue%(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
+    recSpaceDisActive% := GetIntRegistryValue%(key$, "ActiveTask", recSpaceDisActive%);
 
 	return;
 end
@@ -1758,7 +1759,7 @@ proc RecSpaceDisSaveParams()
     SetIntRegistryValue(key$, "SpaceDisExpIndexLoad", recSpaceDisExpIndexLoad%);
     SetIntRegistryValue(key$, "TrialInitReward", recSpaceDisTrialInitReward%);
     SetIntRegistryValue(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);  
-    SetIntRegistryValue(key$, "AMSPPassiveTask", recAMSPPassiveTask%);
+    SetIntRegistryValue(key$, "ActiveTask", recSpaceDisActive%);
 
 	return;
 end
@@ -3518,7 +3519,7 @@ func RecExpAMDiscDialog%()
     'DlgText("Repeats per stimulus",46,10);
     DlgInteger(8,6,1,100,27,11);  'Repeats
     DlgText("Repeats per stimulus",2,11);
-    DlgCheck(11,"Passive task?",2,12);
+    DlgCheck(11,"Active task?",2,12);
     DlgCheck(12,"Rove stimuli?",46,10);
     DlgReal(13,6,0,3,65,11);  'Rove db
     DlgText("Rove dB, +/-",46,11);
@@ -3531,7 +3532,7 @@ func RecExpAMDiscDialog%()
     
     i%:=DlgShow(recAMDiscMatGenStim%,recAMDiscExpIndexGen%,recAMDiscExpIndexLoad%,recAMDiscMinS1%,recAMDiscVarS1%,
     recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recAMDiscTrialInitReward%, 
-    recAMDiscTrialHoldReward%, recAMSPPassiveTask%, recAMDiscDoRove%, recAMDiscRovedB);  'not setting recAMDiscS1Speaker% in this version
+    recAMDiscTrialHoldReward%, recAMDiscActive%, recAMDiscDoRove%, recAMDiscRovedB);  'not setting recAMDiscS1Speaker% in this version
 
     
     ' If user hit OK then save parameters (and return 1). 
@@ -3552,7 +3553,7 @@ func RecExpAMDiscDialog%()
             recVarS1% := recAMDiscVarS1%;
             recPropCatch := recAMDiscPropCatch;  'Make sure we need this
             recDeltadBLevel := 65-recAMDiscdBLevel;
-            recActive% := 1;   'Don't give an option, must be active
+            recActive% := recAMDiscActive%;
             recFixLED% := 1;
             recMatGenStim% := recAMDiscMatGenStim%;
             recTrialInitReward% := recAMDiscTrialInitReward%;
@@ -3667,7 +3668,7 @@ func RecExpSpaceDisDialog%()
     'DlgText("Repeats per stimulus",46,10);
     DlgInteger(8,6,1,100,27,11);  'Repeats
     DlgText("Repeats per stimulus",2,11);
-    DlgCheck(11,"Passive task?",2,12);
+    DlgCheck(11,"Active task?",2,12);
     DlgCheck(12,"Rove stimuli?",46,10);
     DlgReal(13,6,0,3,65,11);  'Rove db
     DlgText("Rove dB, +/-",46,11);
@@ -3680,7 +3681,7 @@ func RecExpSpaceDisDialog%()
     
     i%:=DlgShow(recSpaceDisMatGenStim%,recSpaceDisExpIndexGen%,recSpaceDisExpIndexLoad%,recSpaceDisMinS1%,recSpaceDisVarS1%,
     recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recSpaceDisTrialInitReward%, 
-    recSpaceDisTrialHoldReward%, recAMSPPassiveTask%, recSpaceDisDoRove%, recSpaceDisRovedB);  'not setting recAMDiscS1Speaker% in this version
+    recSpaceDisTrialHoldReward%, recSpaceDisActive%, recSpaceDisDoRove%, recSpaceDisRovedB);  'not setting recAMDiscS1Speaker% in this version
 
     
     ' If user hit OK then save parameters (and return 1). 
@@ -3701,7 +3702,7 @@ func RecExpSpaceDisDialog%()
             recVarS1% := recSpaceDisVarS1%;
             recPropCatch := recSpaceDisPropCatch;  'Make sure we need this
             recDeltadBLevel := 65-recSpaceDisdBLevel;
-            recActive% := 1;   'Don't give an option, must be active
+            recActive% := recSpaceDisActive%; 
             recFixLED% := 1;
             recMatGenStim% := recSpaceDisMatGenStim%;
             recTrialInitReward% := recSpaceDisTrialInitReward%;
@@ -3876,7 +3877,6 @@ func RecExpStereoDisDialog%()
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
             
-        recAMSPPassiveTask% := 0;
         recActive% := 1;
         
         if recStereoDisExpDoGen% = 1 then

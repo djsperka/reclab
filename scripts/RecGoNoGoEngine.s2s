@@ -3444,7 +3444,6 @@ func IdleLoop%()
                         'recCurrentTrial% -= 1;  'if we are not starting a new trial on audiogram, undo increment of trial counter (now more correctly done earlier -jj 8/21/17)
                     endcase;
                     RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
-                    RecLogStatus("Passive task", "True: " + str$(recAMSPPassiveTask%));  'seems pretty unnecessary, not dealing with it now just in case (jj 2/13/2020)
                     ChangeStateTo(stateDetermineRewardType);  'We are no longer DeterminingRewardType as microstim is dead, just sampletexting at this point
                 endcase
             else  'but if paused, check to see if we have a call out to a dialog box to change values
@@ -3601,10 +3600,10 @@ func IdleLoop%()
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
                 'do state stuff here
                 CheckLever%("inOrigin%",1);
-                if inOrigin% = 1 or recAMSPPassiveTask% = 1 then  'lever must be in origin to start blink
+                if inOrigin% = 1 then  'lever must be in origin (passive task, default set to 1 above) to move forward
                     if tNow > tNextTrial then
                         RecLogStatusSpecificTime("WaitTrlInit", "Blink/Wait.",tNow);
-                        if recCEDIsPresent% = 1 and recActive% = 1 then
+                        if recCEDIsPresent% = 1 and recActive% = 1 then  'only start blink sequence if active
                             SampleSeqVar(4,1);  'set the flash sequence to on
                             Sampleseqvar(6,500/SampleSeqClock(1));  'Flashing at 500 ms, divide by sequencer period in ms to get number of sequencer clock ticks
                             sampleseqvar(5,ceil((recTrialInitWindow*1000)/(500*2)));  'Set sequencer variable 5 to number of flashes, 500 ms flash duration, put recTrialInitWindow in ms
@@ -3646,10 +3645,8 @@ func IdleLoop%()
                 'do state stuff here
                 if tNow < tStartBlink + recTrialInitWindow then
                     CheckLever%("inTrialInit%",1);
-                    'printlog("InTrialInit value is %d and time is %f\n",inTrialInit%,tNow);
-                    'printlog("recAMSPPassiveTask value is %d and time is %f\n",recAMSPPassiveTask%,tNow);
                     'if we are starting the trial
-                    if inTrialInit% = 1 or recAMSPPassiveTask% = 1 then
+                    if inTrialInit% = 1 then 'lever must be in TrialInit position (passive task, default set to 1 above) to move forward
                         'if there is a blink sequence, stop it
                         if recCEDIsPresent% = 1 and recActive% = 1 then
                             SampleKey("S"); 'stop blink sequence *immediately* - therefore, do not use SafeSampleKey
@@ -3772,12 +3769,9 @@ func IdleLoop%()
         case iState% = statePreTrialDelay% then
             'printlog("tnow is %f and tstatestart is %f and diff is %f\n",tNow,tStateStart, tNow-tStateStart);
             CheckLever%("inTrialInit%",1);
-            if recAMSPPassiveTask% = 1 then
-                inTrialInit% := 1;
-            endif
             
             docase  
-            case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 and recExpToRun% = recExpAudiogramButton% then 
+            case inTrialInit% <> 1 and recCEDIsPresent% = 1 and recActive% = 1 and recExpToRun% = recExpAudiogramButton% then 'note that at this point, recActive is redundant because all audiograms are hardcoded active, -jj 10/20/2021
                 'for the Audiogram experiment, we need to treat this NOT as a slip
                 RecLogStatus("DelayInterval", "False Alarm during delay.");
                 ChangeStateTo(stateFalseAlarmAudiogram%); 
@@ -3883,7 +3877,7 @@ func IdleLoop%()
             docase
             case PWA$ = "" then
                 docase
-                case recAMSPPassiveTask% = 0 and isInterrupt% = 1 then
+                case recActive% = 1 and isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
                     SafeSampleKey("S");  'Turn off LED
@@ -3893,7 +3887,7 @@ func IdleLoop%()
                 endcase
             case recActive% = 0 then
                 'Do nothing here if sound is playing but there is no task; simply wait for sound to stop 
-            case recAMSPPassiveTask% = 0 and inTrialInit% <> 1 then  'if the sound is still playing, check for interrupt
+            case inTrialInit% <> 1 then  'if the sound is still playing, check for interrupt
                 'institute interrupt procedure, will be completed on the next iteration or when stimulus stops
                 if isInterrupt% = 0 then  'only do this for "first" interrupt, if stimulus continues  
                     recPreciseTrialTime := recLeverTime;  'time interrupt occurred
@@ -3914,12 +3908,9 @@ func IdleLoop%()
             
         case iState% = stateISIDelay% then
             CheckLever%("inTrialInit%",1);
-            if recAMSPPassiveTask% = 1 then
-                inTrialInit% := 1;
-            endif;
             
             docase
-            case recAMSPPassiveTask% = 0 and inTrialInit% <> 1 then
+            case inTrialInit% <> 1 then
                 RecLogStatus("WaitISI", "False Positive! Lever is up");
                 numFPs% += 1;  'increment FP counter
                 recPreciseTrialTime := recLeverTime;  'time false positive occurred
@@ -4547,7 +4538,7 @@ func IdleLoop%()
                 'Done with early responses, now in response window 
                 
                 'PASSIVE AMDis/SpaceDis HI, wait for response window to close and call it a hit
-            case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then
+            case tNow - tStateStart > recResponseWindow and recActive% = 0 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then
                 RecLogStatus("InResponseWindow", "Passive task - HIT HI"); 
                 StimComplete%(1, 1);
                 SafeSampleKey("S");  'Turn off LED
@@ -4555,7 +4546,7 @@ func IdleLoop%()
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
                 'PASSIVE AMDis/SpaceDis LO, wait for response window to close and call it a hit
-            case tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) 
+            case tNow - tStateStart > recResponseWindow and recActive% = 0 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) 
                 RecLogStatus("InResponseWindow", "Passive task - HIT Lo");
                 StimComplete%(3, 1);
                 SafeSampleKey("S");  'Turn off LED
@@ -4661,7 +4652,7 @@ func IdleLoop%()
                 endif;
                 
                 'the original code for SAME/DIFF:
-            case (tNow - tStateStart > recResponseWindow and recAMSPPassiveTask% = 1) or (inResponse1% = 1 and isTerminalS1% = 0) then  'forced choice OR go/no-go
+            case (tNow - tStateStart > recResponseWindow and recActive% = 0) or (inResponse1% = 1 and isTerminalS1% = 0) then  'forced choice OR go/no-go
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
                 SafeSampleKey("S");  'Turn off LED
@@ -5842,7 +5833,6 @@ func GetTimeOfLast1401Event(CheckTick%)
     
     firstCheckTime :=  View(recDataWindowView%).MaxTime();
     
-    'if recAMSPPassiveTask% = 0 then  'It's not clear why this excludes the Passive task
     while seqtime = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts 
         if View(recDataWindowView%).MaxTime() > firstCheckTime + 10 then
             'if we waited 10 seconds for the stimulus to start, something is very wrong!
@@ -6059,7 +6049,7 @@ proc WriteExpParamsSampleText()
         yield(0.01); 
         
         s$ := Print$("ParamAMD2 MinS1=%d,VarS1=%d,pCatch=%.2f,dBLevel=%.2f,RepeatsPerStim=%d,TrialInitReward=%d,TrialHoldReward=%d,Passive=%d",
-        recAMDiscMinS1%,recAMDiscVarS1%,recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recAMDiscTrialInitReward%, recAMDiscTrialHoldReward%, recAMSPPassiveTask%); 
+        recAMDiscMinS1%,recAMDiscVarS1%,recAMDiscPropCatch,recAMDiscdBLevel,recAMDiscRepeatsPerStim%, recAMDiscTrialInitReward%, recAMDiscTrialHoldReward%, 1-recActive%); 
         SampleText(s$);
         yield(0.01);    
         
@@ -6077,7 +6067,7 @@ proc WriteExpParamsSampleText()
         yield(0.01); 
         
         s$ := Print$("ParamSpD2 MinS1=%d,VarS1=%d,pCatch=%.2f,dBLevel=%.2f,RepeatsPerStim=%d,TrialInitReward=%d,TrialHoldReward=%d,Passive=%d",
-        recSpaceDisMinS1%,recSpaceDisVarS1%,recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recSpaceDisTrialInitReward%, recSpaceDisTrialHoldReward%, recAMSPPassiveTask%); 
+        recSpaceDisMinS1%,recSpaceDisVarS1%,recSpaceDisPropCatch,recSpaceDisdBLevel,recSpaceDisRepeatsPerStim%, recSpaceDisTrialInitReward%, recSpaceDisTrialHoldReward%, 1-recActive%); 
         SampleText(s$);
         yield(0.01); 
         
