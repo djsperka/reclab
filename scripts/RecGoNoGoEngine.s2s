@@ -4709,7 +4709,7 @@ func IdleLoop%()
                 case isTerminalS1% = 0 then
                     ChangeThresh2(doDecPassiveFA%[]);
                 endcase;
-                if recDoNotShuffle% = 0 and recMissRepeats% = 0 then  'shuffle unresponded trial, but not if trials are specifically ordered or if we are doing miss repeats
+                if recShuffle% = 1 and recMissRepeats% = 0 then  'shuffle unresponded trial, but not if trials are specifically ordered or if we are doing miss repeats
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1;
                     'Send current trial to "middle" of remaining trials
@@ -4798,7 +4798,7 @@ func IdleLoop%()
                 'distinction is valid, so I'm keeping it in.  In that event (only vaguely planned) I think the best way will
                 'be to branch inside this logic state.
                 
-                if recDoNotShuffle% = 0 and recMissRepeats% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
+                if recShuffle% = 1 and recMissRepeats% = 0 then  'if we are specifically ordering the trials, do not send current trial to a random location!
                     'Decrement current trial index (which was incremented above in stateInitializeTrials)
                     recCurrentTrial% := recCurrentTrial% - 1;
                     'Send current trial to "middle" of remaining trials
@@ -4844,10 +4844,10 @@ func IdleLoop%()
                 recCurrentTrial% := recCurrentTrial% - 1;
                 
                 'docase
-                'case recDoNotShuffle% = 1 then
+                'case recShuffle% = 0 then
                 '    'Decrement current trial index (which was incremented above in stateInitializeTrials), if we aren't shuffling, just repeat this stimulus, we haven't heard the S2 yet
                 '    recCurrentTrial% := recCurrentTrial% - 1;
-                'case recDoNotShuffle% = 0 and recMissRepeats% = 0 then  'if we are specifically ordering the trials, or if we are repeating on error (!!) do not send current trial to a random location!
+                'case recShuffle% = 1 and recMissRepeats% = 0 then  'if we are specifically ordering the trials, or if we are repeating on error (!!) do not send current trial to a random location!
                 '    'Decrement current trial index (which was incremented above in stateInitializeTrials)
                 '    recCurrentTrial% := recCurrentTrial% - 1;
                 '    'Send current trial to "middle" of remaining trials
@@ -5881,8 +5881,9 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
+    'Can potentially update "DoNotShuffle" to "Shuffle" one day
     s$ := Print$("Param1 MonkeyName=%s,FileSuffix=%s,NTrodes=%d,NBAKs=%d,SpkrArray1=%d,SpkrArray2=%d,DoNotShuffle=%d,TurnOffReward=%d",
-    recMonkPrefix$,blockTag$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,recDoNotShuffle%,recTurnOffReward%);    
+    recMonkPrefix$,blockTag$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,1-recShuffle%,recTurnOffReward%);    
     SampleText(s$);
     yield(0.01);
     

@@ -81,7 +81,7 @@ var recFRADeleteExpGenSigNoiseButton%:=29;
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
 var recSpeakerArrayIndex%;          'Allows selection of a speaker array via dialog list
 var recSpeakerArrayIndex2%;         'Allows selection of another speaker array via dialog list (to assign which PA4 if there are two)    
-var recDoNotShuffle%;               'Allows non-shuffle of trial order
+var recShuffle%;                    'Allows shuffle of trial order
 
 'Search Dialog variables
 var recSearchStimType%;             'Integer index to experiment selection list
@@ -654,7 +654,7 @@ while recReadyToQuit% = 0 do
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
         view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
-        view(recLog%).print("RecRoom: Are Stimuli Shuffled? = %d\n",1-recDoNotShuffle%);
+        view(recLog%).print("RecRoom: Are Stimuli Shuffled? = %d\n",recShuffle%);
         view(recLog%).print("RecRoom: Is Reward On? = %d\n",1-recTurnOffReward%);
         
         if recExpToRun% <> recLastExpRun% then
@@ -1868,7 +1868,7 @@ proc RecExpSelectDialogSaveParams()
 	var key$;
     key$:="Reclab\\ExpSelectDialog";
     
-    SetIntRegistryValue(key$, "DoNotShuffle", recDoNotShuffle%); 
+    SetIntRegistryValue(key$, "Shuffle", recShuffle%); 
     SetIntRegistryValue(key$, "TurnOffReward", recTurnOffReward%);
     SetIntRegistryValue(key$, "NBAKs", recNBAKs%);
     
@@ -1886,7 +1886,7 @@ proc RecExpSelectDialogGetParams()
 	var key$;
     key$:="Reclab\\ExpSelectDialog";
     
-    recDoNotShuffle% := GetIntRegistryValue%(key$, "DoNotShuffle", recDoNotShuffle%); 
+    recShuffle% := GetIntRegistryValue%(key$, "Shuffle", recShuffle%); 
     recTurnOffReward% := GetIntRegistryValue%(key$, "TurnOffReward", recTurnOffReward%); 
     recNBAKs% := GetIntRegistryValue%(key$, "NBAKs", recNBAKs%);    
     
@@ -1962,13 +1962,13 @@ func RecExpSelectDialog%()
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 7);
     DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 7);
     
-    DlgCheck(7,"Do Not Shuffle Stimuli",2,14);
+    DlgCheck(7,"Shuffle Stimuli",2,14);
     DlgCheck(8,"Turn Off Reward",2,15);
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recDoNotShuffle%,recTurnOffReward%);  'no items
+    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,blockTag$,recShuffle%,recTurnOffReward%);  'no items
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -2992,7 +2992,7 @@ func GenTrialsJoyTrain%()
 ' technically this program will never get to make a sound so it shouldn't matter right?
     var status% := 1;
     
-    if recDoNotShuffle% = 0 then
+    if recShuffle% = 1 then
         ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep
     endif;
     return status%;  'right now, it "can't" fail
@@ -7938,11 +7938,11 @@ func GenTrialsSearch%()
         endcase;        
     next; 
     if recSearchStimType% < 4 then 'We refuse to shuffle tone sweeps and speaker sweeps (as of 1/8/20, this is the ONLY situation where we ignore the shuffle variable)
-        if recDoNotShuffle% = 0 then
+        if recShuffle% = 1 then
             ShuffleList%(recTrialOrder%[0:recNTrials%]);  'create a randpermed version of recTrialOrder (only valid indices), but not for tone sweep or speaker sweep
         endif;
     else
-        recDoNotShuffle% := 1;  'if we are refusing to shuffle, at least let's keep that knowledge for later in the code
+        recShuffle% := 0;  'if we are refusing to shuffle, at least let's keep that knowledge for later in the code
     endif;
     return status%;  'right now, it "can't" fail
 end
@@ -8194,7 +8194,7 @@ next;
         S1Shuffle%[i%] := i%;
     next;
     'And shuffle it
-    if recDoNotShuffle% = 0 then
+    if recShuffle% = 1 then
         ShuffleList%(S1Shuffle%[0:count%]);  'create a randpermed version (only valid indices)
     endif;
     
@@ -8223,7 +8223,7 @@ next;
         endif;
     next;
     'And shuffle it (actually, I believe this is be unnecessary because the S1s ARE shuffled and the trial order is later shuffled)
-    if recDoNotShuffle% = 0 then
+    if recShuffle% = 1 then
         ShuffleList%(whichS2Speaker%[0:count%]);  'create a randpermed version (only valid indices)
     endif;
     
@@ -8254,7 +8254,7 @@ next;
         recNUniqueStims%[i%] := j%+1;  'j% is index of final stimulus, so number of stims (all unique) is +1
     next;
     'Randomize the list order
-    if recDoNotShuffle% = 0 then
+    if recShuffle% = 1 then
         ShuffleList%(recTrialOrder%[0:nS2%]);
     endif;
     
@@ -8313,7 +8313,7 @@ func GenTrialsFRALoad%()
 
     for i% := 0 to recFRARepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
-        if recDoNotShuffle% = 0 then
+        if recShuffle% = 1 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
         endif;
     
@@ -8353,7 +8353,7 @@ func GenTrialsFRALoad%()
 '        endcase
 '    next; 
 '    
-'    if recDoNotShuffle% = 0 then
+'    if recShuffle% = 1 then
 '        ShuffleList%(rewardArray%[]); 'shuffle it
 '    endif;
 '
@@ -8420,7 +8420,7 @@ func GenTrialsFRAGen%()
 
     for i% := 0 to recFRARepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
-        if recDoNotShuffle% = 0 then
+        if recShuffle% = 1 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
         endif;
     
@@ -8587,7 +8587,7 @@ func GenTrialsDis%(recExpToRun%)
     
     'Randomize the list order
     'printlog("recTrialOrder% before shuffling %d\n",recTrialOrder%);'[0][k%]);
-    if recDoNotShuffle% = 0 then
+    if recShuffle% = 1 then
         ShuffleList%(recTrialOrder%[0:nS2%]);
     endif;
     
@@ -8661,7 +8661,7 @@ func GenTrialsStereoDis%()
 
     for i% := 0 to recStereoDisRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
-        if recDoNotShuffle% = 0 then
+        if recShuffle% = 1 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
         endif;
     
@@ -8739,7 +8739,7 @@ func GenTrialsStereoDisGNG%()
 
     for i% := 0 to recStereoDisRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
-        if recDoNotShuffle% = 0 then
+        if recShuffle% = 1 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
         endif;
     
@@ -8789,13 +8789,13 @@ func GenTrialsLongTone%()
     '    next
     'next
     '
-    'if recDoNotShuffle% = 0 then
+    'if recShuffle% = 1 then
     '    'ShuffleList(recLongToneDurationList[0:recNTrials%]);  'create a randpermed version of recLongToneDurationList (only valid indices)
     '    ShuffleList%(recLongToneDurationIndex%[0:recNTrials%]);  'create a randpermed version of recLongToneDurationIndex% (only valid indices)   
     'endif;
     
     'Use Usrey randomization to get blocked random - note that the values going into recLongToneDurationList[] are not correct and will be overwritten - just need a variable the right size here
-    GetRepeatedParameterProgression%(nLongTones%, recLongToneNRepeats%, recLongToneDurationList[], recLongToneDurationIndex%[], 1, nLongTones%, 0, 1-recDoNotShuffle%);
+    GetRepeatedParameterProgression%(nLongTones%, recLongToneNRepeats%, recLongToneDurationList[], recLongToneDurationIndex%[], 1, nLongTones%, 0, recShuffle%);
     
     
     for i% := 0 to recNTrials%-1 do
