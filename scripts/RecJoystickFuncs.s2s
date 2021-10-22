@@ -871,8 +871,8 @@ proc AssignJoystickVariables()
     'XPos% = 0,1,2 = center,right,left
     'YPos% = 0,1,2 = center,up,down
     'recTrialInitPosition% = 0,1,2,3,4,5,6 = center,down,up,right,left,x-axis,y-axis
-    'recTrialResponsePosition1%, same as above, currently FORCED to 0 = center
-    'recTrialResponsePosition2%, same as above but includes 7 = none, currently forced to 7 = none
+    'recTrialResponsePosition1%, same as above, forced to 0 = center for Go/No-Go
+    'recTrialResponsePosition2%, same as above but includes 7 = none, forced to 7 = none for Go/No-Go
     
     'Thus, the joystick is broken into nine regions, but only five of them are legal start points.
     'An easy way to indicate which position the joystick is in is to multiply the Y value by 10 and add
@@ -904,41 +904,47 @@ proc AssignJoystickVariables()
     'printlog("joystick position is %d where 10=up 20=down 2=left 1=right\n",joypos%);
     
     if recIsGoNoGo% = 1 then 'this is the go/no-go case
-        'For this, we need to set recLeverState%, 0 if in the origin, 1 if in recTrialInitPosition,
-        '2 if in any other position, 2 will act as FA or miss depending on context
-        'changed from setting recLeverState to directly settinn inOrigin and inTrialInit.. not sure if recLeverState needs to be set for any reason or if this is vestigial ~jao 6/18/14
+        'changed from setting recLeverState to directly setting inOrigin and inTrialInit..
         docase
         'joystick in center
         case joyPos% = 0 then
-            inOrigin% := 1; 'recLeverState% := 0;
-            inTrialInit% := 0; inResponse1% := 1; 'is this kosher??
+            inOrigin% := 1;
+            inTrialInit% := 0; 
+            inResponse1% := 1;
             recLeverTime := max(XTime,YTime);  'we don't know where it came from
         'joystick in right    
         case joyPos% = 1 and (recTrialInitPosition% = 3 or recTrialInitPosition% = 5) then
-            inTrialInit% := 1; 'recLeverState% := 1;
-            inResponse1% := 0; inOrigin% := 0;
+            inTrialInit% := 1;
+            inResponse1% := 0; 
+            inOrigin% := 0;
             recLeverTime := XTime;
         'joystick in left    
         case joyPos% = 2 and (recTrialInitPosition% = 4 or recTrialInitPosition% = 5) then
-            inTrialInit% := 1; 'recLeverState% := 1; 
-            inResponse1% := 0; inOrigin% := 0;
+            inTrialInit% := 1; 
+            inResponse1% := 0; 
+            inOrigin% := 0;
             recLeverTime := XTime;            
         'joystick in down    
         case joyPos% = 20 and (recTrialInitPosition% = 1 or recTrialInitPosition% = 6) then
-            inTrialInit% := 1; 'recLeverState% := 1;
-            inResponse1% := 0; inOrigin% := 0;
+            inTrialInit% := 1; 
+            inResponse1% := 0; 
+            inOrigin% := 0;
             recLeverTime := YTime;
         'joystick in up    
         case joyPos% = 10 and (recTrialInitPosition% = 2 or recTrialInitPosition% = 6) then
-            inTrialInit% := 1; 'recLeverState% := 1; 
-            inResponse1% := 0; inOrigin% := 0;
+            inTrialInit% := 1;  
+            inResponse1% := 0; 
+            inOrigin% := 0;
             recLeverTime := YTime;            
         'joystick in one of the corner positions, or in an inappropriate position for the specified response    
         else
-            inTrialInit% := 0; 'recLeverState% := -1;
-            inResponse1% := 0; inOrigin% := 0;
+            inTrialInit% := 0;
+            inResponse1% := 0; 
+            inOrigin% := 0;
             recLeverTime := max(XTime,YTime);  'we don't know where it is, this is just an indication of when the joystick went to "the bad place"
         endcase
+        
+        inResponse2% := 0;  'This position is not used for Go/No-Go, we should assign zero just in case
         
     else 'this is a forced choice scenario
         

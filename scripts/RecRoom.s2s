@@ -4082,7 +4082,7 @@ func RecExpTimingRewardDialog%()
     DlgReal(15,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
     DlgReal(16,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
     DlgList(21,19,rewardType$[],4,c1%-7,16); DlgText("Reward Type",c1txt%,16);
-    DlgReal(22,12,0,500,c2%,16); DlgText("Start Water/Juice Volume (mL)", c2txt%,16);
+    DlgReal(22,12,0,1500,c2%,16); DlgText("Start Water/Juice Volume (mL)", c2txt%,16);
     
 'Retained code for using stimulation reward that will probably never ever come back    
 '    DlgList(21,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);    
