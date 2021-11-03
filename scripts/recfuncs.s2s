@@ -67,6 +67,8 @@ var recTDTParity% := 0;
 var recTDTStopBit% := 1;
 recTDTCOMPort% := GetIntRegistryValue%("Reclab", "UseComPort", recTDTCOMPort%);
 
+var recLog%;                        'handle for recPrintLog, rec funcs needs this to write to the log file, so introduce it here
+
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -536,6 +538,17 @@ func xbShortForm%(xln%, cmd%)
     
 end
 
+
+
+
+'11/3/2021 - We are experiencing intermittent TDT errors (perhaps 1 per 100K TDT requests),
+'adding logging to see if we can identify the problem.  Since there are three tries, it's 
+'not clear whether there are three independent errors stacking up, or whether once there is
+'a single error, there is no recovery.  Given a failure to reset the checksum variable, the
+'latter may be the case.  If the former, errors should be cropping up maybe one in 50 trials.
+'Will aggressively log for a few hundred trials to check for the former.  If no errors found,
+'will assume the latter and passively log errors only.  If the problem was first pass error,
+'second pass checksum error, third pass checksum error, we may never hear of this again.
 func xbStandForm%(xln%, c%[], n%)
 	var i%;
 	var s% := 0;
@@ -562,19 +575,38 @@ func xbStandForm%(xln%, c%[], n%)
 		v% := ((n%+1) bor 0x40);
 		status% := SerialWrite(recTDTCOMPort%, (n%+1 bor 0x40));
 		'PrintLog("write n status=" + str$(status%) + "\n");
+        if status% <> 1 then 'this is a failure
+            view(recLog%).print("TDT COMMS ERROR: SerialWrite #1 returned  <>1 value: " + Str$(status%) + "\n");
+        endif
 
 		' send command bytes and checksum
 		for i% := 0 to (n%-1) do
 			s% += c%[i%];				' checksum
 			status% := SerialWrite(recTDTCOMPort%, c%[i%]);
 			'PrintLog("write (" + str$(i%) + ") status=" + str$(status%) + "\n");
+            if status% <> 1 then 'this is a failure
+                view(recLog%).print("TDT COMMS ERROR: SerialWrite #2." + Str$(i%) + " returned  <>1 value: " + Str$(status%) + "\n");
+            endif
 		next
 		status% := SerialWrite(recTDTCOMPort%, s%);
 		'PrintLog("write checksum status=" + str$(status%) + "\n");
+        if status% <> 1 then 'this is a failure
+            view(recLog%).print("TDT COMMS ERROR: SerialWrite #3 returned  <>1 value: " + Str$(status%) + "\n");
+        endif
+        
+        s% := 0; 'reset checksum - if there is any error, trying again won't help if the checksum is off
 
 		' Wait for SLAVE_ACK
 		status% := SerialRead(recTDTCOMPort%, v%);
 		'PrintLog("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
+        view(recLog%).print("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
+        docase
+        case status% < 0 then 'this is a failure
+            view(recLog%).print("TDT COMMS ERROR: SerialRead returned value: " + Str$(status%) + "\n");
+            view(recLog%).print("Error translates to: " + Error$(status%) + "\n");
+        case v% <> xbcmdSLAVEACK% then 'this is a non-failure, but we did not receive the expected acknowledgment
+            view(recLog%).print("TDT COMMS ERROR: SerialRead received acknowledgment " + Str$(v%) + ", expected " + Str$(xbcmdSLAVEACK%) + "\n");
+        endcase
 
 	until trys% = xbMAXTRYS% or v% = xbcmdSLAVEACK%;
 

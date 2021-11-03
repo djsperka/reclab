@@ -342,7 +342,7 @@ var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently 
 var recMonkPrefix$;                 'String to hold monkey prefix, used in naming files - bit of a misnomer, will be used as complete file name    
 var blockTag$;                      'filename suffix used to denote new experiments or blocks (a,b,c,d,...) - added to MonkPrefix and Date to create filename
 const recPrintLog$ := "recPrintLog"; 'an autosave printlog for BSOD debugging and whatever else might be useful. date & time printed on each call
-var recLog%;                        'handle for recPrintLog
+
     
 'Determine which drive has the CED stuff on it - it's different on different machines
 var recDrivePath$;
@@ -2017,6 +2017,10 @@ func RecExpSelectDialog%()
         'So now we have assigned recNSpeakers% to work as it always has, and two PA4IDs to be used when calling RecAttenByID%()
         
         RecExpSelectDialogSaveParams();
+        
+        'Note name of file in external log file
+        view(recLog%).print("Current file is " + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr\n");
+        
         
         status% := 1;
     else
