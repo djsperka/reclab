@@ -599,7 +599,7 @@ func xbStandForm%(xln%, c%[], n%)
 		' Wait for SLAVE_ACK
 		status% := SerialRead(recTDTCOMPort%, v%);
 		'PrintLog("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
-        view(recLog%).print("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
+        'view(recLog%).print("read status=" + str$(status%) + " v=" + str$(v%) + "\n");
         docase
         case status% < 0 then 'this is a failure
             view(recLog%).print("TDT COMMS ERROR: SerialRead returned value: " + Str$(status%) + "\n");
