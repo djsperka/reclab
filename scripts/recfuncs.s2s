@@ -606,6 +606,8 @@ func xbStandForm%(xln%, c%[], n%)
             view(recLog%).print("Error translates to: " + Error$(status%) + "\n");
         case v% <> xbcmdSLAVEACK% then 'this is a non-failure, but we did not receive the expected acknowledgment
             view(recLog%).print("TDT COMMS ERROR: SerialRead received acknowledgment " + Str$(v%) + ", expected " + Str$(xbcmdSLAVEACK%) + "\n");
+            xbFlush();  'Try flushing???  Can't hurt, as this definitely crashes once we get here anyway
+            view(recLog%).print("Attempting XBFLUSH!!!\n");
         endcase
 
 	until trys% = xbMAXTRYS% or v% = xbcmdSLAVEACK%;

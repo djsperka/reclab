@@ -653,15 +653,15 @@ while recReadyToQuit% = 0 do
     
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
-        view(recLog%).print("RecRoom: RecExpSelectDialog%() = 1\n");    
+        view(recLog%).print("RecRoom: RecExpSelectDialog() = 1\n");    
         view(recLog%).print("RecRoom: Are Stimuli Shuffled? = %d\n",recShuffle%);
         view(recLog%).print("RecRoom: Is Reward On? = %d\n",1-recTurnOffReward%);
         
         if recExpToRun% <> recLastExpRun% then
             RecLEDReminderDialog%(); 'call LED color switch reminder dialog before proceeding
-            view(recLog%).print("RecRoom: RecLEDReminderDialog%()\n");    
+            view(recLog%).print("RecRoom: RecLEDReminderDialog()\n");    
         else 
-            view(recLog%).print("RecRoom: Repeat Expt! RecLEDReminderDialog% skipped\n");    
+            view(recLog%).print("RecRoom: Repeat Expt! RecLEDReminderDialog skipped\n");    
         endif; 
 
         calibOK% := -1;  'logic is different for calibOK% because EvalMatlabStatement returns 0/-1 (success/failure)
@@ -2196,7 +2196,7 @@ func RecExpSearchDialog%()
         if recSearchMinS1% + recSearchVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run Search");
-            DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
+            'DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog - this is now # BAKs, so ??? -jj 11/4/21
             recExpToRun% := recExpSearchButton%;
             recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
             recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
@@ -2317,65 +2317,84 @@ func RecExpSearchDialogChanged%(item%)
     docase
     case DlgValue(1) = 0 then  'Tones
         DlgEnable(1,2);  'Enable frequency
-        DlgEnable(0,3);  'Disable others
+        DlgEnable(0,3);  'Disable bandpass noise
         DlgEnable(0,4);
-        DlgEnable(0,5); 
+        DlgEnable(0,5);  'Disable tone sweep
         DlgEnable(0,6); 
         DlgEnable(0,7);
-        DlgEnable(0,8); 
+        DlgEnable(0,8);
+        DlgEnable(0,17); 'Disable speaker sweep
         DlgEnable(1,10); 'Enable S2 speaker
         DlgEnable(1,13); 'Enable prop. catch trials
         DlgEnable(1,14); 'Enable dB level
         DlgEnable(1,15); 'Enable lever task
     case DlgValue(1) = 1 then  'Broadband noise
-        DlgEnable(0,2);  'Disable all
-        DlgEnable(0,3);  
+        DlgEnable(0,2);  'Disable frequency
+        DlgEnable(0,3);  'Disable bandpass noise
         DlgEnable(0,4);
-        DlgEnable(0,5); 
+        DlgEnable(0,5);  'Disable tone sweep
         DlgEnable(0,6); 
         DlgEnable(0,7);
         DlgEnable(0,8);
+        DlgEnable(0,17); 'Disable speaker sweep
         DlgEnable(1,10); 'Enable S2 speaker
         DlgEnable(1,13); 'Enable prop. catch trials
         DlgEnable(1,14); 'Enable dB level
         DlgEnable(1,15); 'Enable lever task
     case DlgValue(1) = 2 then  'Band pass noise
-        DlgEnable(0,2);  
-        DlgEnable(1,3);  'Enable
-        DlgEnable(1,4);  'BP limits
-        DlgEnable(0,5); 
+        DlgEnable(0,2);  'Disable frequency
+        DlgEnable(1,3);  'Enable bandpass noise
+        DlgEnable(1,4);
+        DlgEnable(0,5);  'Disable tone sweep
         DlgEnable(0,6); 
         DlgEnable(0,7);
         DlgEnable(0,8);
+        DlgEnable(0,17); 'Disable speaker sweep
         DlgEnable(1,10); 'Enable S2 speaker
         DlgEnable(1,13); 'Enable prop. catch trials
         DlgEnable(1,14); 'Enable dB level
         DlgEnable(1,15); 'Enable lever task
     case DlgValue(1) = 3 then  'Clicks
-        DlgEnable(0,2);  'Disable all
-        DlgEnable(0,3);   
-        DlgEnable(0,4);   
-        DlgEnable(0,5); 
+        DlgEnable(0,2);  'Disable frequency
+        DlgEnable(0,3);  'Disable bandpass noise
+        DlgEnable(0,4);
+        DlgEnable(0,5);  'Disable tone sweep
         DlgEnable(0,6); 
         DlgEnable(0,7);
         DlgEnable(0,8);
+        DlgEnable(0,17); 'Disable speaker sweep
         DlgEnable(1,10); 'Enable S2 speaker
         DlgEnable(1,13); 'Enable prop. catch trials
         DlgEnable(0,14); 'Disable dB level
         DlgEnable(1,15); 'Enable lever task        
     case DlgValue(1) = 4 then  'Tone Sweep
-        DlgEnable(0,2);  
-        DlgEnable(0,3);   
-        DlgEnable(0,4);   
-        DlgEnable(1,5);  'Enable Tone Sweep stuff
+        DlgEnable(0,2);  'Disable frequency
+        DlgEnable(0,3);  'Disable bandpass noise
+        DlgEnable(0,4);
+        DlgEnable(1,5);  'Enable tone sweep
         DlgEnable(1,6); 
         DlgEnable(1,7);
         DlgEnable(1,8);
+        DlgEnable(0,17); 'Disable speaker sweep
         DlgEnable(0,10); 'Disable S2 speaker
         DlgEnable(0,13); 'Disable prop. catch trials
         DlgEnable(1,14); 'Enable dB level
         DlgEnable(0,15); 'Disable lever task
         checkLeverTaskVariable% := 0;  'don't check lever task variable
+    case DlgValue(1) = 5 then 'Speaker Sweep
+        DlgEnable(0,2);  'Disable frequency
+        DlgEnable(0,3);  'Disable bandpass noise
+        DlgEnable(0,4);
+        DlgEnable(0,5);  'Disable tone sweep
+        DlgEnable(0,6); 
+        DlgEnable(0,7);
+        DlgEnable(0,8);
+        DlgEnable(1,17); 'Enable speaker sweep
+        DlgEnable(0,10); 'Disable S2 speaker
+        DlgEnable(0,13); 'Disable prop. catch trials
+        DlgEnable(1,14); 'Enable dB level
+        DlgEnable(0,15); 'Disable lever task 
+        checkLeverTaskVariable% := 0;  'don't check lever task variable        
     endcase;
     
     if checkLeverTaskVariable% = 1 then
