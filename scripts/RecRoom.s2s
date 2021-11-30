@@ -7860,7 +7860,6 @@ func GenTrialsSearch%()
     var nSpkr%; '# speakers in current array (needed or is this already a global?)
     var nCycS%;  'number of cycles per "trial" for speaker sweep 
     var currSpkr%;  'current speaker (PWA), for speaker sweep
-    var speakerSweepList%[recNSpeakers%*recSearchToneSweepRepeats%];
     
     nR% := recSearchToneSweepRepeats%;  'shorthand
     nT% := recSearchToneSweepNSteps%;  'shorthand again
@@ -7910,18 +7909,9 @@ func GenTrialsSearch%()
             recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
             
         case recSearchStimType% = 5 then 'speaker sweep with broadband noise
-            'this is the do all speakers in one trial method (as in tone sweep)
-            '        for j% := 1 to nSpkr% do  'for each Speaker
-            '            ArrConst(speakerSweepList%[j%-1][i%],j%);  'fill Speaker list with speaker #
-            '            PrintLog("recSpeakerList is now: %d \n", recSpeakerList%);
-            ''            arrconst(recPWAList%[j%*nR%:nR%][i%],j%);  'fill PWA list with nR% copies of noise (hijack tone repeats variable for now)
-            ''            'PrintLog("recPWAList is now: %d \n", recPWAList%);
-            '        next;
             recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus        
             recNUniqueStims%[i%] := 1; 'only 1 b/c all noise        
-            'this is the one speaker per trial method:
             ArrConst(recSpeakerList%[0:nRS%][i%], currSpkr%);
-            '       PrintLog("recSpeakerList%[0:nR%][i%] = %d \n", recSpeakerList%[0:nR%][i%]);
             currSpkr% +=1; 'increment speaker number for next trial   
             if currSpkr% > nSpkr% then  'reset to 1 if last speaker in array
                 currSpkr% := 1;
@@ -7929,12 +7919,10 @@ func GenTrialsSearch%()
             
             arrconst(recPWAList%[0:nRS%][i%],0);  'Fill recPWAList% with zeros = the PWAs we will play
             arrconst(recDeltadBList[0:nRS%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
-            '        arrconst(recDeltadBList[0:nSpkr%*nR%][i%],recDeltadBLevel);  'do not set any delta dB, may change if Gregg wants roving
             recTrialTerminalIndex%[i%] := nRS%-1;  'it's an index, subtract 1
-            'recTrialTerminalIndex%[i%] := (nSpkr%*nR%)-1;  'it's an index, subtract 1
             recTrialTerminalIsS2%[i%] := 0;  'last stimulus is not an S2
             
-        case (recActive% = 0 or recPropCatch >= Rand()) and recSearchStimType% < 5 then  'if passive or catch, do not put in an S2
+        case recActive% = 0 or recPropCatch >= Rand() then 'other search types, if passive or catch, do not put in an S2
             recStimList%[0][i%] := 0;  'Set first value in recStimList% to zero, there is only one stimulus
             recSpeakerList%[0][i%] := recS1Speaker%;  'Set speaker for the only stimulus
             recNUniqueStims%[i%] := 1;  'only one unique stimulus
