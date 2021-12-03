@@ -549,6 +549,25 @@ end
 'Will aggressively log for a few hundred trials to check for the former.  If no errors found,
 'will assume the latter and passively log errors only.  If the problem was first pass error,
 'second pass checksum error, third pass checksum error, we may never hear of this again.
+'12/2/2021 - Problem seemingly solved, but still strange to me.  Logging errors only turned
+'up two instances of an error (on the big booth) in a month.  The first error was:
+'TDT COMMS ERROR: SerialRead received acknowledgment 192, expected 195
+'TDT COMMS ERROR: SerialRead received acknowledgment 192, expected 195
+'TDT COMMS ERROR: SerialRead received acknowledgment 192, expected 195
+'The same error repeated three times, it wasn't the checksum, as resetting that did not help.
+'I threw in a hail mary XBFLUSH following any error on the acknowledgment, and we have had
+'only a single error since:
+'TDT COMMS ERROR: SerialRead received acknowledgment 192, expected 195
+'Attempting XBFLUSH!!!
+'TDT COMMS ERROR: SerialRead received acknowledgment 198, expected 195
+'Attempting XBFLUSH!!!
+'And then we sailed through, presumably getting acknowledgment 195 on the third try.  So I 
+'think the acknowledgment value is the length of the return.  For some reason, three bytes
+'are getting hung up, and if we try again, they get hung up again.  But if we flush, the
+'next comms attempt sends the three bytes plus the expected 195, so it's wrong again, but
+'the third time the return is kosher.  Good thing we allow three repeats!  Fortunately, 
+'since this seems to be about a 1-in-100K thing, and clearly the error does not repeat
+'deterministically based on the sent command, we may never see this again.  Knock wood.
 func xbStandForm%(xln%, c%[], n%)
 	var i%;
 	var s% := 0;

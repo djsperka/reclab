@@ -242,6 +242,7 @@ func ReadJoystick%()
     'In order to avoid overflowing JoystickAfter%[], just ignore any previous joystick events
     if startingNewExpt% = 1 then  'If we are starting a new experiment
         LastEventTime := max(Now-.005, 0);  'Override HoldLastCheckTime, change to Now-.005 (floored at 0), events during Passive will be ignored
+        LastRunTime := LastEventTime;
         startingNewExpt% := 0;  'reset startingNewExpt%
         JoystickReadOnce% := 0;  'and initialize JoystickReadOnce
     endif;
@@ -260,29 +261,39 @@ func ReadJoystick%()
     'Determine initial joystick location the very first time ReadJoystick is run, per experiment
     if JoystickReadOnce% = 0 then
         JoystickReadOnce% := 1;  'only do this the very first time the joystick is read
-        tempx := ChanValue(configJoyXChannel%,0);  'Put the very first X axis value into tempx
-        tempy := ChanValue(configJoyYChannel%,0);  'Same for Y, tempy
+        'tempx := ChanValue(configJoyXChannel%,0);  'Put the very first X axis value into tempx
+        'tempy := ChanValue(configJoyYChannel%,0);  'Same for Y, tempy
+        tempx := ChanValue(configJoyXChannel%,LastRunTime);  'Put the very first X axis value valid for this experiment into tempx, LastRunTime will be 0 on a new data file, but not on a second/third/etc. experiment on a running data file
+        tempy := ChanValue(configJoyYChannel%,LastRunTime);  'Same for Y, tempy
         LastPos% := 0;
-        xstat% := 0;
-        ystat% := 0;
-        if tempx < -vRightThreshOuter then
+        XTime := LastRunTime;
+        YTime := LastRunTime;
+        docase
+        case tempx < -vRightThreshOuter then  'if right
             LastPos% := LastPos% + 2;
             xstat% := 2;
-        else
-            if tempx < vLeftThreshOuter then
-                LastPos% := LastPos% + 1;
-                xstat% := 1;
-            endif;
-        endif;
-        if tempy < -vUpThreshOuter then
+            XPos% := 1; 
+        case tempx < vLeftThreshOuter then 'if center
+            LastPos% := LastPos% + 1;
+            xstat% := 1;
+            XPos% := 0;  
+        else 'otherwise left
+            xstat% := 0;
+            XPos% := 2; 
+        endcase
+        docase
+        case tempy < -vUpThreshOuter then  'if up
             LastPos% := LastPos% + 20;
             ystat% := 20;
-        else
-            if tempy < vDownThreshOuter then
-                LastPos% := LastPos% + 10;
-                ystat% := 10;
-            endif;
-        endif;
+            YPos% := 1;  
+        case tempy < vDownThreshOuter then 'if center
+            LastPos% := LastPos% + 10;
+            ystat% := 10;
+            YPos% := 0; 
+        else 'otherwise down
+            ystat% := 0;
+            YPos% := 2;  
+        endcase
         printlog("Initial values: x = %f, y = %f, upthreshinner = %f, downthreshinner = %f, leftthreshinner = %f, rightthreshinner = %f\n",tempx,tempy,UpThreshInner,DownThreshInner,LeftThreshInner,RightThreshInner);
         printlog("    upthreshouter = %f, downthreshouter = %f, leftthreshouter = %f, rightthreshouter = %f\n",UpThreshOuter,DownThreshOuter,LeftThreshOuter,RightThreshOuter);
         printlog("Initial joystick position was %d where 20-10-0 is up-center-down and 2-1-0 is right-center-left\n",LastPos%);

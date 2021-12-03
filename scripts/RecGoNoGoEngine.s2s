@@ -595,7 +595,7 @@ proc InitializeWindows()
         recDataWindowView% := FileNew(0,4);
         printlog("Data window pointer is %d\n",recDataWindowView%);  'log the data window pointer
         if recDataWindowView% < 0 then
-            printlog("FileNew appear to have broken with error: %s\n",Error$(recDataWindowView%));
+            printlog("FileNew appears to have broken with error: %s\n",Error$(recDataWindowView%));
         endif;
         Window(0, 0, 100, 50); 
         View(recDataWindowView%).WindowVisible(1);
