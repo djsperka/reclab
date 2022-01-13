@@ -33,52 +33,62 @@
 ;0013            MARK   0               ;Use digital marker as in long tone
 ;0014            MOVI   V2,0            ;Allow sequencer access
 ;0015            JUMP   NEXT
-0005 PLAYAA: 'a MOVI   V2,1            ;Do not allow sequencer access
-0006            WAVEGO A,W             ;Play wave area A
-0007 AAWAIT:    WAVEBR AAWAIT,T        ;Wait until area A begins playing
+0005 PLAYKK: 'k MOVI   V2,1            ;Do not allow sequencer access
+0006            WAVEGO K,W             ;Play wave area K
+0007 KKWAIT:    WAVEBR KKWAIT,T        ;Wait until area K begins playing
 0008            MARK   1               ;Use digital marker as in long tone
 0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
-0010 AXWAIT:    WAVEBR AXWAIT,S        ;Wait until area A STOPS playing
+0010 KXWAIT:    WAVEBR KXWAIT,S        ;Wait until area K STOPS playing
 0011            DAC    0,0             ;Set DAC to 0
 0012            MARK   0               ;Use digital marker as in long tone
 0013            MOVI   V2,0            ;Allow sequencer access
 0014            JUMP   NEXT
-0015 PLAYBB: 'b MOVI   V2,1            ;Do not allow sequencer access
-0016            WAVEGO B,W             ;Play wave area B
-0017 BBWAIT:    WAVEBR BBWAIT,T        ;Wait until area B begins playing
+0005 PLAYLL: 'l MOVI   V2,1            ;Do not allow sequencer access
+0006            WAVEGO L,W             ;Play wave area L
+0007 LLWAIT:    WAVEBR LLWAIT,T        ;Wait until area L begins playing
+0008            MARK   1               ;Use digital marker as in long tone
+0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
+0010 LXWAIT:    WAVEBR LXWAIT,S        ;Wait until area L STOPS playing
+0011            DAC    0,0             ;Set DAC to 0
+0012            MARK   0               ;Use digital marker as in long tone
+0013            MOVI   V2,0            ;Allow sequencer access
+0014            JUMP   NEXT
+0015 PLAYMM: 'm MOVI   V2,1            ;Do not allow sequencer access
+0016            WAVEGO M,W             ;Play wave area M
+0017 MMWAIT:    WAVEBR MMWAIT,T        ;Wait until area M begins playing
 0018            MARK   1               ;Use digital marker as in long tone
 0019            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
-0020 BXWAIT:    WAVEBR BXWAIT,S        ;Wait until area B STOPS playing
+0020 MXWAIT:    WAVEBR MXWAIT,S        ;Wait until area M STOPS playing
 0021            DAC    0,0             ;Set DAC to 0
 0022            MARK   0               ;Use digital marker as in long tone
 0023            MOVI   V2,0            ;Allow sequencer access
 0024            JUMP   NEXT
-0025 PLAYCC: 'c MOVI   V2,1            ;Do not allow sequencer access
-0026            WAVEGO C,W             ;Play wave area C
-0027 CCWAIT:    WAVEBR CCWAIT,T        ;Wait until area C begins playing
+0025 PLAYNN: 'n MOVI   V2,1            ;Do not allow sequencer access
+0026            WAVEGO N,W             ;Play wave area N
+0027 NNWAIT:    WAVEBR NNWAIT,T        ;Wait until area N begins playing
 0028            MARK   1               ;Use digital marker as in long tone
 0029            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
-0030 CXWAIT:    WAVEBR CXWAIT,S        ;Wait until area C STOPS playing
+0030 NXWAIT:    WAVEBR NXWAIT,S        ;Wait until area N STOPS playing
 0031            DAC    0,0             ;Set DAC to 0
 0032            MARK   0               ;Use digital marker as in long tone
 0033            MOVI   V2,0            ;Allow sequencer access
 0034            JUMP   NEXT
-0035 PLAYDD: 'd MOVI   V2,1            ;Do not allow sequencer access
-0036            WAVEGO D,W             ;Play wave area D
-0037 DDWAIT:    WAVEBR DDWAIT,T        ;Wait until area D begins playing
+0035 PLAYOO: 'o MOVI   V2,1            ;Do not allow sequencer access
+0036            WAVEGO O,W             ;Play wave area O
+0037 OOWAIT:    WAVEBR OOWAIT,T        ;Wait until area O begins playing
 0038            MARK   1               ;Use digital marker as in long tone
 0039            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
-0040 DXWAIT:    WAVEBR DXWAIT,S        ;Wait until area D STOPS playing
+0040 OXWAIT:    WAVEBR OXWAIT,S        ;Wait until area O STOPS playing
 0041            DAC    0,0             ;Set DAC to 0
 0042            MARK   0               ;Use digital marker as in long tone
 0043            MOVI   V2,0            ;Allow sequencer access
 0044            JUMP   NEXT
-0045 PLAYEE: 'e MOVI   V2,1            ;Do not allow sequencer access
-0046            WAVEGO E,W             ;Play wave area E
-0047 EEWAIT:    WAVEBR EEWAIT,T        ;Wait until area E begins playing
+0045 PLAYPP: 'p MOVI   V2,1            ;Do not allow sequencer access
+0046            WAVEGO P,W             ;Play wave area P
+0047 PPWAIT:    WAVEBR PPWAIT,T        ;Wait until area P begins playing
 0048            MARK   1               ;Use digital marker as in long tone
 0049            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
-0050 EXWAIT:    WAVEBR EXWAIT,S        ;Wait until area E STOPS playing
+0050 PXWAIT:    WAVEBR PXWAIT,S        ;Wait until area P STOPS playing
 0051            DAC    0,0             ;Set DAC to 0
 0052            MARK   0               ;Use digital marker as in long tone
 0053            MOVI   V2,0            ;Allow sequencer access

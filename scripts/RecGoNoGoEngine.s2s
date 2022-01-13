@@ -248,23 +248,41 @@ func RunGoNoGoEngine%()
     ' come before the call to InitializeWindows -- that's where FileNew() is called. See Spike2
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then 'don't try to initialize a PlayWaveArea if there's no 1401
-        docase
-        'case recExpToRun% = recExpFRAButton% and recUse2PWAs% = 1 then 
-        case recUse2PWAs% = 1 then
-            InitializeParallelPlayWaveAreas();
-        'case recExpToRun% = recExpStereoDisButton% then  'recUse2PWAs% is now set for StereoDis
-        '    InitializeMultipleParallelPlayWaveAreas();
-        'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
-            'Initialize a play wave area for the broadband noise condition
-        '    InitializePlayWaveAreaLongBB();
-        case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
-            'Initialize a play wave area for the bandpass/broadband noise condition
-            InitializePlayWaveAreasLongBP();
-        else
-            InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
-        endcase
+        
+        'For full-handoff version, we need to create all possible PWAs on first launch.
+        'Right now the PWAs that are possibly used are built in three functions:
+        InitializePlayWaveAreas();
+        InitializeParallelPlayWaveArea();
+        InitializePlayWaveAreasLongBP();
+        'Now we just have to hope that we have enough memory to create all of these (fingers crossed)
+        
+        
+        'Old version, only partial handoff allowed, only creates PWAs specific to the FIRST experiment run
+'        docase
+'        'case recExpToRun% = recExpFRAButton% and recUse2PWAs% = 1 then 
+'        case recUse2PWAs% = 1 then
+'            InitializeParallelPlayWaveArea();
+'        'case recExpToRun% = recExpStereoDisButton% then  'recUse2PWAs% is now set for StereoDis
+'        '    InitializeMultipleParallelPlayWaveAreas();
+'        'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
+'            'Initialize a play wave area for the broadband noise condition
+'        '    InitializePlayWaveAreaLongBB();
+'        case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
+'            'Initialize a play wave area for the bandpass/broadband noise condition
+'            InitializePlayWaveAreasLongBP();
+'        else
+'            InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
+'        endcase
+        
+        
+        
         view(recLog%).print("PWAs initialized - func RunGoNoGoEngine%.\n");
     endif;
+    
+    'Adjust playback rate from PWAs
+    SetSpeedPlayWaveAreas();
+    SetSpeedParallelPlayWaveArea();
+    SetSpeedPlayWaveAreasLongBP();
     
     
     'Open XY and data windows
@@ -476,16 +494,17 @@ proc CreateSampleConfiguration()
     recChanTM% := 30;  'That's the TextMark channel --> this isn't used anywhere, it's just to remind us that channel 30 IS textmark (by default)
     '31 is keyboard input also
     
-    if recExpToRun% = recExpLongToneButton% then
+    'Updating to allow hand-off of all experiment types, so create the digmark channel for LongTone automatically
+    'if recExpToRun% = recExpLongToneButton% then
         ' Digital marker channel
         SampleDigMark(20);  '20 Hz should be plenty high for an expected sustained rate
         SampleTitle$(32,"ToneStartStop");  'Digital marker is by definition channel 32
-    endif;
+    'endif;
     
     
     ' Record sound output only on debug, it will inflate the file sizes...
     if recSoundRecording% = 1 then
-        SampleWaveform(audioOutputCopyChannel%, 2, 100000);   'create a 100 kHz channel to record sound output (on testing only)
+        SampleWaveform(audioOutputCopyChannel%, 2, recPlayRateHzDefault);   'create a channel (at default play rate) to record sound output (on testing only)
         SampleTitle$(audioOutputCopyChannel%, "Audio");
         SampleComment$(audioOutputCopyChannel%, "Audio");
     endif   
@@ -503,7 +522,7 @@ proc CreateSampleConfiguration()
     ' NOTE: wavemark channels must be b/w 1-100    
     'Actual sampling rate may vary! (constrained by hardware)
     
-    'This bit hacked out, jj 11/6/2019
+    'This bit hacked out, jj 11/6/2019, no longer recording WaveMarks in real time
     '    ' Record as many electrodes as specified in Experiment Selection Dialog
     '    if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
     '        i%:=0; 'do channel 1
@@ -552,16 +571,14 @@ proc CreateSampleConfiguration()
     
     printlog("PLS file load success is %d\n",SampleSequencer(script$ + "recgen.pls")+1); 'Load sample sequencer script
     
-    ' Set optimise mode (do this last). Settings specific to Power1401 625 (that's the "5"). 
+    ' Set optimise mode (do this last).  Optimization now done following poll of 1401 to 
+    ' determine what type of 1401 is present
     ' The second arg groups channels with same ideal rates together so they all get same 
     ' actual rate. That means multiple electrodes (if used) will all get same actual rate, 
-    ' assuming you use same ideal rate (in SampleWavemark()). 
-    ' Update: Optimization now done following poll of 1401 to determine what type of 1401 is present
-    
-	'SampleOptimise(2, 1, 5, 2, 50, -1, 1);  'Optimization settings, don't change unless there's an issue; turn burst mode on!!
+    ' assuming you use same ideal rate (in SampleWavemark()).  
     
     this1401Type% := Determine1401Type%();  'this1401Type% is used by Get1401Type%();
-    SampleOptimise(2, 1, Get1401Type%(), 2, 50, -1, 1);  'Optimization settings using Get1401Type%; still turn burst mode on
+    SampleOptimise(2, 1, Get1401Type%(), 2, 50, -1, 1);  'Optimization settings using Get1401Type%; turn burst mode on
     SampleMode(1);  'Continuous recording
 end
 
@@ -656,16 +673,65 @@ end;
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' GetPlayWaveKey$(index%)
+' Areas will be allocated in order: "A", "B", .... up to the hardcoded limit of 10
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func GetPlayWaveKey$(index%)
+    
+    if index% > recMaxPWA%-1 then
+        message("PlayWaveArea " + Str$(index%) + " was requested, max PWA is " + Str$(recMaxPWA%-1));
+        halt
+    endif;
     
     return Chr$(Asc(recDAC0Key$)+index%);
     
 end
 
 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' GetPlayWaveKeyParallel$(index%)
+' The first recMaxPWA% (hardcoded to 10) areas "A" - "J" are reserved for Search and
+' other simple one-PWA usage.  Starting with Spike2 Version 9 we may have more than
+' 10 PWAs assigned (limit 62), but Search was written under the 10 PWA limit and the
+' code will be retained (no reason to go beyond 10 for now). However, this does allow
+' for PWAs used for other purposes (parallel PWAs, LongNoise PWAs) to be assigned at
+' the same time, which then allows the "hand-off" process to work for many (probably
+' any) combinations of experiments that could not previously be handed off.
+' The single parallel PWA will be assigned to "K".  Although this function is called
+' with an index% argument, that argument is expected to be 0.
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func GetPlayWaveKeyParallel$(index%)
+    
+    if index% > 0 then
+        message("Parallel PlayWave index " + Str$(index%) + " was requested, but only one parallel PWA exists,  index must be 0");
+        halt
+    endif;
+    
+    return Chr$(Asc(recDAC0Key$)+index%+recMaxPWA%);  'Offset by number of Search PWAs
+    
+end
 
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' GetPlayWaveKeyLongNoise$(index%)
+' The first recMaxPWA% (hardcoded to 10) areas "A" - "J" are reserved for Search and
+' other simple one-PWA usage. The single parallel PWA will be assigned to "K". The 5
+' LongNoise PWAs (hardcoded in nLongTones%) will be assigned to "L" - "P"
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func GetPlayWaveKeyLongNoise$(index%)
+    
+    if index% > nLongTones%-1 then
+        message("LongNoise PlayWave index " + Str$(index%) + " was requested, max index is " + Str$(nLongTones%-1));
+        halt
+    endif;
+    
+    return Chr$(Asc(recDAC0Key$)+index%+1+recMaxPWA%);  'Offset by number of Search PWAs and one parallel PWA
+    
+end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -683,7 +749,7 @@ Proc InitializePlayWaveAreas()
     
     for i% := 0 to recMaxPWA%-1 do
         
-        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, recMaxPoints%);
+        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHzDefault, recMaxPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
             view(recLog%).print("ERROR: InitializePlayWaveAreas failed, quitting!\n");
@@ -699,6 +765,77 @@ Proc InitializePlayWaveAreas()
 end
 
 
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitializeParallelPlayWaveArea - add play wave areas for sounds, in order to play 
+' two sounds simultaneously. Area "K" will be allocated.  Currently there is only one
+' parallel PlayWaveArea allocated.
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc InitializeParallelPlayWaveArea()
+    var st;
+    var i%;
+    var DACchannels%[2];
+    
+    DACchannels%[0] := RecDAC0%;
+    DACchannels%[1] := RecDAC1%;
+    
+    for i% := 0 to 0 do
+        
+        st := PlayWaveAdd(GetPlayWaveKeyParallel$(i%), GetPlayWaveKeyParallel$(i%), DACchannels%, recPlayRateHzDefault, recMaxPoints%);
+        'Note here that the *PWA* being initialized is the capital letter PWA, but that the jump point
+        'that we assign to it in the sequencer code is the lower case equivalent (capital jump point K
+        'has already been reserved for another use)
+        if st < 0 then
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKeyParallel$(i%));
+            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
+            halt;
+        else
+            PlayWaveTrigger(GetPlayWaveKeyParallel$(i%), 1); 'set playwave area to triggered mode
+        endif
+        
+    next
+    
+end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' InitializePlayWaveAreasLongBP - add play wave areas for Long Tone exps (BP/BB noise only). 
+' Areas will be allocated in order: "L", "M", "N", "O", "P" and will be the full duration
+' of Long Noise stimuli.  
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc InitializePlayWaveAreasLongBP()
+    var st;
+    var i%;
+    var nPoints%;
+    
+    
+    for i% := 0 to nLongTones%-1 do
+        
+        nPoints% := recPlayRateHzDefault*(LongDurs[i%]+0.020);  'have to add in the ramp
+        'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
+        'that we assign to them in the sequencer code are lower case equivalents (capital jump points
+        'have already  been reserved for other uses)
+        st := PlayWaveAdd(GetPlayWaveKeyLongNoise$(i%), GetPlayWaveKeyLongNoise$(i%), recDAC0%, recPlayRateHzDefault, nPoints%);
+        if st < 0 then
+            Message("Error in PlayWaveAdd for area " + GetPlayWaveKeyLongNoise$(i%));
+            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
+            halt;
+        else
+            PlayWaveTrigger(GetPlayWaveKeyLongNoise$(i%), 1);  'set playwave area to triggered mode
+        endif        
+        
+    next
+    
+    
+    
+end
+
+
+
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' InitializePlayWaveAreaLongBB - add play wave area for Long Tone exps (BB noise only). 
@@ -706,12 +843,15 @@ end
 ' of PlayWaveCycles() to repeat the PWA until the full duration of the noise stimulus
 ' is complete.  We will reload the PlayWaveArea multiple times per trial if necessary
 ' (every second) WHILE IT IS PLAYING so that the noise does not repeat.
+'
+' This function is currently not used and is disabled.  It was kind of clever, so I'm
+' keeping it around in case the skeleton is useful someday.
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 'Proc InitializePlayWaveAreaLongBB()
 '    var st;
 '  
-'    st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHz, recMaxLongNoisePoints%);
+'    st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHzDefault, recMaxLongNoisePoints%);
 '    if st < 0 then
 '        Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
 '        halt;
@@ -724,106 +864,131 @@ end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' InitializePlayWaveAreasLongBP - add play wave areas for Long Tone exps (BP/BB noise only). 
-' Areas will be allocated in order: "A", "B", "C", "D", "E" and will be the full duration
-' of Long Noise stimuli.  
-' 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc InitializePlayWaveAreasLongBP()
-    var st;
-    var i%;
-    var nPoints%;
-    
-    
-    for i% := 0 to nLongTones%-1 do
-        
-        nPoints% := recPlayRateHz*(LongDurs[i%]+0.020);  'have to add in the ramp
-        'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
-        'that we assign to them in the sequencer code are lower case equivalents (capital jump points
-        'are reserved for traditional model)
-        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), recDAC0%, recPlayRateHz, nPoints%);
-        if st < 0 then
-            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
-            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
-            halt;
-        else
-            PlayWaveTrigger(GetPlayWaveKey$(i%), 1);  'set playwave area to triggered mode
-        endif        
-        
-    next
-    
-    
-    
-end
-
-
-
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' InitializeParallelPlayWaveAreas - add play wave areas for sounds, in order to play 2 sounds simultaneously. 
-' Areas will be allocated in order: "A", "B", .... up to the
-' max number of stimuli per trial.  We will reload each
-' PlayWaveArea on a trial-by-trial basis, if necessary.
-' Currently, the max number of stimuli per trial is hardcoded at 10
-' 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc InitializeParallelPlayWaveAreas()
-    var st;
-    var i%;
-    var DACchannels%[2];
-    
-    DACchannels%[0] := RecDAC0%;
-    DACchannels%[1] := RecDAC1%;
-    
-    for i% := 0 to 0 do
-        
-        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), DACchannels%, recPlayRateHz, recMaxPoints%);
-        if st < 0 then
-            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
-            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
-            halt;
-        else
-            PlayWaveTrigger(GetPlayWaveKey$(i%), 1); 'set playwave area to triggered mode
-        endif
-        
-    next
-    
-end
-
-
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
 ' InitializeMultipleParallelPlayWaveAreas - add play wave areas for sounds, in order to 
 ' play 2 sounds simultaneously, with more than one pair of sounds per trial
 ' Areas will be allocated in order: "A", "B", .... up to the
 ' max number of stimuli per trial.  We will reload each
 ' PlayWaveArea on a trial-by-trial basis, if necessary.
 ' Currently, the max number of stimuli per trial is hardcoded at 10
+'
+' This function is currently not used and is disabled.  For the time being, we can use
+' InitializeParallelPlayWaveArea() - a single parallel play wave area will suffice for
+' SigNoise and I think should suffice for StereoDis, which is not currently used, not
+' sure if it even works (sorry, in the middle of other stuff, shouldn't interrupt to check)
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc InitializeMultipleParallelPlayWaveAreas()
-    var st;
+'Proc InitializeMultipleParallelPlayWaveAreas()
+'    var st;
+'    var i%;
+'    var DACchannels%[2];
+'    
+'    DACchannels%[0] := RecDAC0%;
+'    DACchannels%[1] := RecDAC1%;
+'    
+'    for i% := 0 to recMaxPWA%-1 do  'hopefully 10 PWAs like this is not too many...
+'        
+'        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), DACchannels%, recPlayRateHzDefault, recMaxPoints%);
+'        if st < 0 then
+'            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
+'            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
+'            halt;
+'        else
+'            PlayWaveTrigger(GetPlayWaveKey$(i%), 1); 'set playwave area to triggered mode
+'        endif
+'        
+'    next
+'    
+'end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' SetSpeedPlayWaveAreas - set playback speed in standard play wave areas. 
+' Areas have been allocated in order: "A", "B", .... up to the
+' max number of stimuli per trial.
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc SetSpeedPlayWaveAreas()
+    var speed;
     var i%;
-    var DACchannels%[2];
     
-    DACchannels%[0] := RecDAC0%;
-    DACchannels%[1] := RecDAC1%;
+    printlog("Requested speed is %f\n",recPlayRateHzCurrent);
     
-    for i% := 0 to recMaxPWA%-1 do  'hopefully 10 PWAs like this is not too many...
+    for i% := 0 to recMaxPWA%-1 do
         
-        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), DACchannels%, recPlayRateHz, recMaxPoints%);
-        if st < 0 then
-            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
-            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
+        speed := PlayWaveSpeed(GetPlayWaveKey$(i%), recPlayRateHzCurrent/recPlayRateHzDefault);
+        if speed <= 0 then
+            Message("Error in PlayWaveSpeed for area " + GetPlayWaveKey$(i%) + ", area does not exist!");
+            view(recLog%).print("ERROR: SetSpeedPlayWaveAreas failed, quitting!\n");
             halt;
         else
-            PlayWaveTrigger(GetPlayWaveKey$(i%), 1); 'set playwave area to triggered mode
-        endif
+            printlog("Speed for play wave area %s is set to %f\n",GetPlayWaveKey$(i%),recPlayRateHzDefault*speed);
+        endif        
+        
+    next
+
+end
+
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' SetSpeedParallelPlayWaveArea - set speed in play wave area that plays two sounds 
+' simultaneously (Area "K").
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc SetSpeedParallelPlayWaveArea()
+    var speed;
+    var i%;
+    
+    printlog("Requested speed is %f\n",recPlayRateHzCurrent);
+    
+    for i% := 0 to 0 do
+        
+        speed := PlayWaveSpeed(GetPlayWaveKeyParallel$(i%), recPlayRateHzCurrent/recPlayRateHzDefault);
+        if speed <= 0 then
+            Message("Error in PlayWaveSpeed for area " + GetPlayWaveKeyParallel$(i%) + ", area does not exist!");
+            view(recLog%).print("ERROR: SetSpeedPlayWaveAreas failed, quitting!\n");
+            halt;
+        else
+            printlog("Speed for play wave area %s is set to %f\n",GetPlayWaveKeyParallel$(i%),recPlayRateHzDefault*speed);
+        endif        
         
     next
     
 end
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' SetSpeedPlayWaveAreasLongBP - set speed in play wave areas for Long Tone exps 
+' (BP/BB noise only).  Areas have been allocated in order: "L", "M", "N", "O", "P"   
+' 
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+Proc SetSpeedPlayWaveAreasLongBP()
+    var speed;
+    var i%;
+    
+    printlog("Requested speed is %f\n",recPlayRateHzCurrent);
+    
+    for i% := 0 to nLongTones%-1 do
+        
+        speed := PlayWaveSpeed(GetPlayWaveKeyLongNoise$(i%), recPlayRateHzCurrent/recPlayRateHzDefault);
+        if speed <= 0 then
+            Message("Error in PlayWaveSpeed for area " + GetPlayWaveKeyLongNoise$(i%) + ", area does not exist!");
+            view(recLog%).print("ERROR: SetSpeedPlayWaveAreas failed, quitting!\n");
+            halt;
+        else
+            printlog("Speed for play wave area %s is set to %f\n",GetPlayWaveKeyLongNoise$(i%),recPlayRateHzDefault*speed);
+        endif        
+        
+    next
+    
+    
+end
+
+
+
 
 
 
@@ -862,8 +1027,7 @@ Func PlaySound%(isS2local%)
     'Get this stimulus index
     thisStim% := recStimList%[thisPWAIndex%][playInd%];
     
-    'Get play wave area with current stimulus
-    'playChar$ := GetPlayWaveKey$(recStimCount%);  
+    'Get play wave area with current stimulus  
     playChar$ := GetPlayWaveKey$(thisPWAIndex%);
     
     'Get speaker for current stimulus
@@ -1015,8 +1179,8 @@ Func PlaySound%(isS2local%)
     endif
     
     'Calculate the duration in points of the stimulus
-    'recPlayPoints% := recPlayRateHz*recTrialDur[recPWAList%[recStimCount%][playInd%]]/1000;  'recTrialDur is in ms   
-    recPlayPoints% := recPlayRateHz*recTrialDur[thisStim%]/1000;  'recTrialDur is in ms     
+    'recPlayPoints% := recPlayRateHzCurrent*recTrialDur[recPWAList%[recStimCount%][playInd%]]/1000;  'recTrialDur is in ms   
+    recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStim%]/1000;  'recTrialDur is in ms     
     
     return status%;
 end
@@ -1110,7 +1274,7 @@ Func PlayTwoSounds%(whichStim%)
         targdBSA := 65 - trlattenSA - roveattenSA;  'convinced myself this is right
         
         'Get play wave area with current stimulus
-        playChar$ := GetPlayWaveKey$(recFRAPWAIndex%);
+        playChar$ := GetPlayWaveKeyParallel$(recFRAPWAIndex%);
         'printlog("Retrieved play wave key %s\n",playChar$);
         
     case recExpToRun% = recExpStereoDisButton% then         
@@ -1139,7 +1303,7 @@ Func PlayTwoSounds%(whichStim%)
         targdBArray := recStereoDisdB - trlattenArray;  'convinced myself this is right
         
         'Get play wave area with current stimulus
-        playChar$ := GetPlayWaveKey$(whichStim%);
+        playChar$ := GetPlayWaveKeyParallel$(whichStim%);
         
         '''FOR S1/S2, WHICH IS ON STANDALONE
         'Get this stimulus index
@@ -1278,7 +1442,8 @@ Func PlayTwoSounds%(whichStim%)
     if recCEDIsPresent% = 1 then
         'printlog("Sending SafeSampleKey %s at time %f\n",playChar$,seconds());
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
-        SafeSampleKey(playChar$);
+        'SafeSampleKey(playChar$);
+        SafeSampleKey(LCase$(playChar$));
         
         StimOn := GetTimeOfLast1401Event(1);
         
@@ -1319,17 +1484,17 @@ Func PlayTwoSounds%(whichStim%)
     'Calculate the duration in points of the stimulus 
     docase
     case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
-        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms
+        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms
     case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 3 then 
-        recPlayPoints% := recPlayRateHz*Max(recTrialDur[rec2StimList%[playInd%][0]],recTrialDur[rec2StimList%[playInd%][1]]);
+        recPlayPoints% := recPlayRateHzCurrent*Max(recTrialDur[rec2StimList%[playInd%][0]],recTrialDur[rec2StimList%[playInd%][1]]);
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
-        recPlayPoints% := recPlayRateHz*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
+        recPlayPoints% := recPlayRateHzCurrent*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then  
-        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
+        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
-        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
+        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then  
-        recPlayPoints% := recPlayRateHz*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
+        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
     endcase
     
     return status%;
@@ -1997,7 +2162,7 @@ func PrepareLongTone()
     
     if recCalibIsPresent% = 1 then
         'Use speaker calibration to determine attenuation
-        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
         matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",500);  'duration doesn't matter, but it is in MILLISECONDS
         matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneFreq);  'Set tone frequency
         matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneFreq);  'Ditto
@@ -2081,7 +2246,7 @@ end
 '        pwChar$ := "N";
 '        
 '        'Set recStimTransfer%[] to zeros
-'        arrconst(recStimTransferLongNoise%[],0);  
+'        arrconst(recStimTransferLongNoiseOW%[],0);  
 '                
 '        if recLongToneDuration >= 1 then
 '            lndur := 1000;  'We will do 1 second (1000 ms) and repeat
@@ -2093,7 +2258,7 @@ end
 '        
 '        
 '        'Use speaker calibration to determine attenuation
-'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
 '        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
 '        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
 '        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
@@ -2116,14 +2281,14 @@ end
 '            return -1;
 '        endif;
 '        
-'        'printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,lnpad%,recLongToneSpeaker%);
+'        'printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHzCurrent,lndur,recLongToneBPLow,recLongToneBPHigh,lnpad%,recLongToneSpeaker%);
 '        
 '        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
 '        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
 '        EvalMatlabStatement%(statement$);  'Fills atten on matlab side, also creates stimulus but we don't care
 '        
 '        'Get stim and atten back from Matlab
-'        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise%[]);
+'        matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoiseOW%[]);
 '        matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
 '        
 '        'printlog("atten is %f\n",atten);
@@ -2145,7 +2310,7 @@ end
 '        endcase;
 '        
 '        if overwritePWA% <= 1 then  'if 0/1, actually fill PWA.  If 2, we just want the atten value.
-'            playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoise%[]); 
+'            playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransferLongNoiseOW%[]); 
 '            if playWaveCopyOK% < 0 then 'error
 '                message("There has been an error in PlayWaveCopy!  Check Log File!");
 '                printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -2200,11 +2365,11 @@ end
 '        arrconst(recStimTransferLongNoiseBP%[],0);  
 '        printlog("current trial is %d\n",recCurrentTrial%);        
 '        lndur := recLongToneDurationList[recCurrentTrial%]*1000;  'Actual duration, in ms
-'        lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+'        lnpad% := recPlayRateHzCurrent*lndur/1000;  'pad to correct length
 '        
 '        
 '        'Use speaker calibration to determine attenuation
-'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+'        matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
 '        matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of one second precisely, as this is the size of the PWA (except for 0.1 second sound)
 '        matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
 '        matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
@@ -2227,7 +2392,7 @@ end
 '            return -1;
 '        endif;
 '        
-'        printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,recMaxLongNoiseBPPoints%,recLongToneSpeaker%);
+'        printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHzCurrent,lndur,recLongToneBPLow,recLongToneBPHigh,recMaxLongNoiseBPPoints%,recLongToneSpeaker%);
 '        
 '        statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
 '        'statement$ := "[stimulus atten] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
@@ -2301,16 +2466,16 @@ func PrepareLongNoiseAllAtOnce()
         for i% := 0 to nLongTones%-2 do 'don't create noise on the silent trial
             
             lndur := (LongDurs[i%]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
-            lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+            lnpad% := recPlayRateHzCurrent*lndur/1000;  'pad to correct length
             
             'for each repeat of the tone, we can make an independent noise, not frozen 
             for j% := 0 to recLongToneNRepeats%-1 do
                 
-                'Set recStimTransferLongNoise2%[] to zeros
-                arrconst(recStimTransferLongNoise2%[],0);  
+                'Set recStimTransferLongNoise%[] to zeros
+                arrconst(recStimTransferLongNoise%[],0);  
                 
                 'Create noise, use speaker calibration to determine attenuation
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",lndur);  'duration of noise
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recLongToneBPLow);  'Set BP noise low limit, if broadband, value is already correctly set to -1
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recLongToneBPHigh);  'Ditto
@@ -2334,14 +2499,14 @@ func PrepareLongNoiseAllAtOnce()
                     return -1;
                 endif;
                 
-                printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHz,lndur,recLongToneBPLow,recLongToneBPHigh,LongPoints3%,recLongToneSpeaker%);
+                printlog("fs %f, dur %f, lohz %f, hihz %f, pad %d, spk %d\n",recPlayRateHzCurrent,lndur,recLongToneBPLow,recLongToneBPHigh,LongPoints3%,recLongToneSpeaker%);
                 
                 statement$ := "[stimulus atten seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFFT(1,spk));";  'this is for the FFT filtering method
                 'statement$ := "[stimulus atten seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad,AFilt(1,spk));";  'this is for the standard filtering method
                 EvalMatlabStatement%(statement$);  'Fills stimulus/atten/seed on matlab side
                 
                 'Get stim and atten back from Matlab
-                matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise2%[]);
+                matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransferLongNoise%[]);
                 matGetAttenOK% := GetMatlabValueFloat%("atten",atten);  'This is the expected attenuation for 65 dB
                 matGetSeedOK% := GetMatlabValueFloat%("seed",seed);
                 
@@ -2375,13 +2540,13 @@ func PrepareLongNoiseAllAtOnce()
 
                 docase
                 case i% = 0 then
-                    ArrConst(recLongNoise0%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
+                    ArrConst(recLongNoise0%[j%][0:lnpad%],recStimTransferLongNoise%[0:lnpad%]);
                 case i% = 1 then
-                    ArrConst(recLongNoise1%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
+                    ArrConst(recLongNoise1%[j%][0:lnpad%],recStimTransferLongNoise%[0:lnpad%]);
                 case i% = 2 then
-                    ArrConst(recLongNoise2%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);
+                    ArrConst(recLongNoise2%[j%][0:lnpad%],recStimTransferLongNoise%[0:lnpad%]);
                 case i% = 3 then
-                    ArrConst(recLongNoise3%[j%][0:lnpad%],recStimTransferLongNoise2%[0:lnpad%]);  'should be correct size
+                    ArrConst(recLongNoise3%[j%][0:lnpad%],recStimTransferLongNoise%[0:lnpad%]);  'should be correct size
                 endcase
                 
             next
@@ -2411,26 +2576,26 @@ func LoadLongNoiseToPWA%()
     var wtf%[1000];
     
     'Get play wave area
-    pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+    pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
     
     printlog("current trial is %d\n",recCurrentTrial%); 
     printlog("Playwavechar is %s\n",pwchar$);
     
     lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
-    lnpad% := recPlayRateHz*lndur/1000;  'pad to correct length
+    lnpad% := recPlayRateHzCurrent*lndur/1000;  'pad to correct length
          
     'Mark it zero, dude
-    arrconst(recStimTransferLongNoise2%[],0);
+    arrconst(recStimTransferLongNoise%[],0);
     
     docase
     case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
-        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
+        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
     case recLongToneDurationIndex%[recCurrentTrial%] = 1 then
-        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
+        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
     case recLongToneDurationIndex%[recCurrentTrial%] = 2 then
-        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
+        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
     case recLongToneDurationIndex%[recCurrentTrial%] = 3 then
-        ArrConst(recStimTransferLongNoise2%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
+        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
     'In the case of index = 5, we want silence anyways, so leave it marked zero, dude.
     endcase
     
@@ -2439,7 +2604,7 @@ func LoadLongNoiseToPWA%()
     'delay for loading the PWA might be significant enough that *not* loading zeros changes the timing.  I reserve
     'the right to un-repent of this decision at any point.
     'if recLongToneDurationIndex%[recCurrentTrial%] < nLongTones% or LongNoiseBlock% = 0 then    
-    playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise2%[0:lnpad%]); 
+    playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise%[0:lnpad%]); 
     if playWaveCopyOK% < 0 then 'error
         message("There has been an error in PlayWaveCopy!  Check Log File!");
         printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -2468,6 +2633,10 @@ end
 ' 
 ' Called prior to initiating a set of S1/S2 stimuli. 
 ' Return 1 if all is well, 0 if all trials are done, negative for error. 
+' This function is called in the "main" branch of the idle loop for Search, Audiogram,
+' and any other experiment that does not use multiple simultaneous speakers (e.g. 
+' AMDisc, SpaceDis); it is also called in the "characterization" (formerly "FRA")
+' branch of the idle loop for scenarios that do not require two simultaneous speakers.
 '
 ' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
 ' All stuff (like loading stimuli) which will be too costly time-wise to do while a 
@@ -2568,7 +2737,7 @@ func PrepareNextTrial%(loadPWAs%)
                 'long as the Matlab commands to eval are quick, we shouldn't worry about the time to do up to 10 "gets".  If we can
                 'cleverly have all of them come simultaneously (i.e. a 2-d array of stimuli), that's cool too.  May not be necessary.
                 
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
@@ -2605,7 +2774,7 @@ func PrepareNextTrial%(loadPWAs%)
                 statement$ := "calibval = AFFT(spk).dB;";
                 EvalMatlabStatement%(statement$);
                 'printlog("%s\n",statement$);
-                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
                 'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
@@ -2727,8 +2896,9 @@ end
 
 '------- PrepareNextTrial2PWAs --------------------------------------------------------
 ' 
-' Called prior to initiating a set of S1/S2 stimuli, for scenarios like Stereo Distractor that
-' have double-barreled PWAs.
+' Called prior to initiating a set of S1/S2 stimuli, for scenarios like Stereo Distractor
+' that have double-barreled PWAs (i.e. two simultaneous speakers).  This function is called 
+' only from the main branch of the idle loop for the StereoDis experiment.
 ' Return 1 if all is well, 0 if all trials are done, negative for error. 
 '
 ' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
@@ -2808,7 +2978,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
             'well except that the recDistractorStimList%[] would need to be 2-D, I think.
             
             'Get play wave area for current stimulus
-            pwChar$ := GetPlayWaveKey$(i%); 
+            pwChar$ := GetPlayWaveKeyParallel$(i%); 
             
             'get index of trial to index into stim file
             ind% := recStimList%[i%][thisTrial%];
@@ -2837,7 +3007,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 if i% > 0 and recTrialDur[indD%] > recTrialDur[ind%] then
                     isWrapped% := 1;
                     frontPadMs := (recTrialDur[indD%]-recTrialDur[ind%])/2;  'The front padding, in ms, is half of the excess
-                    frontPadPoints% := recPlayRateHz*frontPadMs/1000;
+                    frontPadPoints% := recPlayRateHzCurrent*frontPadMs/1000;
                     matPutOK% := matPutOK% + PutMatlabValueInt%("fpp",frontPadPoints%);  'And put this in the matlab!
                 else
                     isWrapped% := 0;
@@ -2846,7 +3016,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 
                 'Generate the stimulus, for stereo dis this will be an AM
                 printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
@@ -2889,7 +3059,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 
                 EvalMatlabStatement%(statement$);
                 printlog("%s\n",statement$);
-                printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHz,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
                 printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
@@ -2916,7 +3086,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     'get speaker of trial, used to calculate attenuation 
                     thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
                     printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialDur[indD%]);
-                    matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[indD%]);  'Ditto
@@ -2949,7 +3119,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     endif;
                     EvalMatlabStatement%(statement$);
                     printlog("%s\n",statement$);
-                    printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHz,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
+                    printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHzCurrent,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
                     printlog("%d %d %d %d %d ",recTrialGenIsSweep%[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
                     printlog("%d %d %d %d %d \n",recTrialGenGauss%[indD%],recTrialGenRampMS[indD%],recTrialGenSeed%[indD%],recMaxPoints%,thisSpkr%);
                     
@@ -3060,6 +3230,8 @@ end
 ' 
 ' Called prior to initiating a set of S1/S2 stimuli from a parallel PWA. 
 ' Return 1 if all is well, 0 if all trials are done, negative for error. 
+' This function is called from the "characterization" (formerly "FRA") pathway in the idle
+' loop, primarily for "SigNoise" scenarios, which have in the past been labeled as "FRA"
 '
 ' This is the place to get a list of stimuli to run and load Play Wave areas as needed. 
 ' All stuff (like loading stimuli) which will be too costly time-wise to do while a 
@@ -3085,14 +3257,10 @@ func PrepareNextTrialParallel%(loadPWAs%)
     var tempfloat;
     var ok% := 1;  'by default, return 1 (success)
     
-    ' Set pwChar$ array to DAC0 and DAC1
-    'pwChar$ := GetPlayWaveKey$(recFRAPWAIndex%);  'Note that recFRAPWAIndex% is defined as 0 and never changed
-    'printlog("PWA index is %d\n", recFRAPWAIndex%);
-    
     'Note that unlike PrepareNextTrial%(), which is designed to potentially fill multiple PWAs, 
     'PrepareNextTrialParallel%() only has a single PWA, so pwChar$ can be set once, and recNUniqueStims%[] 
     '(which would be = 1) does not need to be set/checked.
-    pwChar$ := GetPlayWaveKey$(0);
+    pwChar$ := GetPlayWaveKeyParallel$(0);
     
     ' Check to see if we are done
     if recCurrentTrial% >= recNTrials% then
@@ -3163,7 +3331,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 'get speaker of trial
                 thisSpkr% := rec2SpeakerList%[thisTrial%][i%];  'this should just be ones for i% = 1, because it's the standalone
                 
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHz);  'on any fail, matPutOK% will increment (negative ones)
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
@@ -3187,7 +3355,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
                     return -1;
                 endif;
                 
-'                printlog("Sampling freq %f\n",recPlayRateHz);
+'                printlog("Sampling freq %f\n",recPlayRateHzCurrent);
 '                printlog("dur %f\n",recTrialDur[ind%]);  'size of trial is variable, that's OK
 '                printlog("lohz %f\n",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
 '                printlog("hihz %f\n",recTrialGenHighpassHz[ind%]);  'Ditto
@@ -5141,7 +5309,7 @@ func IdleLoop%()
             '    tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 1 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then 'only difference is in sampletexting
-                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BB noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event(1);
@@ -5153,7 +5321,7 @@ func IdleLoop%()
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 2 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then
-                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BP noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bp noise, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event(1);
@@ -5165,7 +5333,7 @@ func IdleLoop%()
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% >= 1 and recLongToneDurationIndex%[recCurrentTrial%] = 4 then 'only difference is in sampletexting
-                pwChar$ := GetPlayWaveKey$(recLongToneDurationIndex%[recCurrentTrial%]);
+                pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting silent trial \n");
                 SampleKey(LCase$(pwChar$));  'Start silent, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event(1);
@@ -5958,8 +6126,8 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);    
     
-    s$ := Print$("Param16 RoveLeveldB=%.2f",
-    recRovedB); 
+    s$ := Print$("Param16 RoveLeveldB=%.2f,AudioPlayRateHz=%.2f",
+    recRovedB,recPlayRateHzCurrent); 
     SampleText(s$);
     yield(0.01); 
     
@@ -5983,6 +6151,11 @@ proc WriteExpParamsSampleText()
             SampleText(s$);
             yield(0.01);
         endcase
+        'And now that durations can change, we should specify them
+        s$ := Print$("ParamLTN LongDur0=%.2f,LongDur1=%.2f,LongDur2=%.2f,LongDur3=%.2f,LongDurSilence=%.2f",
+        LongDurs[0],LongDurs[1],LongDurs[2],LongDurs[3],LongDurs[4]); 
+        SampleText(s$);
+        yield(0.01); 
         
     case recExpToRun% = recExpSearchButton% then  'For Search, all stimuli are generated
         s$ := Print$("ParamS1 StimType=%d,ToneFreq=%.2f,BPLow=%.2f,BPHigh=%.2f,TSweepNRepeats=%d",
