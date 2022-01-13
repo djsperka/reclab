@@ -607,7 +607,8 @@ LongDurs[0] := LongDur0 - 0.020;
 LongDurs[1] := LongDur1 - 0.020;
 LongDurs[2] := LongDur2 - 0.020;
 LongDurs[3] := LongDur3 - 0.020;
-LongDurs[4] := recLongToneSilentDur;
+'LongDurs[4] := recLongToneSilentDur;  'We do not know this value yet, as it is set in a later dialog box.
+LongDurs[4] := 1;  'We will reset this later in the Long Tone dialog box, for now just make a small PWA, "silent playback" will end early, but idle loop will not look for digmark until expected duration is up, so no biggie
 
 'Include files that depend on global variables - have to move this below the creation of above constants!
 #include "RecGoNoGoEngine.s2s"
@@ -3218,7 +3219,9 @@ func RecLongToneDialog%()
         recExpToRun% := recExpLongToneButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
-    
+        
+        LongDurs[4] := recLongToneSilentDur;  'update this value once we have 
+        
         status% := 1;
     else
         status% := 1;

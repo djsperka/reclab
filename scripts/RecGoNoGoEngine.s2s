@@ -5353,7 +5353,7 @@ func IdleLoop%()
                 SampleKey(LCase$(pwChar$));  'Start silent, use LOWER to activate correct portion of sequencer code
                 StimOn := GetTimeOfLast1401Event(1);
                 
-                s$ := Print$("Sound %s,SilentTrial,%d,0,0,0,%s,0Hz", recCurrentTrial%, Str$(recLongToneDuration) + "s");
+                s$ := Print$("Sound %s,SilentTrial,%d,0,0,0,%s,0Hz", pwChar$, recCurrentTrial%, Str$(recLongToneDuration) + "s");
                 SampleText(s$,StimOn);
                 
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();                
