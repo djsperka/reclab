@@ -653,6 +653,66 @@ while recReadyToQuit% = 0 do
     
     RecTimingRewardGetParams();  'get default timing and reward parameters
     
+    'Reset trial variables - if we are handing off, we can potentially have carry over, this hopefully covers it
+    ArrConst(recTrialLoadLoc$[],"");
+    ArrConst(recTrialLoadLocDistractor$[],"");
+    ArrConst(recTrialDur[],0);
+    ArrConst(recTrialDurDistractor[],0);
+    ArrConst(recTrialNumS1ns%[],0);
+    ArrConst(recTrialMF[],0);  
+    ArrConst(recTrialMFDistractor[],0);
+    ArrConst(recTrialCarrier$[],"");
+    ArrConst(recTrialCarrierDistractor$[],"");
+    ArrConst(recTrialStimCal[][],0);
+    ArrConst(recTrialStimCalDistractor[][],0);
+    ArrConst(recTrialGenLowpassHz[],0);
+    ArrConst(recTrialGenHighpassHz[],0);
+    ArrConst(recTrialGenIsSweep%[],0);
+    ArrConst(recTrialGenAMFreqHz[],0);
+    ArrConst(recTrialGenAMDepthPct[],0);
+    ArrConst(recTrialGenAMPhaseDeg[],0);
+    ArrConst(recTrialGenTonePhaseDeg[],0);
+    ArrConst(recTrialGenGauss%[],0);
+    ArrConst(recTrialGenRampMS[],0);
+    ArrConst(recTrialGenSeed%[],0);
+    ArrConst(recGeneratedAtten[],0); 
+    ArrConst(recTrialS1%[],0);
+    ArrConst(recTrialS2%[],0);
+    ArrConst(recTrialS1Spkr%[],0);
+    ArrConst(recTrialS2Spkr%[],0);
+    ArrConst(recTrialS1DeltadB[],0);
+    ArrConst(recTrialS2DeltadB[],0);
+    ArrConst(recTrialDistractor%[][],0);
+    ArrConst(recTrialDistractorSpkr%[][],0);
+    ArrConst(recTrialDistractorDeltadB[][],0);   
+    recPlayPoints% := 0;   
+    recPointsPlayed% := 0;   
+    ArrConst(recPWAList%[][],0);
+    ArrConst(recStimList%[][],0);
+    ArrConst(recTrialTerminalIndex%[],0);
+    ArrConst(recTrialTerminalIsS2%[],0);
+    recTotalTrials% := 0;
+    recNTrials% := 0;
+    ArrConst(recNUniqueStims%[],0);
+    ArrConst(recSpeakerList%[][],0);
+    ArrConst(recDeltadBList[][],0);
+    ArrConst(recTrialOrder%[],0);
+    recCurrentTrial% := 0;   
+    ArrConst(recCurrRandomSeed%[],0);
+    recStimCount% := 0;
+    ArrConst(recLongToneDurationList[],0);
+    ArrConst(recLongToneDurationIndex%[],0);
+    ArrConst(rec2StimList%[][],0); 
+    ArrConst(rec2SpeakerList%[][],0);
+    ArrConst(rec2DeltadBList[][],0);
+    ArrConst(recFRAReward%[],0);    
+    ArrConst(recDistractorStimList%[][],0);
+    ArrConst(recDistractorSpeakerList%[][],0);
+    ArrConst(recDistractorDeltadBList[][],0);  
+    ArrConst(recStereoDisGeneratedAttenList[][],0);
+    ArrConst(recStereoDisSeedList%[][],0); 
+    
+    
     'Open experiment selection dialog, load appropriate trials file, stim or stim/cal file, calibration file
     if RecExpSelectDialog%() = 1 then  'run dialog, branch on run/cancel result
         view(recLog%).print("RecRoom: RecExpSelectDialog() = 1\n");    

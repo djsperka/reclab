@@ -284,6 +284,9 @@ func RunGoNoGoEngine%()
     SetSpeedParallelPlayWaveArea();
     SetSpeedPlayWaveAreasLongBP();
     
+    'Reset LongNoiseCounter% in case we are handing off
+    LongNoiseCounter% := 0;
+    
     
     'Open XY and data windows
     'Positioned after InitializePlayWaveAreas() because PlayWaveAdd() must be called before FileNew()
@@ -2586,20 +2589,29 @@ func LoadLongNoiseToPWA%()
     
     lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
     lnpad% := recPlayRateHzCurrent*lndur/1000;  'pad to correct length
-         
+    
+    printlog("lndur is %f\n",lndur); 
+    printlog("lnpad is %d\n",lnpad%);
+    printlog("current trial is %d and index is %d\n",recCurrentTrial%,recLongToneDurationIndex%[recCurrentTrial%]);
+    printlog("long noise block is %d\n",LongNoiseBlock%);
+    
     'Mark it zero, dude
     arrconst(recStimTransferLongNoise%[],0);
     
     docase
     case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
-        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
+        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
+        playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise0%[LongNoiseBlock%][0:lnpad%],0);
     case recLongToneDurationIndex%[recCurrentTrial%] = 1 then
-        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
+        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
+        playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise1%[LongNoiseBlock%][0:lnpad%],0);
     case recLongToneDurationIndex%[recCurrentTrial%] = 2 then
-        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
+        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
+        playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise2%[LongNoiseBlock%][0:lnpad%],0);
     case recLongToneDurationIndex%[recCurrentTrial%] = 3 then
-        ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
-    'In the case of index = 5, we want silence anyways, so leave it marked zero, dude.
+        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
+        playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise3%[LongNoiseBlock%][0:lnpad%],0);
+    'In the case of index = 4, we want silence anyways, so leave it marked zero, dude.
     endcase
     
     'Copy noise to PWA and set PA5 (or copy zeros to PWA if it's the first time through, just in case the "silent" PWA isn't zeros)
@@ -2607,7 +2619,7 @@ func LoadLongNoiseToPWA%()
     'delay for loading the PWA might be significant enough that *not* loading zeros changes the timing.  I reserve
     'the right to un-repent of this decision at any point.
     'if recLongToneDurationIndex%[recCurrentTrial%] < nLongTones% or LongNoiseBlock% = 0 then    
-    playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise%[0:lnpad%]); 
+    'playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise%[0:lnpad%]); 
     if playWaveCopyOK% < 0 then 'error
         message("There has been an error in PlayWaveCopy!  Check Log File!");
         printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -5351,7 +5363,7 @@ func IdleLoop%()
             
         case iState% = stateFindDigMarkOn% then
             while foundDigMarkOnTime < tStateStart and tNow < tLongToneStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
-                foundDigMarkOnTime := NextTime(32,tStateStart,digCode%[]);
+                foundDigMarkOnTime := View(recDataWindowView%).NextTime(32,tStateStart,digCode%[]);
                 tNow := View(recDataWindowView%).MaxTime();
             wend
             if foundDigMarkOnTime >= tStateStart then
@@ -5391,7 +5403,7 @@ func IdleLoop%()
             
         case iState% = stateFindDigMarkOff% then  
             while foundDigMarkOffTime < foundDigMarkOnTime+0.05 and tNow < expectedOffTime+10 do
-                foundDigMarkOffTime := NextTime(32,foundDigMarkOnTime+0.05,digCode%[]);
+                foundDigMarkOffTime := View(recDataWindowView%).NextTime(32,foundDigMarkOnTime+0.05,digCode%[]);
                 Yield(0.1);  'This allows the display to update
                 tNow := View(recDataWindowView%).MaxTime();
             wend
