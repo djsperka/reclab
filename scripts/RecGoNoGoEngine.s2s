@@ -922,6 +922,7 @@ Proc SetSpeedPlayWaveAreas()
             view(recLog%).print("ERROR: SetSpeedPlayWaveAreas failed, quitting!\n");
             halt;
         else
+            speed := PlayWaveSpeed(GetPlayWaveKey$(i%));  'have to get this again, the original value is the prior speed!
             printlog("Speed for play wave area %s is set to %f\n",GetPlayWaveKey$(i%),recPlayRateHzDefault*speed);
         endif        
         
@@ -941,7 +942,7 @@ Proc SetSpeedParallelPlayWaveArea()
     var speed;
     var i%;
     
-    printlog("Requested speed is %f\n",recPlayRateHzCurrent);
+    'printlog("Requested speed is %f\n",recPlayRateHzCurrent);  'redundant 
     
     for i% := 0 to 0 do
         
@@ -951,6 +952,7 @@ Proc SetSpeedParallelPlayWaveArea()
             view(recLog%).print("ERROR: SetSpeedPlayWaveAreas failed, quitting!\n");
             halt;
         else
+            speed := PlayWaveSpeed(GetPlayWaveKeyParallel$(i%));  'have to get this again, the original value is the prior speed!
             printlog("Speed for play wave area %s is set to %f\n",GetPlayWaveKeyParallel$(i%),recPlayRateHzDefault*speed);
         endif        
         
@@ -969,7 +971,7 @@ Proc SetSpeedPlayWaveAreasLongBP()
     var speed;
     var i%;
     
-    printlog("Requested speed is %f\n",recPlayRateHzCurrent);
+    'printlog("Requested speed is %f\n",recPlayRateHzCurrent); 'redundant
     
     for i% := 0 to nLongTones%-1 do
         
@@ -979,6 +981,7 @@ Proc SetSpeedPlayWaveAreasLongBP()
             view(recLog%).print("ERROR: SetSpeedPlayWaveAreas failed, quitting!\n");
             halt;
         else
+            speed := PlayWaveSpeed(GetPlayWaveKeyLongNoise$(i%));  'have to get this again, the original value is the prior speed!
             printlog("Speed for play wave area %s is set to %f\n",GetPlayWaveKeyLongNoise$(i%),recPlayRateHzDefault*speed);
         endif        
         

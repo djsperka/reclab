@@ -208,7 +208,7 @@ const nLongTones% := 5;  'four tones and a silence period
 const LongDur0 := 0.1 + 0.020;  'add in 10-ms ramp on each side
 const LongDur1 := 1 + 0.020;  'add in 10-ms ramp on each side
 const LongDur2 := 10 + 0.020;  'add in 10-ms ramp on each side
-var LongDur3 := 100;  'DO NOT add in 10-ms ramp on each side, will do later after user spec of this duration
+var LongDur3 := 100 + 0.020;  'add in 10-ms ramp on each side
 var LongDurs[nLongTones%];  'setting this in GenTrialsLongTones, so it's with the silent trial setting
 'var recLongToneCycleStartTime;
 'var recLongToneCyclesRemaining%;    
@@ -1353,7 +1353,12 @@ func RecDebugDialog%()
     debugLoc$[2] := "Debug Logging, Jeff in lobby";
     
     ' Fetch parameters from registry    
-    RecDebugGetParams();   'RecDebugGetParams() is below    
+    RecDebugGetParams();   'RecDebugGetParams() is below 
+    
+    ' Before the registry value is established, the value of LongDur3 will be 100.02, fix this due to constraints on dialog
+    if LongDur3 > 100 then
+        LongDur3 := 100;
+    endif
     
     ' Generate the dialog
     
@@ -1374,7 +1379,7 @@ func RecDebugDialog%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         RecDebugSaveParams();   'ReDebugSaveParams() is below
-        'Adjust LongDur3 to have ramp outside of specified duration, as for LongDur0-2
+        'Adjust LongDur3 to have ramp outside of specified duration, as for LongDur0-2, must do this in dialog before creating transfer variable
         LongDur3 := LongDur3 + 0.020;
         if recMatlabIsPresent% = 0 then
             LogInfo("User reports no Matlab present.  Running in testing mode.  Bypassing all Matlab calls.");
