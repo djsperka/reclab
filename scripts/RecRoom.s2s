@@ -602,6 +602,12 @@ var recLongNoise0%[8][LongPoints0%];
 var recLongNoiseAtten[8][nLongTones%];                       'variables to hold long noise attenuation    
 var recLongNoiseSeed[8][nLongTones%];                        'variables to hold long noise attenuation 
 
+'Set LongDurs, which is used in initializing PWAs, for all experiments now that all experiments initialize all PWAs
+LongDurs[0] := LongDur0 - 0.020;
+LongDurs[1] := LongDur1 - 0.020;
+LongDurs[2] := LongDur2 - 0.020;
+LongDurs[3] := LongDur3 - 0.020;
+LongDurs[4] := recLongToneSilentDur;
 
 'Include files that depend on global variables - have to move this below the creation of above constants!
 #include "RecGoNoGoEngine.s2s"
@@ -8867,12 +8873,7 @@ func GenTrialsLongTone%()
     var j%;
     var count%;
     
-    'Hard coding durations to be 0.1, 1, 10, 100, now using CONSTs to allow us to make arrays ahead of time to hold many of these
-    LongDurs[0] := LongDur0 - 0.020;
-    LongDurs[1] := LongDur1 - 0.020;
-    LongDurs[2] := LongDur2 - 0.020;
-    LongDurs[3] := LongDur3 - 0.020;
-    LongDurs[4] := recLongToneSilentDur;
+    
     
     'Note that the noise is hardcoded in PrepareLongNoise to be Gaussian as that is what is used elsewhere
     
