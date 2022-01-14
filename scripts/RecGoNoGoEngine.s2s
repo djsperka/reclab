@@ -198,7 +198,7 @@ var isS2%;              'man, this thing's gotta be global, not local in IdleLoo
 'var recStimOn;  'Appears to be redundant
 var recFRAPWAIndex% := 0;
 var recLongAtten;
-var recLoadLongNoise%;
+var recLNFirstTimeInISI%;
 var LongNoiseBlock%;
 var LongNoiseCounter%;
 
@@ -2579,6 +2579,7 @@ func LoadLongNoiseToPWA%()
     var status%;
     var lndur;
     var lnpad%;
+    var lnpadfull%;
     var wtf%[1000];
     
     'Get play wave area
@@ -2589,37 +2590,37 @@ func LoadLongNoiseToPWA%()
     
     lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
     lnpad% := recPlayRateHzCurrent*lndur/1000;  'pad to correct length
+    lnpadfull% := recPlayRateHzDefault*lndur/1000;  'This is the full length of the PWA
     
-    printlog("lndur is %f\n",lndur); 
-    printlog("lnpad is %d\n",lnpad%);
-    printlog("current trial is %d and index is %d\n",recCurrentTrial%,recLongToneDurationIndex%[recCurrentTrial%]);
-    printlog("long noise block is %d\n",LongNoiseBlock%);
+    'printlog("lndur is %f\n",lndur); 
+    'printlog("lnpad is %d\n",lnpad%);
+    'printlog("current trial is %d and index is %d\n",recCurrentTrial%,recLongToneDurationIndex%[recCurrentTrial%]);
+    'printlog("long noise block is %d\n",LongNoiseBlock%);
     
-    'Mark it zero, dude
+    'Mark it zero, dude -  zero out the current PWA
     arrconst(recStimTransferLongNoise%[],0);
+    playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise%[0:lnpadfull%]); 
+    if playWaveCopyOK% < 0 then 'error
+        message("There has been an error in PlayWaveCopy (zeroing)!  Check Log File!");
+        printlog("There was an error in PlayWaveCopy (zeroing)!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
+    endif;
     
+    SafeSampleKey("X"); 'put in load delay (may not be long enough??)
+    
+    'Now that our PWA is filled with zeroes, only put in the stimulus
     docase
     case recLongToneDurationIndex%[recCurrentTrial%] = 0 then
-        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise0%[LongNoiseBlock%][0:lnpad%]);
         playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise0%[LongNoiseBlock%][0:lnpad%],0);
     case recLongToneDurationIndex%[recCurrentTrial%] = 1 then
-        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise1%[LongNoiseBlock%][0:lnpad%]);
         playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise1%[LongNoiseBlock%][0:lnpad%],0);
     case recLongToneDurationIndex%[recCurrentTrial%] = 2 then
-        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise2%[LongNoiseBlock%][0:lnpad%]);
         playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise2%[LongNoiseBlock%][0:lnpad%],0);
     case recLongToneDurationIndex%[recCurrentTrial%] = 3 then
-        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);
+        'ArrConst(recStimTransferLongNoise%[0:lnpad%],recLongNoise3%[LongNoiseBlock%][0:lnpad%]);  'retain this for cut-paste in case current fix is baaaaaaaaad
         playWaveCopyOK% := PlayWaveCopy(pwChar$,recLongNoise3%[LongNoiseBlock%][0:lnpad%],0);
     'In the case of index = 4, we want silence anyways, so leave it marked zero, dude.
     endcase
-    
-    'Copy noise to PWA and set PA5 (or copy zeros to PWA if it's the first time through, just in case the "silent" PWA isn't zeros)
-    'Note that for the time being I've actually repented of this decision 15 seconds after I made it seeing as the
-    'delay for loading the PWA might be significant enough that *not* loading zeros changes the timing.  I reserve
-    'the right to un-repent of this decision at any point.
-    'if recLongToneDurationIndex%[recCurrentTrial%] < nLongTones% or LongNoiseBlock% = 0 then    
-    'playWaveCopyOK% := PlayWaveCopy(pwChar$,recStimTransferLongNoise%[0:lnpad%]); 
+        
     if playWaveCopyOK% < 0 then 'error
         message("There has been an error in PlayWaveCopy!  Check Log File!");
         printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -5197,7 +5198,7 @@ func IdleLoop%()
                 endif; 
             else 
                 PrepareLongNoiseAllAtOnce();  'Fill all noise, atten, seed variables before doing anything else - will be slow
-                recLoadLongNoise% := 1;  'Make sure long noise loads to PWA
+                recLNFirstTimeInISI% := 1;  'Make sure long noise loads to PWA on first time through upcoming ISI
 '            case recLongToneType% = 1 then 'if we are doing broadbandnoise, which requires a different setup
 '                recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, can't run initial PrepareLongNoise witout it!
 '                for doRepeat% := 0 to 9 do
@@ -5226,15 +5227,16 @@ func IdleLoop%()
             
         case iState% = stateLongToneISI% then
             
-            'Load PWA first, only do it once
-            if recLongToneType% >= 1 and recLoadLongNoise% = 1 then
+            'Load PWA first, do this every time because we now are using un-frozen long noises
+            if recLongToneType% >= 1 and recLNFirstTimeInISI% = 1 then
                 LoadLongNoiseToPWA%();  'correct PWA is calculated inside this function, attenuation set inside this function
-                recLoadLongNoise% := 0;  'Don't load twice!
+                recLNFirstTimeInISI% := 0;  'We will run through this state multiple times waiting for the ISI to be over. Don't load twice!
             endif; 
             
             'Wait through ISI
             if tNow > tStateStart + recLongToneISI then
                 
+                'if rewarding, reward *after* ISI and before LongTone presentation
                 if rand() < recLongToneRewardProb and recTurnOffReward% = 0 then
                     'recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
                     stmp% := Reward%(recHitRewardmL);
@@ -5263,13 +5265,9 @@ func IdleLoop%()
             
             recLongToneDuration := recLongToneDurationList[recCurrentTrial%];  'assign duration, variable will be used about 3x below
             
-            
-            'Do this early, so that tStateStart will be prior to the DigMark from the start of the tone
             foundDigMarkOnTime := -1;
             foundDigMarkOffTime := -1;
-            
-            'Prepare to change to next state
-            ChangeStateTo(stateFindDigMarkOn%);
+            ChangeStateTo(stateFindDigMarkOn%);  'Do this early so that tStateStart for stateFindDigMarkOn is before the start of the sound
             
             yield(0.025);  'wait 25 ms before starting tone, should prevent NextTime problems in next state
             
@@ -5359,8 +5357,10 @@ func IdleLoop%()
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();                
             endcase;
             
-
             
+            
+
+        'This state is basically a sanity check for an error in digmark existence that (at least at this late stage) doesn't appear to be happening    
         case iState% = stateFindDigMarkOn% then
             while foundDigMarkOnTime < tStateStart and tNow < tLongToneStart+1 do  'don't wait more than 1 second to read digmark, in case this doesn't work (seems to work)
                 foundDigMarkOnTime := View(recDataWindowView%).NextTime(32,tStateStart,digCode%[]);
@@ -5402,6 +5402,13 @@ func IdleLoop%()
             endif;
             
         case iState% = stateFindDigMarkOff% then  
+            'check once
+            foundDigMarkOffTime := View(recDataWindowView%).NextTime(32,foundDigMarkOnTime+0.05,digCode%[]);
+            'if the marker is not there, this is because we are playing at a lower sampling rate than the default 100 kHz, silence is now playing, kill it
+            if foundDigMarkOffTime < foundDigMarkOnTime+0.05 then
+                PlayWaveStopWithErrorCheck();  'Stop playing stimulus
+            endif
+            'check for digmark again, if necessary
             while foundDigMarkOffTime < foundDigMarkOnTime+0.05 and tNow < expectedOffTime+10 do
                 foundDigMarkOffTime := View(recDataWindowView%).NextTime(32,foundDigMarkOnTime+0.05,digCode%[]);
                 Yield(0.1);  'This allows the display to update
@@ -5425,7 +5432,7 @@ func IdleLoop%()
                 'if recLongToneType% = 2 then
                 '    ChangeStateTo(statePrepareTone%);
                 'else
-                recLoadLongNoise% := 1;  'All code now goes straight to the ISI, reset long noise to load PWA
+                recLNFirstTimeInISI% := 1;  'All code now goes straight to the ISI, reset to load PWA first time through ISI
                 LongNoiseCounter% += 1;  'Increment count...
                 if LongNoiseCounter% = nLongTones% then  'And if we reach the end of the block...
                     LongNoiseBlock% += 1;   'increment block counter...
