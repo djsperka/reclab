@@ -202,6 +202,7 @@ var recLongToneSpeaker%;
 var recLongToneNRepeats%;     
 var recLongToneISI;   
 var recLongToneSilentDur;
+var recLongToneSilentPWASize := 24.9;  'Initialize silent PWA at 24.9 seconds (max length)
 var recLongToneTargetdB;
 var recLongToneRewardProb;
 const nLongTones% := 5;  'four tones and a silence period
@@ -210,6 +211,7 @@ const LongDur1 := 1 + 0.020;  'add in 10-ms ramp on each side
 const LongDur2 := 10 + 0.020;  'add in 10-ms ramp on each side
 var LongDur3 := 100 + 0.020;  'add in 10-ms ramp on each side
 var LongDurs[nLongTones%];  'setting this in GenTrialsLongTones, so it's with the silent trial setting
+var LongDursAllocate[nLongTones%];   'We need to allocate the PWAs at maximum size, then we can adjust the size of the silence (others?) later    
 'var recLongToneCycleStartTime;
 'var recLongToneCyclesRemaining%;    
     
@@ -608,7 +610,13 @@ LongDurs[1] := LongDur1 - 0.020;
 LongDurs[2] := LongDur2 - 0.020;
 LongDurs[3] := LongDur3 - 0.020;
 'LongDurs[4] := recLongToneSilentDur;  'We do not know this value yet, as it is set in a later dialog box.
-LongDurs[4] := 1;  'We will reset this later in the Long Tone dialog box, for now just make a small PWA, "silent playback" will end early, but idle loop will not look for digmark until expected duration is up, so no biggie
+LongDurs[4] := recLongToneSilentPWASize;  'We will reset this later in the Long Tone dialog box, for now just make a big PWA
+
+LongDursAllocate[0] := LongDurs[0];
+LongDursAllocate[1] := LongDurs[1];
+LongDursAllocate[2] := LongDurs[2];
+LongDursAllocate[3] := LongDurs[3];
+LongDursAllocate[4] := LongDurs[4];
 
 'Include files that depend on global variables - have to move this below the creation of above constants!
 #include "RecGoNoGoEngine.s2s"

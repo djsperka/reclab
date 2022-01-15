@@ -284,9 +284,9 @@ func RunGoNoGoEngine%()
     SetSpeedParallelPlayWaveArea();
     SetSpeedPlayWaveAreasLongBP();
     
-    'Reset LongNoiseCounter% in case we are handing off
+    'Reset LongNoiseCounter%/Block% in case we are handing off
     LongNoiseCounter% := 0;
-    
+    LongNoiseBlock% := 0;
     
     'Open XY and data windows
     'Positioned after InitializePlayWaveAreas() because PlayWaveAdd() must be called before FileNew()
@@ -818,7 +818,7 @@ Proc InitializePlayWaveAreasLongBP()
     
     for i% := 0 to nLongTones%-1 do
         
-        nPoints% := recPlayRateHzDefault*(LongDurs[i%]+0.020);  'have to add in the ramp
+        nPoints% := recPlayRateHzDefault*(LongDursAllocate[i%]+0.020);  'have to add in the ramp
         'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
         'that we assign to them in the sequencer code are lower case equivalents (capital jump points
         'have already  been reserved for other uses)
