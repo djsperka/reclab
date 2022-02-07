@@ -3836,8 +3836,17 @@ func IdleLoop%()
             endif
             
         case iState% = stateCEDBlinking% then
-            'CHECK FOR PAUSE HERE TOO:
-            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+            'CHECK FOR PAUSE AND RTESD HERE TOO:
+            docase
+            case RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return, this prevents us from getting stuck if the monkey won't start a trial
+                ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
+                iStatus% := 0;  'this is how we get out
+                nextStateImmed% := 0;  'this keeps the rest of everything from executing
+
+            case recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
+                
+                
+                
                 'do state stuff here
                 if tNow < tStartBlink + recTrialInitWindow then
                     CheckLever%("inTrialInit%",1);
@@ -3886,7 +3895,7 @@ func IdleLoop%()
                         ReturnFromDialogCall%();
                     endcase
                 endif
-            endif
+            endcase
             
             '        case iState% = stateTDTBlink% then
             '
