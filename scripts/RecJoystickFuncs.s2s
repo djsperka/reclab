@@ -1271,6 +1271,14 @@ end
 
 '==============================Calibrate Joystick=========================
 'This function will automatically calibrate the joystick.  Woot.
+'Note that although these measurements could be taken in the middle
+'of a longer recording, it does not appear that there is any way to
+'update the channel offsets dynamically.  Since we have to recreate
+'the sampling configuration in order to apply the new values, this 
+'should be run independent of any data collection.  Thus I am now
+'having completion of the function close the Toolbar, and ensuring
+'(in the GNGEngine) that once sampling has started calibration may
+'not be accessed.
 func CalibrateJoystick%()
     var currentX;
     var currentY;
@@ -1288,7 +1296,7 @@ func CalibrateJoystick%()
     'DlgCreate("Select Joystick Type");
     'DlgList(1,"Type of Joystick",mystr$);
     'ii% := DlgShow(jt%);
-    jt% := 0; 'manual override of joystick, make it 0
+    jt% := 0; 'manual override of joystick, mark it 0, dude
     
     if ii% = 1 then
         'get the current offsets, joystickXOffset and joystickYOffset
@@ -1341,7 +1349,8 @@ func CalibrateJoystick%()
     endif;
     
     
-    return 1;  'return to toolbar
+    'return 1;  'return to toolbar
+    return  0;  'Actually, we should close the toolbar
 end;
 
 

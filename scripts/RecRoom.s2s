@@ -48,7 +48,7 @@ var dummyVar%;                      'For placeholder GUIs, just lets me have a c
 
 'Dialog button variables and other dialog variables
 var recExpSearchButton%:=2;         'Arbitrary button value for the Search experiment
-var recExpFRAButton%:=3;            'Etc.   
+var recExpCharButton%:=3;            'Etc.   
 var recExpAMDiscButton%:=4;
 var recExpCueingButton%:=5;
 var recExpTimingRewardButton%:=6;
@@ -65,17 +65,20 @@ var recExpAudiogramButton%:=16;  'maori buttons!!!!
 var recExpStereoDisButton%:=17;    
 var recExpStereoDisAddExpButton%:=18;
 var recExpStereoDisDeleteExpButton%:=19;
-var recFRAAddExpButton%:=20;
-var recFRADeleteExpButton%:=21;    
+var recCharAddExpLoadFRAButton%:=20;
+var recCharDeleteExpLoadFRAButton%:=21;    
 var recSelectStimDistractorFileButton%:=22;  
 var recExpStereoDisGNGAddExpButton%:=23;
 var recExpStereoDisGNGDeleteExpButton%:=24;  
 var recExpLongToneButton%:=25;    
-var recFRAAddExpGenFRAButton%:=26;
-var recFRADeleteExpGenFRAButton%:=27;
-var recFRAAddExpGenSigNoiseButton%:=28;
-var recFRADeleteExpGenSigNoiseButton%:=29;   
-    
+var recCharAddExpGenFRAButton%:=26;
+var recCharDeleteExpGenFRAButton%:=27;
+var recCharAddExpGenSigNoiseButton%:=28;
+var recCharDeleteExpGenSigNoiseButton%:=29;   
+var recCharAddExpLoadSigNoiseButton%:=30;
+var recCharDeleteExpLoadSigNoiseButton%:=31;
+var recCharAddExpLoadArbStimButton%:=32;
+var recCharDeleteExpLoadArbStimButton%:=33;    
 
 'Selection Dialog variables
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
@@ -106,10 +109,10 @@ var recSearchActive%;               'Is experiment active or passive, transferre
 var recSearchFixLED%;               'Use fixation LED, transferred to recFixLED% if Search is selected
 
 
-'FRA/Rate-Level/Space Dialog variables
-var recFRAS1Speaker%;               'Preferred speaker (S1 stimulus location)
-var recFRAMinS1%;
-var recFRAVarS1%;    
+'Characterization (FRA/Rate-Level/Space) Dialog variables
+var recCharS1Speaker%;               'Preferred speaker (S1 stimulus location)
+var recCharMinS1%;
+var recCharVarS1%;    
 var recRateLeveldBLow:=30;          'Lower bound of rate-level curve - must give a default value or program will crash with nothing in the registry
 var recRateLeveldBHigh:=80;         'Higher bound of rate-level curve - must give a default value or program will crash with nothing in the registry
 var recRateLevelNRepeats%:=12;      'number of repeats for rate-level experiment    
@@ -118,7 +121,7 @@ var recFRATonedBHigh:=80;           'Higher dB bound of FRA - must give a defaul
 var recFRAToneFreqLow:=1000;        'Lower frequency bound of FRA - must give a default value or program will crash with nothing in the registry
 var recFRAToneFreqHigh:=20000;      'Higher frequency bound of FRA - must give a default value or program will crash with nothing in the registry
 var recFRANRepeats%:=1;             'number of repeats for FRA    
-var recFRAS2dBLevel;                'dB level of S2 stimuli (space curve), should match a level in the Rate-Level Curve
+var recSpaceS2dBLevel;                'dB level of S2 stimuli (space curve), should match a level in the Rate-Level Curve
 var recSpaceNRepeats%;
 var recS1AMnoiseReps%; 
 const nMTFrates% := 11;
@@ -151,45 +154,58 @@ var recFRAFreqList3%;
 var recFRAFreqList4%;
 var recFRAFreqList5%;
 var recSearchToneSweepFreqList%;
-var recFRAFMSweepRepeats%;
-var recFRAFMSweepStart%;
-var recFRAFMSweepEnd%;
-var recFRAFMSweep%[2];
-var recFRAFMSweepDur1%;
-var recFRAFMSweepDur2%;
-var recFRAFMSweepDur3%;
-var recFRAFMSweepDur4%;
-var recFRAFMSweepDur5%;
-var recFRAFMSweepDur%[5];
-var recFRAActive% := 0;
+var recFMSweepRepeats%;
+var recFMSweepStart%;
+var recFMSweepEnd%;
+var recFMSweep%[2];
+var recFMSweepDur1%;
+var recFMSweepDur2%;
+var recFMSweepDur3%;
+var recFMSweepDur4%;
+var recFMSweepDur5%;
+var recFMSweepDur%[5];
+var recCharActive% := 0;
 var recBPnoiseReps%;
 const nBPnoises% := 20;    
 var recBPnoisesLOs%[nBPnoises%];
 var recBPnoisesHIs%[nBPnoises%];
     
-const recFRANumExps% := 40;      'The allowable number of defined experiments in Characterization, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF        
-var recFRAMatGenStim%;           'If 1, generate stimuli with matlab, if 0 read from disk    
-var recFRAExpNameLoad$[recFRANumExps%];       'Experiment names, loading files and loading stimuli, uses two PWAS even for FRA, will do FRA or SigNoise
-var recFRAExpNameGenFRA$[recFRANumExps%];       'Experiment names, loading files but generating stimuli, for FRA
-var recFRAExpNameGenSigNoise$[recFRANumExps%];       'Experiment names, loading files but generating stimuli, for SigNoise
-var recFRAStimcalNameLoad$[recFRANumExps%];   'Stim/Cal file names, loading files and loading stimuli, uses two PWAS even for FRA, will do FRA or SigNoise
-var recFRATrialsNameLoad$[recFRANumExps%];    'Trials file names, loading files and loading stimuli, uses two PWAS even for FRA, will do FRA or SigNoise
-var recFRAStimNameGenFRA$[recFRANumExps%];   'Stim file names, loading files but generating stimuli, for FRA    
-var recFRATrialsNameGenFRA$[recFRANumExps%];    'Trials file names, loading files but generating stimuli, for FRA
-var recFRAStimNameGenSigNoise$[recFRANumExps%];   'Stim file names, loading files but generating stimuli, for SigNoise   
-var recFRATrialsNameGenSigNoise$[recFRANumExps%];    'Trials file names, loading files but generating stimuli, for SigNoise
-var recFRAExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
-var recFRAExpIndexGenFRA%;          'Experiment index, for generating stims with FRA, etc. 
-var recFRAExpIndexGenSigNoise%;          'Experiment index, for generating stims with SigNoise, etc.
-var recFRARepeatsPerStim% := 1;       'Number of repeats for each stimulus defined in the trials file   
+const recCharNumExps% := 40;      'The allowable number of defined experiments in Characterization, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF           
+'These are the names of the various experiment definitions for Characterization; we need one for each type of experiment (5 types), as all are loaded when the dialog is called    
+var recCharExpNameLoadFRA$[recCharNumExps%];       'Loaded FRA
+var recCharExpNameLoadSigNoise$[recCharNumExps%];    'Loaded SigNoise    
+var recCharExpNameGenFRA$[recCharNumExps%];       'Generated FRA
+var recCharExpNameGenSigNoise$[recCharNumExps%];       'Generated SigNoise
+var recCharExpNameLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus    
+'These are the stim (or stim/cal) and trials file locations for the above experiments, a stim/cal file and a trial file for each type of experiment    
+var recCharStimcalFileLoadFRA$[recCharNumExps%];   'Loaded FRA Stim/Cal file
+var recCharTrialsFileLoadFRA$[recCharNumExps%];    'Loaded FRA Trials file
+var recCharStimcalFileLoadSigNoise$[recCharNumExps%];    'Loaded SigNoise Stim/Cal file
+var recCharTrialsFileLoadSigNoise$[recCharNumExps%];    'Loaded SigNoise Trials file
+var recCharStimFileGenFRA$[recCharNumExps%];   'Generated FRA Stim file   
+var recCharTrialsFileGenFRA$[recCharNumExps%];    'Generated FRA Trials file
+var recCharStimFileGenSigNoise$[recCharNumExps%];   'Generated SigNoise Stim file 
+var recCharTrialsFileGenSigNoise$[recCharNumExps%];    'Generated SigNoise Trials file
+var recCharStimcalFileLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus Stim/Cal file
+var recCharTrialsFileLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus Trials file
+'These are the experiment indices for indexing the above variables, one per type of experiment
+var recCharExpIndexLoadFRA%;
+var recCharExpIndexLoadSigNoise%;    'loaded signoise        
+var recCharExpIndexGenFRA%;           
+var recCharExpIndexGenSigNoise%;
+var recCharExpIndexLoadArbStim%;     'Arbitrary
+var recCharExpPrefixLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus  
+var recCharRepeatsPerStim% := 1;       'Number of repeats for each stimulus defined in the trials file, this value is currently not assigned by dialog, fixed at 1  
+    
 var recStereoDisRepeatsPerStim% := 1;  
 var recStereoDisGNGRepeatsPerStim% := 1; 
-var recStereoDisdB := 65;   'we may change the intended dB 
-var recRepeatsPerStim%;       'Number of repeats for each stimulus defined in the trials file    
-var recFRAText2%;  
-var recFRAText3%;
-var recFRAText4%;   
-var recFRALoadStim% := 1;
+var recStereoDisdB := 65;   'we may change the intended dB     
+var recCharText1%;    
+var recCharText2%;  
+var recCharText3%;
+var recCharText4%;
+var recCharText5%;    
+var recCharLoadStim% := 1;
 var recDur;     
     
 'Long Tone Dialog variables
@@ -268,13 +284,14 @@ var recAMDiscRovedB;                'How much do we rove?
 var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
 var recSelectedStimDistractorFile$;    
 var recSelectedTrialsFile$;         'Trials file selected in add/delete
+var recSelectedPrefix$;             'Prefix of the selected file, for now only used with ArbStim
 const recAMDiscNumExps% := 40;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
 var recAMDiscExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
 var recAMDiscStimcalNameLoad$[recAMDiscNumExps%];   'Stim/Cal file names, loading files
 var recAMDiscTrialsNameLoad$[recAMDiscNumExps%];    'Trials file names, loading files
-var recAMDiscExpNameGen$[recAMDiscNumExps%];       'Experiment names, generating stims
-var recAMDiscStimcalNameGen$[recAMDiscNumExps%];   'Stim file names, generating stims
-var recAMDiscTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generating stims
+var recAMDiscExpNameGen$[recAMDiscNumExps%];        'Experiment names, generating stims
+var recAMDiscStimcalNameGen$[recAMDiscNumExps%];    'Stim file names, generating stims
+var recAMDiscTrialsNameGen$[recAMDiscNumExps%];     'Trials file names, generating stims
 var recAMDiscExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recAMDiscExpIndexGen%;          'Experiment index, for generating stims, etc.
 var recTrialInitReward%;            'Give training reward for successful trial initiation *jao
@@ -469,7 +486,7 @@ var recLongToneDurationIndex%[recMaxTrial%];            'Holds the index of the 
 var rec2StimList%[recMaxTrial%][2]; 'first dimension: trial number, second dimension: DAC0 stimuli, DAC1 stimuli)    
 var rec2SpeakerList%[recMaxTrial%][2]; 'same format as 2stimlist
 var rec2DeltadBList[recMaxTrial%][2];
-var recFRAReward%[recMaxTrial%];    
+var recCharReward%[recMaxTrial%];    
     
     
 'Stereo Distractor specific trial list variables
@@ -720,7 +737,7 @@ while recReadyToQuit% = 0 do
     ArrConst(rec2StimList%[][],0); 
     ArrConst(rec2SpeakerList%[][],0);
     ArrConst(rec2DeltadBList[][],0);
-    ArrConst(recFRAReward%[],0);    
+    ArrConst(recCharReward%[],0);    
     ArrConst(recDistractorStimList%[][],0);
     ArrConst(recDistractorSpeakerList%[][],0);
     ArrConst(recDistractorDeltadBList[][],0);  
@@ -792,8 +809,8 @@ while recReadyToQuit% = 0 do
                 endif;
             endif;
             
-        case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 0 then  'FRA generated, use values from dialog
-            recExptText$ := "Running FRA (gen) "; 
+        case recExpToRun% = recExpCharButton% and recCharLoadStim% = 0 then  'FRA generated, use values from dialog
+            recExptText$ := "Running FRA (*gen) ";  '* means it's really an FRA characterization, not possibly SigNoise, will be fixed at Matlab level
             trialsOK% := 2;  'Short circuit, no trials file to load
             stimOK% := 1;  'Short circuit, no stim file to load
             'Load calibration file into Matlab's workspace, same details as above in Search
@@ -812,25 +829,40 @@ while recReadyToQuit% = 0 do
                 endif;
             endif;
             
-        case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then  'FRA loading stimuli from input table
-            recExptText$ := "Running FRA (load) ";
+        case recExpToRun% = recExpCharButton% and recCharLoadStim% = 1 then  'FRA loading stimuli from input table (now excludes SigNoise)
+            recExptText$ := "Running FRA (*load) ";  '* means it's really an FRA characterization, not possibly SigNoise, will be fixed at Matlab level
             'Get stimfile and trials file lists
-            RecFRAExpListLoadGetParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
-            recSelectedStimFile$ := recFRAStimcalNameLoad$[recFRAExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
-            recSelectedTrialsFile$ := recFRATrialsNameLoad$[recFRAExpIndexLoad%]; 'ditto. for BehOutput
+            RecCharExpListLoadFRAGetParams(recCharExpNameLoadFRA$[],recCharStimcalFileLoadFRA$[],recCharTrialsFileLoadFRA$[]);
+            recSelectedStimFile$ := recCharStimcalFileLoadFRA$[recCharExpIndexLoadFRA%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recCharTrialsFileLoadFRA$[recCharExpIndexLoadFRA%]; 'ditto. for BehOutput
             'Load trials file, stim/cal file
-            trialsOK% := RecLoadTrialsFile6ColOr3Col%(recSelectedTrialsFile$,recTotalTrials%);
+            trialsOK% := RecLoadTrialsFile6ColOr3Col%(recSelectedTrialsFile$,recTotalTrials%);  'Well, on second thought, some old FRA files might be 6-column with zeroes in the S2 columns, don't break if trying to load one
+            'trialsOK% := RecLoadTrialsFile3Col%(recSelectedTrialsFile$,recTotalTrials%);  'This should not have an S2 speaker, a three-column file
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
                 stimOK% := RecLoadStimCalFile%(recSelectedStimFile$,recNSpeakers%,recTotalStim%);
             endif;
             calibOK% := 0;  'Short circuit, this means OK.
             
-        case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 2 then  'FRA generating stimuli using trial/stim file
-            recExptText$ := "Running FRA (gen) ";
+        case recExpToRun% = recExpCharButton% and recCharLoadStim% = 2 then  'SigNoise loading stimuli from input table (broken off from FRA)
+            recExptText$ := "Running SigNoise (load) ";
             'Get stimfile and trials file lists
-            RecFRAExpListGenFRAGetParams(recFRAExpNameGenFRA$[],recFRAStimNameGenFRA$[],recFRATrialsNameGenFRA$[]);
-            recSelectedStimFile$ := recFRAStimNameGenFRA$[recFRAExpIndexGenFRA%];  'var already declared but not used - need to print it to BehOutput*****
-            recSelectedTrialsFile$ := recFRATrialsNameGenFRA$[recFRAExpIndexGenFRA%]; 'ditto. for BehOutput
+            RecCharExpListLoadSigNoiseGetParams(recCharExpNameLoadSigNoise$[],recCharStimcalFileLoadSigNoise$[],recCharTrialsFileLoadSigNoise$[]);
+            recSelectedStimFile$ := recCharStimcalFileLoadSigNoise$[recCharExpIndexLoadSigNoise%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recCharTrialsFileLoadSigNoise$[recCharExpIndexLoadSigNoise%]; 'ditto. for BehOutput
+            'Load trials file, stim/cal file
+            'trialsOK% := RecLoadTrialsFile6ColOr3Col%(recSelectedTrialsFile$,recTotalTrials%);
+            trialsOK% := RecLoadTrialsFile%(recSelectedTrialsFile$,recTotalTrials%);  'This should have an S1 and an S2 speaker, a six-column file
+            if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
+                stimOK% := RecLoadStimCalFile%(recSelectedStimFile$,recNSpeakers%,recTotalStim%);
+            endif;
+            calibOK% := 0;  'Short circuit, this means OK.
+            
+        case recExpToRun% = recExpCharButton% and recCharLoadStim% = 3 then  'FRA generating stimuli using trial/stim file
+            recExptText$ := "Running FRA (*gen) ";  '* means it's really an FRA characterization, not possibly SigNoise, will be fixed at Matlab level
+            'Get stimfile and trials file lists
+            RecCharExpListGenFRAGetParams(recCharExpNameGenFRA$[],recCharStimFileGenFRA$[],recCharTrialsFileGenFRA$[]);
+            recSelectedStimFile$ := recCharStimFileGenFRA$[recCharExpIndexGenFRA%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recCharTrialsFileGenFRA$[recCharExpIndexGenFRA%]; 'ditto. for BehOutput
             'Load trials file, stim file
             trialsOK% := RecLoadTrialsFile3Col%(recSelectedTrialsFile$,recTotalTrials%);  'This should not have an S2 speaker, a three-column file
             if trialsOK% = 1 then  'Don't bother with loading Stim file if trials file is bad
@@ -852,12 +884,12 @@ while recReadyToQuit% = 0 do
                 endif;
             endif;
             
-            case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 3 then  'SigNoise generating stimuli using trial/stim file
+            case recExpToRun% = recExpCharButton% and recCharLoadStim% = 4 then  'SigNoise generating stimuli using trial/stim file
             recExptText$ := "Running SigNoise (gen) ";
             'Get stimfile and trials file lists
-            RecFRAExpListGenSigNoiseGetParams(recFRAExpNameGenSigNoise$[],recFRAStimNameGenSigNoise$[],recFRATrialsNameGenSigNoise$[]);
-            recSelectedStimFile$ := recFRAStimNameGenSigNoise$[recFRAExpIndexGenSigNoise%];  'var already declared but not used - need to print it to BehOutput*****
-            recSelectedTrialsFile$ := recFRATrialsNameGenSigNoise$[recFRAExpIndexGenSigNoise%]; 'ditto. for BehOutput
+            RecCharExpListGenSigNoiseGetParams(recCharExpNameGenSigNoise$[],recCharStimFileGenSigNoise$[],recCharTrialsFileGenSigNoise$[]);
+            recSelectedStimFile$ := recCharStimFileGenSigNoise$[recCharExpIndexGenSigNoise%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recCharTrialsFileGenSigNoise$[recCharExpIndexGenSigNoise%]; 'ditto. for BehOutput
             'Load trials file, stim file
             trialsOK% := RecLoadTrialsFile%(recSelectedTrialsFile$,recTotalTrials%);  'This should have an S1 and an S2 speaker, a six-column file
             if trialsOK% = 1 then  'Don't bother with loading Stim file if trials file is bad
@@ -889,6 +921,25 @@ while recReadyToQuit% = 0 do
                     calibOK% := 0; 
                 endif;
             endif;
+            
+        case recExpToRun% = recExpCharButton% and recCharLoadStim% = 5 then  'Arbitrary stimuli loading from input table
+            'Get stimfile and trials file lists
+            RecCharExpListLoadArbStimGetParams(recCharExpNameLoadArbStim$[],recCharStimcalFileLoadArbStim$[],recCharTrialsFileLoadArbStim$[],recCharExpPrefixLoadArbStim$[]);
+            recSelectedStimFile$ := recCharStimcalFileLoadArbStim$[recCharExpIndexLoadArbStim%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recCharTrialsFileLoadArbStim$[recCharExpIndexLoadArbStim%]; 'ditto. for BehOutput
+            recSelectedPrefix$ := recCharExpPrefixLoadArbStim$[recCharExpIndexLoadArbStim%];  'ditto, for sampletext
+            if recSelectedPrefix$ = "" then
+                recExptText$ := "Running ArbStim (load) ";
+            else
+                recExptText$ := "Running " + recSelectedPrefix$ + " (load) ";
+            endif
+            'Load trials file, stim/cal file
+            'trialsOK% := RecLoadTrialsFile6ColOr3Col%(recSelectedTrialsFile$,recTotalTrials%);  
+            trialsOK% := RecLoadTrialsFile3Col%(recSelectedTrialsFile$,recTotalTrials%);  'This should not have an S2 speaker, a three-column file
+            if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
+                stimOK% := RecLoadStimCalFile%(recSelectedStimFile$,recNSpeakers%,recTotalStim%);
+            endif;
+            calibOK% := 0;  'Short circuit, this means OK.
             
             
         case recExpToRun% = recExpJoyTrnButton% then '*jao
@@ -1290,17 +1341,17 @@ while recReadyToQuit% = 0 do
                 
                 'message("SEARCH is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 
-            case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 0 then
+            case recExpToRun% = recExpCharButton% and recCharLoadStim% = 0 then
                 'do Trial List Generation stuff!
                 result% := GenTrialsFRAFromDialog%();  'Generate trials for FRA.  Return result of 1 if OK, 0 if not.
                 
-            case recExpToRun% = recExpFRAButton% and (recFRALoadStim% = 1  or recFRALoadStim% = 3) then
-                'do Trial List Generation stuff!
-                result% := GenTrialsFRALoad%();  'Generate trials for FRA/SigNoise with loaded stims or SigNoise with generated stims.  Return result of 1 if OK, 0 if not.
+            case recExpToRun% = recExpCharButton% and (recCharLoadStim% = 2  or recCharLoadStim% = 4) then
+                'do Trial List Generation stuff!   This fills variables for parallel PWAs
+                result% := GenTrialsCharParallel%();  'Generate trials for, well, basically SigNoise (load) and SigNoise (gen) for now. Return result of 1 if OK, 0 if not.
                 
-            case recExpToRun% = recExpFRAButton% and recFRALoadStim% = 2 then
+            case recExpToRun% = recExpCharButton% and (recCharLoadStim% = 1 or recCharLoadStim% = 3 or recCharLoadStim% = 5) then
                 'do Trial List Generation stuff!  This fills single-sound variables
-                result% := GenTrialsFRAGen%();  'Generate trials for FRA gen from file.  Return result of 1 if OK, 0 if not.    
+                result% := GenTrialsCharSingle%();  'Generate trials for FRA (load), FRA (gen), and arbitrary stimulus load.  Return result of 1 if OK, 0 if not.    
                 
             case recExpToRun% = recExpJoyTrnButton% then '*jao
                 'do Trial List Generation stuff!
@@ -1388,7 +1439,7 @@ if recCEDIsPresent% = 1 and recCurrentlySampling% = 1 then
     
     View(recDataWindowView%);  'Explicitly set view
 '    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + ".smr", -1); 'Save data file automagically 
-    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr", -1); 'NEW FORMAT! add date automagically! 
+    FileSaveAs(recFileSaveLoc$ + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smrx", -1); 'NEW FORMAT! add date automagically! 
 
 endif;
 
@@ -1613,42 +1664,43 @@ end
 
 '
 '
-'===== RecFRAGetParams =====
+'===== RecCharDialogFRAGetParams =====
 
-'Fetch Debugging parameters from the registry
-proc RecFRAGetParams()
+'Fetch FRA (dialog) parameters from the registry
+'Note that while this dialog has had a name change (FRA-->Char) the registry entries are being left as-is
+proc RecCharDialogFRAGetParams()
 	var key$;
     key$:="Reclab\\FRAParam";
     
-    recFRAS1Speaker% := GetIntRegistryValue%(key$, "FRAS1Speaker", recFRAS1Speaker%);
+    recCharS1Speaker% := GetIntRegistryValue%(key$, "FRAS1Speaker", recCharS1Speaker%);
     recRateLeveldBLow := GetFloatRegistryValue(key$, "RateLeveldBLow", recRateLeveldBLow);
     recRateLeveldBHigh := GetFloatRegistryValue(key$, "RateLeveldBHigh", recRateLeveldBHigh);
     recFRATonedBLow := GetFloatRegistryValue(key$, "FRATonedBLow", recFRATonedBLow);
     recFRATonedBHigh := GetFloatRegistryValue(key$, "FRATonedBHigh", recFRATonedBHigh);
     recFRAToneFreqLow := GetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
     recFRAToneFreqHigh := GetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
-    recFRAS2dBLevel := GetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);  
+    recSpaceS2dBLevel := GetFloatRegistryValue(key$, "FRAS2dBLevel", recSpaceS2dBLevel);  
     recSpaceNRepeats% := GetFloatRegistryValue(key$, "SpaceNRepeats", recSpaceNRepeats%);  
     recS1AMnoiseReps% := GetFloatRegistryValue(key$, "recS1AMnoiseReps", recS1AMnoiseReps%);  
-    recFRAMinS1% := GetIntRegistryValue%(key$, "FRAMinS1", recFRAMinS1%);
-    recFRAVarS1% := GetIntRegistryValue%(key$, "FRAVarS1", recFRAVarS1%);   
+    recCharMinS1% := GetIntRegistryValue%(key$, "FRAMinS1", recCharMinS1%);
+    recCharVarS1% := GetIntRegistryValue%(key$, "FRAVarS1", recCharVarS1%);   
     recRateLevelNRepeats% := GetIntRegistryValue%(key$, "RateLevelNRepeats", recRateLevelNRepeats%);
     recFRANRepeats% := GetIntRegistryValue%(key$, "FRANRepeats", recFRANRepeats%);
-    recFRAFMSweepRepeats% := GetIntRegistryValue%(key$, "FRAFMSweepRepeats", recFRAFMSweepRepeats%);
-    recFRAFMSweepStart% := GetIntRegistryValue%(key$, "FRAFMSweepStart", recFRAFMSweepStart%);
-    recFRAFMSweepEnd% := GetIntRegistryValue%(key$, "FRAFMSweepEnd", recFRAFMSweepEnd%);
-    recFRAFMSweepDur1% := GetIntRegistryValue%(key$, "FRAFMSweepDur1", recFRAFMSweepDur1%);
-    recFRAFMSweepDur2% := GetIntRegistryValue%(key$, "FRAFMSweepDur2", recFRAFMSweepDur2%);
-    recFRAFMSweepDur3% := GetIntRegistryValue%(key$, "FRAFMSweepDur3", recFRAFMSweepDur3%);
-    recFRAFMSweepDur4% := GetIntRegistryValue%(key$, "FRAFMSweepDur4", recFRAFMSweepDur4%);
-    recFRAFMSweepDur5% := GetIntRegistryValue%(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
-    recFRAActive% := GetIntRegistryValue%(key$, "recFRAActive", recFRAActive%);
-    recFRAExpIndexLoad% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recFRAExpIndexLoad%);
-    recFRALoadStim% := GetIntRegistryValue%(key$, "FRALoadStim", recFRALoadStim%);
+    recFMSweepRepeats% := GetIntRegistryValue%(key$, "FRAFMSweepRepeats", recFMSweepRepeats%);
+    recFMSweepStart% := GetIntRegistryValue%(key$, "FRAFMSweepStart", recFMSweepStart%);
+    recFMSweepEnd% := GetIntRegistryValue%(key$, "FRAFMSweepEnd", recFMSweepEnd%);
+    recFMSweepDur1% := GetIntRegistryValue%(key$, "FRAFMSweepDur1", recFMSweepDur1%);
+    recFMSweepDur2% := GetIntRegistryValue%(key$, "FRAFMSweepDur2", recFMSweepDur2%);
+    recFMSweepDur3% := GetIntRegistryValue%(key$, "FRAFMSweepDur3", recFMSweepDur3%);
+    recFMSweepDur4% := GetIntRegistryValue%(key$, "FRAFMSweepDur4", recFMSweepDur4%);
+    recFMSweepDur5% := GetIntRegistryValue%(key$, "FRAFMSweepDur5", recFMSweepDur5%);
+    recCharActive% := GetIntRegistryValue%(key$, "recFRAActive", recCharActive%);
+    recCharExpIndexLoadFRA% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%);
+    recCharLoadStim% := GetIntRegistryValue%(key$, "FRALoadStim", recCharLoadStim%);
 	return;
 end
 
-'===== End RecFRAGetParams =====
+'===== End RecCharDialogFRAGetParams =====
 '
 '
 
@@ -1656,77 +1708,83 @@ end
 
 '
 '
-'===== RecFRASaveParams =====
+'===== RecCharDialogFRASaveParams =====
 
-'Fetch Debugging parameters from the registry
-proc RecFRASaveParams()
+'Note that while this dialog has had a name change (FRA-->Char) the registry entries are being left as-is
+'Save FRA (dialog) parameters to the registry
+proc RecCharDialogFRASaveParams()
 	var key$;
     key$:="Reclab\\FRAParam";
     
-    SetIntRegistryValue(key$, "FRAS1Speaker", recFRAS1Speaker%);
+    SetIntRegistryValue(key$, "FRAS1Speaker", recCharS1Speaker%);
     SetFloatRegistryValue(key$, "RateLeveldBLow", recRateLeveldBLow);
     SetFloatRegistryValue(key$, "RateLeveldBHigh", recRateLeveldBHigh);
     SetFloatRegistryValue(key$, "FRATonedBLow", recFRATonedBLow);
     SetFloatRegistryValue(key$, "FRATonedBHigh", recFRATonedBHigh);
     SetFloatRegistryValue(key$, "FRAToneFreqLow", recFRAToneFreqLow);
     SetFloatRegistryValue(key$, "FRAToneFreqHigh", recFRAToneFreqHigh);
-    SetFloatRegistryValue(key$, "FRAS2dBLevel", recFRAS2dBLevel);   
+    SetFloatRegistryValue(key$, "FRAS2dBLevel", recSpaceS2dBLevel);   
     SetFloatRegistryValue(key$, "SpaceNRepeats", recSpaceNRepeats%); 
     SetFloatRegistryValue(key$, "recS1AMnoiseReps", recS1AMnoiseReps%);  
-    SetIntRegistryValue(key$, "FRAMinS1", recFRAMinS1%);
-    SetIntRegistryValue(key$, "FRAVarS1", recFRAVarS1%); 
+    SetIntRegistryValue(key$, "FRAMinS1", recCharMinS1%);
+    SetIntRegistryValue(key$, "FRAVarS1", recCharVarS1%); 
     SetIntRegistryValue(key$, "RateLevelNRepeats", recRateLevelNRepeats%);
     SetIntRegistryValue(key$, "FRANRepeats", recFRANRepeats%);
-    SetIntRegistryValue(key$, "FRAFMSweepRepeats", recFRAFMSweepRepeats%);
-    SetIntRegistryValue(key$, "FRAFMSweepStart", recFRAFMSweepStart%);
-    SetIntRegistryValue(key$, "FRAFMSweepEnd", recFRAFMSweepEnd%);
-    SetIntRegistryValue(key$, "FRAFMSweepDur1", recFRAFMSweepDur1%);
-    SetIntRegistryValue(key$, "FRAFMSweepDur2", recFRAFMSweepDur2%);
-    SetIntRegistryValue(key$, "FRAFMSweepDur3", recFRAFMSweepDur3%);
-    SetIntRegistryValue(key$, "FRAFMSweepDur4", recFRAFMSweepDur4%);
-    SetIntRegistryValue(key$, "FRAFMSweepDur5", recFRAFMSweepDur5%);
-    SetIntRegistryValue(key$, "recFRAActive", recFRAActive%);
-    SetIntRegistryValue(key$, "FRAExpIndexLoad", recFRAExpIndexLoad%);
-    SetIntRegistryValue(key$, "FRALoadStim", recFRALoadStim%);
+    SetIntRegistryValue(key$, "FRAFMSweepRepeats", recFMSweepRepeats%);
+    SetIntRegistryValue(key$, "FRAFMSweepStart", recFMSweepStart%);
+    SetIntRegistryValue(key$, "FRAFMSweepEnd", recFMSweepEnd%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur1", recFMSweepDur1%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur2", recFMSweepDur2%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur3", recFMSweepDur3%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur4", recFMSweepDur4%);
+    SetIntRegistryValue(key$, "FRAFMSweepDur5", recFMSweepDur5%);
+    SetIntRegistryValue(key$, "recFRAActive", recCharActive%);
+    SetIntRegistryValue(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%);
+    SetIntRegistryValue(key$, "FRALoadStim", recCharLoadStim%);
 	return;
 end
 
-'===== End RecFRASaveParams =====
+'===== End RecCharDialogFRASaveParams =====
 '
 '
 
 
+'These two functions have fallen out of use (not sure when, noticed 1/19/22)
+''
+''===== FRALoadSaveParams =====
 '
-'===== FRALoadSaveParams =====
+''Fetch Debugging parameters from the registry
+'proc RecFRALoadSaveParams()
+'	var key$;
+'    key$:="Reclab\\FRAParam";
+'    
+'    SetIntRegistryValue(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%); 
+'    
+'	return;
+'end
+'
+''===== End RecFRALoadSaveParams =====
+''
+''
+'
+'
+''
+''===== RecFRALoadGetParams =====
+'
+''Fetch Debugging parameters from the registry
+'proc RecFRALoadGetParams()
+'	var key$;
+'    key$:="Reclab\\FRAParam";
+'    
+'    recCharExpIndexLoadFRA% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%);   
+'	return;
+'end
+'
+''===== End RecFRALoadGetParams =====
+''
+''
 
-'Fetch Debugging parameters from the registry
-proc RecFRALoadSaveParams()
-	var key$;
-    key$:="Reclab\\FRAParam";
-    
-    SetIntRegistryValue(key$, "FRAExpIndexLoad", recFRAExpIndexLoad%); 
-    
-	return;
-end
 
-'===== End RecFRALoadSaveParams =====
-'
-'
-'
-'===== RecFRALoadGetParams =====
-
-'Fetch Debugging parameters from the registry
-proc RecFRALoadGetParams()
-	var key$;
-    key$:="Reclab\\FRAParam";
-    
-    recFRAExpIndexLoad% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recFRAExpIndexLoad%);   
-	return;
-end
-
-'===== End RecFRALoadGetParams =====
-'
-'
 
 '
 '
@@ -2042,15 +2100,15 @@ func RecExpSelectDialog%()
     DlgGroup("Experiments", 1,8,50,6);
     DlgButton(0,"         Quit         ");
     DlgButton(1,"          OK          ");
-    DlgButton(recExpSearchButton%, "              Search              ", RecExpSearchDialog%, 2, 9);
-    DlgButton(recExpFRAButton%,    "  FRA/Rate-level/Space  ", RecExpFRADialog%, 2, 10);
-    DlgButton(recExpAMDiscButton%, "            AM Disc.           ", RecExpAMDiscDialog%, 26, 9);
-    DlgButton(recExpSpaceDisButton%, "          Space Disc          ", RecExpSpaceDisDialog%, 26, 10);
-    DlgButton(recExpCueingButton%, "             Cueing             ", RecExpCueingDialog%, 26, 11);
-    DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ", RecJoyTrainDialog%, 2, 11); 'will go under FRA button '*jao
-    DlgButton(recExpAudiogramButton%, "           Audiogram           ", RecAudiogramDialog%, 2, 12);  
-    DlgButton(recExpStereoDisButton%, "     Stereo Distractor     ", RecExpStereoDisDialog%, 26, 12);
-    DlgButton(recExpLongToneButton%, "           Long Tone           ", RecLongToneDialog%, 2, 13); 
+    DlgButton(recExpSearchButton%,    "              Search              ", RecExpSearchDialog%, 2, 9);
+    DlgButton(recExpCharButton%,      "      Characterization      ",       RecExpCharDialog%, 2, 10);
+    DlgButton(recExpAMDiscButton%,    "            AM Disc.           ",    RecExpAMDiscDialog%, 26, 9);
+    DlgButton(recExpSpaceDisButton%,  "          Space Disc          ",     RecExpSpaceDisDialog%, 26, 10);
+    DlgButton(recExpCueingButton%,    "             Cueing             ",   RecExpCueingDialog%, 26, 11);
+    DlgButton(recExpJoyTrnButton%,    " Joy Train (no stimulus)  ",         RecJoyTrainDialog%, 2, 11); 'will go under FRA button '*jao
+    DlgButton(recExpAudiogramButton%, "           Audiogram           ",    RecAudiogramDialog%, 2, 12);  
+    DlgButton(recExpStereoDisButton%, "     Stereo Distractor     ",        RecExpStereoDisDialog%, 26, 12);
+    DlgButton(recExpLongToneButton%,  "           Long Tone           ",    RecLongToneDialog%, 2, 13); 
     
     'DlgGroup("Change Timing/Reward Parameters", 1,13,50,2);
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 7);
@@ -2125,7 +2183,7 @@ func RecExpSelectDialog%()
         RecExpSelectDialogSaveParams();
         
         'Note name of file in external log file
-        view(recLog%).print("Current file is " + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smr\n");
+        view(recLog%).print("Current file is " + recMonkPrefix$ + "_"+ Date$(2,2,3,3,"-")+ blockTag$ + ".smrx\n");
         
         
         status% := 1;
@@ -2163,6 +2221,9 @@ func RecExpSelectDialogChanged%(item%)
     endcase
     'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
     
+    'Disable two buttons, note that this allows the remainder of the infrastructure for these expts to remain intact
+    DlgEnable(0,-recExpStereoDisButton%);  'Almost certainly broken, see GenTrialsStereoDis%() for more details
+    DlgEnable(0,-recExpCueingButton%);  'Never full implemented
     
     'This disables the "OK" button (though it will have different labels) until an experiment is selected
     'AND a file name is chosen AND a number of electrodes is entered AND the speaker array selection is legal
@@ -2540,13 +2601,14 @@ end
 
 '
 '
-'===== RecExpFRADialog =====
+'===== RecExpCharDialog =====
 
-'A dialog for the FRA experiment
+'A dialog for the Characterization experiments
 
-func RecExpFRADialog%()
+func RecExpCharDialog%()
     var eightInts%[8];
     var threeInts%[3];
+    var fiveInts%[5];
     '    var astring$;
     var i%;
     var k%;
@@ -2558,30 +2620,41 @@ func RecExpFRADialog%()
         inds%[j%] := j%;
     next;
     
-    var recFRADoLoad$[4];
-    recFRADoLoad$[0] := "Use Dialog Values";
-    recFRADoLoad$[1] := "Load FRA/SigNoise From Script";
-    recFRADoLoad$[2] := "Generate FRA From Script";
-    recFRADoLoad$[3] := "Generate SigNoise From Script";
+    var recCharDoLoad$[6];
+    recCharDoLoad$[0] := "Use Dialog Values";
+    recCharDoLoad$[1] := "Load FRA From Script";   'was load FRA/SigNoise
+    recCharDoLoad$[2] := "Load SigNoise From Script";
+    recCharDoLoad$[3] := "Generate FRA From Script";  'was in index 2
+    recCharDoLoad$[4] := "Generate SigNoise From Script";  'was in index 3
+    recCharDoLoad$[5] := "Load Arbitrary Stimuli";
     
     ' Fetch parameters from registry    
-    RecFRAGetParams();
-    RecFRAExpListLoadGetParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
-    RecFRAExpListGenFRAGetParams(recFRAExpNameGenFRA$[],recFRAStimNameGenFRA$[],recFRATrialsNameGenFRA$[]);
-    RecFRAExpListGenSigNoiseGetParams(recFRAExpNameGenSigNoise$[],recFRAStimNameGenSigNoise$[],recFRATrialsNameGenSigNoise$[]);
+    RecCharDialogFRAGetParams();
+    RecCharExpListLoadFRAGetParams(recCharExpNameLoadFRA$[],recCharStimcalFileLoadFRA$[],recCharTrialsFileLoadFRA$[]);
+    RecCharExpListLoadSigNoiseGetParams(recCharExpNameLoadSigNoise$[],recCharStimcalFileLoadSigNoise$[],recCharTrialsFileLoadSigNoise$[]);
+    RecCharExpListGenFRAGetParams(recCharExpNameGenFRA$[],recCharStimFileGenFRA$[],recCharTrialsFileGenFRA$[]);
+    RecCharExpListGenSigNoiseGetParams(recCharExpNameGenSigNoise$[],recCharStimFileGenSigNoise$[],recCharTrialsFileGenSigNoise$[]);
+    RecCharExpListLoadArbStimGetParams(recCharExpNameLoadArbStim$[],recCharStimcalFileLoadArbStim$[],recCharTrialsFileLoadArbStim$[],recCharExpPrefixLoadArbStim$[]);
     
-    threeInts%[0] := recFRAS1Speaker%;
-    threeInts%[1] := recFRAMinS1%;
-    threeInts%[2] := recFRAVarS1%;
+    threeInts%[0] := recCharS1Speaker%;
+    threeInts%[1] := recCharMinS1%;
+    threeInts%[2] := recCharVarS1%;
     
-    eightInts%[0] := recFRAFMSweepRepeats%;
-    eightInts%[1] := recFRAFMSweepStart%;
-    eightInts%[2] := recFRAFMSweepEnd%;
-    eightInts%[3] := recFRAFMSweepDur1%;
-    eightInts%[4] := recFRAFMSweepDur2%;
-    eightInts%[5] := recFRAFMSweepDur3%;
-    eightInts%[6] := recFRAFMSweepDur4%;
-    eightInts%[7] := recFRAFMSweepDur5%;
+    eightInts%[0] := recFMSweepRepeats%;
+    eightInts%[1] := recFMSweepStart%;
+    eightInts%[2] := recFMSweepEnd%;
+    eightInts%[3] := recFMSweepDur1%;
+    eightInts%[4] := recFMSweepDur2%;
+    eightInts%[5] := recFMSweepDur3%;
+    eightInts%[6] := recFMSweepDur4%;
+    eightInts%[7] := recFMSweepDur5%;
+    
+    fiveInts%[0] := recCharExpIndexLoadFRA%;
+    fiveInts%[1] := recCharExpIndexLoadSigNoise%;
+    fiveInts%[2] := recCharExpIndexGenFRA%;
+    fiveInts%[3] := recCharExpIndexGenSigNoise%;
+    fiveInts%[4] := recCharExpIndexLoadArbStim%;
+    
 
     ' Initial calculation of dB steps, Freq. steps
     GetLinearProgression(recRateLeveldBLow, recRateLeveldBHigh, recRateLeveldBNSteps%-1, recRateLeveldBList[]);
@@ -2600,7 +2673,7 @@ func RecExpFRADialog%()
     
     
     ' Generate the dialog    
-    DlgCreate("Combined FRA/Rate-Level/Space Dialog",0,0,120,30);
+    DlgCreate("Characterization Dialog",0,0,120,30);
     
     DlgGroup("S1 Stimuli",1,1,118,2);
     DlgInteger(1,6,1,16,22,2);
@@ -2682,33 +2755,46 @@ func RecExpFRADialog%()
     DlgText("# BP Noise repeats",3,17);
     'DlgText("Bandpass noises blah blah blah",31,18); 
 
-    DlgGroup("S2 Stimuli (Space)",1,21,118,2);
-    DlgReal(22,6,0.001,100,26,22);  'S2 speaker dB level
-    DlgText("S2 (FM and AM) dB level",3,22);
-    DlgInteger(23,6,1,100,51,22);  'S2 # repeats (for Space tuning) - separate from rate-level!
-    DlgText("# Space repeats",35,22);
-    DlgCheck(24,"",89,23);  'Monkey does lever task
-    DlgText("Monkey Does Lever Task",65,23);
+    DlgGroup("S2 Stimuli (Space)",1,18,118,2);
+    DlgReal(22,6,0.001,100,26,19);  'S2 speaker dB level
+    DlgText("S2 (FM and AM) dB level",3,19);
+    DlgInteger(23,6,1,100,51,19);  'S2 # repeats (for Space tuning) - separate from rate-level!
+    DlgText("# Space repeats",35,19);
+    DlgCheck(24,"",89,21);  'Monkey does lever task
+    DlgText("Monkey Does Lever Task",65,21);
 
-    DlgAllow(0xffff, 0, RecExpFRADialogChanged%); 
+    DlgAllow(0xffff, 0, RecExpCharDialogChanged%); 
     
-    DlgGroup("Stimulus Selection",1,24,120,5);
-    'DlgCheck(25,"Load Stimuli?",2,25);
-    DlgList(25,30,recFRADoLoad$[],4,3,25);
-    DlgList(26,22,recFRAExpNameLoad$[],recFRANumExps%,34,26);
-    recFRAText2% := DlgText("Select Exp't (Load FRA/SigNoise)",2,26);
-    DlgButton(recFRAAddExpButton%, "  Add Experiment  ", RecFRAAddExp%,58,26);
-    DlgButton(recFRADeleteExpButton%, "Delete Experiment ", RecFRADeleteExp%,78,26);
-    DlgList(27,22,recFRAExpNameGenFRA$[],recFRANumExps%,34,27);
-    recFRAText3% := DlgText("Select Exp't (Gen FRA)",2,27);
-    DlgButton(recFRAAddExpGenFRAButton%, "  Add Experiment  ", RecFRAAddExpGenFRA%,58,27);
-    DlgButton(recFRADeleteExpGenFRAButton%, "Delete Experiment ", RecFRADeleteExpGenFRA%,78,27);
-    recFRAText4% := DlgText("Select Exp't (Gen SigNoise)",2,28);
-    DlgButton(recFRAAddExpGenSigNoiseButton%, "  Add Experiment  ", RecFRAAddExpGenSigNoise%,58,28);
-    DlgButton(recFRADeleteExpGenSigNoiseButton%, "Delete Experiment ", RecFRADeleteExpGenSigNoise%,78,28);
-    DlgList(28,22,recFRAExpNameGenSigNoise$[],recFRANumExps%,34,28);
+    DlgGroup("Experiment Selection",1,22,120,7);
+    DlgList(25,30,recCharDoLoad$[],6,3,23);
+    
+    DlgList(26,22,recCharExpNameLoadFRA$[],recCharNumExps%,34,24);
+    recCharText1% := DlgText("Select Exp't (Load FRA)",2,24);
+    DlgButton(recCharAddExpLoadFRAButton%, "  Add Experiment  ", RecCharAddExpLoadFRA%,58,24);
+    DlgButton(recCharDeleteExpLoadFRAButton%, "Delete Experiment ", RecCharDeleteExpLoadFRA%,78,24);
+    
+    DlgList(27,22,recCharExpNameLoadSigNoise$[],recCharNumExps%,34,25);
+    recCharText2% := DlgText("Select Exp't (Load SigNoise)",2,25);
+    DlgButton(recCharAddExpLoadSigNoiseButton%, "  Add Experiment  ", RecCharAddExpLoadSigNoise%,58,25);
+    DlgButton(recCharDeleteExpLoadSigNoiseButton%, "Delete Experiment ", RecCharDeleteExpLoadSigNoise%,78,25);
+    
+    DlgList(28,22,recCharExpNameGenFRA$[],recCharNumExps%,34,26);
+    recCharText3% := DlgText("Select Exp't (Gen FRA)",2,26);
+    DlgButton(recCharAddExpGenFRAButton%, "  Add Experiment  ", RecCharAddExpGenFRA%,58,26);
+    DlgButton(recCharDeleteExpGenFRAButton%, "Delete Experiment ", RecCharDeleteExpGenFRA%,78,26);
+    
+    DlgList(29,22,recCharExpNameGenSigNoise$[],recCharNumExps%,34,27);
+    recCharText4% := DlgText("Select Exp't (Gen SigNoise)",2,27);
+    DlgButton(recCharAddExpGenSigNoiseButton%, "  Add Experiment  ", RecCharAddExpGenSigNoise%,58,27);
+    DlgButton(recCharDeleteExpGenSigNoiseButton%, "Delete Experiment ", RecCharDeleteExpGenSigNoise%,78,27);
+    
+    DlgList(30,22,recCharExpNameLoadArbStim$[],recCharNumExps%,34,28);
+    recCharText5% := DlgText("Select Exp't (Load Arbitrary Stimulus)",2,28);
+    DlgButton(recCharAddExpLoadArbStimButton%, "  Add Experiment  ", RecCharAddExpLoadArbStim%,58,28);
+    DlgButton(recCharDeleteExpLoadArbStimButton%, "Delete Experiment ", RecCharDeleteExpLoadArbStim%,78,28);
+    
 
-    DlgAllow(0xffff, 0, RecExpFRADialogChanged%); 
+    DlgAllow(0xffff, 0, RecExpCharDialogChanged%); 
     
     ' Show the dialog. 
     i%:=DlgShow(threeInts%, 'S1 stimuli
@@ -2717,23 +2803,29 @@ func RecExpFRADialog%()
                 eightInts%,  'S1 FM tones
                 recS1AMnoiseReps%,'S1 AM Noise
                 recBPnoiseReps%, 'S1 Bandpass Noise
-                recFRAS2dBLevel, recSpaceNRepeats%, recFRAActive%, 'S2 Stimuli (space)
-                recFRALoadStim%,recFRAExpIndexLoad%,recFRAExpIndexGenFRA%,recFRAExpIndexGenSigNoise%);'Stimulus Selection 
+                recSpaceS2dBLevel, recSpaceNRepeats%, recCharActive%, 'S2 Stimuli (space)
+                recCharLoadStim%,fiveInts%);'Stimulus Selection 
 
-                printlog("Value is %d\n", recFRAExpIndexLoad%);
+                'printlog("Value is %d\n", recCharExpIndexLoadFRA%);
 
-                recFRAS1Speaker% := threeInts%[0];
-                recFRAMinS1% := threeInts%[1];
-                recFRAVarS1% := threeInts%[2];
+                recCharS1Speaker% := threeInts%[0];
+                recCharMinS1%     := threeInts%[1];
+                recCharVarS1%     := threeInts%[2];
     
-                recFRAFMSweepRepeats% := eightInts%[0];
-                recFRAFMSweepStart% := eightInts%[1];
-                recFRAFMSweepEnd% := eightInts%[2];
-                recFRAFMSweepDur1% := eightInts%[3];
-                recFRAFMSweepDur2% := eightInts%[4];
-                recFRAFMSweepDur3% := eightInts%[5];
-                recFRAFMSweepDur4% := eightInts%[6];
-                recFRAFMSweepDur5% := eightInts%[7];
+                recFMSweepRepeats% := eightInts%[0];
+                recFMSweepStart%   := eightInts%[1];
+                recFMSweepEnd%     := eightInts%[2];
+                recFMSweepDur1%    := eightInts%[3];
+                recFMSweepDur2%    := eightInts%[4];
+                recFMSweepDur3%    := eightInts%[5];
+                recFMSweepDur4%    := eightInts%[6];
+                recFMSweepDur5%    := eightInts%[7];
+    
+                recCharExpIndexLoadFRA%      := fiveInts%[0];
+                recCharExpIndexLoadSigNoise% := fiveInts%[1];
+                recCharExpIndexGenFRA%       := fiveInts%[2];
+                recCharExpIndexGenSigNoise%  := fiveInts%[3];
+                recCharExpIndexLoadArbStim%  := fiveInts%[4];
 
     'make sure the dialog values are OK
     docase
@@ -2763,10 +2855,10 @@ func RecExpFRADialog%()
         next;
     
         'Save parameters
-        RecFRASaveParams();
+        RecCharDialogFRASaveParams();
         
         'Reset dialog OK button text on Select dialog, and note which experiment to run
-        DlgValue$(-1,"Run FRA");
+        DlgValue$(-1,"Run Char.");
         
         'There doesn't appear to be, at this time, a compelling reason to actually limit this
         'to the 16-speaker array.  Dominique is trying to run this, as a "practice" in the 
@@ -2780,34 +2872,27 @@ func RecExpFRADialog%()
         'DlgValue(3,2);  'force NSpeakers to the 16-speaker array on the main dialog
         'DlgEnable(0,3); 'and don't let this value be changed
         
-        recExpToRun% := recExpFRAButton%; 
+        recExpToRun% := recExpCharButton%; 
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
         
         'assign Search-specific variables to experiment-wide variables (so we can keep separate defaults but only code once)
-        recMinS1% := recFRAMinS1%;
-        recVarS1% := recFRAVarS1%;
-        recS1Speaker% := recFRAS1Speaker%;
-        recActive% := recFRAActive%;
+        recMinS1% := recCharMinS1%;
+        recVarS1% := recCharVarS1%;
+        recS1Speaker% := recCharS1Speaker%;
+        recActive% := recCharActive%;
         recFixLED% := 1;
-        if recFRALoadStim% = 1 then  'Always generate stimuli for FRA unless it's a load scenario (0 is dialog gen, 1 is file load, 2 is file gen)
+        if recCharLoadStim% = 1 or recCharLoadStim% = 2 or recCharLoadStim% = 5 then  'Always generate stimuli for FRA unless it's a load scenario 
+                                                                                      '(0 is dialog gen, 1 is load FRA, 2 is load SigNoise, 3 is gen FRA, 4 is gen SigNoise, 5 is load ArbStim)
             recMatGenStim% := 0;
         else
             recMatGenStim% := 1;  
         endif;
-        if recFRALoadStim% = 1 or recFRALoadStim% = 3 then
-            recUse2PWAs% := 1;  'when loading stimuli from file, or when doing SigNoise (generation), use 2 PWAs
+        if recCharLoadStim% = 2 or recCharLoadStim% = 4 then
+            recUse2PWAs% := 1;  'when doing SigNoise, use 2 PWAs
         else
             recUse2PWAs% := 0;  'is already 0, but let's be explicit
         endif;
-        
-        
-        'We might need to specify a number of trials here...I'm assuming yes, just as for Search.  However
-        'for the FRA, there may be a specific number of trials - it appears that the number of stimuli is
-        'fixed, with 45x10=450 tone pips at S1 speaker, 10x12=120 noise bursts at S1 speaker and 15x12=180
-        'noise bursts at S2 speakers.  It is these S2 noise bursts that defines the number of trials: 180.
-        'The trick will then be to get the 570 S1 stimuli spread out over the 180 S2 stimuli in a reasonable
-        'fashion.  We'll probably have to hardcode the distributions of S1 length per trial and go from there.
         
         status% := 1;
     else
@@ -2819,16 +2904,16 @@ func RecExpFRADialog%()
 end;
 
 
-'===== End RecExpFRADialog =====
+'===== End RecExpCharDialog =====
 '
 '
 
 '
 '
-'===== RecExpFRADialogChanged =====
+'===== RecExpCharDialogChanged =====
 
 ' This function is initially called with a "0" input
-func RecExpFRADialogChanged%(item%) 
+func RecExpCharDialogChanged%(item%) 
     'Quickly build a list of indices that we need
     var inds%[10];
     var j%;
@@ -2886,7 +2971,7 @@ func RecExpFRADialogChanged%(item%)
         DlgValue$(recFRAFreqList4%,recFRAFreqList4$);
         DlgValue$(recFRAFreqList5%,recFRAFreqList5$);
 '    case item% = 11 or item% = 12 or item% = 13 or item% = 22 then  'change number of S1 stimulus repeats
-'        nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%);  'that's number of tone pips in FRA plus number of noise bursts in rate-level function
+'        nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFMSweepRepeats%);  'that's number of tone pips in FRA plus number of noise bursts in rate-level function
 '        printlog("nS1% = %d\n", nS1%);
 '        nS2% := (recNSpeakers%-1)*recSpaceNRepeats%;  'that's number of noises at speakers not in the S1 position
 '        printlog("nS2% = %d\n", nS2%);
@@ -2896,65 +2981,135 @@ func RecExpFRADialogChanged%(item%)
         case DlgValue(25) = 0 then
             'Disable all load/gen versions
             DlgEnable(0,26);
-            DlgEnable(0,-recFRAAddExpButton%);
-            DlgEnable(0,-recFRADeleteExpButton%);
+            DlgEnable(0,-recCharAddExpLoadFRAButton%);
+            DlgEnable(0,-recCharDeleteExpLoadFRAButton%);
             DlgEnable(0,27);
-            DlgEnable(0,-recFRAAddExpGenFRAButton%);
-            DlgEnable(0,-recFRADeleteExpGenFRAButton%);
+            DlgEnable(0,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpLoadSigNoiseButton%);
             DlgEnable(0,28);
-            DlgEnable(0,-recFRAAddExpGenSigNoiseButton%);
-            DlgEnable(0,-recFRADeleteExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharAddExpGenFRAButton%);
+            DlgEnable(0,-recCharDeleteExpGenFRAButton%);
+            DlgEnable(0,29);
+            DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
+            DlgEnable(0,30);
+            DlgEnable(0,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
             'Enable all the other values
             for j% := 1 to 23 do
                 DlgEnable(1,j%);
             next
 
         case DlgValue(25) = 1 then
-            'Enable load version
+            'Enable load FRA version
             DlgEnable(1,26);
-            DlgEnable(1,-recFRAAddExpButton%);
-            DlgEnable(1,-recFRADeleteExpButton%);
-            'Disable both gen versions
+            DlgEnable(1,-recCharAddExpLoadFRAButton%);
+            DlgEnable(1,-recCharDeleteExpLoadFRAButton%);
+            'Disable other versions
             DlgEnable(0,27);
-            DlgEnable(0,-recFRAAddExpGenFRAButton%);
-            DlgEnable(0,-recFRADeleteExpGenFRAButton%);
+            DlgEnable(0,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpLoadSigNoiseButton%);
             DlgEnable(0,28);
-            DlgEnable(0,-recFRAAddExpGenSigNoiseButton%);
-            DlgEnable(0,-recFRADeleteExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharAddExpGenFRAButton%);
+            DlgEnable(0,-recCharDeleteExpGenFRAButton%);
+            DlgEnable(0,29);
+            DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
+            DlgEnable(0,30);
+            DlgEnable(0,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
             next
             
         case DlgValue(25) = 2 then
-            'Disable load version, sig noise gen version
-            DlgEnable(0,26);
-            DlgEnable(0,-recFRAAddExpButton%);
-            DlgEnable(0,-recFRADeleteExpButton%);
-            DlgEnable(0,28);
-            DlgEnable(0,-recFRAAddExpGenSigNoiseButton%);
-            DlgEnable(0,-recFRADeleteExpGenSigNoiseButton%);
-            'Enable FRA gen version
+            'Enable load SigNoise version
             DlgEnable(1,27);
-            DlgEnable(1,-recFRAAddExpGenFRAButton%);
-            DlgEnable(1,-recFRADeleteExpGenFRAButton%);
+            DlgEnable(1,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(1,-recCharDeleteExpLoadSigNoiseButton%);
+            'Disable other versions
+            DlgEnable(0,26);
+            DlgEnable(0,-recCharAddExpLoadFRAButton%);
+            DlgEnable(0,-recCharDeleteExpLoadFRAButton%);
+            DlgEnable(0,28);
+            DlgEnable(0,-recCharAddExpGenFRAButton%);
+            DlgEnable(0,-recCharDeleteExpGenFRAButton%);
+            DlgEnable(0,29);
+            DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
+            DlgEnable(0,30);
+            DlgEnable(0,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
             next
             
         case DlgValue(25) = 3 then
-            'Disable load version, FRA gen version
-            DlgEnable(0,26);
-            DlgEnable(0,-recFRAAddExpButton%);
-            DlgEnable(0,-recFRADeleteExpButton%);
-            DlgEnable(0,27);
-            DlgEnable(0,-recFRAAddExpGenFRAButton%);
-            DlgEnable(0,-recFRADeleteExpGenFRAButton%);
-            'Enable sig noise gen version
+            'Enable generate FRA version
             DlgEnable(1,28);
-            DlgEnable(1,-recFRAAddExpGenSigNoiseButton%);
-            DlgEnable(1,-recFRADeleteExpGenSigNoiseButton%);
+            DlgEnable(1,-recCharAddExpGenFRAButton%);
+            DlgEnable(1,-recCharDeleteExpGenFRAButton%);
+            'Disable other versions
+            DlgEnable(0,26);
+            DlgEnable(0,-recCharAddExpLoadFRAButton%);
+            DlgEnable(0,-recCharDeleteExpLoadFRAButton%);
+            DlgEnable(0,27);
+            DlgEnable(0,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpLoadSigNoiseButton%);
+            DlgEnable(0,29);
+            DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
+            DlgEnable(0,30);
+            DlgEnable(0,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            'Disable all the other values
+            for j% := 1 to 23 do
+                DlgEnable(0,j%);
+            next
+            
+        case DlgValue(25) = 4 then
+            'Enable generate SigNoise version
+            DlgEnable(1,29);
+            DlgEnable(1,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(1,-recCharDeleteExpGenSigNoiseButton%);
+            'Disable other versions
+            DlgEnable(0,26);
+            DlgEnable(0,-recCharAddExpLoadFRAButton%);
+            DlgEnable(0,-recCharDeleteExpLoadFRAButton%);
+            DlgEnable(0,27);
+            DlgEnable(0,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpLoadSigNoiseButton%);
+            DlgEnable(0,28);
+            DlgEnable(0,-recCharAddExpGenFRAButton%);
+            DlgEnable(0,-recCharDeleteExpGenFRAButton%);
+            DlgEnable(0,30);
+            DlgEnable(0,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            'Disable all the other values
+            for j% := 1 to 23 do
+                DlgEnable(0,j%);
+            next            
+            
+        case DlgValue(25) = 5 then
+            'Enable load ArbStim version
+            DlgEnable(1,30);
+            DlgEnable(1,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(1,-recCharDeleteExpLoadArbStimButton%);
+            'Disable other versions
+            DlgEnable(0,26);
+            DlgEnable(0,-recCharAddExpLoadFRAButton%);
+            DlgEnable(0,-recCharDeleteExpLoadFRAButton%);
+            DlgEnable(0,27);
+            DlgEnable(0,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpLoadSigNoiseButton%);
+            DlgEnable(0,28);
+            DlgEnable(0,-recCharAddExpGenFRAButton%);
+            DlgEnable(0,-recCharDeleteExpGenFRAButton%);
+            DlgEnable(0,29);
+            DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
@@ -2966,7 +3121,7 @@ func RecExpFRADialogChanged%(item%)
     return 1;
 end
 
-'===== End RecExpFRADialogChanged =====
+'===== End RecExpCharDialogChanged =====
 '
 '
 
@@ -4943,12 +5098,12 @@ end;
 
 
 
-'===== RecFRAAddExp =====
+'===== RecCharAddExpLoadFRA =====
 
-'This is a dialog that comes up to allow adding "experiments" to the FRA dialog, Load version
+'This is a dialog that comes up to allow adding "experiments" to FRA, Load version
 'Please note that in order to reset the list box in the calling dialog, we have to actually
 'CLOSE the calling dialog and reopen it.  That's gotta be manual.
-func RecFRAAddExp%()
+func RecCharAddExpLoadFRA%()
     
     var i%;
     var j%;
@@ -4960,7 +5115,7 @@ func RecFRAAddExp%()
     var mystr3$;
 
     ' Generate the dialog
-    DlgCreate("FRA Experiment ADD Dialog", 62, 10);
+    DlgCreate("FRA (Load) Experiment ADD Dialog", 62, 10);
     DlgString(1,40,100,"a-zA-Z0-9",26,1);
     DlgText("Name of New Experiment",2,1);
     DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
@@ -4974,29 +5129,29 @@ func RecFRAAddExp%()
     ' If user hit OK then add new experiment 
 	if i% = 1 then 
         'load parameters
-        RecFRAExpListLoadGetParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
+        RecCharExpListLoadFRAGetParams(recCharExpNameLoadFRA$[],recCharStimcalFileLoadFRA$[],recCharTrialsFileLoadFRA$[]);
         'find first empty slot
         j% := 0;
         k% := -1;
-        while j% < recFRANumExps% do
-            if recFRAExpNameLoad$[j%] = "" then
+        while j% < recCharNumExps% do
+            if recCharExpNameLoadFRA$[j%] = "" then
                 k% := j%;  'k% holds index of first empty slot
-                j% := recFRANumExps%;
+                j% := recCharNumExps%;
             endif;
             j%+=1;
         wend
         'Return if all slots are full
         if k% = -1 then
-            Message("All " + Str$(recFRANumExps%) + " slots are full!  You must delete an experiment!");
+            Message("All " + Str$(recCharNumExps%) + " slots are full!  You must delete an experiment!");
             return 1;
         endif;
         'Otherwise place values 
-        recFRAExpNameLoad$[k%] := mystr$;
-        recFRAStimcalNameLoad$[k%] := mystr2$;
-        recFRATrialsNameLoad$[k%] := mystr3$;
+        recCharExpNameLoadFRA$[k%] := mystr$;
+        recCharStimcalFileLoadFRA$[k%] := mystr2$;
+        recCharTrialsFileLoadFRA$[k%] := mystr3$;
         'And save them
-        RecFRAExpListLoadSaveParams(recFRAExpNameLoad$[],recFRAStimcalNameLoad$[],recFRATrialsNameLoad$[]);
-        status% := 0;  'close the calling dialog - necessary to refresh list in AMDisDialog
+        RecCharExpListLoadFRASaveParams(recCharExpNameLoadFRA$[],recCharStimcalFileLoadFRA$[],recCharTrialsFileLoadFRA$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in Dialog
 
     else
         status% := 1;
@@ -5006,7 +5161,7 @@ func RecFRAAddExp%()
 
 end;
 
-'===== End RecFRAAddExp =====
+'===== End RecCharAddExpLoadFRA =====
 '
 '
 
@@ -5014,28 +5169,28 @@ end;
 
 '
 '
-'===== RecFRADeleteExp =====
+'===== RecCharDeleteExpLoadFRA =====
 
-'This is a dialog that comes up to allow deleting "experiments" from the FRA dialog (Load version)
-func RecFRADeleteExp%()
+'This is a dialog that comes up to allow deleting "experiments" from FRA (Load version)
+func RecCharDeleteExpLoadFRA%()
 
     var i%;
     var j%;
     var status% := 0;
-    var mystr$[recFRANumExps%];
-    var mystr1$[recFRANumExps%];
-    var mystr2$[recFRANumExps%];
+    var mystr$[recCharNumExps%];
+    var mystr1$[recCharNumExps%];
+    var mystr2$[recCharNumExps%];
     
     var sli%;
 
     ' Fetch parameters from registry    
-    RecFRAExpListLoadGetParams(mystr$[],mystr1$[],mystr2$[]);
+    RecCharExpListLoadFRAGetParams(mystr$[],mystr1$[],mystr2$[]);
     
     ' Generate the dialog
     
-    DlgCreate("Cueing Experiment DELETE Dialog", 62, 10);
+    DlgCreate("FRA (Load) Experiment DELETE Dialog", 62, 10);
     DlgText("Select Experiment to Delete",2,1);
-    DlgList(1,27,mystr$,recFRANumExps%,28,1);
+    DlgList(1,27,mystr$,recCharNumExps%,28,1);
 
     ' Show the dialog. 
     i%:=DlgShow(sli%);
@@ -5043,20 +5198,20 @@ func RecFRADeleteExp%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         'Remove experiment that has been selected and move everything up one
-        if sli% < recFRANumExps%-1 then  'Without this "if", would crash if asked to remove final entry
-            for j% := sli% to recFRANumExps%-2 do
+        if sli% < recCharNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recCharNumExps%-2 do
                 mystr$[j%] := mystr$[j%+1];
                 mystr1$[j%] := mystr1$[j%+1];
                 mystr2$[j%] := mystr2$[j%+1];
             next;
         endif;
         'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
-        mystr$[recFRANumExps%-1] := "";
-        mystr1$[recFRANumExps%-1] := "";
-        mystr2$[recFRANumExps%-1] := "";
+        mystr$[recCharNumExps%-1] := "";
+        mystr1$[recCharNumExps%-1] := "";
+        mystr2$[recCharNumExps%-1] := "";
         
         'Save the new values
-        RecFRAExpListLoadSaveParams(mystr$[],mystr1$[],mystr2$[]);
+        RecCharExpListLoadFRASaveParams(mystr$[],mystr1$[],mystr2$[]);
         
         status% := 0;  'Close the calling dialog
     else
@@ -5067,17 +5222,145 @@ func RecFRADeleteExp%()
     
 end;
 
-'===== End RecFRADeleteExp =====
+'===== End RecCharDeleteExpLoadFRA =====
 
 
 
+'===== RecCharAddExpLoadSigNoise =====
 
-'===== RecFRAAddExpGenFRA =====
-
-'This is a dialog that comes up to allow adding "experiments" to the FRA dialog, Gen version
+'This is a dialog that comes up to allow adding "experiments" to SigNoise, Load version
 'Please note that in order to reset the list box in the calling dialog, we have to actually
 'CLOSE the calling dialog and reopen it.  That's gotta be manual.
-func RecFRAAddExpGenFRA%()
+func RecCharAddExpLoadSigNoise%()
+    
+    var i%;
+    var j%;
+    var k%;
+    var status% := 0;
+    'var createMode%;   'Not using this, could potentially have been useful if we passed the value in, but we're not doing that
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+
+    ' Generate the dialog
+    DlgCreate("SigNoise (Load) Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
+    DlgButton(recSelectTrialsFileButton%, " Select Trials File ", RecSelectTrialsFile%,2,3);
+    DlgString(2,40,200,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,200,"",26,3);  'for visual confirmation of selected trials file
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$);
+    
+    ' If user hit OK then add new experiment 
+	if i% = 1 then 
+        'load parameters
+        RecCharExpListLoadSigNoiseGetParams(recCharExpNameLoadSigNoise$[],recCharStimcalFileLoadSigNoise$[],recCharTrialsFileLoadSigNoise$[]);
+        'find first empty slot
+        j% := 0;
+        k% := -1;
+        while j% < recCharNumExps% do
+            if recCharExpNameLoadSigNoise$[j%] = "" then
+                k% := j%;  'k% holds index of first empty slot
+                j% := recCharNumExps%;
+            endif;
+            j%+=1;
+        wend
+        'Return if all slots are full
+        if k% = -1 then
+            Message("All " + Str$(recCharNumExps%) + " slots are full!  You must delete an experiment!");
+            return 1;
+        endif;
+        'Otherwise place values 
+        recCharExpNameLoadSigNoise$[k%] := mystr$;
+        recCharStimcalFileLoadSigNoise$[k%] := mystr2$;
+        recCharTrialsFileLoadSigNoise$[k%] := mystr3$;
+        'And save them
+        RecCharExpListLoadSigNoiseSaveParams(recCharExpNameLoadSigNoise$[],recCharStimcalFileLoadSigNoise$[],recCharTrialsFileLoadSigNoise$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in Dialog
+
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecCharAddExpLoadSigNoise =====
+'
+'
+
+
+
+'
+'
+'===== RecCharDeleteExpLoadSigNoise =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the Char dialog (Load SigNoise version)
+func RecCharDeleteExpLoadSigNoise%()
+
+    var i%;
+    var j%;
+    var status% := 0;
+    var mystr$[recCharNumExps%];
+    var mystr1$[recCharNumExps%];
+    var mystr2$[recCharNumExps%];
+    
+    var sli%;
+
+    ' Fetch parameters from registry    
+    RecCharExpListLoadSigNoiseGetParams(mystr$[],mystr1$[],mystr2$[]);
+    
+    ' Generate the dialog
+    
+    DlgCreate("SigNoise (Load) Experiment DELETE Dialog", 62, 10);
+    DlgText("Select Experiment to Delete",2,1);
+    DlgList(1,27,mystr$,recCharNumExps%,28,1);
+
+    ' Show the dialog. 
+    i%:=DlgShow(sli%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Remove experiment that has been selected and move everything up one
+        if sli% < recCharNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recCharNumExps%-2 do
+                mystr$[j%] := mystr$[j%+1];
+                mystr1$[j%] := mystr1$[j%+1];
+                mystr2$[j%] := mystr2$[j%+1];
+            next;
+        endif;
+        'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+        mystr$[recCharNumExps%-1] := "";
+        mystr1$[recCharNumExps%-1] := "";
+        mystr2$[recCharNumExps%-1] := "";
+        
+        'Save the new values
+        RecCharExpListLoadSigNoiseSaveParams(mystr$[],mystr1$[],mystr2$[]);
+        
+        status% := 0;  'Close the calling dialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecCharDeleteExpLoadSigNoise =====
+
+
+
+
+'===== RecCharAddExpGenFRA =====
+
+'This is a dialog that comes up to allow adding "experiments" to FRA, Gen version
+'Please note that in order to reset the list box in the calling dialog, we have to actually
+'CLOSE the calling dialog and reopen it.  That's gotta be manual.
+func RecCharAddExpGenFRA%()
     
     var i%;
     var j%;
@@ -5089,7 +5372,7 @@ func RecFRAAddExpGenFRA%()
     var mystr3$;    
       
     ' Generate the dialog
-    DlgCreate("FRA Experiment ADD Dialog", 62, 10);
+    DlgCreate("FRA (Gen) Experiment ADD Dialog", 62, 10);
     DlgString(1,40,100,"a-zA-Z0-9",26,1);
     DlgText("Name of New Experiment",2,1);
     DlgButton(recSelectStimFileButton%,   "  Select Stim File  ", RecSelectStimFile%,2,2);
@@ -5104,29 +5387,29 @@ func RecFRAAddExpGenFRA%()
 	if i% = 1 then
 
         'load parameters
-        RecFRAExpListGenFRAGetParams(recFRAExpNameGenFRA$[],recFRAStimNameGenFRA$[],recFRATrialsNameGenFRA$[]);
+        RecCharExpListGenFRAGetParams(recCharExpNameGenFRA$[],recCharStimFileGenFRA$[],recCharTrialsFileGenFRA$[]);
         'find first empty slot
         j% := 0;
         k% := -1;
-        while j% < recFRANumExps% do
-            if recFRAExpNameGenFRA$[j%] = "" then
+        while j% < recCharNumExps% do
+            if recCharExpNameGenFRA$[j%] = "" then
                 k% := j%;  'k% holds index of first empty slot
-                j% := recFRANumExps%;
+                j% := recCharNumExps%;
             endif;
             j%+=1;
         wend
         'Return if all slots are full
         if k% = -1 then
-            Message("All " + Str$(recFRANumExps%) + " slots are full!  You must delete an experiment!");
+            Message("All " + Str$(recCharNumExps%) + " slots are full!  You must delete an experiment!");
             return 1;
         endif;
         'Otherwise place values 
-        recFRAExpNameGenFRA$[k%] := mystr$;
-        recFRAStimNameGenFRA$[k%] := mystr2$;
-        recFRATrialsNameGenFRA$[k%] := mystr3$;
+        recCharExpNameGenFRA$[k%] := mystr$;
+        recCharStimFileGenFRA$[k%] := mystr2$;
+        recCharTrialsFileGenFRA$[k%] := mystr3$;
         'And save them
-        RecFRAExpListGenFRASaveParams(recFRAExpNameGenFRA$[],recFRAStimNameGenFRA$[],recFRATrialsNameGenFRA$[]);
-        status% := 0;  'close the calling dialog - necessary to refresh list in AMDisDialog
+        RecCharExpListGenFRASaveParams(recCharExpNameGenFRA$[],recCharStimFileGenFRA$[],recCharTrialsFileGenFRA$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in Dialog
     else
         status% := 1;
     endif
@@ -5135,7 +5418,7 @@ func RecFRAAddExpGenFRA%()
 
 end;
 
-'===== End RecFRAAddExpGenFRA =====
+'===== End RecCharAddExpGenFRA =====
 '
 '
 
@@ -5143,28 +5426,28 @@ end;
 
 '
 '
-'===== RecFRADeleteExpGenFRA =====
+'===== RecCharDeleteExpGenFRA =====
 
-'This is a dialog that comes up to allow deleting "experiments" from the FRA dialog (Load version)
-func RecFRADeleteExpGenFRA%()
+'This is a dialog that comes up to allow deleting "experiments" from FRA (Gen version)
+func RecCharDeleteExpGenFRA%()
 
     var i%;
     var j%;
     var status% := 0;
     'var createMode%;
-    var mystr$[recFRANumExps%];
-    var mystr1$[recFRANumExps%];
-    var mystr2$[recFRANumExps%];
+    var mystr$[recCharNumExps%];
+    var mystr1$[recCharNumExps%];
+    var mystr2$[recCharNumExps%];
     
     var sli%;
 
     ' Fetch parameters from registry    
-    RecFRAExpListGenFRAGetParams(mystr$[],mystr1$[],mystr2$[]);
+    RecCharExpListGenFRAGetParams(mystr$[],mystr1$[],mystr2$[]);
 
     ' Generate the dialog 
-    DlgCreate("FRA Experiment DELETE Dialog", 62, 10);
+    DlgCreate("FRA (Gen) Experiment DELETE Dialog", 62, 10);
     DlgText("Select Experiment to Delete",2,1);
-    DlgList(1,27,mystr$,recFRANumExps%,28,1);
+    DlgList(1,27,mystr$,recCharNumExps%,28,1);
 
     ' Show the dialog. 
     i%:=DlgShow(sli%);
@@ -5172,20 +5455,20 @@ func RecFRADeleteExpGenFRA%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         'Remove experiment that has been selected and move everything up one
-        if sli% < recFRANumExps%-1 then  'Without this "if", would crash if asked to remove final entry
-            for j% := sli% to recFRANumExps%-2 do
+        if sli% < recCharNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recCharNumExps%-2 do
                 mystr$[j%] := mystr$[j%+1];
                 mystr1$[j%] := mystr1$[j%+1];
                 mystr2$[j%] := mystr2$[j%+1];
             next;
         endif;
         'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
-        mystr$[recFRANumExps%-1] := "";
-        mystr1$[recFRANumExps%-1] := "";
-        mystr2$[recFRANumExps%-1] := "";
+        mystr$[recCharNumExps%-1] := "";
+        mystr1$[recCharNumExps%-1] := "";
+        mystr2$[recCharNumExps%-1] := "";
         
         'Save the new values
-        RecFRAExpListGenFRASaveParams(mystr$[],mystr1$[],mystr2$[]);
+        RecCharExpListGenFRASaveParams(mystr$[],mystr1$[],mystr2$[]);
         
         status% := 0;  'Close the calling dialog
     else
@@ -5196,18 +5479,18 @@ func RecFRADeleteExpGenFRA%()
     
 end;
 
-'===== End RecFRADeleteExpGenFRA =====
+'===== End RecCharDeleteExpGenFRA =====
 
 
 
 
 
-'===== RecFRAAddExpGenSigNoise =====
+'===== RecCharAddExpGenSigNoise =====
 
 'This is a dialog that comes up to allow adding "experiments" to the Characterization dialog, SigNoise Gen version
 'Please note that in order to reset the list box in the calling dialog, we have to actually
 'CLOSE the calling dialog and reopen it.  That's gotta be manual.
-func RecFRAAddExpGenSigNoise%()
+func RecCharAddExpGenSigNoise%()
     
     var i%;
     var j%;
@@ -5218,7 +5501,7 @@ func RecFRAAddExpGenSigNoise%()
     var mystr3$;    
       
     ' Generate the dialog
-    DlgCreate("SigNoise Experiment ADD Dialog", 62, 10);
+    DlgCreate("SigNoise (Gen) Experiment ADD Dialog", 62, 10);
     DlgString(1,40,100,"a-zA-Z0-9",26,1);
     DlgText("Name of New Experiment",2,1);
     DlgButton(recSelectStimFileButton%,   "  Select Stim File  ", RecSelectStimFile%,2,2);
@@ -5233,29 +5516,29 @@ func RecFRAAddExpGenSigNoise%()
 	if i% = 1 then
 
         'load parameters
-        RecFRAExpListGenSigNoiseGetParams(recFRAExpNameGenSigNoise$[],recFRAStimNameGenSigNoise$[],recFRATrialsNameGenSigNoise$[]);
+        RecCharExpListGenSigNoiseGetParams(recCharExpNameGenSigNoise$[],recCharStimFileGenSigNoise$[],recCharTrialsFileGenSigNoise$[]);
         'find first empty slot
         j% := 0;
         k% := -1;
-        while j% < recFRANumExps% do
-            if recFRAExpNameGenSigNoise$[j%] = "" then
+        while j% < recCharNumExps% do
+            if recCharExpNameGenSigNoise$[j%] = "" then
                 k% := j%;  'k% holds index of first empty slot
-                j% := recFRANumExps%;
+                j% := recCharNumExps%;
             endif;
             j%+=1;
         wend
         'Return if all slots are full
         if k% = -1 then
-            Message("All " + Str$(recFRANumExps%) + " slots are full!  You must delete an experiment!");
+            Message("All " + Str$(recCharNumExps%) + " slots are full!  You must delete an experiment!");
             return 1;
         endif;
         'Otherwise place values 
-        recFRAExpNameGenSigNoise$[k%] := mystr$;
-        recFRAStimNameGenSigNoise$[k%] := mystr2$;
-        recFRATrialsNameGenSigNoise$[k%] := mystr3$;
+        recCharExpNameGenSigNoise$[k%] := mystr$;
+        recCharStimFileGenSigNoise$[k%] := mystr2$;
+        recCharTrialsFileGenSigNoise$[k%] := mystr3$;
         'And save them
-        RecFRAExpListGenSigNoiseSaveParams(recFRAExpNameGenSigNoise$[],recFRAStimNameGenSigNoise$[],recFRATrialsNameGenSigNoise$[]);
-        status% := 0;  'close the calling dialog - necessary to refresh list in AMDisDialog
+        RecCharExpListGenSigNoiseSaveParams(recCharExpNameGenSigNoise$[],recCharStimFileGenSigNoise$[],recCharTrialsFileGenSigNoise$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in Dialog
     else
         status% := 1;
     endif
@@ -5264,7 +5547,7 @@ func RecFRAAddExpGenSigNoise%()
 
 end;
 
-'===== End RecFRAAddExpGenSigNoise =====
+'===== End RecCharAddExpGenSigNoise =====
 '
 '
 
@@ -5272,28 +5555,28 @@ end;
 
 '
 '
-'===== RecFRADeleteExpGenSigNoise =====
+'===== RecCharDeleteExpGenSigNoise =====
 
-'This is a dialog that comes up to allow deleting "experiments" from the FRA dialog (Load version)
-func RecFRADeleteExpGenSigNoise%()
+'This is a dialog that comes up to allow deleting "experiments" from the Characterization dialog (SigNoise Gen version)
+func RecCharDeleteExpGenSigNoise%()
 
     var i%;
     var j%;
     var status% := 0;
     'var createMode%;
-    var mystr$[recFRANumExps%];
-    var mystr1$[recFRANumExps%];
-    var mystr2$[recFRANumExps%];
+    var mystr$[recCharNumExps%];
+    var mystr1$[recCharNumExps%];
+    var mystr2$[recCharNumExps%];
     
     var sli%;
 
     ' Fetch parameters from registry    
-    RecFRAExpListGenSigNoiseGetParams(mystr$[],mystr1$[],mystr2$[]);
+    RecCharExpListGenSigNoiseGetParams(mystr$[],mystr1$[],mystr2$[]);
 
     ' Generate the dialog 
-    DlgCreate("FRA Experiment DELETE Dialog", 62, 10);
+    DlgCreate("SigNoise (Gen) Experiment DELETE Dialog", 62, 10);
     DlgText("Select Experiment to Delete",2,1);
-    DlgList(1,27,mystr$,recFRANumExps%,28,1);
+    DlgList(1,27,mystr$,recCharNumExps%,28,1);
 
     ' Show the dialog. 
     i%:=DlgShow(sli%);
@@ -5301,20 +5584,20 @@ func RecFRADeleteExpGenSigNoise%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         'Remove experiment that has been selected and move everything up one
-        if sli% < recFRANumExps%-1 then  'Without this "if", would crash if asked to remove final entry
-            for j% := sli% to recFRANumExps%-2 do
+        if sli% < recCharNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recCharNumExps%-2 do
                 mystr$[j%] := mystr$[j%+1];
                 mystr1$[j%] := mystr1$[j%+1];
                 mystr2$[j%] := mystr2$[j%+1];
             next;
         endif;
         'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
-        mystr$[recFRANumExps%-1] := "";
-        mystr1$[recFRANumExps%-1] := "";
-        mystr2$[recFRANumExps%-1] := "";
+        mystr$[recCharNumExps%-1] := "";
+        mystr1$[recCharNumExps%-1] := "";
+        mystr2$[recCharNumExps%-1] := "";
         
         'Save the new values
-        RecFRAExpListGenSigNoiseSaveParams(mystr$[],mystr1$[],mystr2$[]);
+        RecCharExpListGenSigNoiseSaveParams(mystr$[],mystr1$[],mystr2$[]);
         
         status% := 0;  'Close the calling dialog
     else
@@ -5325,8 +5608,143 @@ func RecFRADeleteExpGenSigNoise%()
     
 end;
 
-'===== End RecFRADeleteExpGenSigNoise =====
+'===== End RecCharDeleteExpGenSigNoise =====
 
+
+
+'===== RecCharAddExpLoadArbStim =====
+
+'This is a dialog that comes up to allow adding "experiments" to ArbStim, Load version
+'Please note that in order to reset the list box in the calling dialog, we have to actually
+'CLOSE the calling dialog and reopen it.  That's gotta be manual.
+func RecCharAddExpLoadArbStim%()
+    
+    var i%;
+    var j%;
+    var k%;
+    var status% := 0;
+    'var createMode%;   'Not using this, could potentially have been useful if we passed the value in, but we're not doing that
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+    var mystr4$;
+
+    ' Generate the dialog
+    DlgCreate("Arbitrary Stimulus (Load) Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
+    DlgButton(recSelectTrialsFileButton%, " Select Trials File ", RecSelectTrialsFile%,2,3);
+    DlgString(2,40,200,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,200,"",26,3);  'for visual confirmation of selected trials file
+    DlgString(4,40,100,"a-zA-Z0-9",26,4);
+    DlgText("Prefix of New Experiment",2,4);
+    
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$,mystr4$);
+    
+    ' If user hit OK then add new experiment 
+	if i% = 1 then 
+        'load parameters
+        RecCharExpListLoadArbStimGetParams(recCharExpNameLoadArbStim$[],recCharStimcalFileLoadArbStim$[],recCharTrialsFileLoadArbStim$[],recCharExpPrefixLoadArbStim$[]);
+        'find first empty slot
+        j% := 0;
+        k% := -1;
+        while j% < recCharNumExps% do
+            if recCharExpNameLoadArbStim$[j%] = "" then
+                k% := j%;  'k% holds index of first empty slot
+                j% := recCharNumExps%;
+            endif;
+            j%+=1;
+        wend
+        'Return if all slots are full
+        if k% = -1 then
+            Message("All " + Str$(recCharNumExps%) + " slots are full!  You must delete an experiment!");
+            return 1;
+        endif;
+        'Otherwise place values 
+        recCharExpNameLoadArbStim$[k%] := mystr$;
+        recCharStimcalFileLoadArbStim$[k%] := mystr2$;
+        recCharTrialsFileLoadArbStim$[k%] := mystr3$;
+        recCharExpPrefixLoadArbStim$[k%] := mystr4$;
+        'And save them
+        RecCharExpListLoadArbStimSaveParams(recCharExpNameLoadArbStim$[],recCharStimcalFileLoadArbStim$[],recCharTrialsFileLoadArbStim$[],recCharExpPrefixLoadArbStim$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in Dialog
+
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecCharAddExpLoadArbStim =====
+'
+'
+
+
+
+'
+'
+'===== RecCharDeleteExpLoadArbStim =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the Char dialog (Load ArbStim version)
+func RecCharDeleteExpLoadArbStim%()
+
+    var i%;
+    var j%;
+    var status% := 0;
+    var mystr$[recCharNumExps%];
+    var mystr1$[recCharNumExps%];
+    var mystr2$[recCharNumExps%];
+    var mystr3$[recCharNumExps%];
+    
+    var sli%;
+
+    ' Fetch parameters from registry    
+    RecCharExpListLoadArbStimGetParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+    
+    ' Generate the dialog
+    
+    DlgCreate("ArbStim (Load) Experiment DELETE Dialog", 62, 10);
+    DlgText("Select Experiment to Delete",2,1);
+    DlgList(1,27,mystr$,recCharNumExps%,28,1);
+
+    ' Show the dialog. 
+    i%:=DlgShow(sli%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Remove experiment that has been selected and move everything up one
+        if sli% < recCharNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recCharNumExps%-2 do
+                mystr$[j%] := mystr$[j%+1];
+                mystr1$[j%] := mystr1$[j%+1];
+                mystr2$[j%] := mystr2$[j%+1];
+                mystr3$[j%] := mystr3$[j%+1];
+            next;
+        endif;
+        'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+        mystr$[recCharNumExps%-1] := "";
+        mystr1$[recCharNumExps%-1] := "";
+        mystr2$[recCharNumExps%-1] := "";
+        mystr3$[recCharNumExps%-1] := "";
+        
+        'Save the new values
+        RecCharExpListLoadArbStimSaveParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+        
+        status% := 0;  'Close the calling dialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecCharDeleteExpLoadArbStim =====
 
 
 
@@ -6304,10 +6722,10 @@ end
 
 '
 '
-'===== RecFRAExpListLoadGetParams =====
+'===== RecCharExpListLoadFRAGetParams =====
 
 'Fetch experiment lists from the registry for AMDisc, loading stim, experiments
-proc RecFRAExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
+proc RecCharExpListLoadFRAGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
     var i%;
     key$:="Reclab\\FRAExpListLoadParam";
@@ -6318,33 +6736,58 @@ proc RecFRAExpListLoadGetParams(&expName$[],&stimcalName$[],&trialsName$[])
     'that is being saved in the registry.  This path concatenation should probably be done away with
     'ASARP, with the caveat that apparently all the currently defined FRA experiments will have to be
     're-done in the dialog box.
-    for i% := 0 to recFRANumExps%-1 do
+    for i% := 0 to recCharNumExps%-1 do
         expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
         stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
     next;
 
-    PrintLog("RecFRAExpListLoadGetParams\n");
+    PrintLog("RecCharExpListLoadFRAGetParams\n");
      
 	return;
 end
 
-'===== End RecFRAExpListLoadGetParams =====
+'===== End RecCharExpListLoadFRAGetParams =====
 '
 '
 
 
 '
 '
-'===== RecFRAExpListGenFRAGetParams =====
+'===== RecCharExpListLoadSigNoiseGetParams =====
+
+'Fetch experiment lists from the registry for Loaded SigNoise, loading stim, experiments
+proc RecCharExpListLoadSigNoiseGetParams(&expName$[],&stimcalName$[],&trialsName$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\SigNoiseExpListLoadParam";
+    
+    for i% := 0 to recCharNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
+
+    PrintLog("RecCharExpListLoadSigNoiseGetParams\n");
+     
+	return;
+end
+
+'===== End RecCharExpListLoadSigNoiseGetParams =====
+'
+'
+
+'
+'
+'===== RecCharExpListGenFRAGetParams =====
 
 'Fetch experiment lists from the registry for FRA, generating stim, experiments
-proc RecFRAExpListGenFRAGetParams(&expName$[],&stimcalName$[],&trialsName$[])
+proc RecCharExpListGenFRAGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
     var i%;
     key$:="Reclab\\FRAExpListGenParam";  'Note function name does not match registry key as function name has been updated
     
-    for i% := 0 to recFRANumExps%-1 do
+    for i% := 0 to recCharNumExps%-1 do
         expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
         stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
@@ -6353,7 +6796,7 @@ proc RecFRAExpListGenFRAGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	return;
 end
 
-'===== End RecFRAExpListGenFRAGetParams =====
+'===== End RecCharExpListGenFRAGetParams =====
 '
 '
 
@@ -6361,15 +6804,15 @@ end
 
 '
 '
-'===== RecFRAExpListGenSigNoiseGetParams =====
+'===== RecCharExpListGenSigNoiseGetParams =====
 
 'Fetch experiment lists from the registry for SigNoise, generating stim, experiments
-proc RecFRAExpListGenSigNoiseGetParams(&expName$[],&stimcalName$[],&trialsName$[])
+proc RecCharExpListGenSigNoiseGetParams(&expName$[],&stimcalName$[],&trialsName$[])
 	var key$;
     var i%;
-    key$:="Reclab\\CZExpListGenSigNoiseParam";
+    key$:="Reclab\\CZExpListGenSigNoiseParam";  'This is not the same convention as the others, but it has been used, so it stays
     
-    for i% := 0 to recFRANumExps%-1 do
+    for i% := 0 to recCharNumExps%-1 do
         expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
         stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
@@ -6378,24 +6821,56 @@ proc RecFRAExpListGenSigNoiseGetParams(&expName$[],&stimcalName$[],&trialsName$[
 	return;
 end
 
-'===== End RecFRAExpListGenSigNoiseGetParams =====
+'===== End RecCharExpListGenSigNoiseGetParams =====
+'
+'
+
+
+'
+'
+'===== RecCharExpListLoadArbStimGetParams =====
+
+'Fetch experiment lists from the registry for Arbitrary stimulus characterization, loading stim, experiments
+proc RecCharExpListLoadArbStimGetParams(&expName$[],&stimcalName$[],&trialsName$[],&expPrefix$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\ArbStimExpListLoadParam";
+    
+    'Note that the file locations for StimCal and Trials files are not the normal default path
+    'Note that this really doesn't seem like a sensible thing to do, given that the function that
+    'selects the file location via the GUI saves a full-path, not partial-path location in the variable
+    'that is being saved in the registry.  This path concatenation should probably be done away with
+    'ASARP, with the caveat that apparently all the currently defined FRA experiments will have to be
+    're-done in the dialog box.
+    for i% := 0 to recCharNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+        expPrefix$[i%] := GetStringRegistryValue$(key$, "ExpPrefix"+Str$(i%), expPrefix$[i%]);
+    next;
+
+    PrintLog("RecCharExpListLoadArbStimGetParams\n");
+     
+	return;
+end
+
+'===== End RecCharExpListLoadArbStimGetParams =====
 '
 '
 
 
 
-
 '
 '
-'===== RecFRAExpListLoadSaveParams =====
+'===== RecCharExpListLoadFRASaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-proc RecFRAExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
+proc RecCharExpListLoadFRASaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
     var i%;
     key$:="Reclab\\FRAExpListLoadParam";
     
-    for i% := 0 to recFRANumExps%-1 do
+    for i% := 0 to recCharNumExps%-1 do
         SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
         SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
@@ -6404,24 +6879,48 @@ proc RecFRAExpListLoadSaveParams(expName$[],stimcalName$[],trialsName$[])
 	return;
 end
 
-'===== End RecFRAExpListLoadSaveParams =====
+'===== End RecCharExpListLoadFRASaveParams =====
 '
 '
 
 
 
-
 '
 '
-'===== RecFRAExpListGenFRASaveParams =====
+'===== RecCharExpListLoadSigNoiseSaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-proc RecFRAExpListGenFRASaveParams(expName$[],stimcalName$[],trialsName$[])
+proc RecCharExpListLoadSigNoiseSaveParams(expName$[],stimcalName$[],trialsName$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\SigNoiseExpListLoadParam";
+    
+    for i% := 0 to recCharNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecCharExpListLoadSigNoiseSaveParams =====
+'
+'
+
+
+
+'
+'
+'===== RecCharExpListGenFRASaveParams =====
+
+'Save experiment lists to the registry for AMDisc, loading stim, experiments
+proc RecCharExpListGenFRASaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
     var i%;
     key$:="Reclab\\FRAExpListGenParam";  'Note function name does not match registry key as function name has been updated
     
-    for i% := 0 to recFRANumExps%-1 do
+    for i% := 0 to recCharNumExps%-1 do
         SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
         SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
@@ -6430,7 +6929,7 @@ proc RecFRAExpListGenFRASaveParams(expName$[],stimcalName$[],trialsName$[])
 	return;
 end
 
-'===== End RecFRAExpListGenFRASaveParams =====
+'===== End RecCharExpListGenFRASaveParams =====
 '
 '
 
@@ -6438,15 +6937,15 @@ end
 
 '
 '
-'===== RecFRAExpListGenSigNoiseSaveParams =====
+'===== RecCharExpListGenSigNoiseSaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
-proc RecFRAExpListGenSigNoiseSaveParams(expName$[],stimcalName$[],trialsName$[])
+proc RecCharExpListGenSigNoiseSaveParams(expName$[],stimcalName$[],trialsName$[])
 	var key$;
     var i%;
     key$:="Reclab\\CZExpListGenSigNoiseParam";
     
-    for i% := 0 to recFRANumExps%-1 do
+    for i% := 0 to recCharNumExps%-1 do
         SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
         SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
         SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
@@ -6455,10 +6954,34 @@ proc RecFRAExpListGenSigNoiseSaveParams(expName$[],stimcalName$[],trialsName$[])
 	return;
 end
 
-'===== End RecFRAExpListGenSigNoiseSaveParams =====
+'===== End RecCharExpListGenSigNoiseSaveParams =====
 '
 '
 
+
+'
+'
+'===== RecCharExpListLoadArbStimSaveParams =====
+
+'Save experiment lists to the registry for AMDisc, loading stim, experiments
+proc RecCharExpListLoadArbStimSaveParams(expName$[],stimcalName$[],trialsName$[],expPrefix$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\ArbStimExpListLoadParam";
+    
+    for i% := 0 to recCharNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+        SetStringRegistryValue(key$, "ExpPrefix"+Str$(i%), expPrefix$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecCharExpListLoadArbStimSaveParams =====
+'
+'
 
 
 '
@@ -7802,7 +8325,7 @@ func NameThatStimulus$(n%)
     
     name$ := dur$ + freq$ + am$ + amphse$ + seed$;
     
-    if recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
+    if recExpToRun% = recExpCharButton% and recCharLoadStim% = 1 then
         name$ := "(stim is loaded, can't autoname)";
     endif;    
     
@@ -7936,7 +8459,7 @@ func NameThatStimulusStereoDis$(n%,stim%,PWAind%)
     
     name$ := dur$ + freq$ + am$ + amphse$ + seed$;
     
-    if recExpToRun% = recExpFRAButton% and recFRALoadStim% = 1 then
+    if recExpToRun% = recExpCharButton% and recCharLoadStim% = 1 then
         name$ := "(stim is loaded, can't autoname)";
     endif;    
     
@@ -8219,13 +8742,13 @@ func GenTrialsFRAFromDialog%()
     'Set trial generation variables for the FM sweeps...
     'Also fill whichS1StimInd%[] and whichS1DeltadB[] for the FM sweeps
     'Fill FMSweepDur%[]
-    recFRAFMSweepDur%[0] := recFRAFMSweepDur1%;
-    recFRAFMSweepDur%[1] := recFRAFMSweepDur2%;
-    recFRAFMSweepDur%[2] := recFRAFMSweepDur3%;
-    recFRAFMSweepDur%[3] := recFRAFMSweepDur4%;
-    recFRAFMSweepDur%[4] := recFRAFMSweepDur5%;
-    recFRAFMSweep%[0] := recFRAFMSweepStart%;  'low end of sweep, will reverse as well
-    recFRAFMSweep%[1] := recFRAFMSweepEnd%; 'high end of sweep, will reverse as well
+    recFMSweepDur%[0] := recFMSweepDur1%;
+    recFMSweepDur%[1] := recFMSweepDur2%;
+    recFMSweepDur%[2] := recFMSweepDur3%;
+    recFMSweepDur%[3] := recFMSweepDur4%;
+    recFMSweepDur%[4] := recFMSweepDur5%;
+    recFMSweep%[0] := recFMSweepStart%;  'low end of sweep, will reverse as well
+    recFMSweep%[1] := recFMSweepEnd%; 'high end of sweep, will reverse as well
     for i% := 1 to nFMSweeps% do
         'Set values that are constant
         recTrialGenRampMS[i%+nTonePips%] := 2;  'short ramp
@@ -8240,21 +8763,21 @@ func GenTrialsFRAFromDialog%()
         t := frac(i/(nFMSweeps%/2));
         temp := (nFMSweeps%/2)*t;
         ind% := round(temp);  'gets mod of i%,5...stupid, stupid floating point stuff kills it without these steps
-        recTrialDur[i%+nTonePips%] := recFRAFMSweepDur%[ind%];  'gets duration based on mod result
+        recTrialDur[i%+nTonePips%] := recFMSweepDur%[ind%];  'gets duration based on mod result
         'Set direction of sweep
         ind% := floor(i/(nFMSweeps%/2));
-        recTrialGenLowpassHz[i%+nTonePips%] := recFRAFMSweep%[ind%];  'if mod is 0, goes 500-20000...
-        recTrialGenHighpassHz[i%+nTonePips%] := recFRAFMSweep%[1-ind%];  '...if mod is 1, goes 20000-500
+        recTrialGenLowpassHz[i%+nTonePips%] := recFMSweep%[ind%];  'if mod is 0, goes 500-20000...
+        recTrialGenHighpassHz[i%+nTonePips%] := recFMSweep%[1-ind%];  '...if mod is 1, goes 20000-500
         recTrialGenIsSweep%[i%+nTonePips%] := 1;
-        for j% := 0 to recFRAFMSweepRepeats%-1 do
+        for j% := 0 to recFMSweepRepeats%-1 do
             whichS1StimInd%[count%] := i%+nTonePips%;  'i%+nTonePips% holds the stim index of the current FM sweep
-            whichS1DeltadB[count%] := 65-recFRAS2dBLevel;  'recFRAS2dBLevel holds the dB of the tone sweeps as well as the S2s, delta dB is additional atten, default stims will play at 65
+            whichS1DeltadB[count%] := 65-recSpaceS2dBLevel;  'recSpaceS2dBLevel holds the dB of the tone sweeps as well as the S2s, delta dB is additional atten, default stims will play at 65
 '                printlog("count = %d\t", count%); ' check stimlist! 
 '                printlog("FMsweeps: %d\n", recTrialDur[i%+nTonePips%]);
             count% += 1;
         next;
 '        printlog("stim index = %d\t", i%+nTonePips%); ' check stim! 
-'        printlog("FM sweep: %d\n", recFRAFMSweep%[ind%]);
+'        printlog("FM sweep: %d\n", recFMSweep%[ind%]);
    next;
 
 'Set trial variables for AMnoise...
@@ -8321,13 +8844,13 @@ next;
     
     ' ===== Create Trials =====
     '#S1s = number of tone pips in FRA plus number of noise bursts in rate-level function + number of AM noises in MTFs
-    nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFRAFMSweepRepeats%)+(nMTFrates%*recS1AMnoiseReps%)+(nBPnoises%*recBPnoiseReps%);  
+    nS1% := (nTonePips%*recFRAdBNSteps%*recFRANRepeats%)+(recRateLevelNRepeats%*recRateLeveldBNSteps%)+(nFMSweeps%*recFMSweepRepeats%)+(nMTFrates%*recS1AMnoiseReps%)+(nBPnoises%*recBPnoiseReps%);  
     printlog("nS1% = %d\n", nS1%);
     nS2% := (recNSpeakers%-1)*recSpaceNRepeats%;  'that's number of noises at speakers not in the S1 position
     printlog("nS2% = %d\n", nS2%);
     recNTrials% := nS2%;  'Set global Ntrials
     'Average is (now) 3.833 S1 per S2
-    DealNumberOfS1s%(nS1%,nS2%,recMinS1%,recMinS1%+recFRAVarS1%-1,numS1perTrial%[]);  'this is OK
+    DealNumberOfS1s%(nS1%,nS2%,recMinS1%,recMinS1%+recCharVarS1%-1,numS1perTrial%[]);  'this is OK
     
     
     'Fill whichS2Speaker%[] with the speaker indices we will be using
@@ -8366,7 +8889,7 @@ next;
         'the correct index to use.  However, since this bothers the crap out of me, I'm explicitly setting it.
         j% := numS1perTrial%[i%];  'because of zero-based indexing, the number of S1s is the index of the S2
         recStimList%[j%][i%] := 0;  'this is stimulus index, S2 stimulus is noise, which is 0 
-        recDeltadBList[j%][i%] := 65-recFRAS2dBLevel;  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
+        recDeltadBList[j%][i%] := 65-recSpaceS2dBLevel;  'Delta dB (additional atten) for S2 stimuli, default stims will play at 65
         recPWAList%[j%][i%] := j%;  'this is PWA to play, just play in order
         recSpeakerList%[j%][i%] := whichS2Speaker%[i%];
         'And finally the number of unique stims - all stims are treated as unique (i.e. loaded into their own PWA) even if they're technically "not"
@@ -8390,8 +8913,8 @@ end
 
 '
 '
-'===== GenTrialsFRALoad =====
-func GenTrialsFRALoad%()
+'===== GenTrialsCharParallel =====
+func GenTrialsCharParallel%()
     var status% := 1;
     var i%;
     var j%;
@@ -8399,9 +8922,6 @@ func GenTrialsFRALoad%()
     var rewardInt% := 5;
     var miniTrialOrder%[recTotalTrials%];
     var RepeatsPerStim% := 1;
-    var randNum := 0;
-    var randInt%;
-    var randInt2%;
     var rewardArray%[80];
     var rewardIndex%;
     
@@ -8420,17 +8940,18 @@ func GenTrialsFRALoad%()
 
     for i% := 0 to recTotalTrials% do    '2. save values into rec2StimList, rec2SpeakerList, rec2DeltadBList
         rec2StimList%[i%][0] := RecTrialS1%[i%];  
-        rec2StimList%[i%][1] := RecTrialS2%[i%];  
-                                                  
+        rec2StimList%[i%][1] := RecTrialS2%[i%];         
     
         rec2SpeakerList%[i%][0] := RecTrialS1Spkr%[i%];
         rec2SpeakerList%[i%][1] := RecTrialS2Spkr%[i%];
     
         rec2DeltadBList[i%][0] := recTrialS1DeltadB[i%];
         rec2DeltadBList[i%][1] := recTrialS2DeltadB[i%];
+        
+        'recNUniqueStims%[i%] does not need to be set for a parallel PWA scenario
     next;
 
-    for i% := 0 to recFRARepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
+    for i% := 0 to recCharRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
         if recShuffle% = 1 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
@@ -8444,58 +8965,25 @@ func GenTrialsFRALoad%()
     
     'REWARDS - first clear the recFRAReward array
     for i% := 0 to recMaxTrial%-1 do
-         recFRAReward%[i%] := 0;
+         recCharReward%[i%] := 0;
     next;
     
     
     'Rewards for FRA are based on random intervals of 10 to 15 trials between rewards
-    'Commented code below was designed to reward on a very specific schedule, but this
-    'is silly, and requires very specific numbers of trials, meaning that it is not
-    'terribly flexible.  Will replace.
-    
-    'generate trials that are rewarded
-    'Make an array with the exact number of each interval that fits in 996 trials.
-'    for i% := 0 to 79 do
-'        docase
-'        case i% <= 13 then
-'            rewardArray%[i%] := 10;
-'        case i% >= 14 and i% <= 27 then
-'            rewardArray%[i%] := 11;
-'        case i% >= 28 and i% <= 40 then
-'            rewardArray%[i%] := 12;
-'        case i% >= 41 and i% <= 53 then
-'            rewardArray%[i%] := 13;
-'        case i% >= 54 and i% <= 66 then
-'            rewardArray%[i%] := 14;
-'        case i% >= 67 then
-'            rewardArray%[i%] := 15;
-'        endcase
-'    next; 
-'    
-'    if recShuffle% = 1 then
-'        ShuffleList%(rewardArray%[]); 'shuffle it
-'    endif;
-'
-'    rewardIndex% := rewardArray%[0]; 'index of first trial to be rewarded
-'    recFRAReward%[rewardIndex%-1] := 1; 'change to 1 in array to indicate it will be rewarded
-'
-'    for i% := 0 to 78 do
-'        rewardIndex% += rewardArray%[i%];   'add the next interval to rewardIndex to determine the next trial to be rewarded
-'        recFRAReward%[rewardIndex%-1] := 1;
-'    next;
+    'Old silly commented code has been deleted 1/18/22, if you need it, go back earlier than that.
     
     count% := 0;  'reset count
     while count% < recNTrials%-15 do
         j% := rand(6,10);  'random integer between 10 and 15
         count% := count% + j%;  'use j% as interval, this is next rewarded trial
-        recFRAReward%[count%-1] := 1;  'assign rewarded trial
+        recCharReward%[count%-1] := 1;  'assign rewarded trial
     wend
-    recFRAReward%[recNTrials%-1] := 1;  'reward final trial, to be nice
+    recCharReward%[recNTrials%-1] := 1;  'reward final trial, to be nice
     
     
     return status%;
 end
-'===== End GenTrialsFRALoad =====
+'===== End GenTrialsCharParallel =====
 '
 '
 
@@ -8503,9 +8991,9 @@ end
 
 '
 '
-'===== GenTrialsFRAGen =====
-func GenTrialsFRAGen%()
-    'Different that GenTrialsFRALoad%() in that input trials will only have an S1, no S2
+'===== GenTrialsCharSingle =====
+func GenTrialsCharSingle%()
+    'Different than GenTrialsCharParallel%() in that input trials will only have an S1, no S2
     var status% := 1;
     var i%;
     var j%;
@@ -8537,7 +9025,7 @@ func GenTrialsFRAGen%()
         recNUniqueStims%[i%] := 1;
     next;
 
-    for i% := 0 to recFRARepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
+    for i% := 0 to recCharRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
         if recShuffle% = 1 then
             ShuffleList%(miniTrialOrder%);      'shuffle the miniTrialOrder
@@ -8551,7 +9039,7 @@ func GenTrialsFRAGen%()
     
     'REWARDS - first clear the recFRAReward array
     for i% := 0 to recMaxTrial%-1 do
-         recFRAReward%[i%] := 0;
+         recCharReward%[i%] := 0;
     next;
     
     
@@ -8560,14 +9048,14 @@ func GenTrialsFRAGen%()
     while count% < recNTrials%-15 do
         j% := rand(6,10);  'random integer between 10 and 15
         count% := count% + j%;  'use j% as interval, this is next rewarded trial
-        recFRAReward%[count%-1] := 1;  'assign rewarded trial
+        recCharReward%[count%-1] := 1;  'assign rewarded trial
     wend
-    recFRAReward%[recNTrials%-1] := 1;  'reward final trial, to be nice
+    recCharReward%[recNTrials%-1] := 1;  'reward final trial, to be nice
     
     
     return status%;
 end
-'===== End GenTrialsFRAGen =====
+'===== End GenTrialsCharSingle =====
 '
 '
 
@@ -8729,6 +9217,11 @@ end
 '
 '
 '===== GenTrialsStereoDis =====
+'My initial look suggests this will not run - and may not have for quite some time
+'It appears we need at least two parallel PWAs, and the initialization of multiple
+'parallel PWAs was disabled quite some time ago (years?)  This needs a serious
+'overhaul, but I don't think it's going to be used anytime soon, so I'm going to 
+'rainy-day it.  -jj 1/20/22
 func GenTrialsStereoDis%()
     var status% := 1;
     var i%;
@@ -8800,6 +9293,11 @@ end
 '
 '
 '===== GenTrialsStereoDisGNG =====
+'My initial look suggests this will not run - and may not have for quite some time
+'It appears we need at least two parallel PWAs, and the initialization of multiple
+'parallel PWAs was disabled quite some time ago (years?)  This needs a serious
+'overhaul, but I don't think it's going to be used anytime soon, so I'm going to 
+'rainy-day it.  -jj 1/20/22
 func GenTrialsStereoDisGNG%()
     var status% := 1;
     var i%;
@@ -9054,7 +9552,7 @@ docase
     case recExpToRun% = recExpSearchButton% then
         exptext$ := "Search";
         expcolor$ := "GREEN";
-    case recExpToRun% = recExpFRAButton% then
+    case recExpToRun% = recExpCharButton% then
         exptext$ := "FRA";
         expcolor$ := "GREEN";
     case recExpToRun% = recExpJoyTrnButton% then 
