@@ -253,12 +253,20 @@ func RunGoNoGoEngine%()
             InitializePlayWaveAreas();
             InitializeParallelPlayWaveArea();
             InitializePlayWaveAreasLongBP();
-            'Now we just have to hope that we have enough memory to create all of these (fingers crossed)
+            
+            'Adjust playback rate from PWAs
+            SetSpeedPlayWaveAreas();
+            SetSpeedParallelPlayWaveArea();
+            SetSpeedPlayWaveAreasLongBP();
+            
         else  'Create only PWAs necessary for the FIRST experiment run, only partial handoff allowed (handoff won't work if subsequent experiment does not match PWAs needed)
             docase
                 'case recExpToRun% = recExpCharButton% and recUse2PWAs% = 1 then 
             case recUse2PWAs% = 1 then
                 InitializeParallelPlayWaveArea();
+                'Adjust playback rate from PWA
+                SetSpeedParallelPlayWaveArea();
+                
                 'case recExpToRun% = recExpStereoDisButton% then  'recUse2PWAs% is now set for StereoDis
                 '    InitializeMultipleParallelPlayWaveAreas();
                 'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
@@ -267,8 +275,12 @@ func RunGoNoGoEngine%()
             case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
                 'Initialize a play wave area for the bandpass/broadband noise condition
                 InitializePlayWaveAreasLongBP();
+                'Adjust playback rate from PWAs
+                SetSpeedPlayWaveAreasLongBP();
             else
                 InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
+                'Adjust playback rate from PWAs
+                SetSpeedPlayWaveAreas();
             endcase
         endif
         
@@ -276,10 +288,7 @@ func RunGoNoGoEngine%()
         view(recLog%).print("PWAs initialized - func RunGoNoGoEngine%.\n");
     endif;
     
-    'Adjust playback rate from PWAs
-    SetSpeedPlayWaveAreas();
-    SetSpeedParallelPlayWaveArea();
-    SetSpeedPlayWaveAreasLongBP();
+    
     
     'Reset LongNoiseCounter%/Block% in case we are handing off
     LongNoiseCounter% := 0;
