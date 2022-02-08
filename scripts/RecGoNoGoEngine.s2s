@@ -247,31 +247,30 @@ func RunGoNoGoEngine%()
     ' docs for PlayWaveAdd(): PlayWaveAdd must be called before FileNew() for sampling window.
     if recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then 'don't try to initialize a PlayWaveArea if there's no 1401
         
-        'For full-handoff version, we need to create all possible PWAs on first launch.
-        'Right now the PWAs that are possibly used are built in three functions:
-        InitializePlayWaveAreas();
-        InitializeParallelPlayWaveArea();
-        InitializePlayWaveAreasLongBP();
-        'Now we just have to hope that we have enough memory to create all of these (fingers crossed)
-        
-        
-        'Old version, only partial handoff allowed, only creates PWAs specific to the FIRST experiment run
-'        docase
-'        'case recExpToRun% = recExpCharButton% and recUse2PWAs% = 1 then 
-'        case recUse2PWAs% = 1 then
-'            InitializeParallelPlayWaveArea();
-'        'case recExpToRun% = recExpStereoDisButton% then  'recUse2PWAs% is now set for StereoDis
-'        '    InitializeMultipleParallelPlayWaveAreas();
-'        'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
-'            'Initialize a play wave area for the broadband noise condition
-'        '    InitializePlayWaveAreaLongBB();
-'        case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
-'            'Initialize a play wave area for the bandpass/broadband noise condition
-'            InitializePlayWaveAreasLongBP();
-'        else
-'            InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
-'        endcase
-        
+        if recUseLiteMemory% = 0 then  'do full handoff,  create all PWAs at once
+            'For full-handoff version, we need to create all possible PWAs on first launch.
+            'Right now the PWAs that are possibly used are built in three functions:
+            InitializePlayWaveAreas();
+            InitializeParallelPlayWaveArea();
+            InitializePlayWaveAreasLongBP();
+            'Now we just have to hope that we have enough memory to create all of these (fingers crossed)
+        else  'Create only PWAs necessary for the FIRST experiment run, only partial handoff allowed (handoff won't work if subsequent experiment does not match PWAs needed)
+            docase
+                'case recExpToRun% = recExpCharButton% and recUse2PWAs% = 1 then 
+            case recUse2PWAs% = 1 then
+                InitializeParallelPlayWaveArea();
+                'case recExpToRun% = recExpStereoDisButton% then  'recUse2PWAs% is now set for StereoDis
+                '    InitializeMultipleParallelPlayWaveAreas();
+                'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
+                'Initialize a play wave area for the broadband noise condition
+                '    InitializePlayWaveAreaLongBB();
+            case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
+                'Initialize a play wave area for the bandpass/broadband noise condition
+                InitializePlayWaveAreasLongBP();
+            else
+                InitializePlayWaveAreas();  'InitializePlayWaveAreas() is below 
+            endcase
+        endif
         
         
         view(recLog%).print("PWAs initialized - func RunGoNoGoEngine%.\n");

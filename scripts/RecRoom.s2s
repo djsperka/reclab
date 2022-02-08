@@ -44,6 +44,7 @@ var recCalibIsPresent%:=1;          'Is the calibration file present?  Default t
 var recDebug%:=1;                   'Write debug log statements? 
 var recSoundRecording%;             'Record sound output?
 var dummyVar%;                      'For placeholder GUIs, just lets me have a checkbox setting SOMETHING
+var recUseLiteMemory%;
 
 
 'Dialog button variables and other dialog variables
@@ -1488,7 +1489,7 @@ func RecDebugDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Debug Dialog",0,0,52,9);
+    DlgCreate("Debug Dialog",0,0,52,10);
     DlgCheck(1, "Matlab is present");
     DlgCheck(2, "TDT is present");
     DlgCheck(3, "CED 1401 is present");
@@ -1498,9 +1499,10 @@ func RecDebugDialog%()
     DlgList(6,30,debugLoc$[],3);
     DlgReal(7,"Duration of Longest Long Tone/Noise (s)",25,100);
     'DlgReal(7,"Stimulus play rate (Hz)",1000,100000);  'Note, NOT saving value to registry, must explicitly override 100kHz every time you override
+    DlgCheck(8,"Use Memory-Lite Version, No Experiment Switching");
     
     ' Show the dialog. 
-    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%, LongDur3);
+    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%, LongDur3, recUseLiteMemory%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1547,6 +1549,8 @@ proc RecDebugGetParams()
     recSoundRecording% := GetIntRegistryValue%(key$, "SoundRecording", recSoundRecording%);
     recDebug% := GetIntRegistryValue%(key$, "Debug", recDebug%);
     LongDur3 := GetFloatRegistryValue(key$, "LongDur3", LongDur3);
+    recUseLiteMemory% := GetIntRegistryValue%(key$, "UseLiteMemory", recUseLiteMemory%);
+    
     
 	return;
 end
@@ -1574,6 +1578,7 @@ proc RecDebugSaveParams()
     SetIntRegistryValue(key$, "SoundRecording", recSoundRecording%);
     SetIntRegistryValue(key$, "Debug", recDebug%); 
     SetFloatRegistryValue(key$, "LongDur3", LongDur3);
+    SetIntRegistryValue(key$, "UseLiteMemory", recUseLiteMemory%);
     
 	return;
 end
