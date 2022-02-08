@@ -16,7 +16,7 @@ var WMCount%;
 SaveLocationDialog();
 
 'Select and open desired .smr file
-datawindow% := FileOpen("*.smr",0,9);
+datawindow% := FileOpen("*.smr*",0,9);
 
 'Determine save name, based on current .smr file, if not specified
 if ConvertSaveFileName$ = "" then  'use filename from just-opened file
