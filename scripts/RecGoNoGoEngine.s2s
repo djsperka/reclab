@@ -1141,10 +1141,14 @@ Func PlaySound%(isS2local%)
     RecLogStatus("PlaySound", "SPK " + str$(spkr%) + " ATT " + str$(trlatten) + "\n");
     
     if recCEDIsPresent% = 1 then
+        'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+        if SampleSeqVar(3) > 1000000000 then
+            SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+        endif;
         
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         SafeSampleKey(playChar$);
-        StimOn := GetTimeOfLast1401Event(1);
+        StimOn := GetTimeOfLast1401Event();
         
         'determine S1/S2 status
         docase
@@ -1454,12 +1458,17 @@ Func PlayTwoSounds%(whichStim%)
     
     
     if recCEDIsPresent% = 1 then
+        'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+        if SampleSeqVar(3) > 1000000000 then
+            SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+        endif;'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+
         'printlog("Sending SafeSampleKey %s at time %f\n",playChar$,seconds());
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         'SafeSampleKey(playChar$);
         SafeSampleKey(LCase$(playChar$));
         
-        StimOn := GetTimeOfLast1401Event(1);
+        StimOn := GetTimeOfLast1401Event();
         
         'write stimulus to sampletext, we need to separate this out based on experiment type
         ' The sample text string contains the following (comma-separated) fields:
@@ -4575,7 +4584,7 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
-                    RewardOn := GetTimeOfLast1401Event(0);
+                    RewardOn := GetTimeOfLast1401Event();
                     s$ := Print$("InitReward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -4612,7 +4621,7 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
                     
-                    RewardOn := GetTimeOfLast1401Event(0);
+                    RewardOn := GetTimeOfLast1401Event();
                     s$ := Print$("HoldReward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -5097,7 +5106,7 @@ func IdleLoop%()
                     
                     stmp% := Reward%(thisHitReward);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event(0);
+                    RewardOn := GetTimeOfLast1401Event();
                     s$ := Print$("Reward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -5141,7 +5150,7 @@ func IdleLoop%()
 
                     stmp% := Reward%(thisHitReward);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event(0);
+                    RewardOn := GetTimeOfLast1401Event();
                     s$ := Print$("Reward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
 
@@ -5180,7 +5189,7 @@ func IdleLoop%()
                     stmp% := Reward%(recCRRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
                     s$ := Print$("Reward %d", recRewardMs%);
-                    RewardOn := GetTimeOfLast1401Event(0);
+                    RewardOn := GetTimeOfLast1401Event();
                     SampleText(s$, RewardOn);
  
                     if stmp% <> 0 then
@@ -5267,7 +5276,7 @@ func IdleLoop%()
                     'recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
                     stmp% := Reward%(recHitRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
-                    RewardOn := GetTimeOfLast1401Event(0);
+                    RewardOn := GetTimeOfLast1401Event();
                     s$ := Print$("Reward %d", recRewardMs%);
                     SampleText(s$, RewardOn);
                     
@@ -5299,12 +5308,16 @@ func IdleLoop%()
             
             docase
             case recLongToneType% = 0 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then  'this is a tone
+                'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                if SampleSeqVar(3) > 1000000000 then
+                    SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                endif;
                 
                 SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of tone on sequencer
                 
                 printlog("Starting tone \n");
                 SampleKey("T");  'Start tone
-                StimOn := GetTimeOfLast1401Event(1);
+                StimOn := GetTimeOfLast1401Event();
             
                 s$ := Print$("Sound T,LongTone,%d,%d,%.1f,%.1f,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneFreq) + "Hz");
                 SampleText(s$,StimOn);
@@ -5312,12 +5325,16 @@ func IdleLoop%()
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 0 and recLongToneDurationIndex%[recCurrentTrial%] = 4 then  'this is a silent period
+                'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                if SampleSeqVar(3) > 1000000000 then
+                    SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                endif;
                 
                 SampleSeqVar(13,SequencerToneDuration%(recLongToneDuration));  'set duration of silence on sequencer
                 
                 printlog("Starting silent trial \n");
                 SampleKey("U");  'Start silent period
-                StimOn := GetTimeOfLast1401Event(1);
+                StimOn := GetTimeOfLast1401Event();
                 
                 'For this Sampletext, only the duration is variable
                 s$ := Print$("Sound U,SilentTrial,%d,0,0,0,%s,0Hz", recCurrentTrial%, Str$(recLongToneDuration) + "s");
@@ -5337,9 +5354,13 @@ func IdleLoop%()
             '    PlayWaveCycles("N",recLongToneCyclesRemaining%);
             '    SampleSeqVar(16,recLongToneCyclesRemaining%);  'put number of cycles expected into sequencer variable
             '    
+            '    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+            '    if SampleSeqVar(3) > 1000000000 then
+            '        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+            '    endif;
             '    printlog("Starting BB noise \n");
             '    SampleKey("N");  'Start noise
-            '    StimOn := GetTimeOfLast1401Event(1);
+            '    StimOn := GetTimeOfLast1401Event();
             '    recLongToneCycleStartTime := StimOn;
             '    
             '    s$ := Print$("Sound N,LongNoiseBB,%d,%d,%.1f,%.1f,%s,%s,%s", recCurrentTrial%, recLongToneSpeaker%, recLongAtten, recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz");
@@ -5348,10 +5369,15 @@ func IdleLoop%()
             '    tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 1 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then 'only difference is in sampletexting
+                'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                if SampleSeqVar(3) > 1000000000 then
+                    SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                endif;
+                
                 pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BB noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bb noise, use LOWER to activate correct portion of sequencer code
-                StimOn := GetTimeOfLast1401Event(1);
+                StimOn := GetTimeOfLast1401Event();
             
                 s$ := Print$("Sound %s,LongNoiseBB,%d,%d,%.1f,%.1f,%s,BB,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
                 recLongToneTargetdB, Str$(recLongToneDuration) + "s",recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]);
@@ -5360,10 +5386,15 @@ func IdleLoop%()
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% = 2 and recLongToneDurationIndex%[recCurrentTrial%] < 4 then
+                'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                if SampleSeqVar(3) > 1000000000 then
+                    SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                endif;
+                
                 pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting BP noise \n");
                 SampleKey(LCase$(pwChar$));  'Start bp noise, use LOWER to activate correct portion of sequencer code
-                StimOn := GetTimeOfLast1401Event(1);
+                StimOn := GetTimeOfLast1401Event();
                 
                 s$ := Print$("Sound %s,LongNoiseBP,%d,%d,%.1f,%.1f,%s,%s,%s,seed=%d", pwChar$, recCurrentTrial%, recLongToneSpeaker%, recLongNoiseAtten[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]], 
                 recLongToneTargetdB, Str$(recLongToneDuration) + "s", Str$(recLongToneBPLow) + "Hz", Str$(recLongToneBPHigh) + "Hz",recLongNoiseSeed[LongNoiseBlock%][recLongToneDurationIndex%[recCurrentTrial%]]);
@@ -5372,10 +5403,15 @@ func IdleLoop%()
                 tLongToneStart :=  View(recDataWindowView%).MaxTime();
                 
             case recLongToneType% >= 1 and recLongToneDurationIndex%[recCurrentTrial%] = 4 then 'only difference is in sampletexting
+                'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                if SampleSeqVar(3) > 1000000000 then
+                    SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                endif;
+                
                 pwChar$ := GetPlayWaveKeyLongNoise$(recLongToneDurationIndex%[recCurrentTrial%]);
                 printlog("Starting silent trial \n");
                 SampleKey(LCase$(pwChar$));  'Start silent, use LOWER to activate correct portion of sequencer code
-                StimOn := GetTimeOfLast1401Event(1);
+                StimOn := GetTimeOfLast1401Event();
                 
                 s$ := Print$("Sound %s,SilentTrial,%d,0,0,0,%s,0Hz", pwChar$, recCurrentTrial%, Str$(recLongToneDuration) + "s");
                 SampleText(s$,StimOn);
@@ -6046,7 +6082,8 @@ end
 'we are liable to get the wrong time.  We will check the TICKS output to see if it is "approaching"
 'overflow if CheckTick% is > 0.  CheckTick% should be set to 0 following a call to Reward%() to avoid
 'stalling in a SafeSampleKey.
-func GetTimeOfLast1401Event(CheckTick%)
+'func GetTimeOfLast1401Event(CheckTick%)   'removed CheckTick% argument, now checking for tick prior to each SampleKey request to play the PWA
+func GetTimeOfLast1401Event()
     var seqtime;
     var firstCheckTime;
     
@@ -6054,7 +6091,7 @@ func GetTimeOfLast1401Event(CheckTick%)
     
     firstCheckTime :=  View(recDataWindowView%).MaxTime();
     
-    while seqtime = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts 
+    while seqtime = PrevSequencerTime or seqtime-SampleSeqTick0() = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts; because of the offset, we have to check as if an offset just was inserted as well 
         if View(recDataWindowView%).MaxTime() > firstCheckTime + 10 then
             'if we waited 10 seconds for the stimulus to start, something is very wrong!
             message("The Stimulus did not start within 10 seconds!  Dismiss this dialog to quit!  Tell Jeff!!!");
@@ -6080,11 +6117,16 @@ func GetTimeOfLast1401Event(CheckTick%)
     'less than half of the allowable value) we will reset.  This is not *perfect* because if
     'the animal initiates no trials for 2100+ seconds (35+ minutes) it will be possible to 
     'break.  That said, it seems better to do this rarely rather than, say, every trial.
-    if CheckTick% > 0 then  'don't do this unless we ask (we don't want to do it after a Reward%() call)
-        if SampleSeqVar(3) > 1000000000 then
-            SafeSampleKey("0");  'Zero was the logical, available code for TICK0
-        endif;
-    endif;
+    'THE ONLY PROBLEM HERE is that SafeSampleKey is going to wait until the PWA is done playing.
+    'But following the "handoff" update, the PWA is 10 seconds long even if the stimulus is not!
+    'So we get stuck in here in SafeSampleKey waiting for the silent end of the PWA to play out
+    'on the first stimulus after, for our sample settings, 2000 seconds in.  The fix is to do
+    'this operation (or at least check if we ought to) *before* each PWA is played, not after.
+'    if CheckTick% > 0 then  'don't do this unless we ask (we don't want to do it after a Reward%() call)
+'        if SampleSeqVar(3) > 1000000000 then
+'            SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+'        endif;
+'    endif;
     
     
     
