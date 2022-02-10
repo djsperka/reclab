@@ -254,11 +254,6 @@ func RunGoNoGoEngine%()
             InitializeParallelPlayWaveArea();
             InitializePlayWaveAreasLongBP();
             
-            'Adjust playback rate from PWAs
-            SetSpeedPlayWaveAreas();
-            SetSpeedParallelPlayWaveArea();
-            SetSpeedPlayWaveAreasLongBP();
-            
         else  'Create only PWAs necessary for the FIRST experiment run, only partial handoff allowed (handoff won't work if subsequent experiment does not match PWAs needed)
             docase
                 'case recExpToRun% = recExpCharButton% and recUse2PWAs% = 1 then 
@@ -288,6 +283,25 @@ func RunGoNoGoEngine%()
         view(recLog%).print("PWAs initialized - func RunGoNoGoEngine%.\n");
     endif;
     
+    'Set playback rate for PWAs regardless of whether we are already sampling
+    if recUseLiteMemory% = 0 then  'if doing full handoff, set playback rate for all PWAs
+        'Adjust playback rate from PWAs
+        SetSpeedPlayWaveAreas();
+        SetSpeedParallelPlayWaveArea();
+        SetSpeedPlayWaveAreasLongBP();
+    else  'set playback rate only for present PWAs
+        docase
+        case recUse2PWAs% = 1 then
+            'Adjust playback rate from PWA
+            SetSpeedParallelPlayWaveArea();
+        case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
+            'Adjust playback rate from PWAs
+            SetSpeedPlayWaveAreasLongBP();
+        else
+            'Adjust playback rate from PWAs
+            SetSpeedPlayWaveAreas();
+        endcase
+    endif
     
     
     'Reset LongNoiseCounter%/Block% in case we are handing off
