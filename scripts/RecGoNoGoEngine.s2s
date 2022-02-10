@@ -1149,6 +1149,7 @@ Func PlaySound%(isS2local%)
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         SafeSampleKey(playChar$);
         StimOn := GetTimeOfLast1401Event();
+
         
         'determine S1/S2 status
         docase
@@ -1467,7 +1468,6 @@ Func PlayTwoSounds%(whichStim%)
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         'SafeSampleKey(playChar$);
         SafeSampleKey(LCase$(playChar$));
-        
         StimOn := GetTimeOfLast1401Event();
         
         'write stimulus to sampletext, we need to separate this out based on experiment type
@@ -6087,10 +6087,28 @@ func GetTimeOfLast1401Event()
     var seqtime;
     var firstCheckTime;
     
-    seqtime := SampleSeqTick0() + SampleSeqVar(3)*UsPerTime/1000000;  'Now, seqtime holds actual most recent time, usually
+    yield(0.02);  'We MUST yield before we ask for the time. It apparently does three things, listed
+                  'from most important to least important:
+                  '1) For reasons that make no sense, we get nonsense numbers from SampleSeqTick0()
+                  '   for a short time after calling TICK0; it's not the OLD value, it's a nonsense
+                  '   value.  These nonsense values can't really be checked for, but can cause SEQTIME
+                  '   (passed outside as StimOn) to be very large, which can in turn cause the idle
+                  '   loop to try to wait out a very long time.   Yield(0.02) seems to be sufficient 
+                  '   to eliminate these nonsense values and only return valid numbers.
+                  '2) It gives sampling a chance to catch up to the sequencer.  If sampling is a bit
+                  '   behind, SEQTIME = StimOn can be in Spike2's *future* when a SampleText is asked
+                  '   to be placed at StimOn.  In this case the SampleText get placed at MaxTime() on
+                  '   the TextMark channel (i.e. a tiny bit early).  Since we use that SampleText time
+                  '   this will allow the time to be precise.
+                  '3) It probably renders the "early bird" check below useless; we're checking anyway
+                  '   because it's prudent.  Honestly, I'd rather do the early bird check than the Yield,
+                  '   but fixing 1) and 2) is FAR more compelling than not using blatant Yields.
     
+    seqtime := SampleSeqTick0() + SampleSeqVar(3)*UsPerTime/1000000;  'Now, seqtime holds actual most recent time, usually
+    'printlog("\n\nInitially read Time is %f\n\n",seqtime);
     firstCheckTime :=  View(recDataWindowView%).MaxTime();
     
+    'Check for "early bird", this should not happen with the yield inserted above, but checking is prudent
     while seqtime = PrevSequencerTime or seqtime-SampleSeqTick0() = PrevSequencerTime do  'This will happen if the above line occurs before the stim starts; because of the offset, we have to check as if an offset just was inserted as well 
         if View(recDataWindowView%).MaxTime() > firstCheckTime + 10 then
             'if we waited 10 seconds for the stimulus to start, something is very wrong!
@@ -6099,10 +6117,11 @@ func GetTimeOfLast1401Event()
             stop%();  'This function will stop sampling but will not exit the toolbar
             halt;  'Shut them down!  Shut them ALL down!
         endif;
+        'printlog("\n\n*** EARLY BIRD ***\nEB Time is %f\n\n",seqtime);
         yield(.001,1023);  'yield a millisecond until the stimulus starts playing
         seqtime := SampleSeqTick0() + SampleSeqVar(3)*UsPerTime/1000000;  'Keep checking until StimOn is updated
+        'printlog("Updated Time is %f\n\n",seqtime);
     wend; 
-    'endif;
     
     PrevSequencerTime := seqtime;  'keep track of most recent StimOn
     
@@ -6127,9 +6146,6 @@ func GetTimeOfLast1401Event()
 '            SafeSampleKey("0");  'Zero was the logical, available code for TICK0
 '        endif;
 '    endif;
-    
-    
-    
     
     return seqtime;
 end
