@@ -6338,7 +6338,7 @@ proc WriteExpParamsSampleText()
         
     case recExpToRun% = recExpCharButton% and recCharLoadStim% > 0 then  'Characterization using a stim file/trials file
         
-        s$ := Print$("ParamChar1 Active=%d",recCharActive%); 
+        s$ := Print$("ParamChar1 GenerateStim=%d,Active=%d",recMatGenStim%,recCharActive%); 
         SampleText(s$);
         yield(0.01);
         
