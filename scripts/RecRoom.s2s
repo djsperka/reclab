@@ -2486,11 +2486,11 @@ func RecExpSearchDialog%()
                 arrconst(recTrialGenHighpassHz[0:2],-1);      'Same as above, highpass
                 printlog("Speaker sweep (Broadband noise) selected from search dialog %d repeats\n", recSearchSpeakerSweepRepeats%);   
             case recSearchStimType% = 6 then 'for FM tone sweeps
-                arrconst(recTrialDur[0:2],recSearchFMDur);  'put in duration
+                arrconst(recTrialDur[0:2],recSearchFMDur*1000);  'put in duration, we expect ms
                 var doFloatMath := recSearchFMNumReverses%;  'Have to put Int into Float to divide by 10 in next line
                 arrconst(recTrialGenIsSweep[0:2],1+(doFloatMath/10));  'Decimal holds the number of reverses
                 arrconst(recTrialGenLowpassHz[0:2],recSearchFMStartFreq);  'Put in start frequency
-                arrconst(recTrialGenLowpassHz[0:2],recSearchFMEndFreq);  'Put in end frequency
+                arrconst(recTrialGenHighpassHz[0:2],recSearchFMEndFreq);  'Put in end frequency
                 printlog("FM Sweeps (%f - %f Hz, %d reversals) selected from search dialog\n",recSearchFMStartFreq,recSearchFMEndFreq,recSearchFMNumReverses%);
             endcase
             

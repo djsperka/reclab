@@ -2826,6 +2826,7 @@ func PrepareNextTrial%(loadPWAs%)
                     statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                 endif;
                 EvalMatlabStatement%(statement$);
+                'printlog("%s\n",statement$);
                 statement$ := "calibval = AFFT(spk).dB;";
                 EvalMatlabStatement%(statement$);
                 'printlog("%s\n",statement$);
