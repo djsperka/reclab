@@ -2796,7 +2796,7 @@ func PrepareNextTrial%(loadPWAs%)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[ind%]);
@@ -2830,7 +2830,7 @@ func PrepareNextTrial%(loadPWAs%)
                 EvalMatlabStatement%(statement$);
                 'printlog("%s\n",statement$);
                 'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
-                'printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                'printlog("%d %d %d %d %d ",recTrialGenIsSweep[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
                 
@@ -3076,7 +3076,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[ind%]);
@@ -3116,7 +3116,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 EvalMatlabStatement%(statement$);
                 printlog("%s\n",statement$);
                 printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
-                printlog("%d %d %d %d %d ",recTrialGenIsSweep%[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                printlog("%d %d %d %d %d ",recTrialGenIsSweep[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
                 
@@ -3146,7 +3146,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[indD%]);  'Ditto
-                    matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[indD%]);
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[indD%]);
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[indD%]);
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[indD%]);
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[indD%]);
@@ -3176,7 +3176,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     EvalMatlabStatement%(statement$);
                     printlog("%s\n",statement$);
                     printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHzCurrent,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
-                    printlog("%d %d %d %d %d ",recTrialGenIsSweep%[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
+                    printlog("%d %d %d %d %d ",recTrialGenIsSweep[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
                     printlog("%d %d %d %d %d \n",recTrialGenGauss%[indD%],recTrialGenRampMS[indD%],recTrialGenSeed%[indD%],recMaxPoints%,thisSpkr%);
                     
                     
@@ -3394,7 +3394,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep%[ind%]);
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amfreq",recTrialGenAMFreqHz[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amdepth",recTrialGenAMDepthPct[ind%]);
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("amphase",recTrialGenAMPhaseDeg[ind%]);
@@ -3418,7 +3418,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
 '                printlog("dur %f\n",recTrialDur[ind%]);  'size of trial is variable, that's OK
 '                printlog("lohz %f\n",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
 '                printlog("hihz %f\n",recTrialGenHighpassHz[ind%]);  'Ditto
-'                printlog("issweep %d\n",recTrialGenIsSweep%[ind%]);
+'                printlog("issweep %d\n",recTrialGenIsSweep[ind%]);
 '                printlog("amfreq %f\n",recTrialGenAMFreqHz[ind%]);
 '                printlog("amdepth %f\n",recTrialGenAMDepthPct[ind%]);
 '                printlog("amphase %f\n",recTrialGenAMPhaseDeg[ind%]);
