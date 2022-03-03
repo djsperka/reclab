@@ -1078,10 +1078,12 @@ Func PlaySound%(isS2local%)
     'Get trial-based roving attenuation for current stimulus
     if recDoRove% = 1 then
         roveatten := Rand(2*recRovedB,-recRovedB);
+        printlog("Roving attenuation is %f\n",roveatten);
     else
         roveatten := 0;
+        printlog("No roving attenuation\n")
     endif
-    printlog("Roving attenuation is %f\n",roveatten);
+    
     
     'Get total attenuation
     if recExpToRun% = recExpAudiogramButton% then

@@ -2407,6 +2407,8 @@ func RecExpSearchDialog%()
         
         RecSearchSaveParams();
         recExptText$ := searchList$[recSearchStimType%];  'this puts the stimulus type into the values which will be SampleText'ed
+        recDoRove% := 0;  'Do not allow roving in search
+        
         if recSearchMinS1% + recSearchVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run Search");
@@ -2967,6 +2969,7 @@ func RecExpCharDialog%()
         recExpToRun% := recExpCharButton%; 
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        recDoRove% := 0;  'Do not allow roving in characterization
         
         'assign Search-specific variables to experiment-wide variables (so we can keep separate defaults but only code once)
         recMinS1% := recCharMinS1%;
@@ -3474,6 +3477,7 @@ func RecLongToneDialog%()
         recExpToRun% := recExpLongToneButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        recDoRove% := 0;  'Do not allow roving in longtone
         
         LongDurs[4] := recLongToneSilentDur;  'update this value once we have 
         
@@ -3671,6 +3675,7 @@ func RecAudiogramDialog%()
         recAudiogramCurrentdB := recAudiogramStartdB;
         recMatGenStim% := 1;  'Always generate stimuli for Audiogram
         recActive% := 1; 
+        recDoRove% := 0;  'Do not allow roving in audiogram
     
         status% := 1;
     else
