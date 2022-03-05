@@ -4357,7 +4357,7 @@ func IdleLoop%()
             docase
             case PWA$ = "" then    
                 RecLogStatus("WaitTrialSoundC", "Sound done playing.");
-                if isEarlyFA% = 1 and recIsGoNoGo% = 0 then  'isEarlyFA% means something different (early response) in FC tasks
+                if (isEarlyFA% = 1 or isEarlyCR% = 1) and recIsGoNoGo% = 0 then  'isEarlyFA/CR% means something different (early response) in FC tasks
                     ChangeStateTo(stateInResponseWindow%);  'this will just shunt to the FA penalty, but it keeps the logic consistent
                 else
                     ChangeStateTo(stateTrialHoldReward%);
