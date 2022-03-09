@@ -8305,9 +8305,10 @@ end
 '
 '
 '===== NameThatStimulus =====
-func NameThatStimulus$(n%)
+func NameThatStimulus$(n%,seedind%)
     'a function that looks at the parameters of a generated stimulus and writes a name for it
     'useful for putting something logical into a SampleText 
+    'seed index is included
     'the ramp duration is NOT reported as it's probably never relevant; obviously it would be an easy add
     'The one thing to keep in mind here is that when it says 450HzLo with no Hi, that's 450-Inf highpass noise
     'and when it says 450HzHi with no Lo, that's 0-450 Hz lowpass noise
@@ -8326,6 +8327,8 @@ func NameThatStimulus$(n%)
     docase
     case recSearchStimType% = 3 then 'if it's a click, just say that and move on
         dur$ := "click";  'Technically, dur will be listed as 200 ms, but that's not really correct
+    case recTrialGenLowpassHz[n%] = -100 then  'silence
+        freq$ := "_Silence";
     case recTrialGenLowpassHz[n%] < 0 and recTrialGenHighpassHz[n%] < 0 then 'noise
         docase
         case recTrialGenGauss%[n%] = 1 then 'Gaussian noise
@@ -8343,7 +8346,10 @@ func NameThatStimulus$(n%)
         'reported, after that it was being reported as "0".  Still have to debug this, but I *think* it should
         'give the right value.  I'm not sure how to test this for multiple PWAs.  In fact, I don't think ANY scenario
         'uses multiple PWAs AND generated random noise.  OK, until now.
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        'It wasn't working.  I'm going to punt and just have the function call explicitly tell me which PWA to use,  at
+        'least as a temporary fix until needed.  Old line that doesn't work commented here, replaced all other instances below
+        'seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[seedind%],1,10);        'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenLowpassHz[n%] = recTrialGenHighpassHz[n%] then 'tone
         if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
             freq$ := "_" + str$(recTrialGenLowpassHz[n%]) + "Hz";
@@ -8359,7 +8365,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         endcase;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[seedind%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenHighpassHz[n%] < 0 then 'highpass
         docase
         case recTrialGenGauss%[n%] = 1 then 'Gaussian noise
@@ -8369,7 +8375,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo";
         endcase;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[seedind%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenIsSweep[n%] = 0 then 'bandpass
         docase
         case recTrialGenGauss%[n%] = 1 then 'Gaussian noise
@@ -8379,7 +8385,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi";
         endcase;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[seedind%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)
     case recTrialGenIsSweep[n%] = -2 then 'lower comb
         isComb% := 1;
         docase
@@ -8390,7 +8396,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_LowComb_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi_" + str$(recTrialGenAMPhaseDeg[n%]) + "ToothBW_" + str$(recTrialGenTonePhaseDeg[n%]) + "ToothSpacing";
         endcase;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)    
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[seedind%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)    
     case recTrialGenIsSweep[n%] = 2 then 'higher comb
         isComb% := 1;
         docase
@@ -8401,7 +8407,7 @@ func NameThatStimulus$(n%)
         else 'uniform noise
             freq$ := "_HighComb_UniformNoise_" + str$(recTrialGenLowpassHz[n%]) + "HzLo_" + str$(recTrialGenHighpassHz[n%]) + "HzHi_" + str$(recTrialGenAMPhaseDeg[n%]) + "ToothBW_" + str$(recTrialGenTonePhaseDeg[n%]) + "ToothSpacing";
         endcase;
-        seed$ := "_Seed" + str$(recCurrRandomSeed%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)    
+        seed$ := "_Seed" + str$(recCurrRandomSeed%[seedind%],1,10);  'use 10 significant digits (should be 9 max from Clockseed on Matlab, 11 overflows CED anyway)    
     else 'FM sweep
         if recTrialGenTonePhaseDeg[n%] = 0 then 'standard, don't note phase
             freq$ := "_FMSweep_start" + str$(recTrialGenLowpassHz[n%]) + "Hz_end" +  str$(recTrialGenHighpassHz[n%]) + "Hz_" + str$(recSearchFMNumReverses%) + "Reverses";

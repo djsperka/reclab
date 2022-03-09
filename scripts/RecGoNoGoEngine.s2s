@@ -1063,10 +1063,7 @@ Func PlaySound%(isS2local%)
     'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
     if recMatGenStim% = 0 then
         calatten := recTrialStimCal[thisStim%][spkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
-        'calatten := recAttenList%[recStimCount%][playInd%];  'value originally read from file
-        'calatten := recAttenList%[thisStim%][playInd%];  'value originally read from file
     else
-        'calatten := recGeneratedAtten[recStimCount%];  'value created at time of stimulus generation
         calatten := recGeneratedAtten[thisPWAIndex%];  'value created at time of stimulus generation
         printlog("Calibrating attenuation is %f\n",calatten);
     endif;
@@ -1108,11 +1105,11 @@ Func PlaySound%(isS2local%)
             recAudiogramCurrentdB := maxdB;  'reset requested dB on audiogram to max allowed
             'Removing message box because it is causing issues with experimentation
             'message("dB requested is above maximum possible for this stim, has been set to %f",maxdB);
-            printlog("dB requested is above maximum possible for this stim (%s), has been set to %f",NameThatStimulus$(thisStim%),maxdB);
+            printlog("dB requested is above maximum possible for this stim (%s), has been set to %f",NameThatStimulus$(thisStim%,0),maxdB);
         else
             'Removing message box because it is causing issues with experimentation
             'message("Requested attenuation was negative, has been reset to 0!");
-            printlog("Requested attenuation (%f dB) was negative for this stimulus (%s), has been reset to 0!",calatten + trlatten + roveatten,NameThatStimulus$(thisStim%));
+            printlog("Requested attenuation (%f dB) was negative for this stimulus (%s), has been reset to 0!",calatten + trlatten + roveatten,NameThatStimulus$(thisStim%,0));
         endif;
     endif;
     
@@ -1207,7 +1204,7 @@ Func PlaySound%(isS2local%)
         case recMatGenStim% = 1 then 'stimuli are generated
             's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(recPWAList%[recStimCount%][playInd%]));
             's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(thisStim%));
-            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, targdB, NameThatStimulus$(thisStim%));
+            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, targdB, NameThatStimulus$(thisStim%,0));
             SampleText(s$, StimOn);
         endcase
         
@@ -1510,8 +1507,8 @@ Func PlayTwoSounds%(whichStim%)
             s$ := Print$("Sound %s,SigNoiseDis,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
             s2$ := Print$("Sound2 %s,SigNoiseTest,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]); 'This is weird to point out "silence" but the placeholder might be useful in the future.        
         case recExpToRun% = recExpCharButton% and recCharLoadStim% = 4 then  'This is for *generated* SigNoise
-            s$ := Print$("Sound %s,SigNoiseDis,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulus$(rec2StimList%[playInd%][0]));  
-            s2$ := Print$("Sound2 %s,SigNoiseTest,%d,1,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlAttenSA, targdBSA, NameThatStimulus$(rec2StimList%[playInd%][1]));    
+            s$ := Print$("Sound %s,SigNoiseDis,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulus$(rec2StimList%[playInd%][0],0));  
+            s2$ := Print$("Sound2 %s,SigNoiseTest,%d,1,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlAttenSA, targdBSA, NameThatStimulus$(rec2StimList%[playInd%][1],1));    
         case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then   
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, NameThatStimulusStereoDis$(recStimList%[whichStim%][playInd%],whichStim%,1));  
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulusStereoDis$(recDistractorStimList%[whichStim%][playInd%],whichStim%,0));  
@@ -4064,7 +4061,7 @@ func IdleLoop%()
                                                           'Either way, PlayTwoSounds (and PlaySound) are set up to do things
                                                           'like atten calculations without a CED present, so we could put it
                                                           'back in if we want, don't know if it's useful though -jj
-                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]],0));
             endif;
             
             docase
@@ -4222,7 +4219,7 @@ func IdleLoop%()
                 'recStimOn := StimOn;  'redundant
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
-                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]],0));
             endif;
             docase
             case stmp% = 0 then
@@ -4316,7 +4313,7 @@ func IdleLoop%()
                 'recStimOn := StimOn;  'redundant
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
-                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]],0));
             endif;  
             docase
             case stmp% = 0 then
@@ -4416,7 +4413,7 @@ func IdleLoop%()
                 'recStimOn := StimOn;  'redundant
             else
                 stmp% := 0;  'simulate sound playing if CED is not present
-                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+                printlog("No CED, stim would be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]],0));
             endif;
             docase
             case stmp% = 0 then
@@ -5795,7 +5792,7 @@ func BehOutput(resultCode$, isS2local%)
     var dB1;
     var dB2;
     
-    'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+    'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]),0);
     'other vars to include?
     'Get trial-based attenuation for current stimulus
     '   trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
@@ -5836,7 +5833,7 @@ func BehOutput(resultCode$, isS2local%)
     
     PrintLog("***thisStim = %d and thisSpeaker = %d\n",thisStim%,spkr%);
     'This won't work for loaded stims but it's there anyway...
-    printlog("**Stim should be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]));
+    printlog("**Stim should be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]],0));
     
     
     joyResponse% :=0;
