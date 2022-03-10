@@ -1920,7 +1920,9 @@ proc RecSpaceDisSaveParams()
     SetIntRegistryValue(key$, "SpaceDisExpIndexGen", recSpaceDisExpIndexGen%);
     SetIntRegistryValue(key$, "SpaceDisExpIndexLoad", recSpaceDisExpIndexLoad%);
     SetIntRegistryValue(key$, "TrialInitReward", recSpaceDisTrialInitReward%);
-    SetIntRegistryValue(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%);  
+    SetIntRegistryValue(key$, "TrialHoldReward", recSpaceDisTrialHoldReward%); 
+    SetIntRegistryValue(key$, "DoRove", recSpaceDisDoRove%);
+    SetFloatRegistryValue(key$, "RovedB", recSpaceDisRovedB);    
     SetIntRegistryValue(key$, "ActiveTask", recSpaceDisActive%);
 
 	return;
