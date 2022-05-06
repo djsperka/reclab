@@ -1409,22 +1409,38 @@ Func PlayTwoSounds%(whichStim%)
     ' Set speaker and atten ---> These functions call to the PM1 and PA4 respectively so hopefully the second playwave area won't be a problem???
     if recCEDIsPresent% = 1 and recTDTIsPresent% = 1 then
         
+        
+        var pm1Start;
+            var pm1Done;
+            var pa41Start;
+            var pa41Done;
+            var pa42Start;
+            var pa42Done;
+            var playStart;
+            var playDone;
+        
         docase
         case recExpToRun% = recExpCharButton% then
+            pm1Start := Seconds();
             status% := recSpeaker%(spkrArray%);
+            pm1Done := Seconds();
             if status% <> 0 then
                 status% := 5;
                 return status%;
             endif;
             
+            pa41Start := Seconds();
             status% := recAttenByID%(attenArray,arrayPA4ID%);
+            pa41Done := Seconds();
             if status% <> 0 then
                 status% := 810;
                 return status%;
             endif; 
             
             if standalonePA4ID% > -1 then  
+                pa42Start := Seconds();
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
+                pa42Done := Seconds();
                 if status% <> 0 then
                     printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
                     status% := 8102;
@@ -1436,28 +1452,16 @@ Func PlayTwoSounds%(whichStim%)
             'use trlatten for attenuation because calibrating attenuation isn't informative
             RecLogStatus("PlayTwoSounds", "SPK " + str$(spkrArray%) + " ATT " + str$(trlattenArray) + "\n");
             
-            var pm1Start;
-            var pm1Done;
-            var pa41Start;
-            var pa41Done;
-            var pa42Start;
-            var pa42Done;
-            var playStart;
-            var playDone;
             
         case recExpToRun% = recExpStereoDisButton% then
-            pm1Start := Seconds();
             status% := recSpeaker%(spkrArray%);
-            pm1Done := Seconds();
             if status% <> 0 then
                 printlog("recSpeaker returned status of %d!! Failing!!\n",status%);
                 status% := 5;
                 return status%;
             endif;
             
-            pa41Start := Seconds();
             status% := recAttenByID%(attenArray,arrayPA4ID%);
-            pa41Done := Seconds();
             if status% <> 0 then
                 printlog("recAttenByID (Array) returned status of %d!! Failing!!\n",status%);
                 status% := 810;
@@ -1465,9 +1469,7 @@ Func PlayTwoSounds%(whichStim%)
             endif;
             
             if standalonePA4ID% > -1 then  'this should always be true...
-                pa42Start := Seconds();
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
-                pa42Done := Seconds();
                 if status% <> 0 then
                     printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
                     status% := 8102;
