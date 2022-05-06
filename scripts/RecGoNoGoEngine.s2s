@@ -1436,15 +1436,28 @@ Func PlayTwoSounds%(whichStim%)
             'use trlatten for attenuation because calibrating attenuation isn't informative
             RecLogStatus("PlayTwoSounds", "SPK " + str$(spkrArray%) + " ATT " + str$(trlattenArray) + "\n");
             
+            var pm1Start;
+            var pm1Done;
+            var pa41Start;
+            var pa41Done;
+            var pa42Start;
+            var pa42Done;
+            var playStart;
+            var playDone;
+            
         case recExpToRun% = recExpStereoDisButton% then
+            pm1Start := Seconds();
             status% := recSpeaker%(spkrArray%);
+            pm1Done := Seconds();
             if status% <> 0 then
                 printlog("recSpeaker returned status of %d!! Failing!!\n",status%);
                 status% := 5;
                 return status%;
             endif;
             
+            pa41Start := Seconds();
             status% := recAttenByID%(attenArray,arrayPA4ID%);
+            pa41Done := Seconds();
             if status% <> 0 then
                 printlog("recAttenByID (Array) returned status of %d!! Failing!!\n",status%);
                 status% := 810;
@@ -1452,7 +1465,9 @@ Func PlayTwoSounds%(whichStim%)
             endif;
             
             if standalonePA4ID% > -1 then  'this should always be true...
+                pa42Start := Seconds();
                 status% := recAttenByID%(attenSA,standalonePA4ID%);
+                pa42Done := Seconds();
                 if status% <> 0 then
                     printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
                     status% := 8102;
@@ -1480,7 +1495,13 @@ Func PlayTwoSounds%(whichStim%)
         'printlog("Sending SafeSampleKey %s at time %f\n",playChar$,seconds());
         ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         'SafeSampleKey(playChar$);
+        playStart := Seconds();
         SafeSampleKey(LCase$(playChar$));
+        playDone := Seconds();
+        printlog("PM1: %f, %f; PA4-1: %f, %f; PA4-2: %f, %f; Play: %f, %f\n",pm1Start,pm1Done,pa41Start,pa41Done,pa42Start,pa42Done,playStart,playDone);
+        printlog("PM1 relative: %f, %f; PA4-1 relative: %f, %f; PA4-2 relative: %f, %f\n",playStart-pm1Start,playStart-pm1Done,playStart-pa41Start,playStart-pa41Done,playStart-pa42Start,playStart-pa42Done);
+        
+        
         StimOn := GetTimeOfLast1401Event();
         
         'write stimulus to sampletext, we need to separate this out based on experiment type
