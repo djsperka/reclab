@@ -4177,7 +4177,7 @@ func IdleLoop%()
                 SafeSampleKey("S");  'Turn off LED
                 ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
-                if tNow - tStateStart > recISI then
+                if tNow - tStateStart > (recISI + Rand(recISIVariable, 0)) then
                     RecLogStatus("WaitISI", "ISI done.");
                     recPreciseTrialTime := tNow;  'time ISI is complete
                     responseMode% := -1; 'reset for debugging
@@ -4211,7 +4211,7 @@ func IdleLoop%()
             
             
         case iState% = stateCharISIDelay% then
-            if tNow - StimStopped > recISI then
+            if tNow - StimStopped > (recISI + Rand(recISIVariable, 0)) then
                 RecLogStatus("Char WaitISI", "ISI done.");
                 recPreciseTrialTime := tNow;  'time ISI is complete
                 isTerminalS1% := 0;  'arbitrary for right now, CharStimComplete() does not return this value anyhow.
@@ -6203,8 +6203,8 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    s$ := Print$("Param2 MinOnsetDelay=%.2f,VarOnsetDelay=%.2f,ISI=%.2f,TrialInitWindow=%.2f,ResponseWindow=%.2f",
-    recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow);
+    s$ := Print$("Param2 MinOnsetDelay=%.2f,VarOnsetDelay=%.2f,ISI=%.2f,VarISI=%.2f,TrialInitWindow=%.2f,ResponseWindow=%.2f",
+    recMinOnsetDelay,recVarOnsetDelay,recISI,recISIVariable,recTrialInitWindow,recResponseWindow);
     SampleText(s$);
     yield(0.01);
     

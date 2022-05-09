@@ -502,9 +502,10 @@ var recStereoDisSeedList%[recMaxStimPerTrial%][recMaxPWA%];
     
     
 'Timing Parameters
-var recMinOnsetDelay;               'Minimum time between monkey's lever press and stimulus onset, seconds
+var recMinOnsetDelay;               'Minimum time between monkey's lever press and stimulus onset (or, time between *trials* for non-Char. passive), seconds
 var recVarOnsetDelay;               'Variable time added to recMinOnsetDelay, seconds
-var recISI;                         'Interstimulus interval, seconds
+var recISI;                         'Interstimulus interval (including time between stimuli in Characterization, a *trial* in Char. ends at the reward), seconds
+var recISIVariable;                 'Variable time added to interstimulus interval, seconds
 var recTrialInitWindow;             'Allowable time for monkey to initiate trial before TO, seconds
 var recResponseWindow;              'Allowable time for monkey to respond to target, seconds
 var recMinJoystickRespTime;         'Minimum time required for a joystick move to be considered real, seconds
@@ -4440,34 +4441,35 @@ func RecExpTimingRewardDialog%()
     
     DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 22);
     DlgGroup("Timing Parameters",1,1,trwid%-2,4);
-    DlgReal(1,12,0,10,c1%,2); DlgText("Minimum Onset Delay, s",c1txt%,2);
-    DlgReal(2,12,0,10,c1%,3); DlgText("Variable Onset Delay, s",c1txt%,3);
-    DlgReal(3,12,0,10,c1%,4); DlgText("ISI, s",c1txt%,4);
-    DlgReal(4,12,0.5,100,c2%,2); DlgText("Trial Initiation Window, s",c2txt%,2);
-    DlgReal(5,12,0.5,100,c2%,3); DlgText("Response Window, s",c2txt%,3);
+    DlgReal(1,12,0,10,c1%,2); DlgText("Minimum Onset Delay (ITI), s",c1txt%,2);
+    DlgReal(2,12,0,10,c1%,3); DlgText("Variable Onset Delay (ITI), s",c1txt%,3);
+    DlgReal(3,12,0,10,c2%,2); DlgText("Minimum ISI, s",c2txt%,2);
+    DlgReal(4,12,0,10,c2%,3); DlgText("Variable ISI, s",c2txt%,3);
+    DlgReal(5,12,0.5,100,c1%,4); DlgText("Trial Initiation Window, s",c1txt%,4);
+    DlgReal(6,12,0.5,100,c2%,4); DlgText("Response Window, s",c2txt%,4);
   '  DlgReal(18,12,0,100,c2%,4); DlgText("Joystick Min Duration, s",c2txt%,4); 'this variable doesn't seem to be used anywhere; same as MinOnsetDelay ??
     
     DlgGroup("Time Outs, etc.",1,6,trwid%-2,4);
     '''Lazy monkey timeout excised!  Uncomment to reinstate!
 '    DlgReal(6,12,0,300,c1%,9); DlgText("Lazy Monkey TO, s",c1txt%,9);
-    DlgReal(6,12,0,300,c1%,9); DlgText("THIS DOES NOTHING, s",c1txt%,9);
+    DlgReal(7,12,0,300,c1%,9); DlgText("THIS DOES NOTHING, s",c1txt%,9);
     
-    DlgReal(7,12,0,300,c1%,7); DlgText("Miss TO, s",c1txt%,7);
-    DlgReal(8,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
-    DlgCheck(19,"Do Miss Repeats?",c2txt%+8,7);
-    DlgInteger(20,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
+    DlgReal(8,12,0,300,c1%,7); DlgText("Miss TO, s",c1txt%,7);
+    DlgReal(9,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
+    DlgCheck(20,"Do Miss Repeats?",c2txt%+8,7);
+    DlgInteger(21,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
     
     DlgGroup("Rewards",1,11,trwid%-2,7);
-    DlgReal(9,12,0,3,c1%,12); DlgText("Init Training Reward, mL",c1txt%,12); 'recInitRewardmL
-    DlgReal(10,12,0,3,c2%,12); DlgText("Hold Training Reward, mL",c2txt%,12); 'recHoldRewardmL
-    DlgReal(11,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
-    DlgReal(12,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
-    DlgReal(13,12,0,3,c1%,14); DlgText("Max Hit Reward, mL",c1txt%,14);
-    DlgReal(14,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
-    DlgReal(15,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
-    DlgReal(16,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
-    DlgList(21,19,rewardType$[],4,c1%-7,16); DlgText("Reward Type",c1txt%,16);
-    DlgReal(22,12,0,1500,c2%,16); DlgText("Start Water/Juice Volume (mL)", c2txt%,16);
+    DlgReal(10,12,0,3,c1%,12); DlgText("Init Training Reward, mL",c1txt%,12); 'recInitRewardmL
+    DlgReal(11,12,0,3,c2%,12); DlgText("Hold Training Reward, mL",c2txt%,12); 'recHoldRewardmL
+    DlgReal(12,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
+    DlgReal(13,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
+    DlgReal(14,12,0,3,c1%,14); DlgText("Max Hit Reward, mL",c1txt%,14);
+    DlgReal(15,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
+    DlgReal(16,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
+    DlgReal(17,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
+    DlgList(22,19,rewardType$[],4,c1%-7,16); DlgText("Reward Type",c1txt%,16);
+    DlgReal(23,12,0,1500,c2%,16); DlgText("Start Water/Juice Volume (mL)", c2txt%,16);
     
 'Retained code for using stimulation reward that will probably never ever come back    
 '    DlgList(21,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);    
@@ -4477,12 +4479,12 @@ func RecExpTimingRewardDialog%()
 '    DlgInteger(25,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
     
     DlgGroup("Interrupts",1,19,trwid%-2,2);
-    DlgList(17,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
-    DlgList(18,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
+    DlgList(18,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
+    DlgList(19,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
     
     DlgAllow(0xffff, 0, RecExpTimingRewardDialogChanged%);
         
-    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
+    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recISIVariable,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
                 eightReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
                 recJuiceWaterBooth%,recInitialJuiceVolumemL);
     
@@ -4561,6 +4563,8 @@ end;
 ' This function is initially called with a "0" input
 func RecExpTimingRewardDialogChanged%(item%) 
     
+    
+    'Note that if the stimulation protocol is returned, these Dialog numbers will no longer be valid, can't just uncomment
 '    docase
 '    case DlgValue(20) = 4 then  'if setting probabilities of juice, etc.
 '        DlgEnable(1,21); 'Enable juice probability
@@ -4597,16 +4601,16 @@ func RecExpTimingRewardDialogChanged%(item%)
 '        DlgValue$(24,"Pct Juice+Stimulation = "+Str$(100-DlgValue(22)-DlgValue(23)));
 '    endif;
     
-    DlgEnable(0,14); 'Disable max CR reward, not implemented
-    DlgEnable(0,16); 'Disable increment on S1, not implemented    
+    DlgEnable(0,15); 'Disable max CR reward, not implemented
+    DlgEnable(0,17); 'Disable increment on S1, not implemented    
     
     'Set max CR reward to whatever the current CR reward is
-    if item% = 12 then
-        DlgValue(14,DlgValue(12));
+    if item% = 13 then
+        DlgValue(15,DlgValue(13));
     endif;
     
     'And zero out the increment on S1 value - hate to do it every single time the dialog is updated, but whatevs.
-    DlgValue(16,0);
+    DlgValue(17,0);
     
     return 1;
 end
@@ -4634,6 +4638,7 @@ proc RecTimingRewardGetParams()
     recMinOnsetDelay := GetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
     recVarOnsetDelay := GetFloatRegistryValue(key$, "VarOnsetDelay", recVarOnsetDelay);
     recISI := GetFloatRegistryValue(key$, "ISI", recISI);
+    recISIVariable := GetFloatRegistryValue(key$, "ISIVariable", recISIVariable);
     recTrialInitWindow := GetFloatRegistryValue(key$, "TrialInitWindow", recTrialInitWindow);
     recResponseWindow := GetFloatRegistryValue(key$, "ResponseWindow", recResponseWindow);
     recLazyMonkeyTO := GetFloatRegistryValue(key$, "LazyMonkeyTO", recLazyMonkeyTO);
@@ -4682,6 +4687,7 @@ proc RecTimingRewardSaveParams()
     SetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
     SetFloatRegistryValue(key$, "VarOnsetDelay", recVarOnsetDelay);
     SetFloatRegistryValue(key$, "ISI", recISI);
+    SetFloatRegistryValue(key$, "ISIVariable", recISIVariable);
     SetFloatRegistryValue(key$, "TrialInitWindow", recTrialInitWindow);
     SetFloatRegistryValue(key$, "ResponseWindow", recResponseWindow);
     SetFloatRegistryValue(key$, "LazyMonkeyTO", recLazyMonkeyTO);
