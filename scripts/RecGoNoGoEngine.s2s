@@ -199,6 +199,7 @@ var recLongAtten;
 var recLNFirstTimeInISI%;
 var LongNoiseBlock%;
 var LongNoiseCounter%;
+var tempRand := -1;   'initialize at -1, this variable won't be re-calculated once a value is calculated once, until reset
 
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
@@ -4177,7 +4178,11 @@ func IdleLoop%()
                 SafeSampleKey("S");  'Turn off LED
                 ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
-                if tNow - tStateStart > (recISI + Rand(recISIVariable, 0)) then
+                if tempRand < 0 then  'YOU CAN'T KEEP RECOMPUTING THE RANDOM NUMBER
+                    tempRand := Rand(recISIVariable, recISI);
+                endif
+                if (tNow - tStateStart) > tempRand then
+                    tempRand := -1;  'tempRand is ready for a new assignment!
                     RecLogStatus("WaitISI", "ISI done.");
                     recPreciseTrialTime := tNow;  'time ISI is complete
                     responseMode% := -1; 'reset for debugging
@@ -4211,7 +4216,11 @@ func IdleLoop%()
             
             
         case iState% = stateCharISIDelay% then
-            if tNow - StimStopped > (recISI + Rand(recISIVariable, 0)) then
+            if tempRand < 0 then  'YOU CAN'T KEEP RECOMPUTING THE RANDOM NUMBER
+                tempRand := Rand(recISIVariable, recISI);
+            endif
+            if (tNow - StimStopped) > tempRand then
+                tempRand := -1;  'tempRand is ready for a new assignment!
                 RecLogStatus("Char WaitISI", "ISI done.");
                 recPreciseTrialTime := tNow;  'time ISI is complete
                 isTerminalS1% := 0;  'arbitrary for right now, CharStimComplete() does not return this value anyhow.
@@ -5309,7 +5318,11 @@ func IdleLoop%()
             if tNow > tStateStart + recLongToneISI then
                 
                 'if rewarding, reward *after* ISI and before LongTone presentation
-                if rand() < recLongToneRewardProb and recTurnOffReward% = 0 then
+                if tempRand < 0 then  'YOU CAN'T KEEP RECOMPUTING THE RANDOM NUMBER
+                    tempRand := Rand();
+                endif
+                if tempRand < recLongToneRewardProb and recTurnOffReward% = 0 then
+                    tempRand := -1;  'tempRand is ready for a new assignment!
                     'recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
                     stmp% := Reward%(recHitRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
