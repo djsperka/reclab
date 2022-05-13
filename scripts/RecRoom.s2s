@@ -1714,6 +1714,11 @@ proc RecCharDialogFRAGetParams()
     recCharActive% := GetIntRegistryValue%(key$, "recFRAActive", recCharActive%);
     recCharExpIndexLoadFRA% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%);
     recCharLoadStim% := GetIntRegistryValue%(key$, "FRALoadStim", recCharLoadStim%);
+    recCharExpIndexLoadSigNoise% := GetIntRegistryValue%(key$, "CharExpIndexLoadSigNoise", recCharExpIndexLoadSigNoise%);
+    recCharExpIndexGenFRA% := GetIntRegistryValue%(key$, "CharExpIndexGenFRA", recCharExpIndexGenFRA%);
+    recCharExpIndexGenSigNoise% := GetIntRegistryValue%(key$, "CharExpIndexGenSigNoise", recCharExpIndexGenSigNoise%);
+    recCharExpIndexLoadArbStim% := GetIntRegistryValue%(key$, "CharExpIndexLoadArbStim", recCharExpIndexLoadArbStim%);
+
 	return;
 end
 
@@ -1758,6 +1763,10 @@ proc RecCharDialogFRASaveParams()
     SetIntRegistryValue(key$, "recFRAActive", recCharActive%);
     SetIntRegistryValue(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%);
     SetIntRegistryValue(key$, "FRALoadStim", recCharLoadStim%);
+    SetIntRegistryValue(key$, "CharExpIndexLoadSigNoise", recCharExpIndexLoadSigNoise%);
+    SetIntRegistryValue(key$, "CharExpIndexGenFRA", recCharExpIndexGenFRA%);
+    SetIntRegistryValue(key$, "CharExpIndexGenSigNoise", recCharExpIndexGenSigNoise%);
+    SetIntRegistryValue(key$, "CharExpIndexLoadArbStim", recCharExpIndexLoadArbStim%);
 	return;
 end
 
