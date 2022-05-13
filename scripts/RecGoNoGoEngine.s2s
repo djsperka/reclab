@@ -3622,6 +3622,7 @@ func IdleLoop%()
         docase
         case iState% = stateStart% then
             'This state is only entered once per "experiment" - once per each time the template file passes control
+            SilencePA4%();  'Set active PA4s to 99
             RecLogStatus("Start", "Starting state logic loop.");
             docase
             case recExpToRun% = recExpCharButton% then
@@ -4136,6 +4137,7 @@ func IdleLoop%()
             
             docase
             case PWA$ = "" then
+                SilencePA4%();  'When sound is done, set active PA4s to 99
                 docase
                 case recActive% = 1 and isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
@@ -4289,6 +4291,7 @@ func IdleLoop%()
             CheckLever%("inResponse1%",0);  'default is no early hit
             docase
             case PWA$ = "" then 'if sound is not playing
+                SilencePA4%();  'When sound is done, set active PA4s to 99
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
                 ChangeStateTo(stateTrialHoldReward%);  'check for trial hold reward no matter what, will then move to response window
             case recActive% = 0 then
@@ -4384,7 +4387,8 @@ func IdleLoop%()
             
             CheckLever%("inResponse1%",0);  'default no false alarm
             docase
-            case PWA$ = "" then    
+            case PWA$ = "" then   
+                SilencePA4%();  'When sound is done, set active PA4s to 99                
                 RecLogStatus("WaitTrialSoundC", "Sound done playing.");
                 if (isEarlyFA% = 1 or isEarlyCR% = 1) and recIsGoNoGo% = 0 then  'isEarlyFA/CR% means something different (early response) in FC tasks
                     ChangeStateTo(stateInResponseWindow%);  'this will just shunt to the FA penalty, but it keeps the logic consistent
@@ -4482,6 +4486,7 @@ func IdleLoop%()
             CheckLever%("inResponse2%",0);  'default is no early hit 'switched to Response2 for S3 *jao
             docase
             case PWA$ = "" then    
+                SilencePA4%();  'When sound is done, set active PA4s to 99
                 RecLogStatus("WaitTrialSoundD", "Sound done playing.");
                 ChangeStateTo(stateTrialHoldReward%);  'check for training reward no matter what
             case recActive% = 0 then
@@ -4604,6 +4609,7 @@ func IdleLoop%()
             
             
             if PWA$ = "" then    
+                SilencePA4%();  'When sound is done, set active PA4s to 99
                 RecLogStatus("WaitTrialSoundE", "Sound done playing.");
                 printlog("Current time is %f\n",tNow);
                 'ChangeStateTo(stateTrialHoldReward%);  'Not doing a trial hold reward in Char for now -jj
@@ -6486,4 +6492,29 @@ proc WriteExpParamsSampleText()
     endcase;
     
     
+end
+
+
+func SilencePA4%()
+    'A simple function to set the PA4 to 99, may help with clicking
+    var status%;
+    
+    status% := recAttenByID%(99,arrayPA4ID%);;
+    if status% <> 0 then
+        printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
+        status% := 810;
+        return status%;
+    endif; 
+    
+    if standalonePA4ID% > -1 then  
+        status% := recAttenByID%(99,standalonePA4ID%);
+        if status% <> 0 then
+            printlog("recAttenByID (Standalone) returned status of %d!! Failing!!\n",status%);
+            status% := 8102;
+            return status%;
+        endif;
+    endif;
+    
+    
+    return status%;
 end
