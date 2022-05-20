@@ -76,7 +76,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     var StimOn;
     var PrevStimOn;
     var MChanStimOn%;
-    var TF;
+    var TF := 1000;
     var attenInc := 1;
     
     
@@ -126,7 +126,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     DlgInteger(1,"Number of repeats",1,100);  'Integer field from entering number of repeats, max = 100
     DlgList(2,"Stimulus","Load File...|Gaussian Noise|Uniform Noise|Tone|Tone Series");  'List field to identify type of stimulus
     DlgReal(3,"Duration (sec)",0.05,10);  'Real box to specify duration of stimulus (if generated) min = 50ms, max = 10s
-    DlgReal(4,"Frequency (Hz)",20,50000);  'Real box to specify frequency of stimulus (if tone) min = 20 Hz, max = 50 kHz
+    DlgReal(4,"Frequency (Hz)",1,50000);  'Real box to specify frequency of stimulus (if tone) min = 20 Hz, max = 50 kHz
     DlgInteger(5,"Sampling Frequency (Hz)",20000,200000);  'Integer box to specify sampling frequency of stimulus, if loaded
     DlgInteger(6,"Which Speaker",1,32); 'integer specifies which speaker
     DlgList(7,"Paradigm","Spkr Transfer Func|Amplifier Check|PA4 Check");
