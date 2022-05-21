@@ -72,7 +72,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     var ToneFreq := 1000;
     var fname$;
     var filebytes%;
-    var donormalize% := 1;  'whether or not to normalize, there's no point in doing it every time if the stimulus is the same
+    var donormalize% := 0;  'whether or not to normalize, there's no point in doing it every time if the stimulus is the same
     var StimOn;
     var PrevStimOn;
     var MChanStimOn%;
@@ -156,6 +156,8 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
         FileClose();  'close the file
         MaxPoint% := filebytes%/2;  'get the number of points in the stimulus, integer form
         MaxPoint := MaxPoint%;  'set real version for later math
+        duration := MaxPoint/fs;
+        printlog("Stimulus Duration is %f\n",duration);
     endif;
     
     'if we're not supposed to load a stimulus, figure out how many points it will be
@@ -250,7 +252,7 @@ func ThisIsACompletelyStupidSyntaxRequirementToAllowVariableSizingOfArrays%()
     
     'Prepare a PlayWave buffer on the 1401
     PlayWaveDelete(); 
-    PlayWaveAdd("S","Stim",0,fs,MaxPoint);  'must be called before FileNew()
+    PlayWaveAdd("S","Stim",0,fs,MaxPoint%);  'must be called before FileNew()
     
     'Open a new data window
     ctview%:=FileNew(0,1+4);  'here the 4 is irrelevant because there are no WaveMark channels
