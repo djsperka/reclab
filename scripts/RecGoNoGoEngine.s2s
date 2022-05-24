@@ -29,7 +29,7 @@ var recTrodePort%[maxTrodes%];
 const recLeverPort% := 1;    'Event port
 const recBAK1Port% := 0;        'Event port
 const recBAK2Port% := 1;        'Event port  --  Note that recLeverPort% and BAK2Port conflict for now.  It is anticipated that there should not be recording+lever until late 2020
-const configJoyXPort% := 0;  'A2D port
+const configJoyXPort% := 7;  'A2D port - NOTE PORT 7 TEMPORARY BECAUSE PORT 0 IS BLOWN
 const configJoyYPort% := 1;  'A2D port
 'const configEyeXPort% := 2;  'A2D port  'not yet implemented
 'const configEyeYPort% := 3;  'A2D port
