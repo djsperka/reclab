@@ -2087,13 +2087,23 @@ func RecExpSelectDialog%()
     var j%;
     var status% := 0;  
     var spkArr$[5];
+    var spkArr1$[3];
+    var spkArr2$[3];
     var fsArr$[2];
     var levText$;
-    spkArr$[0] := "None";
-    spkArr$[1] := "15";
-    spkArr$[2] := "16";
-    spkArr$[3] := "StandAlone";
-    spkArr$[4] := "StdAlNoPA4";
+'    spkArr$[0] := "None";
+'    spkArr$[1] := "15";
+'    spkArr$[2] := "16";
+'    spkArr$[3] := "StandAlone";
+'    spkArr$[4] := "StdAlNoPA4";
+    
+    spkArr1$[0] := "None";
+    spkArr1$[1] := "15";
+    spkArr1$[2] := "16";
+    
+    spkArr2$[0] := "None";
+    spkArr2$[1] := "StandAlone";
+    spkArr2$[2] := "StdAlNoPA4";
     
     fsArr$[0] := "100000";  'Wrote this initially with an option for 50 kHz but not sure it would ever be useful
     fsArr$[1] := "44100";
@@ -2122,8 +2132,8 @@ func RecExpSelectDialog%()
     DlgText("File suffix letter",32,2); DlgString(6,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
     DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,21,0,3); 
     DlgInteger(3,"Number of BAKs",0,2,0,4);
-    DlgList(4,"Speaker array, first (left) PA4",spkArr$[],10,0,5);
-    DlgList(5,"Speaker array, second (right) PA4",spkArr$[],10,0,6);
+    DlgList(4,"Speaker array, first (left) PA4",spkArr1$[],10,0,5);
+    DlgList(5,"Speaker array, second (right) PA4",spkArr2$[],10,0,6);
     
     DlgGroup("Experiments", 1,8,50,6);
     DlgButton(0,"         Quit         ");
@@ -2179,19 +2189,50 @@ func RecExpSelectDialog%()
         'Speaker number has to be either 15 or 16, we do not have any scenarios which currently allow ONLY the
         'standalone speaker, nor any that allow two arrays, so recNSpeakers% applies to the main array, of which
         'there must be exactly one.
+        '
+        'Note that because there is only one PM1, there is little incentive to allow "array2" to be either the 15 or 16 array.
+        'The PM1 is "hard" wired to what ends up being "array1" anyways.
+        
+        'Removed ability to have the array on either output
+'        docase
+'        case recSpeakerArrayIndex% = 1 or recSpeakerArrayIndex2% = 1 then  'both cannot be 1 due to the DlgAllow function
+'            recNSpeakers% := 15;
+'        case recSpeakerArrayIndex% = 2 or recSpeakerArrayIndex2% = 2 then  'both cannot be 2 due to the DlgAllow function
+'            recNSpeakers% := 16; 
+'        endcase;
+        
         docase
-        case recSpeakerArrayIndex% = 1 or recSpeakerArrayIndex2% = 1 then  'both cannot be 1 due to the DlgAllow function
+        case recSpeakerArrayIndex% = 1 then  
             recNSpeakers% := 15;
-        case recSpeakerArrayIndex% = 2 or recSpeakerArrayIndex2% = 2 then  'both cannot be 2 due to the DlgAllow function
+        case recSpeakerArrayIndex% = 2 then  
             recNSpeakers% := 16; 
         endcase;
+        
+        'Assign PA4 variables
+'        docase
+'        case recSpeakerArrayIndex% = 1 or recSpeakerArrayIndex% = 2 then
+'            arrayPA4ID% := xlnFirstPA4%;
+'        case recSpeakerArrayIndex2% = 1 or recSpeakerArrayIndex2% = 2 then
+'            arrayPA4ID% := xlnSecondPA4%;
+'        else
+'            message("Whoa! There does not appear to be an array selected and you should not have gotten this far!");
+'            view(recLog%).print("ERROR: Array not selected, quitting!\n");
+'            halt;
+'        endcase
+'        
+'        docase 
+'        case recSpeakerArrayIndex% = 3 then
+'            standalonePA4ID% := xlnFirstPA4%;
+'        case recSpeakerArrayIndex2% = 3 then
+'            standalonePA4ID% := xlnSecondPA4%;
+'        else
+'            standalonePA4ID% := -1;  'No standalone PA4
+'        endcase
         
         'Assign PA4 variables
         docase
         case recSpeakerArrayIndex% = 1 or recSpeakerArrayIndex% = 2 then
             arrayPA4ID% := xlnFirstPA4%;
-        case recSpeakerArrayIndex2% = 1 or recSpeakerArrayIndex2% = 2 then
-            arrayPA4ID% := xlnSecondPA4%;
         else
             message("Whoa! There does not appear to be an array selected and you should not have gotten this far!");
             view(recLog%).print("ERROR: Array not selected, quitting!\n");
@@ -2199,13 +2240,13 @@ func RecExpSelectDialog%()
         endcase
         
         docase 
-        case recSpeakerArrayIndex% = 3 then
-            standalonePA4ID% := xlnFirstPA4%;
-        case recSpeakerArrayIndex2% = 3 then
+        
+        case recSpeakerArrayIndex2% = 1 then
             standalonePA4ID% := xlnSecondPA4%;
         else
             standalonePA4ID% := -1;  'No standalone PA4
         endcase
+        
         'So now we have assigned recNSpeakers% to work as it always has, and two PA4IDs to be used when calling RecAttenByID%()
         
         RecExpSelectDialogSaveParams();
@@ -2241,12 +2282,13 @@ func RecExpSelectDialogChanged%(item%)
     
     'Identifying legal speaker setups
     'Basically, at least one must be an array, they can't both be arrays
-    docase
-    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(5) = 0 or DlgValue(5) = 3 or DlgValue(5) = 4) then
-        speakersOK% := 1;
-    case (DlgValue(5) = 1 or DlgValue(5) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3 or DlgValue(4) = 4) then
-        speakersOK% := 1;    
-    endcase
+    'This is no longer relevant since we are NOT allowing "swapping" of the arrays, the PM1 will always be connected to the first output
+'    docase
+'    case (DlgValue(4) = 1 or DlgValue(4) = 2) and (DlgValue(5) = 0 or DlgValue(5) = 3 or DlgValue(5) = 4) then
+'        speakersOK% := 1;
+'    case (DlgValue(5) = 1 or DlgValue(5) = 2) and (DlgValue(4) = 0 or DlgValue(4) = 3 or DlgValue(4) = 4) then
+'        speakersOK% := 1;    
+'    endcase
     'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
     
     'Disable two buttons, note that this allows the remainder of the infrastructure for these expts to remain intact

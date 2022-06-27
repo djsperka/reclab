@@ -1532,7 +1532,7 @@ Func PlayTwoSounds%(whichStim%)
             s2$ := Print$("Sound2 %s,SigNoiseTest,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]); 'This is weird to point out "silence" but the placeholder might be useful in the future.        
         case recExpToRun% = recExpCharButton% and recCharLoadStim% = 4 then  'This is for *generated* SigNoise
             s$ := Print$("Sound %s,SigNoiseDis,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulus$(rec2StimList%[playInd%][0],0));  
-            s2$ := Print$("Sound2 %s,SigNoiseTest,%d,1,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlAttenSA, targdBSA, NameThatStimulus$(rec2StimList%[playInd%][1],1));    
+            s2$ := Print$("Sound2 %s,SigNoiseTest,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlAttenSA, targdBSA, NameThatStimulus$(rec2StimList%[playInd%][1],1));    
         case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then   
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, NameThatStimulusStereoDis$(recStimList%[whichStim%][playInd%],whichStim%,1));  
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulusStereoDis$(recDistractorStimList%[whichStim%][playInd%],whichStim%,0));  
