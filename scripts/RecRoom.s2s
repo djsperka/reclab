@@ -2291,6 +2291,13 @@ func RecExpSelectDialogChanged%(item%)
 '    endcase
     'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
     
+    docase
+    case (DlgValue(4) = 1 or DlgValue(4) = 2) then
+        speakersOK% := 1;
+    case (DlgValue(5) = 1 or DlgValue(5) = 2) then
+        speakersOK% := 1;    
+    endcase
+    
     'Disable two buttons, note that this allows the remainder of the infrastructure for these expts to remain intact
     DlgEnable(0,-recExpStereoDisButton%);  'Almost certainly broken, see GenTrialsStereoDis%() for more details
     DlgEnable(0,-recExpCueingButton%);  'Never full implemented
