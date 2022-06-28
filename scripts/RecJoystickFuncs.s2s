@@ -1350,6 +1350,7 @@ func CalibrateJoystick%()
     
     
     'return 1;  'return to toolbar
+    recReadyToQuit% := 1;  'prevent from trying to open another experiment
     return  0;  'Actually, we should close the toolbar
 end;
 
