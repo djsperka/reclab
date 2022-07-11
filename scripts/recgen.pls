@@ -34,7 +34,7 @@
 ;0014            MOVI   V2,0            ;Allow sequencer access
 ;0015            JUMP   NEXT
 0005 PLAYKK: 'k MOVI   V2,1            ;Do not allow sequencer access
-0006            WAVEGO K,W             ;Play wave area K
+0006            WAVEGO K,W             ;Play wave area K (parallel PWA 1)
 0007 KKWAIT:    WAVEBR KKWAIT,T        ;Wait until area K begins playing
 0008            MARK   1               ;Use digital marker as in long tone
 0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -44,7 +44,7 @@
 0013            MOVI   V2,0            ;Allow sequencer access
 0014            JUMP   NEXT
 0005 PLAYLL: 'l MOVI   V2,1            ;Do not allow sequencer access
-0006            WAVEGO L,W             ;Play wave area L
+0006            WAVEGO L,W             ;Play wave area L (parallel PWA 2)
 0007 LLWAIT:    WAVEBR LLWAIT,T        ;Wait until area L begins playing
 0008            MARK   1               ;Use digital marker as in long tone
 0009            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -54,7 +54,7 @@
 0013            MOVI   V2,0            ;Allow sequencer access
 0014            JUMP   NEXT
 0015 PLAYMM: 'm MOVI   V2,1            ;Do not allow sequencer access
-0016            WAVEGO M,W             ;Play wave area M
+0016            WAVEGO M,W             ;Play wave area M (long tone PWA 1)
 0017 MMWAIT:    WAVEBR MMWAIT,T        ;Wait until area M begins playing
 0018            MARK   1               ;Use digital marker as in long tone
 0019            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -64,7 +64,7 @@
 0023            MOVI   V2,0            ;Allow sequencer access
 0024            JUMP   NEXT
 0025 PLAYNN: 'n MOVI   V2,1            ;Do not allow sequencer access
-0026            WAVEGO N,W             ;Play wave area N
+0026            WAVEGO N,W             ;Play wave area N (long tone PWA 2)
 0027 NNWAIT:    WAVEBR NNWAIT,T        ;Wait until area N begins playing
 0028            MARK   1               ;Use digital marker as in long tone
 0029            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -74,7 +74,7 @@
 0033            MOVI   V2,0            ;Allow sequencer access
 0034            JUMP   NEXT
 0035 PLAYOO: 'o MOVI   V2,1            ;Do not allow sequencer access
-0036            WAVEGO O,W             ;Play wave area O
+0036            WAVEGO O,W             ;Play wave area O (long tone PWA 3)
 0037 OOWAIT:    WAVEBR OOWAIT,T        ;Wait until area O begins playing
 0038            MARK   1               ;Use digital marker as in long tone
 0039            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
@@ -84,11 +84,21 @@
 0043            MOVI   V2,0            ;Allow sequencer access
 0044            JUMP   NEXT
 0045 PLAYPP: 'p MOVI   V2,1            ;Do not allow sequencer access
-0046            WAVEGO P,W             ;Play wave area P
+0046            WAVEGO P,W             ;Play wave area P (long tone PWA 4)
 0047 PPWAIT:    WAVEBR PPWAIT,T        ;Wait until area P begins playing
 0048            MARK   1               ;Use digital marker as in long tone
 0049            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
 0050 PXWAIT:    WAVEBR PXWAIT,S        ;Wait until area P STOPS playing
+0051            DAC    0,0             ;Set DAC to 0
+0052            MARK   0               ;Use digital marker as in long tone
+0053            MOVI   V2,0            ;Allow sequencer access
+0054            JUMP   NEXT
+0045 PLAYQQ: 'q MOVI   V2,1            ;Do not allow sequencer access
+0046            WAVEGO Q,W             ;Play wave area Q (long tone PWA 5)
+0047 QQWAIT:    WAVEBR QQWAIT,T        ;Wait until area Q begins playing
+0048            MARK   1               ;Use digital marker as in long tone
+0049            TICKS  V3              ;Note time for GetTimeOfLast1401Event()
+0050 QXWAIT:    WAVEBR QXWAIT,S        ;Wait until area Q STOPS playing
 0051            DAC    0,0             ;Set DAC to 0
 0052            MARK   0               ;Use digital marker as in long tone
 0053            MOVI   V2,0            ;Allow sequencer access

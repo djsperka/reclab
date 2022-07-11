@@ -359,7 +359,8 @@ var recStereoDisGNGTrialsNameGen$[recStereoDisGNGNumExps%];
 var recStereoDisGNGExpIndexGen%;
 var recStereoDisExpDoGNG%;   
 var recStereoDisDoRove%;               'Do we rove?
-var recStereoDisRovedB;                'How much do we rove?    
+var recStereoDisRovedB;                'How much do we rove? 
+var recStereoDisActive%;               'Active task? 
     
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
@@ -420,6 +421,7 @@ var standalonePA4ID%;               'What is the PA4 ID for the PA4 connected to
 const recMaxStim%:=5000;            'Maximum number of stimuli, 1000 is probably overlarge, nope not if you do the "designate each AM individually for trial file ease"
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
+const recMaxParallelPWA%:=2;        'Holds the maximum number of parallel PWAs    
 const recMaxTrial%:=5000;           'Maximum number of trial TYPES, 5000 is probably overlarge again, but there is the problem of long Search stretches
 const recMaxDistractor%:=6;         'Maximum number of distractors (= max number of S1.ns in distractor expt.), currently index 0 will remain empty as the true S1 has no distractor    
 var recTotalStim%;                  'Total number of stimuli specified in Stim or Stim/Cal file
@@ -494,7 +496,7 @@ var recCharReward%[recMaxTrial%];
     
     
 'Stereo Distractor specific trial list variables
-var recDistractorStimList%[recMaxStimPerTrial%][recMaxTrial%];
+var recDistractorStimList%[recMaxStimPerTrial%][recMaxTrial%];  'to accomodate StereoDis GNG, we hypothetically allow multiple S1s, so first dimension is maxStimPerTrial
 var recDistractorSpeakerList%[recMaxStimPerTrial%][recMaxTrial%];
 var recDistractorDeltadBList[recMaxStimPerTrial%][recMaxTrial%];  
 var recStereoDisGeneratedAttenList[recMaxStimPerTrial%][recMaxPWA%];
@@ -1103,6 +1105,8 @@ while recReadyToQuit% = 0 do
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 and recStereoDisExpDoLoad% = 1 then  'For Stereo Distractor, FC, loading stimuli
             recExptText$ := "Running Stereo Distractor FC Loading Stims"; 
+            message("Stereo Distractor FC LOADING stims is not fully vetted, exiting!");
+            halt;
             
             'Get stimfile and trials file lists
             RecStereoDisExpListLoadGetParams(recStereoDisExpNameLoad$[],recStereoDisStimcalNameLoad$[],recStereoDisTrialsNameLoad$[],recStereoDisStimcalDistractorNameLoad$[]);
@@ -1164,6 +1168,8 @@ while recReadyToQuit% = 0 do
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoLoad% = 1 then  'For Stereo Distractor, GNG, loading stimuli
             recExptText$ := "Running Stereo Distractor GNG Loading Stims"; 
+            message("Stereo Distractor GNG loading stims is not fully vetted, exiting!");
+            halt;
             
             'Get stimfile and trials file lists
             RecStereoDisGNGExpListLoadGetParams(recStereoDisGNGExpNameLoad$[],recStereoDisGNGStimcalNameLoad$[],recStereoDisGNGTrialsNameLoad$[],recStereoDisGNGStimcalDistractorNameLoad$[]);
@@ -1185,7 +1191,8 @@ while recReadyToQuit% = 0 do
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoGen% = 1 then  'For Stereo Distractor, GNG, generating stimuli
             'Not fully vetted!
-            message("StereoDis, GNG, generating trials is not fully vetted!");
+            message("Stereo Distractor GNG generating stims is not fully vetted, exiting!");
+            halt;
             trialsOK% := -1;  'short circuit the rest, go back to exp. selection dialog
             
 '            recExptText$ := "Running Stereo Distractor GNG Generating Stims"; 
@@ -1387,12 +1394,12 @@ while recReadyToQuit% = 0 do
                 'message("AUDIOGRAM is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
                 result% := GenTrialsAudiogram%();  'Generate trials for Audiogram.  Return result of 1 if OK, 0 if not.
                 
-            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoFC% = 1 and recStereoDisExpDoLoad% = 1 then
+            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoFC% = 1 and recStereoDisExpDoLoad% = 1 then  'not implemented, but will exit before here
                 'do Trial List Generation stuff!
                 result% := GenTrialsStereoDis%();  'Generate trials for StereoDis.  Return result of 1 if OK, 0 if not.
                 recUse2PWAs% := 1;
                 
-            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoLoad% = 1 then
+            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoLoad% = 1 then  'not implemented, but will exit before here
                 'do Trial List Generation stuff!
                 result% := GenTrialsStereoDisGNG%();  'Generate trials for StereoDis.  Return result of 1 if OK, 0 if not. 
                 recUse2PWAs% := 1;
@@ -1402,7 +1409,7 @@ while recReadyToQuit% = 0 do
                 result% := GenTrialsStereoDis%();  'Generate trials for StereoDis.  Return result of 1 if OK, 0 if not.
                 recUse2PWAs% := 1;
                 
-            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoGen% = 1 then
+            case recExpToRun% = recExpStereoDisButton%  and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoGen% = 1 then  'not implemented, but will exit before here
                 'do Trial List Generation stuff!
                 'result% := GenTrialsStereoDisGNG%();  'Generate trials for StereoDis.  Return result of 1 if OK, 0 if not. 
                 message("GNG StereoDis, generating stimuli is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
@@ -1959,6 +1966,7 @@ proc RecStereoDisSaveParams()
     SetFloatRegistryValue(key$, "StereoDisdB", recStereoDisdB);
     SetIntRegistryValue(key$, "StereoDisDoRove", recStereoDisDoRove%);
     SetFloatRegistryValue(key$, "StereoDisRovedB", recStereoDisRovedB);
+    SetIntRegistryValue(key$, "StereoDisActive", recStereoDisActive%);
     
     
     
@@ -1984,6 +1992,8 @@ proc RecStereoDisGetParams()
     recStereoDisdB := GetFloatRegistryValue(key$, "StereoDisdB", recStereoDisdB);
     recStereoDisDoRove% := GetIntRegistryValue%(key$, "StereoDisDoRove", recStereoDisDoRove%);
     recStereoDisRovedB := GetFloatRegistryValue(key$, "StereoDisRovedB", recStereoDisRovedB);
+    recStereoDisActive% := GetIntRegistryValue%(key$, "StereoDisActive", recStereoDisActive%);
+    
     
 	return;
 end
@@ -2299,7 +2309,7 @@ func RecExpSelectDialogChanged%(item%)
     endcase
     
     'Disable two buttons, note that this allows the remainder of the infrastructure for these expts to remain intact
-    DlgEnable(0,-recExpStereoDisButton%);  'Almost certainly broken, see GenTrialsStereoDis%() for more details
+    'DlgEnable(0,-recExpStereoDisButton%);  'Almost certainly broken, see GenTrialsStereoDis%() for more details
     DlgEnable(0,-recExpCueingButton%);  'Never full implemented
     
     'This disables the "OK" button (though it will have different labels) until an experiment is selected
@@ -4273,7 +4283,7 @@ func RecExpStereoDisDialog%()
     RecStereoDisGNGExpListGenGetParams(recStereoDisGNGExpNameGen$[],recStereoDisGNGStimNameGen$[],recStereoDisGNGTrialsNameGen$[]);
     
     ' Generate the dialog    
-    DlgCreate("Stereo Distractor Dialog",0,0,74,14);
+    DlgCreate("Stereo Distractor Dialog",0,0,74,15);
     
     DlgCheck(1,"Do Forced Choice Experiment",2,1);
     DlgCheck(2,"Generate Stimuli",30,1);
@@ -4296,14 +4306,15 @@ func RecExpStereoDisDialog%()
     
     DlgInteger(7,"Repeats Per Stim",1,1000,18,9);
     DlgReal(8,"Stimulus dB",1,100,18,10);
-    DlgCheck(9,"Rove stimuli?",18,11);
+    DlgCheck(9,"Rove stimuli?",2,11);
     DlgReal(10,"Rove dB, +/-",0,3,18,12);  'Rove db
+    DlgCheck(11,"Active task?",2,13);
     DlgAllow(0xffff, 0, RecExpStereoDisDialogChanged%);   
     
     
     i%:=DlgShow(recStereoDisExpDoFC%,recStereoDisExpDoGen%,recStereoDisExpIndexGen%,recStereoDisExpIndexLoad%,
     recStereoDisGNGExpIndexGen%,recStereoDisGNGExpIndexLoad%,recStereoDisRepeatsPerStim%,recStereoDisdB,
-    recStereoDisDoRove%,recStereoDisRovedB);   'Yes, that's it!
+    recStereoDisDoRove%,recStereoDisRovedB,recStereoDisActive%);   'Yes, that's it!
 
     
     ' If user hit OK then save parameters (and return 1). 
@@ -4321,7 +4332,7 @@ func RecExpStereoDisDialog%()
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
             
-        recActive% := 1;
+        recActive% := recStereoDisActive%;
         
         if recStereoDisExpDoGen% = 1 then
             recMatGenStim% := 1;
@@ -4354,6 +4365,13 @@ end;
 
 ' This function is initially called with a "0" input
 func RecExpStereoDisDialogChanged%(item%)
+    
+    'For now, we should simply disallow any entries in this dialog EXCEPT FC/Gen, which is the only pathway that is being used, and the
+    'only pathway being fully worked out.  Once this pathway is set up, the others may not be too hard, but until such time...
+    DlgValue(1,1);
+    DlgValue(2,1);
+    DlgEnable(0,1);
+    DlgEnable(0,2);
         
     docase
     case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) = 1 then  'if we are running FC/Gen, disable GNG/Load buttons
@@ -9396,13 +9414,7 @@ func GenTrialsStereoDis%()
     var i%;
     var j%;
     var count% := 0;
-    var rewardInt% := 5;
     var miniTrialOrder%[recTotalTrials%];
-    var randNum := 0;
-    var randInt%;
-    var randInt2%;
-    var rewardArray%[80];
-    var rewardIndex%;
     
     ' ===== Create Trials =====
     recNTrials% := (recTotalTrials%*recStereoDisRepeatsPerStim%);  'Set global Ntrials

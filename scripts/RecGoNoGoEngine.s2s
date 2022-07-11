@@ -252,19 +252,17 @@ func RunGoNoGoEngine%()
             'For full-handoff version, we need to create all possible PWAs on first launch.
             'Right now the PWAs that are possibly used are built in three functions:
             InitializePlayWaveAreas();
-            InitializeParallelPlayWaveArea();
+            InitializeParallelPlayWaveAreas();
             InitializePlayWaveAreasLongBP();
             
         else  'Create only PWAs necessary for the FIRST experiment run, only partial handoff allowed (handoff won't work if subsequent experiment does not match PWAs needed)
             docase
                 'case recExpToRun% = recExpCharButton% and recUse2PWAs% = 1 then 
             case recUse2PWAs% = 1 then
-                InitializeParallelPlayWaveArea();
+                InitializeParallelPlayWaveAreas();
                 'Adjust playback rate from PWA
-                SetSpeedParallelPlayWaveArea();
+                SetSpeedParallelPlayWaveAreas();
                 
-                'case recExpToRun% = recExpStereoDisButton% then  'recUse2PWAs% is now set for StereoDis
-                '    InitializeMultipleParallelPlayWaveAreas();
                 'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
                 'Initialize a play wave area for the broadband noise condition
                 '    InitializePlayWaveAreaLongBB();
@@ -288,13 +286,13 @@ func RunGoNoGoEngine%()
     if recUseLiteMemory% = 0 then  'if doing full handoff, set playback rate for all PWAs
         'Adjust playback rate from PWAs
         SetSpeedPlayWaveAreas();
-        SetSpeedParallelPlayWaveArea();
+        SetSpeedParallelPlayWaveAreas();
         SetSpeedPlayWaveAreasLongBP();
     else  'set playback rate only for present PWAs
         docase
         case recUse2PWAs% = 1 then
             'Adjust playback rate from PWA
-            SetSpeedParallelPlayWaveArea();
+            SetSpeedParallelPlayWaveAreas();
         case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
             'Adjust playback rate from PWAs
             SetSpeedPlayWaveAreasLongBP();
@@ -722,8 +720,9 @@ end
 ' for PWAs used for other purposes (parallel PWAs, LongNoise PWAs) to be assigned at
 ' the same time, which then allows the "hand-off" process to work for many (probably
 ' any) combinations of experiments that could not previously be handed off.
-' The single parallel PWA will be assigned to "K".  Although this function is called
-' with an index% argument, that argument is expected to be 0.
+' The dual parallel PWAs will be assigned to "K" and "L".  Previous versions of the
+' code only had a single parallel PWA, but updating this to two does not require a
+' change in the code here (but does at GetPlayWaveKeyLongNoise$()
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func GetPlayWaveKeyParallel$(index%)
@@ -742,8 +741,8 @@ end
 '
 ' GetPlayWaveKeyLongNoise$(index%)
 ' The first recMaxPWA% (hardcoded to 10) areas "A" - "J" are reserved for Search and
-' other simple one-PWA usage. The single parallel PWA will be assigned to "K". The 5
-' LongNoise PWAs (hardcoded in nLongTones%) will be assigned to "L" - "P"
+' other simple one-PWA usage. The two parallel PWAs will be assigned to "K" and "L". 
+' The 5 LongNoise PWAs (hardcoded in nLongTones%) will be assigned to "M" - "Q"
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func GetPlayWaveKeyLongNoise$(index%)
@@ -753,7 +752,7 @@ func GetPlayWaveKeyLongNoise$(index%)
         halt
     endif;
     
-    return Chr$(Asc(recDAC0Key$)+index%+1+recMaxPWA%);  'Offset by number of Search PWAs and one parallel PWA
+    return Chr$(Asc(recDAC0Key$)+index%+recMaxPWA%+recMaxParallelPWA%);  'Offset by number of Search PWAs and parallel PWAs (currently 2)
     
 end
 
@@ -792,12 +791,11 @@ end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' InitializeParallelPlayWaveArea - add play wave areas for sounds, in order to play 
-' two sounds simultaneously. Area "K" will be allocated.  Currently there is only one
-' parallel PlayWaveArea allocated.
+' InitializeParallelPlayWaveAreas - add play wave areas for sounds, in order to play 
+' two sounds simultaneously. Area "K" and "L" will be allocated. 
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc InitializeParallelPlayWaveArea()
+Proc InitializeParallelPlayWaveAreas()
     var st;
     var i%;
     var DACchannels%[2];
@@ -805,12 +803,12 @@ Proc InitializeParallelPlayWaveArea()
     DACchannels%[0] := RecDAC0%;
     DACchannels%[1] := RecDAC1%;
     
-    for i% := 0 to 0 do
+    for i% := 0 to recMaxParallelPWA%-1 do
         
         st := PlayWaveAdd(GetPlayWaveKeyParallel$(i%), GetPlayWaveKeyParallel$(i%), DACchannels%, recPlayRateHzDefault, recMaxPoints%);
         'Note here that the *PWA* being initialized is the capital letter PWA, but that the jump point
-        'that we assign to it in the sequencer code is the lower case equivalent (capital jump point K
-        'has already been reserved for another use)
+        'that we assign to it in the sequencer code is the lower case equivalent (capital jump point K/L
+        'have already been reserved for another use)
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKeyParallel$(i%));
             view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
@@ -827,7 +825,7 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
 ' InitializePlayWaveAreasLongBP - add play wave areas for Long Tone exps (BP/BB noise only). 
-' Areas will be allocated in order: "L", "M", "N", "O", "P" and will be the full duration
+' Areas will be allocated in order: "M", "N", "O", "P", "Q" and will be the full duration
 ' of Long Noise stimuli.  
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
@@ -841,8 +839,8 @@ Proc InitializePlayWaveAreasLongBP()
         
         nPoints% := recPlayRateHzDefault*(LongDursAllocate[i%]+0.020);  'have to add in the ramp
         'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
-        'that we assign to them in the sequencer code are lower case equivalents (capital jump points
-        'have already  been reserved for other uses)
+        'that we assign to them in the sequencer code are lower case equivalents (some capital jump points
+        'have already been reserved for other uses)
         st := PlayWaveAdd(GetPlayWaveKeyLongNoise$(i%), GetPlayWaveKeyLongNoise$(i%), recDAC0%, recPlayRateHzDefault, nPoints%);
         if st < 0 then
             Message("Error in PlayWaveAdd for area " + GetPlayWaveKeyLongNoise$(i%));
@@ -886,44 +884,6 @@ end
 'end
 
 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' InitializeMultipleParallelPlayWaveAreas - add play wave areas for sounds, in order to 
-' play 2 sounds simultaneously, with more than one pair of sounds per trial
-' Areas will be allocated in order: "A", "B", .... up to the
-' max number of stimuli per trial.  We will reload each
-' PlayWaveArea on a trial-by-trial basis, if necessary.
-' Currently, the max number of stimuli per trial is hardcoded at 10
-'
-' This function is currently not used and is disabled.  For the time being, we can use
-' InitializeParallelPlayWaveArea() - a single parallel play wave area will suffice for
-' SigNoise and I think should suffice for StereoDis, which is not currently used, not
-' sure if it even works (sorry, in the middle of other stuff, shouldn't interrupt to check)
-' 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'Proc InitializeMultipleParallelPlayWaveAreas()
-'    var st;
-'    var i%;
-'    var DACchannels%[2];
-'    
-'    DACchannels%[0] := RecDAC0%;
-'    DACchannels%[1] := RecDAC1%;
-'    
-'    for i% := 0 to recMaxPWA%-1 do  'hopefully 10 PWAs like this is not too many...
-'        
-'        st := PlayWaveAdd(GetPlayWaveKey$(i%), GetPlayWaveKey$(i%), DACchannels%, recPlayRateHzDefault, recMaxPoints%);
-'        if st < 0 then
-'            Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(i%));
-'            view(recLog%).print("ERROR: PlayWaveAdd failed, quitting!\n");
-'            halt;
-'        else
-'            PlayWaveTrigger(GetPlayWaveKey$(i%), 1); 'set playwave area to triggered mode
-'        endif
-'        
-'    next
-'    
-'end
-
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
@@ -958,17 +918,17 @@ end
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '
-' SetSpeedParallelPlayWaveArea - set speed in play wave area that plays two sounds 
+' SetSpeedParallelPlayWaveAreas - set speed in play wave area that plays two sounds 
 ' simultaneously (Area "K").
 ' 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-Proc SetSpeedParallelPlayWaveArea()
+Proc SetSpeedParallelPlayWaveAreas()
     var speed;
     var i%;
     
     'printlog("Requested speed is %f\n",recPlayRateHzCurrent);  'redundant 
     
-    for i% := 0 to 0 do
+    for i% := 0 to recMaxParallelPWA%-1 do
         
         speed := PlayWaveSpeed(GetPlayWaveKeyParallel$(i%), recPlayRateHzCurrent/recPlayRateHzDefault);
         if speed <= 0 then
@@ -1218,12 +1178,12 @@ Func PlaySound%(isS2local%)
     return status%;
 end
 
-'----------------- PlayTwoSounds ---------------------------------------------------------------
+'----------------- PlayTwoSounds -----------------------------------------------------------------
 '
-' PlaySound plays the sound for the trial number in recTrialOrder%[recCurrentTrial%].
-' It sets the correct speaker and PA4 attenuation and logs a SampleText detailing the stimulus.
+' PlayTwoSounds plays the sounds for the trial number in recTrialOrder%[recCurrentTrial%].
+' It sets the correct speakers and PA4 attenuation and logs two SampleTexts detailing the stimuli.
 '
-'-------------------------------------------------------------------------------------------
+'-------------------------------------------------------------------------------------------------
 
 Func PlayTwoSounds%(whichStim%)
     var attenArray;
@@ -1248,6 +1208,7 @@ Func PlayTwoSounds%(whichStim%)
     var isS2$;
     var targdBArray;
     var targdBSA;
+    var sound2Plays% := 1;  'If we are on the S1 stimulus of a StereoDis scenario, sound2 does not play, we should not sampletext it
     'var maxdB;  'This is not being used at all (it IS used in PlaySound), not a priority right now
 
     'Get index of current trial
@@ -1307,10 +1268,13 @@ Func PlayTwoSounds%(whichStim%)
         targdBSA := 65 - trlattenSA - roveattenSA;  'convinced myself this is right
         
         'Get play wave area with current stimulus
-        playChar$ := GetPlayWaveKeyParallel$(0);
+        playChar$ := GetPlayWaveKeyParallel$(0);  'currently the "characterization" pathway only allows a single parallel PWA
         'printlog("Retrieved play wave key %s\n",playChar$);
         
     case recExpToRun% = recExpStereoDisButton% then         
+        
+        'Get play wave area with current stimulus
+        playChar$ := GetPlayWaveKeyParallel$(whichStim%);  'whichStim% may be 0 or 1 for StereoDis
         
         '''FOR DISTRACTOR, WHICH IS ON ARRAY
         'Get this stimulus index
@@ -1335,8 +1299,12 @@ Func PlayTwoSounds%(whichStim%)
         attenArray := calattenArray + trlattenArray;  'for all other cases, attenuation is calibrating attenuation + trial attenuation
         targdBArray := recStereoDisdB - trlattenArray;  'convinced myself this is right
         
-        'Get play wave area with current stimulus
-        playChar$ := GetPlayWaveKeyParallel$(whichStim%);  'StereoDis is currently disabled, this may very well break, as GetPlayWaveKeyParallel$ requires an argument of "0"
+        'Note that sound2 is not going to play if this is the first S1 - sure, we did all the stuff above, shouldn't be an issue, we'll just kill the sampletext below
+        if whichStim% = 0 then
+            sound2Plays% := 0;
+        endif
+        
+        
         
         '''FOR S1/S2, WHICH IS ON STANDALONE
         'Get this stimulus index
@@ -1412,13 +1380,13 @@ Func PlayTwoSounds%(whichStim%)
         
         
         var pm1Start;
-            var pm1Done;
-            var pa41Start;
-            var pa41Done;
-            var pa42Start;
-            var pa42Done;
-            var playStart;
-            var playDone;
+        var pm1Done;
+        var pa41Start;
+        var pa41Done;
+        var pa42Start;
+        var pa42Done;
+        var playStart;
+        var playDone;
         
         docase
         case recExpToRun% = recExpCharButton% then
@@ -1496,10 +1464,9 @@ Func PlayTwoSounds%(whichStim%)
         endif;'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
 
         'printlog("Sending SafeSampleKey %s at time %f\n",playChar$,seconds());
-        ' Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
-        'SafeSampleKey(playChar$);
+        'Send sample key for the play wave area. Sequencer Variable 3 holds the number of clock ticks at presentation
         playStart := Seconds();
-        SafeSampleKey(LCase$(playChar$));
+        SafeSampleKey(LCase$(playChar$));  'we use LCase$ because the sequencer code jump points for parallel PWAs are lower case (PWAs are upper case, but upper case jump points were in use)
         playDone := Seconds();
         printlog("PM1: %f, %f; PA4-1: %f, %f; PA4-2: %f, %f; Play: %f, %f\n",pm1Start,pm1Done,pa41Start,pa41Done,pa42Start,pa42Done,playStart,playDone);
         printlog("PM1 relative: %f, %f; PA4-1 relative: %f, %f; PA4-2 relative: %f, %f\n",playStart-pm1Start,playStart-pm1Done,playStart-pa41Start,playStart-pa41Done,playStart-pa42Start,playStart-pa42Done);
@@ -1541,10 +1508,9 @@ Func PlayTwoSounds%(whichStim%)
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
         endcase            
         SampleText(s$, StimOn);
-        SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
-        'if whichStim% >= 1 then 'only sampletext the distractor stimulus if it is playing - this fails for signoise and seems generally like a bad idea.
-        '    SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
-        'endif;
+        if sound2Plays% = 1 then  'no reason to sampletext a sound that doesn't play, this will make StimulusIsSimultaneous make sense for both
+            SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
+        endif
         
     endif
     
@@ -1685,11 +1651,7 @@ func StimComplete%(isS2local%, success%)
         
     case isS2local% = 2 and recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 then  'If this is the final stimulus in the Stereo Distractor FC experiment, S2 Same
         printlog("Stereo Distractor FC Same!, current trial is %d\n", recCurrentTrial%); 
-        'if success% = 1 then '1 indicates response was S2 High, 0 indicates response was S2 Low
-        '    resultCode$ := "SH";  'Same, response was high
-        'else
-        '    resultCode$ := "SL";  'Same, response was low
-        'endif;    
+    
         'we want to know if they went up or down!! (and also if rewarded, but need to know behavior too!!
         'This was not fixed to actually DO THIS until 8/10/2020, fell through the cracks -jj
         '0 = response low, 1 = response hi, 10 = response low + reward, 11 = response hi + reward
@@ -2973,7 +2935,7 @@ end
 
 
 
-'------- PrepareNextTrial2PWAs --------------------------------------------------------
+'------- PrepareNextTrial2ParallelPWAs --------------------------------------------------------
 ' 
 ' Called prior to initiating a set of S1/S2 stimuli, for scenarios like Stereo Distractor
 ' that have double-barreled PWAs (i.e. two simultaneous speakers).  This function is called 
@@ -2990,14 +2952,14 @@ end
 'distractor position as zeroes.
 
 
-func PrepareNextTrial2PWAs(loadPWAs%)
+func PrepareNextTrial2ParallelPWAs(loadPWAs%)
     var i%;
     var ind%;
     var indD%;
     var thisSpkr%;
     var thisTrial%;
     var thisPWA%;
-    var nread%:= 0;  'looks unused but won't hurt
+    var nread%:= 0;  'holds a return value that goes unused but won't hurt
     var file$;
     var fh%;
     var statement$;
@@ -3030,7 +2992,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
     if recDebug% > 0 then
         printlog("recCurrentTrial is %d\n",recCurrentTrial%);
         printlog("thisTrial is %d\n",thisTrial%);
-        PrintLog("Trial #%d, TrialList ",recCurrentTrial%+1);
+        PrintLog("Trial #%d, Trial Index %d",recCurrentTrial%+1,thisTrial%);
         printlog("Terminal index is %d\n",recTrialTerminalIndex%[thisTrial%]);
         PrintLog("Stims: ");
         for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
@@ -3052,28 +3014,25 @@ func PrepareNextTrial2PWAs(loadPWAs%)
     
     if loadPWAs% = 1 then
         ' Generate/Load stimuli and put them into PlayWaveAreas
-        ' Note that there is only one parallel PWA, so if recTrialTerminalIndex%[i%] > 0 then this will break.  Shouldn't be > 0 (currently not assigned for SigNoise, StereoDis is disabled), but if so, will break.
         for i% := 0 to recTrialTerminalIndex%[thisTrial%] do  'go through S1, S2
-            'Note that this actually SHOULD work for scenarios where there are more than one S1 stimulus,
-            'well except that the recDistractorStimList%[] would need to be 2-D, I think.
             
             'Get play wave area for current stimulus
-            pwChar$ := GetPlayWaveKeyParallel$(i%);  'There is only one parallel PWA, so if i%>0 it is a problem, but GPWKP$() will break if so
+            pwChar$ := GetPlayWaveKeyParallel$(i%);  'Can now be 0 or 1 for StereoDis
             
             'get index of trial to index into stim file
             ind% := recStimList%[i%][thisTrial%];
-            indD% := recDistractorStimList%[i%][thisTrial%];
+            indD% := recDistractorStimList%[i%][thisTrial%];  'note that for i% = 0, this will be 0, but we don't want to use it below
             
             'Set rec2StimTransfer%[] to zeros
             arrconst(rec2StimTransfer%[][],0);  
             
             docase
-            case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this enables testing, currently no double-barreled PWA experiments allow generated stimuli
+            case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 0 then  'this enables testing
                 'don't do anything, just pretend all is OK
             case recMatGenStim% = 1 and recMatlabIsPresent% = 0 and recCEDIsPresent% = 1 then  'this is a boo-boo
                 'Really, this isn't a boo-boo we should expect, but I'm leaving it in in case it's useful down the road
                 message("Holy crap, I can't generate the stimulus because Matlab has not been initialized!");
-                view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Matlab not open, cannot generate stimulus, quitting!\n");
+                view(recLog%).print("ERROR: PrepareNextTrial2ParallelPWAs - Matlab not open, cannot generate stimulus, quitting!\n");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                 Stop%();
@@ -3086,7 +3045,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 'determine if S2 should be wrapped by a distractor; if the distractor is longer, wrap it; S1s (i% = 0) do not have a distractor
                 if i% > 0 and recTrialDur[indD%] > recTrialDur[ind%] then
                     isWrapped% := 1;
-                    frontPadMs := (recTrialDur[indD%]-recTrialDur[ind%])/2;  'The front padding, in ms, is half of the excess
+                    frontPadMs := (recTrialDur[indD%]-recTrialDur[ind%])/2;  'The front padding, in ms, is half of the excess, because we also back pad
                     frontPadPoints% := recPlayRateHzCurrent*frontPadMs/1000;
                     matPutOK% := matPutOK% + PutMatlabValueInt%("fpp",frontPadPoints%);  'And put this in the matlab!
                 else
@@ -3113,7 +3072,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 
                 if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                     message("There has been an error in sending data to Matlab!  Quitting!");
-                    view(recLog%).print("ERROR: PrepareNextTrial2PWAs - error sending data to Matlab, quitting!\n");
+                    view(recLog%).print("ERROR: PrepareNextTrial2ParallelPWAs - error sending data to Matlab, quitting!\n");
                     recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                     Stop%();
@@ -3138,15 +3097,16 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 endif;
                 
                 EvalMatlabStatement%(statement$);
-                printlog("%s\n",statement$);
-                printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
-                printlog("%d %d %d %d %d ",recTrialGenIsSweep[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
-                printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
+                'Debug only
+                'printlog("%s\n",statement$);
+                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("%d %d %d %d %d ",recTrialGenIsSweep[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
+                'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
                 
                 'Get the stimulus and the seed back from Matlab
                 matGetStimOK%:= GetMatlabValueIntArray%("stimulus",rec2StimTransfer%[][1]);  '<----- NOTE THAT STIMULUS GOES TO DAC1, BECAUSE DAC1 IS CONNECTED TO THE STANDALONE
-                matGetAttenOK% := GetMatlabValueFloat%("atten65",recStereoDisGeneratedAttenList[i%][1]);  'put current random seed into variable for setting PA4
+                matGetAttenOK% := GetMatlabValueFloat%("atten65",recStereoDisGeneratedAttenList[i%][1]);  'put current attenuation into variable for setting PA4
                 matGetSeedOK% := GetMatlabValueInt%("seed",recStereoDisSeedList%[i%][1]);  'put current random seed into variable for NameThatStimulus
                 
                 docase
@@ -3161,7 +3121,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 
                 
                 'Generate the distractor, but only during the S2 (or subsequent S1s, which is something Dominique talked about briefly, dunno if those will be implemented ever)
-                if i% > 0 then  'do not generate a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes
+                if i% > 0 then  'do not generate a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes, and a "blank" stimulus will play
                     
                     'get speaker of trial, used to calculate attenuation 
                     thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
@@ -3183,7 +3143,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     
                     if matPutOK% < 0 then 'error in at least one matlab put operation - not sure what to do (try again, quit?)
                         message("There has been an error in sending data to Matlab!  Quitting!");
-                        view(recLog%).print("ERROR: PrepareNextTrial2PWAs - error sending data to Matlab, quitting!\n");
+                        view(recLog%).print("ERROR: PrepareNextTrial2ParallelPWAs - error sending data to Matlab, quitting!\n");
                         recReadyToQuit% := 1;  'This will allow the entire thing to quit
                         SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
                         Stop%();
@@ -3198,10 +3158,11 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                         statement$ := "[stimulus atten65 seed] = reclab_panstim(dur,fs,lohz,hihz,issweep,amfreq,amdepth,amphase,tonephase,gauss,ramp,seed,pad);";
                     endif;
                     EvalMatlabStatement%(statement$);
-                    printlog("%s\n",statement$);
-                    printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHzCurrent,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
-                    printlog("%d %d %d %d %d ",recTrialGenIsSweep[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
-                    printlog("%d %d %d %d %d \n",recTrialGenGauss%[indD%],recTrialGenRampMS[indD%],recTrialGenSeed%[indD%],recMaxPoints%,thisSpkr%);
+                    'debug only
+                    'printlog("%s\n",statement$);
+                    'printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHzCurrent,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
+                    'printlog("%d %d %d %d %d ",recTrialGenIsSweep[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
+                    'printlog("%d %d %d %d %d \n",recTrialGenGauss%[indD%],recTrialGenRampMS[indD%],recTrialGenSeed%[indD%],recMaxPoints%,thisSpkr%);
                     
                     
                     'Get the stimulus and the seed back from Matlab
@@ -3226,9 +3187,9 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 
                 
                 
-            else  'Load stimuli from file (which is the ONLY thing we can legally do right now for this double-wide PWA thingy)
+            else  'Load stimuli from file (as of 7/8/22 this has not been vetted for some time, and load versions of StereoDis have been disabled at the dialog)
                 
-                if i% > 0 then  'do not load a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes
+                if i% > 0 then  'do not load a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes, and a "blank" stimulus will play
                     'get filename
                     file$ := recTrialLoadLocDistractor$[indD%];  'this is the distractor
                     if recDebug% > 0 then
@@ -3239,7 +3200,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                     if fh%<0 then
                         message("Warning Message | failed to load the stimulus waveform!");
                         printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
-                        view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Stimulus waveform " + file$ + " failed to load, quitting!\n");
+                        view(recLog%).print("ERROR: PrepareNextTrial2ParallelPWAs - Stimulus waveform " + file$ + " failed to load, quitting!\n");
                         Stop%();
                         return -1;
                     endif;
@@ -3263,7 +3224,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 if fh%<0 then
                     message("Warning Message | failed to load the stimulus waveform!");
                     printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
-                    view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Stimulus waveform " + file$ + " failed to load, quitting!\n");
+                    view(recLog%).print("ERROR: PrepareNextTrial2ParallelPWAs - Stimulus waveform " + file$ + " failed to load, quitting!\n");
                     Stop%();
                     return -1;
                 endif;
@@ -3282,7 +3243,7 @@ func PrepareNextTrial2PWAs(loadPWAs%)
                 if playWaveCopyOK% < 0 then 'error
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
-                    view(recLog%).print("ERROR: PrepareNextTrial2PWAs - Error in PlayWaveCopy " + Str$(playWaveCopyOK%) + ", Error text:" + Error$(playWaveCopyOK%) + ", NOT quitting!\n");
+                    view(recLog%).print("ERROR: PrepareNextTrial2ParallelPWAs - Error in PlayWaveCopy " + Str$(playWaveCopyOK%) + ", Error text:" + Error$(playWaveCopyOK%) + ", NOT quitting!\n");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
@@ -3665,7 +3626,7 @@ func IdleLoop%()
                 
                 docase
                 case recExpToRun% = recExpStereoDisButton% then
-                    stmp% := PrepareNextTrial2PWAs(1);
+                    stmp% := PrepareNextTrial2ParallelPWAs(1);
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 1 then
                     stmp% := PrepareNextTrial%(1); 'load PWAs, should gracefully pass through in debug mode as well
                 case recExpToRun% = recExpAudiogramButton% and recAudiogramStartNewTrial% = 0 then    
@@ -4811,7 +4772,7 @@ func IdleLoop%()
                 'PASSIVE AMDis/SpaceDis HI, wait for response window to close and call it a hit
             case tNow - tStateStart > recResponseWindow and recActive% = 0 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then
                 RecLogStatus("InResponseWindow", "Passive task - HIT HI"); 
-                StimComplete%(1, 1);
+                StimComplete%(responseMode%, 1);  'StimComplete%(1, 1);
                 SafeSampleKey("S");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
@@ -4819,7 +4780,7 @@ func IdleLoop%()
                 'PASSIVE AMDis/SpaceDis LO, wait for response window to close and call it a hit
             case tNow - tStateStart > recResponseWindow and recActive% = 0 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) 
                 RecLogStatus("InResponseWindow", "Passive task - HIT Lo");
-                StimComplete%(3, 1);
+                StimComplete%(responseMode%, 1);  'StimComplete%(3, 1);
                 SafeSampleKey("S");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
@@ -4827,7 +4788,7 @@ func IdleLoop%()
                 'ACTIVE AMDis/SpaceDis/StereoDis HI Hit, either FC or GNG, InResponse% is same for both
             case inResponse1% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, HIT 
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT HI"); 
-                StimComplete%(1, 1);
+                StimComplete%(responseMode%, 1);  'StimComplete%(1, 1);
                 SafeSampleKey("S");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
@@ -4835,7 +4796,7 @@ func IdleLoop%()
                 'ACTIVE StereoDis LO Hit, GNG only
             case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% and recIsGoNoGo% = 1 then 'LO, HIT 
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT LO"); 
-                StimComplete%(3, 1);
+                StimComplete%(responseMode%, 1);  'StimComplete%(3, 1);
                 SafeSampleKey("S");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
@@ -4843,7 +4804,7 @@ func IdleLoop%()
                 'ACTIVE AMDis/SpaceDis/StereoDis LO Hit, FC only (cannot get inResponse2% = 1 in GNG)
             case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%)
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
-                StimComplete%(3, 1);
+                StimComplete%(responseMode%, 1);  'StimComplete%(3, 1);
                 SafeSampleKey("S");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
@@ -4852,7 +4813,7 @@ func IdleLoop%()
             case inResponse2% = 1 and responseMode% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'HI, MISS  
                 RecLogStatus("InResponseWindow", "In response position 2 - MISS, HI");
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
-                StimComplete%(1, 0);  
+                StimComplete%(responseMode%, 0);  'StimComplete%(1, 0);  
                 SafeSampleKey("S");  'Turn off LED
                 docase
                 case recMissRepeats% = 1 and recMissRepeatsCounter% < recMissRepeatsMax% then 
@@ -4875,7 +4836,7 @@ func IdleLoop%()
             case inResponse1% = 1 and responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'LO, MISS 
                 RecLogStatus("InResponseWindow", "In response position 1 - MISS, Lo");
                 recPreciseTrialTime := recLeverTime;  'time hit occurred
-                StimComplete%(3, 0);   'gotcha bitch!
+                StimComplete%(responseMode%, 0);  'StimComplete%(3, 0);   'gotcha bitch!
                 SafeSampleKey("S");  'Turn off LED
                 docase
                 case recMissRepeats% = 1 and recMissRepeatsCounter% < recMissRepeatsMax% then 
@@ -4909,7 +4870,7 @@ func IdleLoop%()
                 '    StimComplete%(2, inResponse1%);  '1 indicates response was S2 High, 0 indicates response was S2 Low
                 'else
                 '    StimComplete%(2, coinFlipResult%);  '**this variable needs to be declared and established somewhere** *jao 
-                    StimComplete%(2, inResponse1%+(10*coinFlipResult%));  '0 = response low, 1 = response hi, 10 = response low + reward, 11 = response hi + reward
+                     StimComplete%(responseMode%, inResponse1%+(10*coinFlipResult%));  '0 = response low, 1 = response hi, 10 = response low + reward, 11 = response hi + reward
                 endif;
                 SafeSampleKey("S");  'Turn off LED
                 'NOTE: do not increment hit or miss counter for SAME trials in HI/LO experiment
@@ -4994,7 +4955,7 @@ func IdleLoop%()
                 'ACTIVE StereoDis HI Miss, GNG only
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and responseMode% = 1 and recExpToRun% = recExpStereoDisButton% then 'HI, Miss 
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (HI)"); 
-                StimComplete%(1, 0);
+                StimComplete%(responseMode%, 0);  'StimComplete%(1, 0);
                 SafeSampleKey("S");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
@@ -5002,7 +4963,7 @@ func IdleLoop%()
                 'ACTIVE StereoDis LO Miss, GNG only
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% then 'HI, Miss 
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (LO)"); 
-                StimComplete%(3, 0);
+                StimComplete%(responseMode%, 0);  'StimComplete%(3, 0);
                 SafeSampleKey("S");  'Turn off LED
                 numMisses% += 1;  'increment MISS counter
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
@@ -5985,7 +5946,7 @@ func BehOutput(resultCode$, isS2local%)
     
     case recExpToRun% = recExpStereoDisButton% then
         'This line is apparently not too long, but man, it's gotta be close.
-        view(fh%).print("%d\t%d\t%f\t%s\t%f\t %f\t%s\t %d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2local%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
+        view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\t%s\t%d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,isS2local%+1,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
         recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStimD%],recTrialCarrierDistractor$[thisStimD%],spkrD%,
         recDistractorDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
         'NOTE: output key for "Stype" for Stereo Distractor
@@ -6182,8 +6143,8 @@ func GetTimeOfLast1401Event()
     PrevSequencerTime := seqtime;  'keep track of most recent StimOn
     
     'The TICKS operation, which is used in the sample sequencer to note the precise time of
-    'the onset of a stimulus or reward, can overflow starting with Spike2 v8, because file
-    'sizes have become longer due to the move to 64-bit but sample sequencer variables remain
+    'the onset of a stimulus or reward, can overflow starting with Spike2 v8 because file
+    'sizes have become longer due to the move to 64-bit, but sample sequencer variables remain
     '32-bit values.  Here we will occasionally use the TICK0 operation to "reset" the TICKS
     'reference so that overflow does not happen.  The maximum allowable output from TICKS is
     '2147483648, which corresponds to about 4295 seconds under typical recording conditions.
