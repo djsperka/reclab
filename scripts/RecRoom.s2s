@@ -907,9 +907,9 @@ while recReadyToQuit% = 0 do
                 if recCalibIsPresent% = 1 then
                     statement$ := "load('" + recCalibLoc$ + "Standalone.mat');"; 
                     calibOK% := EvalMatlabStatement%(statement$);
-                    'standalone is in 'AFFT', move to 'stAFFT'
+                    'standalone is in 'AFFT', move to 'stAFFT' - no, it is now in stAFFT
                     if calibOK% = 0 then
-                        statement$ := "stAFFT = AFFT;";
+                        'statement$ := "stAFFT = AFFT;";
                         calibOK% := EvalMatlabStatement%(statement$);
                         'Only load array calibration if the standalone load/rename was successful
                         if calibOK% = 0 then
@@ -1144,9 +1144,9 @@ while recReadyToQuit% = 0 do
                 if recCalibIsPresent% = 1 then
                     statement$ := "load('" + recCalibLoc$ + "Standalone.mat');"; 
                     calibOK% := EvalMatlabStatement%(statement$);
-                    'standalone is in 'AFFT', move to 'stAFFT'
+                    'standalone is in 'AFFT', move to 'stAFFT' - no, it is now in stAFFT
                     if calibOK% = 0 then
-                        statement$ := "stAFFT = AFFT;";
+                        'statement$ := "stAFFT = AFFT;";
                         calibOK% := EvalMatlabStatement%(statement$);
                         'Only load array calibration if the standalone load/rename was successful
                         if calibOK% = 0 then

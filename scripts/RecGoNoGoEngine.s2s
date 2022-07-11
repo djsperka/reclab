@@ -727,8 +727,8 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func GetPlayWaveKeyParallel$(index%)
     
-    if index% > 0 then
-        message("Parallel PlayWave index " + Str$(index%) + " was requested, but only one parallel PWA exists,  index must be 0");
+    if index% > 1 then
+        message("Parallel PlayWave index " + Str$(index%) + " was requested, but only two parallel PWAs exist,  index must be 0");
         halt
     endif;
     
