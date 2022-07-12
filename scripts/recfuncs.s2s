@@ -650,6 +650,11 @@ func PA4atten%(atten)
 	var cmd%[3];
 	const len% := 3;
 	var v%;
+    
+    'It appears we may run into serial communications issues if we request an attenuation that is too large, restrict to 99 dB
+    if atten > 99 then
+        atten := 99;
+    endif
 
 	cmd%[0] := xbcmdPA4ATT%;
 	v% := atten*10 + 0.05;
@@ -672,7 +677,12 @@ func PA4attenByID%(atten,xlnPA4%)
 	var cmd%[3];
 	const len% := 3;
 	var v%;
-
+    
+    'It appears we may run into serial communications issues if we request an attenuation that is too large, restrict to 99 dB
+    if atten > 99 then
+        atten := 99;
+    endif
+    
 	cmd%[0] := xbcmdPA4ATT%;
 	v% := atten*10 + 0.05;
 	cmd%[1] := v% / 256;
@@ -694,7 +704,12 @@ func PA4attenByRackPosition%(atten, rackNumber%, positionNumber%)
 	var cmd%[3];
 	const len% := 3;
 	var v%;
-
+    
+    'It appears we may run into serial communications issues if we request an attenuation that is too large, restrict to 99 dB
+    if atten > 99 then
+        atten := 99;
+    endif
+    
 	cmd%[0] := xbcmdPA4ATT%;
 	v% := atten*10 + 0.05;
 	cmd%[1] := v% / 256;
