@@ -263,7 +263,7 @@ func RunGoNoGoEngine%()
                 'Adjust playback rate from PWA
                 SetSpeedParallelPlayWaveAreas();
                 
-                'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
+            'case recExpToRun% = recExpLongToneButton% and recLongToneType% = 1 then
                 'Initialize a play wave area for the broadband noise condition
                 '    InitializePlayWaveAreaLongBB();
             case recExpToRun% = recExpLongToneButton% and recLongToneType% >= 1 then
@@ -1340,7 +1340,7 @@ Func PlayTwoSounds%(whichStim%)
         case whichStim% = recTrialTerminalIndex%[playInd%] then
             isS2$ := "S2";
             printlog("for S2, cal atten is %f and trial atten is %f and roving atten is %f\n",calattenSA,trlattenSA,roveattenSA);
-        else
+        else   'Umm, can't really deal with this now, but there's no way this works.  There are only 2 parallel PWAs.
             isS2$ := "S1." + Str$(whichStim%);
             printlog("for S1.n #%d, cal atten is %f and trial atten is %f and roving atten is %f\n",whichStim%,calattenSA,trlattenSA,roveattenSA);
         endcase;

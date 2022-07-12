@@ -402,6 +402,7 @@ var calibOK%;                       'If 1, successfully loaded calibration file
 var recPlayRateHzDefault:=100000;   'Set default stimulus play rate to 100 kHz  
 var recPlayRateHzCurrent;    
 const recMaxStimLengthSec:=10.0;    'Set maximum length of each individual stimulus, in seconds (was 4.0, may need to be 10 for DMR, will that work?)
+var recThisStimLengthSec;           'Let's allow the user to make this smaller, which will make loads MUCH faster    
 const recDAC0% := 0;                'Set output channel to DAC 0, don't let this change
 const recDAC1% := 1;    
 var recExptText$ := "";             'text that describes this expt, for a SampleText
@@ -609,7 +610,8 @@ view(recLog%).print("\nrunning RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 
 
 'After the initial Debug dialog (where we allow setting of the longest long noise/tone now), set various MaxPoint values based on the sampling rate
-const recMaxPoints% := recPlayRateHzDefault*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus   
+'const recMaxPoints% := recPlayRateHzDefault*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus 
+const recMaxPoints% := recPlayRateHzDefault*recThisStimLengthSec;  'Holds the maximum number of points in a stimulus
 'const recMaxLongNoiseBPPoints% := recPlayRateHzDefault*100;
 'const recMaxLongNoisePoints% := recPlayRateHzDefault;   'Not doing multiplication by seconds because seconds is by definition 1. (??)
 const LongPoints0% := LongDur0*recPlayRateHzDefault;
@@ -1500,7 +1502,7 @@ func RecDebugDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Debug Dialog",0,0,52,10);
+    DlgCreate("Debug Dialog",0,0,52,11);
     DlgCheck(1, "Matlab is present");
     DlgCheck(2, "TDT is present");
     DlgCheck(3, "CED 1401 is present");
@@ -1508,12 +1510,13 @@ func RecDebugDialog%()
     DlgCheck(5, "Do Sound Recording");
     'DlgCheck(6, "Do Debug Logging");
     DlgList(6,30,debugLoc$[],3);
-    DlgReal(7,"Duration of Longest Long Tone/Noise (s)",25,100);
+    DlgReal(7,"Duration of Longest Regular Stimulus (s)",0.5,recMaxStimLengthSec);
+    DlgReal(8,"Duration of Longest Long Tone/Noise (s)",25,100);
     'DlgReal(7,"Stimulus play rate (Hz)",1000,100000);  'Note, NOT saving value to registry, must explicitly override 100kHz every time you override
-    DlgCheck(8,"Use Memory-Lite Version, No Experiment Switching");
+    DlgCheck(9,"Use Memory-Lite Version, No Experiment Switching");
     
     ' Show the dialog. 
-    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%, LongDur3, recUseLiteMemory%);
+    i%:=DlgShow(recMatlabIsPresent%, recTDTIsPresent%, recCEDIsPresent%, recCalibIsPresent%, recSoundRecording%, recDebug%, recThisStimLengthSec, LongDur3, recUseLiteMemory%);
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1561,6 +1564,8 @@ proc RecDebugGetParams()
     recDebug% := GetIntRegistryValue%(key$, "Debug", recDebug%);
     LongDur3 := GetFloatRegistryValue(key$, "LongDur3", LongDur3);
     recUseLiteMemory% := GetIntRegistryValue%(key$, "UseLiteMemory", recUseLiteMemory%);
+    recThisStimLengthSec := GetFloatRegistryValue(key$, "ThisStimLengthSec", recMaxStimLengthSec);  'note this is tricky, not using orig value as "default"
+    
     
     
 	return;
@@ -1590,6 +1595,7 @@ proc RecDebugSaveParams()
     SetIntRegistryValue(key$, "Debug", recDebug%); 
     SetFloatRegistryValue(key$, "LongDur3", LongDur3);
     SetIntRegistryValue(key$, "UseLiteMemory", recUseLiteMemory%);
+    SetFloatRegistryValue(key$, "ThisStimLengthSec", recThisStimLengthSec);
     
 	return;
 end
