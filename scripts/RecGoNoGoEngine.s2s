@@ -2703,6 +2703,8 @@ func PrepareNextTrial%(loadPWAs%)
     var playWaveCopyOK%;
     var ok% := 1;  'by default, return 1 (success)
     var tempfloat;
+    var loadStart;
+    var loadEnd;
     
     
     ' Check to see if we are done
@@ -2777,6 +2779,8 @@ func PrepareNextTrial%(loadPWAs%)
                 'long as the Matlab commands to eval are quick, we shouldn't worry about the time to do up to 10 "gets".  If we can
                 'cleverly have all of them come simultaneously (i.e. a 2-d array of stimuli), that's cool too.  May not be necessary.
                 
+                loadStart := Seconds();
+                
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
@@ -2827,6 +2831,9 @@ func PrepareNextTrial%(loadPWAs%)
                 printlog("Matlab's calib value is %f\n",tempfloat);
                 printlog("Value to get Matlab stim to 65 dB is %f\n",recGeneratedAtten[i%]);
                 matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
+                
+                loadEnd := Seconds();
+                printlog("Time to place values, generate stimulus, load stimulus = %f seconds\n",loadEnd-loadStart);
                 
                 docase
                 case matGetStimOK% < 0 then 'error
@@ -2904,7 +2911,10 @@ func PrepareNextTrial%(loadPWAs%)
             
             'Finally, place the stimulus into the appropriate Play Wave Area
             if recCEDIsPresent% = 1 then
+                loadStart := Seconds();
                 playWaveCopyOK% := PlayWaveCopy(pwChar$, recStimTransfer%[]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
+                loadEnd := Seconds();
+                printlog("Time to copy stimulus to PWA = %f seconds\n",loadEnd-loadStart);
                 if playWaveCopyOK% < 0 then 'error
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -2973,6 +2983,8 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
     var frontPadPoints%;
     var isWrapped%;
     var ok% := 1;  'by default, return 1 (success)
+    var loadStart;
+    var loadEnd;
     
     
     ' Check to see if we are done
@@ -3055,6 +3067,9 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                 
                 'Generate the stimulus, for stereo dis this will be an AM
                 printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
+                
+                loadStart := Seconds();
+                
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
@@ -3109,6 +3124,9 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                 matGetAttenOK% := GetMatlabValueFloat%("atten65",recStereoDisGeneratedAttenList[i%][1]);  'put current attenuation into variable for setting PA4
                 matGetSeedOK% := GetMatlabValueInt%("seed",recStereoDisSeedList%[i%][1]);  'put current random seed into variable for NameThatStimulus
                 
+                loadEnd := Seconds();
+                printlog("Time to place values, generate test stimulus, load test stimulus = %f seconds\n",loadEnd-loadStart);
+                
                 docase
                 case matGetStimOK% < 0 then 'error
                     message("There has been an error in getting stimulus data from Matlab!");
@@ -3126,6 +3144,9 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                     'get speaker of trial, used to calculate attenuation 
                     thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
                     printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialDur[indD%]);
+                    
+                    loadStart := Seconds();
+                    
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
@@ -3169,6 +3190,9 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                     matGetStimOK%:= GetMatlabValueIntArray%("stimulus",rec2StimTransfer%[][0]);  '<----- NOTE THAT DISTRACTOR GOES TO DAC0, BECAUSE DAC0 IS CONNECTED TO THE PM1
                     matGetAttenOK% := GetMatlabValueFloat%("atten65",recStereoDisGeneratedAttenList[i%][0]);
                     matGetSeedOK% := GetMatlabValueInt%("seed",recStereoDisSeedList%[i%][0]);  'put current random seed into variable for NameThatStimulus
+                    
+                    loadEnd := Seconds();
+                    printlog("Time to place values, generate distractor stimulus, load distractor stimulus = %f seconds\n",loadEnd-loadStart);
                     
                     docase
                     case matGetStimOK% < 0 then 'error
@@ -3239,7 +3263,10 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
             
             'Finally, place the stimulus into the appropriate Play Wave Area
             if recCEDIsPresent% = 1 then
+                loadStart := Seconds();
                 playWaveCopyOK% := PlayWaveCopy(pwChar$, rec2StimTransfer%[][]);  'rec2StimTransfer% is an integer array and as such should be signed 16 bit integers
+                loadEnd := Seconds();
+                printlog("Time to copy stimulus to PWA = %f seconds\n",loadEnd-loadStart);
                 if playWaveCopyOK% < 0 then 'error
                     message("There has been an error in PlayWaveCopy!  Check Log File!");
                     printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));
@@ -3297,6 +3324,8 @@ func PrepareNextTrialParallel%(loadPWAs%)
     var playWaveCopyOK%;
     var tempfloat;
     var ok% := 1;  'by default, return 1 (success)
+    var loadStart;
+    var loadEnd;
     
     'Note that unlike PrepareNextTrial%(), which is designed to potentially fill multiple PWAs, 
     'PrepareNextTrialParallel%() only has a single PWA, so pwChar$ can be set once, and recNUniqueStims%[] 
@@ -3375,6 +3404,8 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 'get speaker of trial
                 thisSpkr% := rec2SpeakerList%[thisTrial%][i%];  'this should just be ones for i% = 1, because it's the standalone
                 
+                loadStart := Seconds();
+                
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
@@ -3438,6 +3469,9 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 printlog("Matlab's calib value is %f\n",tempfloat);
                 printlog("Value to get Matlab stim to 65 dB is %f\n",recGeneratedAtten[i%]);
                 matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
+                
+                loadEnd := Seconds();
+                printlog("Time to place values, generate stimulus, load stimulus = %f seconds\n",loadEnd-loadStart);
                 
                 docase
                 case matGetStimOK% < 0 then 'error
@@ -3506,9 +3540,10 @@ func PrepareNextTrialParallel%(loadPWAs%)
         
         'Finally, place the stimulus into the appropriate Play Wave Area
         if recCEDIsPresent% = 1 then
-            'printlog("Time before PlayWaveCopy is %f\n",seconds());
+            loadStart := Seconds();
             playWaveCopyOK% := PlayWaveCopy(pwChar$, rec2StimTransfer%[][]);  'recStimTransfer% is an integer array and as such should be signed 16 bit integers
-            'printlog("PlayWaveCopy returned at %f\n",seconds());
+            loadEnd := Seconds();
+            printlog("Time to copy stimulus to PWA = %f seconds\n",loadEnd-loadStart);
             if playWaveCopyOK% < 0 then 'error
                 message("There has been an error in PlayWaveCopy!  Check Log File!");
                 printlog("There was an error in PlayWaveCopy!  The error is number %d and the text of the error is '%s'\n",playWaveCopyOK%,Error$(playWaveCopyOK%));

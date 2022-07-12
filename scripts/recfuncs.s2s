@@ -568,6 +568,8 @@ end
 'the third time the return is kosher.  Good thing we allow three repeats!  Fortunately, 
 'since this seems to be about a 1-in-100K thing, and clearly the error does not repeat
 'deterministically based on the sent command, we may never see this again.  Knock wood.
+'7/12/2022 - Problem seems solved, about 4 errors in last 7 months, all seem to have sailed
+'through. 3x error on 7/11 probably unrelated, may be due to requesting illegal atten value.
 func xbStandForm%(xln%, c%[], n%)
 	var i%;
 	var s% := 0;
