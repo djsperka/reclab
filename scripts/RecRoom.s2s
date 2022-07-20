@@ -361,6 +361,8 @@ var recStereoDisExpDoGNG%;
 var recStereoDisDoRove%;               'Do we rove?
 var recStereoDisRovedB;                'How much do we rove? 
 var recStereoDisActive%;               'Active task? 
+var recStereoDisTrialInitReward%; 
+var recStereoDisTrialHoldReward%;
     
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
@@ -1973,6 +1975,8 @@ proc RecStereoDisSaveParams()
     SetIntRegistryValue(key$, "StereoDisDoRove", recStereoDisDoRove%);
     SetFloatRegistryValue(key$, "StereoDisRovedB", recStereoDisRovedB);
     SetIntRegistryValue(key$, "StereoDisActive", recStereoDisActive%);
+    SetIntRegistryValue(key$, "StereoDisTrialInitReward", recStereoDisTrialInitReward%); 
+    SetIntRegistryValue(key$, "StereoDisTrialHoldReward", recStereoDisTrialHoldReward%);
     
     
     
@@ -1999,6 +2003,8 @@ proc RecStereoDisGetParams()
     recStereoDisDoRove% := GetIntRegistryValue%(key$, "StereoDisDoRove", recStereoDisDoRove%);
     recStereoDisRovedB := GetFloatRegistryValue(key$, "StereoDisRovedB", recStereoDisRovedB);
     recStereoDisActive% := GetIntRegistryValue%(key$, "StereoDisActive", recStereoDisActive%);
+    recStereoDisTrialInitReward% := GetIntRegistryValue%(key$, "StereoDisTrialInitReward", recStereoDisTrialInitReward%); 
+    recStereoDisTrialHoldReward% := GetIntRegistryValue%(key$, "StereoDisTrialHoldReward", recStereoDisTrialHoldReward%);
     
     
 	return;
@@ -4315,12 +4321,17 @@ func RecExpStereoDisDialog%()
     DlgCheck(9,"Rove stimuli?",2,11);
     DlgReal(10,"Rove dB, +/-",0,3,18,12);  'Rove db
     DlgCheck(11,"Active task?",2,13);
+    
+    DlgCheck(12,"Trial initiation reward?",46,9);
+    DlgCheck(13,"Trial Hold reward?",46,10);   
+    
     DlgAllow(0xffff, 0, RecExpStereoDisDialogChanged%);   
     
     
     i%:=DlgShow(recStereoDisExpDoFC%,recStereoDisExpDoGen%,recStereoDisExpIndexGen%,recStereoDisExpIndexLoad%,
     recStereoDisGNGExpIndexGen%,recStereoDisGNGExpIndexLoad%,recStereoDisRepeatsPerStim%,recStereoDisdB,
-    recStereoDisDoRove%,recStereoDisRovedB,recStereoDisActive%);   'Yes, that's it!
+    recStereoDisDoRove%,recStereoDisRovedB,recStereoDisActive%,recStereoDisTrialInitReward%, 
+    recStereoDisTrialHoldReward%);   'Yes, that's it!
 
     
     ' If user hit OK then save parameters (and return 1). 
@@ -4339,6 +4350,9 @@ func RecExpStereoDisDialog%()
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
             
         recActive% := recStereoDisActive%;
+        
+        recTrialInitReward% := recStereoDisTrialInitReward%;
+        recTrialHoldReward% := recStereoDisTrialHoldReward%;
         
         if recStereoDisExpDoGen% = 1 then
             recMatGenStim% := 1;
