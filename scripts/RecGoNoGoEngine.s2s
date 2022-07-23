@@ -29,7 +29,7 @@ var recTrodePort%[maxTrodes%];
 const recLeverPort% := 1;    'Event port
 const recBAK1Port% := 0;        'Event port
 const recBAK2Port% := 1;        'Event port  --  Note that recLeverPort% and BAK2Port conflict for now.  It is anticipated that there should not be recording+lever until late 2020
-const configJoyXPort% := 7;  'A2D port - NOTE PORT 7 TEMPORARY BECAUSE PORT 0 IS BLOWN
+const configJoyXPort% := 0;  'A2D port 
 const configJoyYPort% := 1;  'A2D port
 'const configEyeXPort% := 2;  'A2D port  'not yet implemented
 'const configEyeYPort% := 3;  'A2D port
@@ -6212,9 +6212,17 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);
     
-    'Can potentially update "DoNotShuffle" to "Shuffle" one day
+    'Can potentially update "DoNotShuffle" to "Shuffle" one day - but would involve mucking with the analysis side....
+    'A change to the way we assign speaker arrays means we have to update the value of recSpeakerArrayIndex2%
+    'Previously the value in this variable was 3 or 4 for standalone (because the index on the dialog was 3 or 4, indices 1 and 2
+    'corresponded to 15/16 arrays).  Since 15/16 arrays are removed, index on dialog has shifted, but the analysis doesn't know
+    'about this, fix it here.
+    var rsai2% := 0;
+    if recSpeakerArrayIndex2% >= 1 then
+        rsai2% := recSpeakerArrayIndex2% + 2;
+    endif
     s$ := Print$("Param1 MonkeyName=%s,FileSuffix=%s,NTrodes=%d,NBAKs=%d,SpkrArray1=%d,SpkrArray2=%d,DoNotShuffle=%d,TurnOffReward=%d",
-    recMonkPrefix$,blockTag$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,recSpeakerArrayIndex2%,1-recShuffle%,recTurnOffReward%);    
+    recMonkPrefix$,blockTag$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,rsai2%,1-recShuffle%,recTurnOffReward%);    
     SampleText(s$);
     yield(0.01);
     
@@ -6459,8 +6467,8 @@ proc WriteExpParamsSampleText()
                   
         
     case recExpToRun% = recExpStereoDisButton% then 
-        s$ := Print$("ParamStD1 DoForcedChoice=%d,DoLoad=%d,RepeatsPerStim=%d",
-        recStereoDisExpDoFC%,recStereoDisExpDoLoad%,recStereoDisRepeatsPerStim%); 
+        s$ := Print$("ParamStD1 DoForcedChoice=%d,DoLoad=%d,RepeatsPerStim=%d,Active=%d",
+        recStereoDisExpDoFC%,recStereoDisExpDoLoad%,recStereoDisRepeatsPerStim%,recActive%);   'Unlike earlier experiment types (e.g. AMDis, SpaceDis) we will just use ACTIVE here instead of creating passive and then changing back (that was weird, but we're stuck with it)
         SampleText(s$);
         yield(0.01); 
         

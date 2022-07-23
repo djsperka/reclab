@@ -1108,7 +1108,7 @@ while recReadyToQuit% = 0 do
             endif;
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 and recStereoDisExpDoLoad% = 1 then  'For Stereo Distractor, FC, loading stimuli
-            recExptText$ := "Running Stereo Distractor FC Loading Stims"; 
+            recExptText$ := "Running StereoDisFC (load) "; 
             message("Stereo Distractor FC LOADING stims is not fully vetted, exiting!");
             halt;
             
@@ -1131,7 +1131,7 @@ while recReadyToQuit% = 0 do
             calibOK% := 0;  'Short circuit, this means OK.
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoFC% = 1 and recStereoDisExpDoGen% = 1 then  'For Stereo Distractor, FC, generating stimuli
-            recExptText$ := "Running Stereo Distractor FC Generating Stims"; 
+            recExptText$ := "Running StereoDisFC (gen) "; 
             
             'Get stimfile and trials file lists
             RecStereoDisExpListGenGetParams(recStereoDisExpNameGen$[],recStereoDisStimNameGen$[],recStereoDisTrialsNameGen$[]);
@@ -1171,7 +1171,7 @@ while recReadyToQuit% = 0 do
             endif; 
             
         case recExpToRun% = recExpStereoDisButton% and recStereoDisExpDoGNG% = 1 and recStereoDisExpDoLoad% = 1 then  'For Stereo Distractor, GNG, loading stimuli
-            recExptText$ := "Running Stereo Distractor GNG Loading Stims"; 
+            recExptText$ := "Running StereoDisGNG (load) "; 
             message("Stereo Distractor GNG loading stims is not fully vetted, exiting!");
             halt;
             
@@ -1199,7 +1199,7 @@ while recReadyToQuit% = 0 do
             halt;
             trialsOK% := -1;  'short circuit the rest, go back to exp. selection dialog
             
-'            recExptText$ := "Running Stereo Distractor GNG Generating Stims"; 
+'            recExptText$ := "Running StereoDisGNG (gen) "; 
 '            
 '            'Get stimfile and trials file lists
 '            RecStereoDisGNGExpListGenGetParams(recStereoDisGNGExpNameGen$[],recStereoDisGNGStimNameGen$[],recStereoDisGNGTrialsNameGen$[]);
@@ -2213,7 +2213,9 @@ func RecExpSelectDialog%()
         'there must be exactly one.
         '
         'Note that because there is only one PM1, there is little incentive to allow "array2" to be either the 15 or 16 array.
-        'The PM1 is "hard" wired to what ends up being "array1" anyways.
+        'The PM1 is "hard" wired to what ends up being "array1" anyways.  Please note that the value in recSpeakerArrayIndex2%
+        'has changed due to the 15/16 arrays being removed from the dialog.  This has repercussions for the "Param1" sampletext
+        'written in RecGoNoGoEngine/WriteExpParamsSampleText() that were fixed and must be accounted for if this scheme is changed.
         
         'Removed ability to have the array on either output
 '        docase
