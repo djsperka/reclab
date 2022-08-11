@@ -4644,6 +4644,7 @@ func IdleLoop%()
             if recTrialInitReward% = 1 then
                 recTrialInitReward% := -1; 'so that after soundA we can pass by this and move forward!! *jao (i feel smart!)
                 printlog("INIT REWARD? recInitRewardmL= %f and recTrialInitReward= %d\n", recInitRewardmL,recTrialInitReward%);
+                isS2% := 0;  'IF we are doing a trial initiation reward we have to make sure to set isS2% to 0!!!!
                 ChangeStateTo(stateStartSoundA%);
             else
                 ChangeStateTo(stateInResponseWindow%);
