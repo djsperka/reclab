@@ -79,7 +79,12 @@ var recCharDeleteExpGenSigNoiseButton%:=29;
 var recCharAddExpLoadSigNoiseButton%:=30;
 var recCharDeleteExpLoadSigNoiseButton%:=31;
 var recCharAddExpLoadArbStimButton%:=32;
-var recCharDeleteExpLoadArbStimButton%:=33;    
+var recCharDeleteExpLoadArbStimButton%:=33;  
+var recAMDiscReportExpButton%:=34;  'buttons to report experiment details
+var recSpaceDisReportExpButton%:=35;
+var recStereoDisReportExpButton%:=36;
+var recCharReportExpButton%:=37;
+    
 
 'Selection Dialog variables
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
@@ -320,12 +325,12 @@ var recSpaceDisRovedB;                'How much do we rove?
 'var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
 'var recSelectedTrialsFile$;         'Trials file selected in add/delete
 const recSpaceDisNumExps% := 40;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
-var recSpaceDisExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
-var recSpaceDisStimcalNameLoad$[recAMDiscNumExps%];   'Stim/Cal file names, loading files
-var recSpaceDisTrialsNameLoad$[recAMDiscNumExps%];    'Trials file names, loading files
-var recSpaceDisExpNameGen$[recAMDiscNumExps%];       'Experiment names, generating stims
-var recSpaceDisStimcalNameGen$[recAMDiscNumExps%];   'Stim file names, generating stims
-var recSpaceDisTrialsNameGen$[recAMDiscNumExps%];    'Trials file names, generating stims
+var recSpaceDisExpNameLoad$[recSpaceDisNumExps%];       'Experiment names, loading files
+var recSpaceDisStimcalNameLoad$[recSpaceDisNumExps%];   'Stim/Cal file names, loading files
+var recSpaceDisTrialsNameLoad$[recSpaceDisNumExps%];    'Trials file names, loading files
+var recSpaceDisExpNameGen$[recSpaceDisNumExps%];       'Experiment names, generating stims
+var recSpaceDisStimcalNameGen$[recSpaceDisNumExps%];   'Stim file names, generating stims
+var recSpaceDisTrialsNameGen$[recSpaceDisNumExps%];    'Trials file names, generating stims
 var recSpaceDisExpIndexLoad%;         'Experiment index, for loading stims, helps us look up stimcal/trials files
 var recSpaceDisExpIndexGen%;          'Experiment index, for generating stims, etc.
 var recSpaceDisTrialInitReward%;    'Separate out training reward for SpaceDisc
@@ -363,6 +368,13 @@ var recStereoDisRovedB;                'How much do we rove?
 var recStereoDisActive%;               'Active task? 
 var recStereoDisTrialInitReward%; 
 var recStereoDisTrialHoldReward%;
+    
+    
+'Generic
+var recExpName$[recStereoDisNumExps%];  'All the NumExps are the same...if that changes, this will be more complicated.
+var recStimcalName$[recStereoDisNumExps%];
+var recStimcalDistractor$[recStereoDisNumExps%];  
+var recTrialsName$[recStereoDisNumExps%];
     
 'Experiment variables
 var recCurrentlySampling%:=0;       'If 1, indicates that sampling is currently already started - don't start it again!
@@ -2946,6 +2958,7 @@ func RecExpCharDialog%()
     
     DlgGroup("Experiment Selection",1,22,120,7);
     DlgList(25,30,recCharDoLoad$[],6,3,23);
+    DlgButton(recCharReportExpButton%, "  Experiment Details  ", RecCharReportExp%,58,23);  'needs actual function written
     
     DlgList(26,22,recCharExpNameLoadFRA$[],recCharNumExps%,34,24);
     recCharText1% := DlgText("Select Exp't (Load FRA)",2,24);
@@ -3956,9 +3969,9 @@ func RecExpAMDiscDialog%()
         
     
     ' Generate the dialog    
-    DlgCreate("AM Discrimination Dialog",0,0,74,14);
+    DlgCreate("AM Discrimination Dialog",0,0,75,14);
     
-    DlgGroup("Stimulus Selection",1,1,72,4);
+    DlgGroup("Stimulus Selection",1,1,73,4);
     DlgCheck(1,"Create Stimuli?",2,2);
     DlgList(2,27,recAMDiscExpNameGen$[],recAMDiscNumExps%,24,3); 'For list box, set width and put in a DlgText
     recAMDiscText1% := DlgText("Select Exp't (Create Stim)",2,3);
@@ -3966,8 +3979,9 @@ func RecExpAMDiscDialog%()
     recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,4);
     DlgButton(recAMDiscAddExpButton%, "  Add Experiment  ", RecAMDiscAddExp%,53,3);
     DlgButton(recAMDiscDeleteExpButton%, "Delete Experiment ", RecAMDiscDeleteExp%,53,4);
+    DlgButton(recAMDiscReportExpButton%, "  Experiment Details  ", RecAMDiscReportExp%,53,2);  
     
-    DlgGroup("Variables",1,6,72,6);
+    DlgGroup("Variables",1,6,73,6);
     'DlgInteger(4,6,1,20,27,6);  'S1 speaker  'Removing S1 speaker as S1s will be determined by trials in trials file
     'DlgText("Preferred Speaker",8,6);
     DlgInteger(4,6,1,9,27,7);  'Min S1
@@ -4105,9 +4119,9 @@ func RecExpSpaceDisDialog%()
         
     
     ' Generate the dialog    
-    DlgCreate("Space Discrimination Dialog",0,0,74,14);
+    DlgCreate("Space Discrimination Dialog",0,0,75,14);
     
-    DlgGroup("Stimulus Selection",1,1,72,4);
+    DlgGroup("Stimulus Selection",1,1,73,4);
     DlgCheck(1,"Create Stimuli?",2,2);
     DlgList(2,27,recSpaceDisExpNameGen$[],recSpaceDisNumExps%,24,3); 'For list box, set width and put in a DlgText
     recSpaceDisText1% := DlgText("Select Exp't (Create Stim)",2,3);
@@ -4115,8 +4129,9 @@ func RecExpSpaceDisDialog%()
     recSpaceDisText2% := DlgText("Select Exp't (Load Stim)",2,4);
     DlgButton(recSpaceDisAddExpButton%, "  Add Experiment  ", RecSpaceDisAddExp%,53,3);
     DlgButton(recSpaceDisDeleteExpButton%, "Delete Experiment ", RecSpaceDisDeleteExp%,53,4);
+    DlgButton(recSpaceDisReportExpButton%, "  Experiment Details  ", RecSpaceDisReportExp%,53,2);  'needs actual function written
     
-    DlgGroup("Variables",1,6,72,6);
+    DlgGroup("Variables",1,6,73,6);
     'DlgInteger(4,6,1,20,27,6);  'S1 speaker  'Removing S1 speaker as S1s will be determined by trials in trials file
     'DlgText("Preferred Speaker",8,6);
     DlgInteger(4,6,1,9,27,7);  'Min S1
@@ -4297,12 +4312,13 @@ func RecExpStereoDisDialog%()
     RecStereoDisGNGExpListGenGetParams(recStereoDisGNGExpNameGen$[],recStereoDisGNGStimNameGen$[],recStereoDisGNGTrialsNameGen$[]);
     
     ' Generate the dialog    
-    DlgCreate("Stereo Distractor Dialog",0,0,74,15);
+    DlgCreate("Stereo Distractor Dialog",0,0,75,15);
     
     DlgCheck(1,"Do Forced Choice Experiment",2,1);
     DlgCheck(2,"Generate Stimuli",30,1);
+    DlgButton(recStereoDisReportExpButton%, "  Experiment Details  ", RecStereoDisReportExp%,53,1);  'needs actual function written
     
-    DlgGroup("Stimulus Selection, Forced Choice",1,2,72,3);
+    DlgGroup("Stimulus Selection, Forced Choice",1,2,73,3);
     DlgList(3,27,recStereoDisExpNameGen$[],recStereoDisNumExps%,24,3);
     DlgList(4,27,recStereoDisExpNameLoad$[],recStereoDisNumExps%,24,4);
     recAMDiscText1% := DlgText("Select Exp't (Gen Stim)",2,3);
@@ -4310,7 +4326,7 @@ func RecExpStereoDisDialog%()
     DlgButton(recExpStereoDisAddExpButton%, "   Add Experiment   ", RecStereoDisAddExp%,53,3);
     DlgButton(recExpStereoDisDeleteExpButton%, "Delete Experiment ", RecStereoDisDeleteExp%,53,4);
     
-    DlgGroup("Stimulus Selection, Go/No-Go",1,5,72,3);
+    DlgGroup("Stimulus Selection, Go/No-Go",1,5,73,3);
     DlgList(5,27,recStereoDisGNGExpNameGen$[],recStereoDisGNGNumExps%,24,6);
     DlgList(6,27,recStereoDisGNGExpNameLoad$[],recStereoDisGNGNumExps%,24,7);
     recAMDiscText3% := DlgText("Select Exp't (Gen Stim)",2,6); 
@@ -5952,6 +5968,62 @@ end;
 
 
 
+'
+'
+'===== RecCharReportExp =====
+
+'This function will report (both to a message box and to the log file) the full path of the stim/trials files
+'for the current experiment - it's just a simple function that we need rather than continually diving into the
+'registry to figure this out.
+func RecCharReportExp%()
+    
+    var currIndex%;
+    
+    docase
+    case DlgValue(25) = 0 then
+        return 1;  'do nothing!
+    case DlgValue(25) = 1 then  'Load FRA
+        currIndex% := DlgValue(26);
+        RecCharExpListLoadFRAGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(25) = 2 then  'Load SigNoise
+        currIndex% := DlgValue(27);
+        RecCharExpListLoadSigNoiseGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(25) = 3 then  'Gen FRA
+        currIndex% := DlgValue(28);
+        RecCharExpListGenFRAGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(25) = 4 then  'Gen SigNoise
+        RecCharExpListGenSigNoiseGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+        currIndex% := DlgValue(29);
+    case DlgValue(25) = 5 then  ' Load Arbitrary
+        RecCharExpListLoadArbStimGetParams(recExpName$[],recStimcalName$[],recTrialsName$[],recStimcalDistractor$[]);  'the final value isn't a distractor, but we can go with it
+        '...also it appears to be filling with trailing commas that don't exist anywhere, which I can't figure out...
+        'Verdict: I DON'T KNOW AND I DON'T CARE
+        currIndex% := DlgValue(30);
+    endcase;  
+    
+    'report
+    if DlgValue(25) < 5 then
+        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    else
+        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+    endif
+    
+
+return 1
+
+end;
+
+'===== End RecCharReportExp =====
+'
+'
+
+
+
+
+
+
 
 
 
@@ -6144,6 +6216,44 @@ end;
 '
 '
 
+
+'
+'
+'===== RecAMDiscReportExp =====
+
+'This function will report (both to a message box and to the log file) the full path of the stim/trials files
+'for the current experiment - it's just a simple function that we need rather than continually diving into the
+'registry to figure this out.
+func RecAMDiscReportExp%()
+    
+    var currIndex%;
+    
+    if DlgValue(1) = 1 then
+        'get "gen" parameters
+        RecAMDiscExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+        currIndex% := DlgValue(2);
+    else
+        'get "load" parameters
+        RecAMDiscExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+        currIndex% := DlgValue(3);
+    endif;  
+
+    'report
+    printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    
+return 1
+
+end;
+
+'===== End RecAMDiscReportExp =====
+'
+'
+
+
+
+
+
 '
 '
 '===== RecSpaceDisAddExp =====
@@ -6332,6 +6442,42 @@ end;
 '===== End RecSpaceDisDeleteExp =====
 '
 '
+
+
+
+'
+'
+'===== RecSpaceDisReportExp =====
+
+'This function will report (both to a message box and to the log file) the full path of the stim/trials files
+'for the current experiment - it's just a simple function that we need rather than continually diving into the
+'registry to figure this out.
+func RecSpaceDisReportExp%()
+    
+    var currIndex%;
+    
+    if DlgValue(1) = 1 then
+        'get "gen" parameters
+        RecSpaceDisExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+        currIndex% := DlgValue(2);
+    else
+        'get "load" parameters
+        RecSpaceDisExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+        currIndex% := DlgValue(3);
+    endif;  
+
+    'report
+    printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    
+return 1
+
+end;
+
+'===== End RecSpaceDisReportExp =====
+'
+'
+
 
 
 
@@ -6548,6 +6694,52 @@ end;
 '
 '
 
+
+
+
+'
+'
+'===== RecStereoDisReportExp =====
+
+'This function will report (both to a message box and to the log file) the full path of the stim/trials files
+'for the current experiment - it's just a simple function that we need rather than continually diving into the
+'registry to figure this out.
+func RecStereoDisReportExp%()
+    
+    var currIndex%;
+    
+    docase
+    case DlgValue(1) = 1 and DlgValue(2) = 1 then  'forced choice gen
+        currIndex% := DlgValue(3);
+        RecStereoDisExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(1) = 1 and DlgValue(2) = 0 then  'forced choice load
+        currIndex% := DlgValue(4);
+        RecStereoDisExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[],recStimcalDistractor$[]);
+    case DlgValue(1) = 0 and DlgValue(2) = 1 then  'GNG gen
+        currIndex% := DlgValue(5);
+        RecStereoDisGNGExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    else                                           'GNG load
+        RecStereoDisGNGExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[],recStimcalDistractor$[]);
+        currIndex% := DlgValue(6);
+    endcase;  
+    
+    'report
+    if DlgValue(1) = 1 then
+        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    else
+        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+    endif
+    
+
+return 1
+
+end;
+
+'===== End RecStereoDisReportExp =====
+'
+'
 
 
 
