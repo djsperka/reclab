@@ -1947,7 +1947,7 @@ func SetJoystickThresholdLimitDialog%()
     DlgReal(14,8,0.1,RightThreshInner,56,10);
     'Middle row fourth column, right outer
     DlgText("Right Outer",65,7);
-    DlgReal(15,8,10,joystickMaxDegrees,66,8);
+    DlgReal(15,8,RightThreshOuter,joystickMaxDegrees,66,8);
     DlgText(Str$(RightThreshOuter),68,9);
     DlgReal(16,8,RightThreshInner+0.1,RightThreshOuter,66,10);
 
