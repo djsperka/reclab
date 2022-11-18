@@ -471,8 +471,6 @@ proc CreateSampleConfiguration()
         Window(0, 60, 40, 100); 'trying different position
         XYColour(joydatachan%,16);  'set a colo(u)r for joydatachan%
         XYSize(joydatachan%,-1); 'for channel joydatachan%, plot only one point at a time (-1)
-    
-    var s1%,s2%;  'success testing
         
         'Looks like for this we'll have to set a bunch of different channels, one for each threshold line
         'We'll see if this works!
