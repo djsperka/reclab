@@ -493,7 +493,7 @@ proc CreateSampleConfiguration()
         XYDrawMode(joyThreshChannel%[1],3,2);  'dashed line...use for outer threshold?
         XYJoin(joyThreshChannel%[1],1);
         XYAddData(joyThreshChannel%[1],-30,UpThreshOuter);
-        XYAddData(joyThreshChannel%[1],30,UpThreshOuter);
+        XYAddData(joyThreshChannel%[1],30,UpThreshOuter);'
         
         'Create a new channel in the XY view to display the joystick thresholds
         joyThreshChannel%[2] := XYSetChan(3);
