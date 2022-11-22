@@ -124,6 +124,8 @@ var joystickVoltageConversionFactor := .09;  'conversion of degrees to voltage, 
 var joystickThreshInDegrees% := 0;
 var joystickIncInDegrees% := 0;
 var joystickLimitInDegrees% := 0;
+var flipx := 1; 'NOTE - will multiply by the joystick value, should be 1 (no flip) or -1 (flip)!!!!!
+var flipy := 1; 'NOTE - will multiply by the joystick value, should be 1 (no flip) or -1 (flip)!!!!!
     
 endif;
 

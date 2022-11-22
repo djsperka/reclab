@@ -3694,7 +3694,7 @@ func IdleLoop%()
             XJoy := View(recDataWindowView%).ChanMeasure(configJoyXChannel%,2,tNow-.006,tNow-.001);
             YJoy := View(recDataWindowView%).ChanMeasure(configJoyYChannel%,2,tNow-.006,tNow-.001);
             'new, is degrees
-            View(joyview%).XYAddData(joydatachan%,XJoy/joystickVoltageConversionFactor,YJoy/joystickVoltageConversionFactor);  'do not need to flip axis values
+            View(joyview%).XYAddData(joydatachan%,flipx*XJoy/joystickVoltageConversionFactor,flipy*YJoy/joystickVoltageConversionFactor);  'flip axis values if requested
             'printlog("Updated joystick voltage with x voltage %f and y voltage %f\n",XJoy/joystickVoltageConversionFactor,YJoy/joystickVoltageConversionFactor);
             'old, was voltage
             'View(joyview%).XYAddData(joydatachan%,XJoy,YJoy);  'do not need to flip axis values
@@ -5872,7 +5872,7 @@ func CheckLever%(varName$,varState%)
             inResponse1% := inOrigin%;  'for a lever, response 1 position is the origin (not pressed)
             inResponse2% := 0;  'there is no response 2 with a lever
             'If recLeverState% is -1 (TDT error), the other values will be recognizably illegal
-        case recUseJoystick% = 1 then
+        case recUseJoystick% <= 4 then  'Now we are using multiple values for recUseJoystick%  Should all be OK, but keeping the weird ELSE below because...?
             ReadJoystick%();  'ReadJoystick calls another function (AssignJoystickVariables) to get
             'joystick position variables, not done here.
         else

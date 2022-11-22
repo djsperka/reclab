@@ -4848,7 +4848,7 @@ func RecExpLeverJoystickDialog%()
     var i%;
     var status% := 0;
     var trwid% := 45;
-    var joyStr$[2];
+    var joyStr$[5];
     var initStr$[7];
     var resp1Str$[7];
     var resp2Str$[8];
@@ -4864,6 +4864,9 @@ func RecExpLeverJoystickDialog%()
     
     joyStr$[0] := "Lever";
     joyStr$[1] := "Joystick";
+    joyStr$[2] := "Joystick, Flip X";
+    joyStr$[3] := "Joystick, Flip Y";
+    joyStr$[4] := "Joystick, Flip Both";
     
     initStr$[0] := "Not Allowed";
     initStr$[1] := "Down";
@@ -4898,7 +4901,7 @@ func RecExpLeverJoystickDialog%()
     ' Generate the dialog
     
     DlgCreate("Joystick/Lever Dialog", 0, 0, trwid%, 11);
-    DlgList(1,20,joyStr$[],2,c1%-6,1); DlgText("Response Device",c1txt%,1);
+    DlgList(1,20,joyStr$[],5,c1%-6,1); DlgText("Response Device",c1txt%,1);
     DlgList(2,20,initStr$[],7,c1%-6,2); DlgText("Trial Initiation Position",c1txt%,2);
     DlgCheck(6,"Expt is Go/No-Go",2,3);
     DlgList(3,20,resp1Str$[],7,c1%-6,4); DlgText("Response 1 (S2) Position",c1txt%,4);
@@ -4917,6 +4920,23 @@ func RecExpLeverJoystickDialog%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         RecExpSelectDialogChanged%(0); 'this might work?  Yep!  This changes the button label on the main dialog, if necessary
+        
+        'Apply flip, be explicit
+        docase
+        case recUseJoystick% = 1 then
+            flipx := 1;  'no flip, etc.
+            flipy := 1;
+        case recUseJoystick% = 2 then
+            flipx := -1;  'flip, etc.
+            flipy := 1;
+        case recUseJoystick% = 3 then
+            flipx := 1;
+            flipy := -1; 
+        case recUseJoystick% = 4 then
+            flipx := -1;  
+            flipy := -1;            
+        endcase
+        
         
         'here's an attempt at being clever and saving some time
         'the following three DOCASES just tally up the number of times a certain position (e.g. "up", "left")
