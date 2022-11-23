@@ -2147,12 +2147,19 @@ func RecExpSelectDialog%()
     recExpSelectDialogAllowOK% := 0;  'Disable OK button to start, force selection of experiment
     
     'get the LeverJoystick parameters so we know whether the Joystick or Lever is initially selected
-    RecLeverJoystickGetParams();    
-    if recUseJoystick% = 0 then
+    RecLeverJoystickGetParams(); 
+    docase    
+    case recUseJoystick% = 0 then
         levText$ := "    Lever Selected     ";
-    else
+    case recUseJoystick% = 1 then
         levText$ := "  Joystick Selected    ";
-    endif;
+    case recUseJoystick% = 2 then
+        levText$ := " Joystick (-X) Selected";
+    case recUseJoystick% = 3 then
+        levText$ := " Joystick (-Y) Selected";
+    case recUseJoystick% = 4 then
+        levText$ := "Joystick (-XY) Selected";
+    endcase;
 
     'Just DO this, even if we're not using the joystick.  Because I want it to just work.
     GetJoystickDegreesInVoltage(joystickVoltageConversionFactor);
@@ -2349,11 +2356,18 @@ func RecExpSelectDialogChanged%(item%)
     endif;
     
     'change button text based on selected response device
-    if recUseJoystick% = 0 then
+    docase    
+    case recUseJoystick% = 0 then
         levText$ := "    Lever Selected     ";
-    else
+    case recUseJoystick% = 1 then
         levText$ := "  Joystick Selected    ";
-    endif;
+    case recUseJoystick% = 2 then
+        levText$ := " Joystick (-X) Selected";
+    case recUseJoystick% = 3 then
+        levText$ := " Joystick (-Y) Selected";
+    case recUseJoystick% = 4 then
+        levText$ := "Joystick (-XY) Selected";
+    endcase;
     DlgValue$(-recLeverJoystickButton%, levText$);
     
     return 1;
