@@ -9993,6 +9993,12 @@ docase
     case recExpToRun% = recExpAudiogramButton% then 
         exptext$ := "Audiogram";
         expcolor$ := "GREEN";
+    case recExpToRun% = recExpStereoDisButton% then
+        exptext$ := "Stereo Dis";
+        expcolor$ := "RED";
+    else
+        exptext$ := "Unknown Experiment Type - tell Jeff";
+        expcolor$ := "I hope you know";
 endcase
 
     ' Generate the dialog
