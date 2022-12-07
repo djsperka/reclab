@@ -9996,6 +9996,9 @@ docase
     case recExpToRun% = recExpStereoDisButton% then
         exptext$ := "Stereo Dis";
         expcolor$ := "RED";
+    case recExpToRun% = recExpLongToneButton% then
+        exptext$ := "Long Tone";
+        expcolor$ := "GREEN";
     else
         exptext$ := "Unknown Experiment Type - tell Jeff";
         expcolor$ := "I hope you know";
