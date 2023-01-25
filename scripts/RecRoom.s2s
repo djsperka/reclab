@@ -6271,6 +6271,9 @@ end;
 func RecAMDiscReportExp%()
     
     var currIndex%;
+    var ssExpName$;  'variable to hold a "split string" - we don't want to have our strings be too long because they don't fit on the Message dialog
+    var ssStimcalName$;
+    var ssTrialsName$;
     
     if DlgValue(1) = 1 then
         'get "gen" parameters
@@ -6283,9 +6286,12 @@ func RecAMDiscReportExp%()
     endif;  
 
     'report
+    ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
+    ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
+    ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
     printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
-    Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
-    
+    'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
 return 1
 
 end;
@@ -6499,6 +6505,9 @@ end;
 func RecSpaceDisReportExp%()
     
     var currIndex%;
+    var ssExpName$;  'variable to hold a "split string" - we don't want to have our strings be too long because they don't fit on the Message dialog
+    var ssStimcalName$;
+    var ssTrialsName$;
     
     if DlgValue(1) = 1 then
         'get "gen" parameters
@@ -6511,9 +6520,12 @@ func RecSpaceDisReportExp%()
     endif;  
 
     'report
+    ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
+    ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
+    ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
     printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
-    Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
-    
+    'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+    Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
 return 1
 
 end;
@@ -6751,6 +6763,10 @@ end;
 func RecStereoDisReportExp%()
     
     var currIndex%;
+    var ssExpName$;  'variable to hold a "split string" - we don't want to have our strings be too long because they don't fit on the Message dialog
+    var ssStimcalName$;
+    var ssTrialsName$;
+    var ssStimcalDistractor$;
     
     docase
     case DlgValue(1) = 1 and DlgValue(2) = 1 then  'forced choice gen
@@ -6768,12 +6784,18 @@ func RecStereoDisReportExp%()
     endcase;  
     
     'report
+    ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
+    ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
+    ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
+    ssStimcalDistractor$ := SplitString$(recStimcalDistractor$[currIndex%],"slash","\n",60);
     if DlgValue(1) = 1 then
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
-        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
     else
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
-        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",ssExpName$,ssStimcalName$,ssTrialsName$,ssStimcalDistractor$);
     endif
     
 
