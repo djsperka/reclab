@@ -6012,6 +6012,10 @@ end;
 func RecCharReportExp%()
     
     var currIndex%;
+    var ssExpName$;  'variable to hold a "split string" - we don't want to have our strings be too long because they don't fit on the Message dialog
+    var ssStimcalName$;
+    var ssTrialsName$;
+    var ssStimcalDistractor$;
     
     docase
     case DlgValue(25) = 0 then
@@ -6036,12 +6040,18 @@ func RecCharReportExp%()
     endcase;  
     
     'report
+    ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
+    ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
+    ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
+    ssStimcalDistractor$ := SplitString$(recStimcalDistractor$[currIndex%],"slash","\n",60);
     if DlgValue(25) < 5 then
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
-        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
     else
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
-        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",ssExpName$,ssStimcalName$,ssTrialsName$,ssStimcalDistractor$);
     endif
     
 
@@ -10028,6 +10038,119 @@ end;
 '
 '
 
+
+'===== SplitString =====
+
+'A function to split up a STRING$ at the character found in CHAR$, and to separate with the string in SEPARATOR$
+'Will attempt to make strings of length N% or less
+'If CHAR$ is "slash", then SplitString will split along either forward or backslashes
+
+'This function will probably most frequently be used to do the following:
+'str$ := "ThisString/IsWayTooLong/ForTheEntireThingToBeDisplayed/InAMessageDialog/SoWeAreCuttingIt/DownABit.txt";
+'sstr$ := SplitString$(str$,"slash","\n",60);
+'message(sstr$);
+func SplitString$(string$,char$,separator$,n%);
+    var newString$;
+    var uhoh% := 0;
+    var inds%[len(string$)];  'allow as many indices as there are characters in the input
+    var numFound% := 0;
+    var tempInd% := -1;  'to get into while loop, this can't be 0
+    var tempInd2% := -1;  'to get into while loop, this can't be 0
+    var prevInd% := 1;
+    var thisChar$;  'if CHAR$ is "slash" things get a bit more complicated and we can't use CHAR$ directly
+    var thisChar2$;
+    var i%;
+    var sepInd%;
+    var offset%;
+    
+    newString$ := string$;
+    
+    if char$ = "slash" then  'find indices of BOTH types of slashes
+        thischar$ := "/";
+        thisChar2$ := "\\";
+        while (tempInd% <> 0 or tempInd2% <> 0) and uhoh% <= len(string$) do  'don't let WHILE get stuck
+            uhoh% += 1;  'don't let WHILE get stuck
+            tempInd% := InStr(newString$,thisChar$,prevInd%);
+            tempInd2% := InStr(newString$,thisChar2$,prevInd%);
+            docase
+            case tempInd% = 0 and tempInd2% = 0 then  'if we found no slashes
+                'There are no more slashes, do nothing, will break out of WHILE
+            case tempInd2% = 0 and tempInd% > 0 then  'if we found an instance of the forward slash, but no backslash, save forward slash location in inds%[]
+                inds%[numFound%] := tempInd%;
+                numFound% += 1;
+                prevInd% := tempInd% + 1;
+            case tempInd% = 0 and tempInd2% > 0 then  'if we found an instance of the backslash, but no forward slash, save backslash location in inds%[]
+                inds%[numFound%] := tempInd2%;
+                numFound% += 1;
+                prevInd% := tempInd2% + 1;
+            case tempInd% < tempInd2% then  'if we found an instance of both slashes, and forward slash is first, save forward slash location in inds%[]
+                inds%[numFound%] := tempInd%;
+                numFound% += 1;
+                prevInd% := tempInd% + 1;
+            case tempInd2% < tempInd% then  'if we found an instance of both slashes, and backslash is first, save backslash location in inds%[]
+                inds%[numFound%] := tempInd2%;
+                numFound% += 1;
+                prevInd% := tempInd2% + 1;
+            'There should logically be no other cases, right?
+            endcase
+        wend
+    else 'find all indices matching input CHAR$ 
+        while tempInd% <> 0 and uhoh% <= len(string$) do  'don't let WHILE get stuck
+            uhoh% += 1;  'don't let WHILE get stuck
+            tempInd% := InStr(newString$,char$,prevInd%);
+            if tempInd% > 0 then  'if we found an instance of the character, save that in inds%[]
+                inds%[numFound%] := tempInd%;
+                numFound% += 1;
+                prevInd% := tempInd% + 1;
+            endif
+        wend
+    endif
+    
+    'once all instances are found, add on the total length of the string as an index
+    inds%[numFound%] := len(string$);
+    
+    'testing, let's confirm these indices are OK
+    'printlog("The indices found are %d\n\n",inds%[]);
+    
+    'update string to insert separator following characters, based on n%
+    uhoh% := 0;
+    offset% := 0;
+    while inds%[numFound%] > n% and uhoh% <= len(string$) do 
+        uhoh% += 1;  'don't let WHILE get stuck
+        
+        'if the final index is too big, insert a separator (as late as possible)
+        sepInd% := 0;
+        'printlog("Current indices are %d\n",inds%[]);
+        for i% := 0 to numFound% do  'check the final character of the string even if it does not match CHAR$
+            docase
+            case inds%[i%] > n% and i% = 0 then
+                sepInd% := 0 + offset%;  'don't crash if the first index is greater than the requested size
+                break
+            case inds%[i%] > n% then
+                sepInd% := inds%[i%-1] + offset%;  'once we are past the length limit, break at the *previous* separator
+                break
+            endcase
+        next
+        'if we have no separators within the length limit, we have to punt and put in a separator at n%
+        if sepInd% < 1+offset% then
+            sepInd% := n% + offset%;
+        endif;
+        'printlog("Location of separator is %d\n",sepInd%);
+        'insert separator
+        newString$ := Left$(newString$,sepInd%) + separator$ + Right$(newString$,len(newString$)-sepInd%);
+        'update indices by subtracting location of new "start point"
+        'arrsub(inds%[],sepInd%+len(separator$))
+        arrsub(inds%[],sepInd%-offset%);
+        offset% := sepInd% + len(separator$);  'update offset to account for new indices
+        
+    wend
+
+    return newString$
+end;
+
+'===== End SplitString =====
+'
+'
 
 
 '===== GetDrivePath$ =====
