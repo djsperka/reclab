@@ -6043,14 +6043,15 @@ func RecCharReportExp%()
     ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
     ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
     ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
-    ssStimcalDistractor$ := SplitString$(recStimcalDistractor$[currIndex%],"slash","\n",60);
     if DlgValue(25) < 5 then
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
         'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
         Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
     else
-        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
-        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
+        'Please note that recStimcalDistractor$[] is not filled if we are doing the arbitrary stimulus, so we can only mess with it during "load" experiments - note that load experiments are untested...
+        ssStimcalDistractor$ := SplitString$(recStimcalDistractor$[currIndex%],"slash","\n",60);
+        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[currIndex%]);
+        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[currIndex%]);
         Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nPrefix: %s",ssExpName$,ssStimcalName$,ssTrialsName$,ssStimcalDistractor$);
     endif
     
@@ -6787,15 +6788,16 @@ func RecStereoDisReportExp%()
     ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
     ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
     ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
-    ssStimcalDistractor$ := SplitString$(recStimcalDistractor$[currIndex%],"slash","\n",60);
-    if DlgValue(1) = 1 then
+    if DlgValue(2) = 1 then
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
         'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
         Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
     else
-        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
-        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[]);
-        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",ssExpName$,ssStimcalName$,ssTrialsName$,ssStimcalDistractor$);
+        'Please note that recStimcalDistractor$[] is not filled if we are generating the stimulus, so we can only mess with it during "load" experiments - note that load experiments are untested...
+        ssStimcalDistractor$ := SplitString$(recStimcalDistractor$[currIndex%],"slash","\n",60);
+        printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[currIndex%]);
+        Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%],recStimcalDistractor$[currIndex%]);
+        'Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s\nStim(cal) distractor file: %s",ssExpName$,ssStimcalName$,ssTrialsName$,ssStimcalDistractor$);
     endif
     
 
