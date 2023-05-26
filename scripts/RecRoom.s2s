@@ -118,6 +118,20 @@ var recSearchFMEndFreq;             'Ending frequency for FM sweep
 var recSearchFMNumReverses%;        'Number of reverses for FM sweep   (0 = logarithmic sweep, 1-9  = sinusoidal reversing sweep)  
 var recSearchFMDur;                 'Duration  in seconds for FM sweep (other search parameters have hard-coded durations)   
     
+var recSearchDoPSTH%;               'Do we make a PSTH during search?  If so, we need to define lots of stuff   
+var recSearchWMPorts%[4];           'Which wavemark PORTs do we want to use (up to 4), if value is -1, no port defined    
+ArrConst(recSearchWMPorts%[],-1);   'Start with -1  
+var recSearchPSTHWindow%;           'Pointer to the PSTH window - may not be needed?
+var recSearchPSTHHandle%[4];        'Handles for PSTHs    
+var HistTotal;                      'Duration of histogram overall
+var HistPre:=0.4;                   'Duration of pre-stimulus histogram, in seconds
+var HistPost:=0.4;                  'Duration of post-stimulus histogram, in seconds
+var HistBinWidth:=0.005;            'Width of histogram bin, in seconds
+var HistBins%;                      'Total number of bins in the histogram
+var MarkerCode%[4];                 'Marker code for sample texts
+MarkerCode%[0] := 1;                'For now, we only care about using this for "Sound", which allows us to use sampleTexts to get the start time of the sound
+var PSTHBeginTime;    
+    
 'Characterization (FRA/Rate-Level/Space) Dialog variables
 var recCharS1Speaker%;               'Preferred speaker (S1 stimulus location)
 var recCharMinS1%;
@@ -1228,6 +1242,13 @@ while recReadyToQuit% = 0 do
             
         endcase;
         
+        
+        'Explicitly zero out the Do PSTH variable if not running Search, PSTH only to be created for Search
+        if recExpToRun% <> recExpSearchButton% then
+            recSearchDoPSTH% := 0;
+        endif;
+        
+        
         calibOK% += 1;  'Just getting this into my "standard" 1-is-OK, 0-is-not-OK schema.
         
         'Verify trial/speaker numbers and stimuli if the trials/stim files check out, otherwise jump back to original dialog
@@ -1652,6 +1673,11 @@ proc RecSearchGetParams()
     recSearchdBLevel := GetFloatRegistryValue(key$, "SearchdBLevel", recSearchdBLevel);
     recSearchActive% := GetIntRegistryValue%(key$, "SearchActive", recSearchActive%);
     recSearchFixLED% := GetIntRegistryValue%(key$, "SearchFixLED", recSearchFixLED%);
+    recSearchDoPSTH% := GetIntRegistryValue%(key$, "SearchDoPSTH", recSearchDoPSTH%);
+    recSearchWMPorts%[0] := GetIntRegistryValue%(key$, "SearchWMPort1", recSearchWMPorts%[0]);  'This is unusual syntax but compiles!
+    recSearchWMPorts%[1] := GetIntRegistryValue%(key$, "SearchWMPort2", recSearchWMPorts%[1]);
+    recSearchWMPorts%[2] := GetIntRegistryValue%(key$, "SearchWMPort3", recSearchWMPorts%[2]);
+    recSearchWMPorts%[3] := GetIntRegistryValue%(key$, "SearchWMPort4", recSearchWMPorts%[3]);
       
 	return;
 end
@@ -1695,7 +1721,12 @@ proc RecSearchSaveParams()
     SetFloatRegistryValue(key$, "SearchdBLevel", recSearchdBLevel);
     SetIntRegistryValue(key$, "SearchActive", recSearchActive%);
     SetIntRegistryValue(key$, "SearchFixLED", recSearchFixLED%);
-
+    SetIntRegistryValue(key$, "SearchDoPSTH", recSearchDoPSTH%);
+    SetIntRegistryValue(key$, "SearchWMPort1", recSearchWMPorts%[0]);
+    SetIntRegistryValue(key$, "SearchWMPort2", recSearchWMPorts%[1]);
+    SetIntRegistryValue(key$, "SearchWMPort3", recSearchWMPorts%[2]);
+    SetIntRegistryValue(key$, "SearchWMPort4", recSearchWMPorts%[3]);
+    
 	return;
 end
 
@@ -2395,6 +2426,7 @@ func RecExpSearchDialog%()
         inds%[j%] := j%;
     next;
     var fiveInts%[5];
+    var fourInts%[4];
     
     const searchListLen% := 7;
     var searchList$[searchListLen%];
@@ -2416,6 +2448,12 @@ func RecExpSearchDialog%()
     fiveInts%[3] := recSearchMinS1%;
     fiveInts%[4] := recSearchVarS1%;
     
+    'Set fourInts%[] from registry values
+    fourInts%[0] := recSearchWMPorts%[0];
+    fourInts%[1] := recSearchWMPorts%[1];
+    fourInts%[2] := recSearchWMPorts%[2];
+    fourInts%[3] := recSearchWMPorts%[3];
+    
     
     if recSearchStimType% = 4 then
         ' Initial calculation of dB steps for tone sweeps
@@ -2429,7 +2467,7 @@ func RecExpSearchDialog%()
     
 
     ' Generate the dialog    
-    DlgCreate("Search Dialog",0,0,92,17);
+    DlgCreate("Search Dialog",0,0,92,21);
     
     DlgGroup("Stimulus Selection",1,1,90,8);
     DlgList(1,"Select Experiment",searchList$[],searchListLen%,19,2);  '19 is min width for this dialog
@@ -2498,13 +2536,27 @@ func RecExpSearchDialog%()
     DlgText("Use Fixation LED",64,15);
     
     
+    DlgGroup("PSTH Settings",1,17,90,3);
+    DlgCheck(22,"",20,18);  'Do PSTH
+    DlgText("Make Search PSTH",2,18);
+    DlgInteger(23,6,-1,31,55,18);  'WM port 1, do not confuse user with 0-based values here!
+    DlgText("WaveMark Port 1",30,18);
+    DlgInteger(24,6,-1,31,83,18);  'WM port 2 
+    DlgText("WaveMark Port 2",64,18);
+    DlgInteger(25,6,-1,31,55,19);  'WM port 3
+    DlgText("WaveMark Port 3",30,19);
+    DlgInteger(26,6,-1,31,83,19);  'WM port 4 
+    DlgText("WaveMark Port 4",64,19);
+    
+    
+    
     DlgAllow(0xffff, 0, RecExpSearchDialogChanged%);
     
     ' Show the dialog. 
     i%:=DlgShow(recSearchStimType%,recSearchToneFreq,recSearchBPLowerLim,recSearchBPUpperLim,recSearchToneSweepRepeats%,
                 recSearchToneSweepLowLim,recSearchToneSweepUpperLim,fiveInts%[],recSearchPropCatch,recSearchdBLevel,
-                recSearchActive%,recSearchFixLED%, recSearchSpeakerSweepRepeats%,recSearchFMStartFreq,
-                recSearchFMEndFreq,recSearchFMNumReverses%,recSearchFMDur);
+                recSearchActive%,recSearchFixLED%,recSearchSpeakerSweepRepeats%,recSearchFMStartFreq,
+                recSearchFMEndFreq,recSearchFMNumReverses%,recSearchFMDur,recSearchDoPSTH%,fourInts%[]);
     
     
     ' If user hit OK then save parameters (and return 1). 
@@ -2515,6 +2567,12 @@ func RecExpSearchDialog%()
         recSearchS2Speaker% := fiveInts%[2];
         recSearchMinS1% := fiveInts%[3];
         recSearchVarS1% := fiveInts%[4];
+        
+        'Unpack fourInts%[]
+        recSearchWMPorts%[0] := fourInts%[0];
+        recSearchWMPorts%[1] := fourInts%[1];
+        recSearchWMPorts%[2] := fourInts%[2];
+        recSearchWMPorts%[3] := fourInts%[3];
         
         RecSearchSaveParams();
         recExptText$ := searchList$[recSearchStimType%];  'this puts the stimulus type into the values which will be SampleText'ed
@@ -2793,6 +2851,25 @@ func RecExpSearchDialogChanged%(item%)
             'Update GUI
             DlgValue$(recSearchToneSweepFreqList%,recSearchToneSweepFreqList$);
         endif;
+    endif;
+    
+    'Check PSTH values
+    if recCurrentlySampling% > 0 then
+        DlgEnable(0,22); 'Disable DoPSTH - if we are currently samling we gotta run with what's already set up
+    else
+        DlgEnable(1,22); 'Enable if sampling has not started yet - obviously to get a PSTH Search must be the first scenario
+    endif;
+    
+    if DlgValue(22) = 0 or recCurrentlySampling% > 0 then
+        DlgEnable(0,23); 'Disable WM ports
+        DlgEnable(0,24);
+        DlgEnable(0,25);
+        DlgEnable(0,26);
+    else
+        DlgEnable(1,23); 'Enable WM ports
+        DlgEnable(1,24);
+        DlgEnable(1,25);
+        DlgEnable(1,26);
     endif;
     
     return 1;

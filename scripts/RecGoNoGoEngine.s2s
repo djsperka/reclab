@@ -23,6 +23,7 @@ const maxTrodes% := 21; 'Can record 24 ADCs, but three are taken by JoyX/JoyY/Au
 var recTrodePosition%[maxTrodes%];
 var recTrodeChannel%[maxTrodes%];
 var recTrodePort%[maxTrodes%];
+var recWMChannel%[maxTrodes%];
 'var maxTrodesThisExpt% := 4;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
 
 ' ports
@@ -393,6 +394,7 @@ func SetTrodeChannels()
         recTrodePort%[i%] := portNum%;
         recTrodePosition%[i%] := portNum% - chanAdjust%; 'this way all the numbers are the same! easyPeasy! (until eyetracking!)
         recTrodeChannel%[i%] := portNum% - chanAdjust%;
+        recWMChannel%[i%] := i% + 40;  'WaveMark channels start at 40. We don't know if the existence of this WM channel might cause problems in offline analysis, if so, move from 40s
     next;
     '
     '
@@ -634,6 +636,19 @@ proc CreateSampleConfiguration()
     ' NOTE: wavemark channels must be b/w 1-100    
     'Actual sampling rate may vary! (constrained by hardware)
     
+    'Record as many WaveMarks as specified in the Search dialog
+    if recSearchDoPSTH% = 1 then  'if we are doing PSTH(s)
+        'Loop through each possible PSTH channel, we allow 4
+        for i% := 0 to 4 do
+            if recSearchWMPorts%[i%] > -1 then
+                SampleWaveMark(recWMChannel%[i%],recSearchWMPorts%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
+                thisTrodeString$ := "WM " + Str$(recTrodePosition%[i%]);
+                SampleTitle$(recWMChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
+                SampleComment$(recWMChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
+            endif
+        next
+    endif;
+    
     'This bit hacked out, jj 11/6/2019, no longer recording WaveMarks in real time
     '    ' Record as many electrodes as specified in Experiment Selection Dialog
     '    if recNElectrodes% = 2 then'IF 2 CHANNELS: assume you're Teeing off a single input channel to do wavemark & waveform!
@@ -707,6 +722,8 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 proc InitializeWindows()
     
+    var i%;
+    
     ' Since we are opening files here, set the path. 
     'FilePathSet(GetDataPath$(), 1, 1);  'Sets path for new data files
     FilePathSet(GetScratchPath$(), 1, 1);  'Sets path for new data files to scratch folder, alleviates SampleAutoCommit stutter
@@ -737,6 +754,23 @@ proc InitializeWindows()
         else
             CreateJoystickChannels%();
         endif;
+        
+        'Setup PSTH/raster plots
+        if recSearchDoPSTH% = 1 then
+            HistTotal := HistPre + HistPost + recTrialDur[0];  'Trial duration is same on all trials for Search
+            HistBins% := HistTotal/HistBinWidth;
+            for i% := 0 to 3 do
+                if recSearchWMPorts%[i%] > -1 then  'if the port is off, don't make a PSTH
+                    recSearchPSTHHandle%[i%] := SetPSTH(recWMChannel%[i%],HistBins%,HistBinWidth,HistPre,30,3);  'Use Sampletext channel (30) as trigger, 3 = display in spikes/sec (1) + do raster (2)
+                    WindowVisible(1);
+                    windowtitle$("Raster" + Str$(recWMChannel%[i%]));  'use Channel for raster title
+                    Window(75,65,100,100);
+                endif;
+            next;
+            FrontView(recDataWindowView%);
+        endif;
+        
+        
         
     endif
     
@@ -1251,12 +1285,12 @@ Func PlaySound%(isS2local%)
             's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[recPWAList%[recStimCount%][playInd%]]);
             's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, isS2$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[thisStim%]);
             s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%]);
-            SampleText(s$, StimOn);
+            SampleText(s$, StimOn, MarkerCode%[]);
         case recMatGenStim% = 1 then 'stimuli are generated
             's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(recPWAList%[recStimCount%][playInd%]));
             's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, isS2$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(thisStim%));
             s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, spkr%, trlatten, targdB, NameThatStimulus$(thisStim%,0));
-            SampleText(s$, StimOn);
+            SampleText(s$, StimOn, MarkerCode%[]);
         endcase
         
     endif
@@ -1597,7 +1631,7 @@ Func PlayTwoSounds%(whichStim%)
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
         endcase            
-        SampleText(s$, StimOn);
+        SampleText(s$, StimOn, MarkerCode%[]);
         if sound2Plays% = 1 then  'no reason to sampletext a sound that doesn't play, this will make StimulusIsSimultaneous make sense for both
             SampleText(s2$, StimOn+0.001);  'offset second Sampletext by 1 ms
         endif
@@ -1882,7 +1916,6 @@ func Start%()
         printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
         view(recLog%).print("Sampling started.\n");
         recCurrentlySampling% := 1;  'don't start sampling again
-        
         if recUseJoystick% <> 0 then
             'Must clear the channel of all processes, because for some reason these persist across Spike2 sessions.
             ChanProcessClear(configJoyXChannel%,-1);
@@ -1924,6 +1957,11 @@ func Start%()
         'SampleText(recExptText$+"_"+blockTag$);  'WTF?  Can't SampleText if you're not sampling and there's no 1401!
         startingNewExpt% := 1;  'this allows a reset of joystick event checking
     endcase
+    
+    ' Update PSTH begin time, if making a PSTH
+    if recSearchDoPSTH% = 1 then
+        PSTHBeginTime := view(-1).maxtime();
+    endif;
     
     ' Set idle function
     ToolbarSet(0, "", IdleLoop%);
@@ -4043,66 +4081,7 @@ func IdleLoop%()
                 endif
             endcase
             
-            '        case iState% = stateTDTBlink% then
-            '
-            '           'CHECK FOR PAUSE HERE TOO:
-            '            if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
-            '                'do state stuff here
-            '                CheckLever%("inOrigin%",1);
-            '                if inOrigin% = 1 then  'lever must be up to start blink
-            '                    if tNow > tNextTrial then
-            '                        
-            '                        RecLogStatus("WaitTrlInit", "Blink/Wait.");
-            '                        
-            '                        'leave this the same...recBlinkUntilLeverDown%() is special, and I DON'T want to recode it
-            '                        if recCEDIsPresent% = 1 and recActive% = 1 then
-            '                            stmp% := recBlinkUntilLeverDown%(.5, recTrialInitWindow);  
-            '                            'Will leave LED on once lever is down
-            '                            if recFixLED% = 0 then
-            '                                SafeSampleKey("M"); 'turn LED off if we are not using it for fixation
-            '                            endif;
-            '                        else
-            '                            stmp% := 1;  'simulate success in lever press
-            '                        endif
-            '                        
-            '                        docase
-            '                        case stmp% = 1 then
-            '                            recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
-            '                            'SafeSampleKey("P");  'TODO: What is this?  Still don't know.  Not in Recgen.pls!
-            '                            RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
-            '                            'Increment, if appropriate
-            '                            ChangeThresh2(doIncTrialInit%[]);
-            '                            ChangeStateTo(statePreTrialDelay%);
-            '                        case stmp% = 0 then
-            '                            RecLogStatus("WaitTrlInit", "Timeout waiting for lever down.");
-            '                            'Decrement, if appropriate
-            '                            'ChangeThresh(-doIncUp%,-doIncDown%,-doIncLeft%,-doIncRight%);
-            '                            ChangeThresh2(doDecTrialInit%[]);
-            '                            ChangeStateTo(stateLazyMonkeyTimeout%);
-            '                        else
-            '                            PrintLog("ERROR in recBlinkUntilLeverDown%()!!!\n");
-            '                            Message("Error in recBlinkUntilLeverDown!");
-            '                            ChangeStateTo(stateTDTError%);
-            '                        endcase
-            '                    endif;
-            '                else
-            '                    RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever up.");
-            '                    ChangeStateTo(stateLazyMonkeyTimeout%);
-            '                endif;
-            '            
-            '            else  'but if paused, check to see if we have a call out to a dialog box to change values
-            '                if recRunTimeCall% = 1 then
-            '                    docase
-            '                    case recWhichDialogCalled% = 1 then
-            '                        RecExpTimingRewardDialog%();
-            '                        ReturnFromDialogCall%();
-            '                    case recWhichDialogCalled% = 2 then
-            '                        RecExpLeverJoystickDialog%();  
-            '                        ReturnFromDialogCall%();
-            '                    endcase
-            '                endif
-            '            endif
-            '            
+  
         case iState% = stateLazyMonkeyTimeout% then
             '''Lazy monkey timeout excised!  Uncomment to reinstate!
             '            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
@@ -4228,6 +4207,9 @@ func IdleLoop%()
             docase
             case PWA$ = "" then
                 SilencePA4%();  'When sound is done, set active PA4s to 99
+                if recSearchDoPSTH% = 1 then 'If appropriate, update PSTH immediately after stimulus is done
+                    UpdatePSTHRec();
+                endif;
                 docase
                 case recActive% = 1 and isInterrupt% = 1 then
                     isInterrupt% := 0;  'reset variable
@@ -6301,6 +6283,7 @@ end
 
 
 'Since we are trying to include all of the info in the .smr file, dump it in a series of sampletexts we will never read
+'OK, to be fair, MATLAB does read them
 proc WriteExpParamsSampleText()
     var s$;
     s$ := Print$("Date %s, Time %s",date$(2,2,3,1,"/"),time$(2,15,1,":"));
@@ -6617,3 +6600,24 @@ func SilencePA4%()
     
     return status%;
 end
+
+
+'================================ UpdatePSTHRec ============================
+'RecLab version of UpdatePSTH, ripped from Sutter verison
+proc UpdatePSTHRec()
+	
+    var ii%;
+
+    'Update PSTHs if they exist   
+    MarkMask(30,0,0,0); 'Set the marker filter on the Sampletext channel, layer 0 to exclude code 0 (so only code 1s will be active)
+    for ii% := 0 to 3 do
+        if recSearchWMPorts%[ii%] > 0 then
+            
+            view(recSearchPSTHHandle%[ii%]).process(PSTHBeginTime,view(-1).maxtime(),1,1,0,30,HistTotal,HistPre);  'Update histogram
+            view(recSearchPSTHHandle%[ii%]).windowtitle$("Raster, Wavemark port" + Str$(recSearchWMPorts%[ii%]));  'Rename histogram
+
+        endif;
+    next;
+    MarkMask(30,0,1,0); 'Set the marker filter on the Sampletext channel, layer 0 to include code 0 (so all codes will again be active)
+    
+end;
