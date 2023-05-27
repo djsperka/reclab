@@ -641,7 +641,7 @@ proc CreateSampleConfiguration()
         'Loop through each possible PSTH channel, we allow 4
         for i% := 0 to 3 do
             if recSearchWMPorts%[i%] > -1 then
-                SampleWaveMark(recWMChannel%[i%],recSearchWMPorts%[i%], 100, 34, 15, sampleRate%); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
+                SampleWaveMark(recWMChannel%[i%],recSearchWMPorts%[i%], 2000, 34, 15, 30000); 'channel#, port#,sustained spike rate, points, pre-trigger, sampling rate
                 thisTrodeString$ := "WM " + Str$(recTrodePosition%[i%]);
                 SampleTitle$(recWMChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
                 SampleComment$(recWMChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
