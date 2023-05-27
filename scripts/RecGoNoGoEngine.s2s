@@ -6609,7 +6609,7 @@ proc UpdatePSTHRec()
     var ii%;
 
     'Update PSTHs if they exist   
-    MarkMask(30,0,0,0); 'Set the marker filter on the Sampletext channel, layer 0 to exclude code 0 (so only code 1s will be active)
+    View(recDataWindowView%).MarkMask(30,0,0,0); 'Set the marker filter on the Sampletext channel, layer 0 to exclude code 0 (so only code 1s will be active)
     for ii% := 0 to 3 do
         if recSearchWMPorts%[ii%] > 0 then
             
@@ -6618,6 +6618,6 @@ proc UpdatePSTHRec()
 
         endif;
     next;
-    MarkMask(30,0,1,0); 'Set the marker filter on the Sampletext channel, layer 0 to include code 0 (so all codes will again be active)
+    View(recDataWindowView%).MarkMask(30,0,1,0); 'Set the marker filter on the Sampletext channel, layer 0 to include code 0 (so all codes will again be active)
     
 end;
