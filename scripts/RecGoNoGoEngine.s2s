@@ -6607,15 +6607,17 @@ end
 proc UpdatePSTHRec()
 	
     var ii%;
+    var items%;
 
     'Update PSTHs if they exist   
     View(recDataWindowView%).MarkMask(30,0,0,0); 'Set the marker filter on the Sampletext channel, layer 0 to exclude code 0 (so only code 1s will be active)
     for ii% := 0 to 3 do
         if recSearchWMPorts%[ii%] > 0 then
             
-            view(recSearchPSTHHandle%[ii%]).process(PSTHBeginTime,view(-1).maxtime(),1,1,0,30,HistTotal,HistPre);  'Update histogram
+            items% := view(recSearchPSTHHandle%[ii%]).process(PSTHBeginTime,view(-1).maxtime(),1,1,0,30,HistTotal,HistPre);  'Update histogram
             view(recSearchPSTHHandle%[ii%]).windowtitle$("Raster, Wavemark port" + Str$(recSearchWMPorts%[ii%]));  'Rename histogram
-
+            
+            printlog("Processed PSTH, # items processed is %d, PSTHBegin Time is %f, histogram length is %f, histogram pre is %f\n",items%,PSTHBeginTime,HistTotal,HistPre);
         endif;
     next;
     View(recDataWindowView%).MarkMask(30,0,1,0); 'Set the marker filter on the Sampletext channel, layer 0 to include code 0 (so all codes will again be active)
