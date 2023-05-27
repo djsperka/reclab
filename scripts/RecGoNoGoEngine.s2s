@@ -757,7 +757,7 @@ proc InitializeWindows()
         
         'Setup PSTH/raster plots
         if recSearchDoPSTH% = 1 then
-            HistTotal := HistPre + HistPost + recTrialDur[0];  'Trial duration is same on all trials for Search
+            HistTotal := HistPre + HistPost + (recTrialDur[0])/1000;  'Trial duration is same on all trials for Search, recTrialDur is in MILLISECONDS
             HistBins% := HistTotal/HistBinWidth;
             for i% := 0 to 3 do
                 if recSearchWMPorts%[i%] > -1 then  'if the port is off, don't make a PSTH
@@ -6617,7 +6617,7 @@ proc UpdatePSTHRec()
             items% := view(recSearchPSTHHandle%[ii%]).process(PSTHBeginTime,view(-1).maxtime(),1,1,0,30,HistTotal,HistPre);  'Update histogram
             view(recSearchPSTHHandle%[ii%]).windowtitle$("Raster, Wavemark port" + Str$(recSearchWMPorts%[ii%]));  'Rename histogram
             
-            printlog("Processed PSTH, # items processed is %d, PSTHBegin Time is %f, histogram length is %f, histogram pre is %f\n",items%,PSTHBeginTime,HistTotal,HistPre);
+            'printlog("Processed PSTH, # items processed is %d, PSTHBegin Time is %f, histogram length is %f, histogram pre is %f\n",items%,PSTHBeginTime,HistTotal,HistPre);
         endif;
     next;
     View(recDataWindowView%).MarkMask(30,0,1,0); 'Set the marker filter on the Sampletext channel, layer 0 to include code 0 (so all codes will again be active)
