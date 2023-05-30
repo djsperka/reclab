@@ -1911,20 +1911,7 @@ func Start%()
     docase    
     case recCEDIsPresent% = 1 and recCurrentlySampling% = 0 then
         view(recLog%).print("CED is present. About to start sampling.\n");
-        SampleStart();
-        ToolbarText("Sampling started.");  ' Tell the world about it. 
-        printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
-        view(recLog%).print("Sampling started.\n");
-        recCurrentlySampling% := 1;  'don't start sampling again
-        if recUseJoystick% <> 0 then
-            'Must clear the channel of all processes, because for some reason these persist across Spike2 sessions.
-            ChanProcessClear(configJoyXChannel%,-1);
-            ChanProcessClear(configJoyYChannel%,-1);
-            'This adds smoothing to the joystick channels, seems to work really well.
-            ChanProcessAdd(configJoyXChannel%,1,0.005);  'Try smoothing at 5 ms
-            ChanProcessAdd(configJoyYChannel%,1,0.005);  'Try smoothing at 5 ms
-        endif
-        
+        SampleStart(0);
         'Make sure sampling has started before moving forward
         while samplestatus() <> 2 and notYet5Seconds < 5 do
             yield(0.1);
@@ -1935,7 +1922,21 @@ func Start%()
             message("Sampling has not started within 5 seconds!  Quitting!");
             view(recLog%).print("ERROR: Sample start failed, quitting!\n");
             halt
-        endif;        
+        endif; 
+        ToolbarText("Sampling started.");  ' Tell the world about it. 
+        printlog("Sampling started\n");  ' Tell her about it, tell her everything you feel
+        view(recLog%).print("Sampling started.\n");
+        recCurrentlySampling% := 1;  'don't start sampling again
+        if recUseJoystick% <> 0 then
+            'Must clear the channel of all processes, because for some reason these persist across Spike2 sessions.
+            ChanProcessClear(configJoyXChannel%,0);  'was -1, which appears to be incorrect syntax, use 0 for "all"
+            ChanProcessClear(configJoyYChannel%,0);  
+            'This adds smoothing to the joystick channels, seems to work really well.
+            ChanProcessAdd(configJoyXChannel%,1,0.005);  'Try smoothing at 5 ms
+            ChanProcessAdd(configJoyYChannel%,1,0.005);  'Try smoothing at 5 ms
+        endif
+        
+               
         SequencerPeriodMS := SampleSeqClock(1);  'Get the clock period of the sequencer, in MS, must do this after starting sampling
         TimePerADC := SampleTimePerAdc();  'get AD conversion rate
         UsPerTime := SampleUsPerTime();  'get # of microseconds per 1401 clock tick (NOT the output sequencer period)
