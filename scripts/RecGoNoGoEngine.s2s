@@ -1904,7 +1904,13 @@ func Start%()
     ToolbarEnable(recTimingRewardButton%, 1);
     ToolbarEnable(recJoystickButton%, 1);
     ToolbarEnable(recSelectNewExptButton%, 1); 'enable it here because I disabled it before
-    ToolbarEnable(recCalibrationButton%, 0);  'disable calibration once experiment has started
+    if recSearchDoPSTH% = 1 then
+        ToolbarSet(recCalibrationButton%, "Reset PSTH", ResetPSTH%);  'If doing a PSTH, allow reset once sampling is started
+        ToolbarEnable(recCalibrationButton%, 1);  'And explicitly enable
+    else
+        ToolbarEnable(recCalibrationButton%, 0);  'otherwise disable calibration once experiment has started
+    endif;
+    
     view(recLog%).print("Toolbar Enabled.\n");
     
     ' Start the sampling.
@@ -2084,6 +2090,18 @@ func Pause%()
     return 1;
 end
 
+
+
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+'
+' ResetPSTH%()
+'
+'''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+func ResetPSTH%()
+    PSTHBeginTime := view(-1).maxtime();
+    PrintLog("Resetting PSTH at %f\n",PSTHBeginTime);
+    return 1;
+end
 
 
 
