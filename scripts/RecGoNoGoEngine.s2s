@@ -206,7 +206,10 @@ var tempRand := -1;   'initialize at -1, this variable won't be re-calculated on
 'output variables --> for ToolbarText (first step of user feedback)
 var numHits% := 0;
 var numMisses% := 0;
+var numNRs% := 0;  'we should not count these as misses!
 var numFPs% := 0;
+var NRtext$ := "";  'let's not display NRs or FPs (which are basically interrupts) unless they actually happen!
+var FPtext$ := "";
 'numFAs% has been removed because it was unused
 var numHiResps% := 0; 'reset after each block?
 var numLoResps% := 0; 'reset after each block? (kind of redundant, but that's OK)
@@ -1990,8 +1993,14 @@ end
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 func Stop%()
     PrintLog("Stop called\n");
-    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
-    
+    if numFPs% > 0 then
+        FPtext$ := ",   #FPs = " + str$(numFPs%);
+    endif
+    if numNRs% > 0 then
+        NRtext$ := ",   #NRs = " + str$(numNRs%);
+    endif
+    'PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
     recCurrentlySampling% := 0;    
     
     ' Stop sampling....
@@ -3782,9 +3791,16 @@ func IdleLoop%()
             
             
         case iState% = stateInitializeTrials% then
-            
-            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ";   LastHit(mL) = " + str$(LastHitReward) + 
-            ",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");                       
+            if numFPs% > 0 then
+                FPtext$ := ",   #FPs = " + str$(numFPs%);
+            endif
+            if numNRs% > 0 then
+                NRtext$ := ",   #NRs = " + str$(numNRs%);
+            endif
+            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ";   LastHit(mL) = " + str$(LastHitReward) + 
+            ",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");
+            'ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ";   LastHit(mL) = " + str$(LastHitReward) + 
+            '",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");                       
             
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
@@ -3860,9 +3876,16 @@ func IdleLoop%()
             
             
         case iState% = stateCharInitializeTrials% then
-            
-            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ";   LastHit(mL) = " + str$(LastHitReward) + 
+            if numFPs% > 0 then
+                FPtext$ := ",   #FPs = " + str$(numFPs%);
+            endif
+            if numNRs% > 0 then
+                NRtext$ := ",   #NRs = " + str$(numNRs%);
+            endif
+            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ";   LastHit(mL) = " + str$(LastHitReward) + 
             ",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");                       
+            'ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ";   LastHit(mL) = " + str$(LastHitReward) + 
+            '",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");  
             
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
@@ -5055,7 +5078,7 @@ func IdleLoop%()
                 
                 'Response window is closed, failure to respond on forced choice
             case tNow - tStateStart > recResponseWindow and recIsGoNoGo% = 0 then
-                RecLogStatus("InResponseWindow", "Lever not up - timed out - NO RESPONSE ON FORCED CHOICE");
+                'RecLogStatus("InResponseWindow", "Lever not up - timed out - NO RESPONSE ON FORCED CHOICE");
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event" 
                 docase
                 case (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 
@@ -5080,7 +5103,7 @@ func IdleLoop%()
                     
                 endif;
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
-                numMisses% += 1;  'increment miss counter
+                numNRs% += 1;  'increment NR counter!
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response --> OR, delete reshuffling above and do FA timeout
                 
                 'ACTIVE StereoDis HI Miss, GNG only
@@ -5348,7 +5371,14 @@ func IdleLoop%()
             tNextTrial := tNow + (recRewardMs/1000);
             
         case iState% = stateDone% then
-            PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
+            if numFPs% > 0 then
+                FPtext$ := ",   #FPs = " + str$(numFPs%);
+            endif
+            if numNRs% > 0 then
+                NRtext$ := ",   #NRs = " + str$(numNRs%);
+            endif
+            PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");
+            'PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
             SafeSampleKey("S");  'Turn off LED
             RecLogStatus("Done", "");
             iStatus% := 0;
