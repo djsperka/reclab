@@ -133,7 +133,7 @@ var isEarlyCR%;
 var recIsPaused%;
 const stateStart%                             := 0;
 const stateInitializeTrials%                  := 1;
-const stateDetermineRewardType         := 2;
+const stateDetermineRewardType%               := 2;
 const stateLazyMonkeyTimeout%                 := 3;
 const statePreTrialDelay%                     := 4;
 const stateStartSoundA%                       := 5;
@@ -3859,7 +3859,7 @@ func IdleLoop%()
                         'recCurrentTrial% -= 1;  'if we are not starting a new trial on audiogram, undo increment of trial counter (now more correctly done earlier -jj 8/21/17)
                     endcase;
                     RecLogStatus("PrepareNextTrial", "Trial #" + str$(recCurrentTrial%) + " ready.");
-                    ChangeStateTo(stateDetermineRewardType);  'We are no longer DeterminingRewardType as microstim is dead, just sampletexting at this point
+                    ChangeStateTo(stateDetermineRewardType%);  'We are no longer DeterminingRewardType as microstim is dead, just sampletexting at this point
                 endcase
             else  'but if paused, check to see if we have a call out to a dialog box to change values
                 if recRunTimeCall% = 1 then
@@ -3945,7 +3945,7 @@ func IdleLoop%()
                 endif
             endif
             
-        case iState% = stateDetermineRewardType then  'Not actually determining reward type anymore, just sampletexting the trial start.  
+        case iState% = stateDetermineRewardType% then  'Not actually determining reward type anymore, just sampletexting the trial start.  
             'CHECK FOR PAUSE HERE TOO:
             if recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, determine reward type
                 
@@ -4107,7 +4107,7 @@ func IdleLoop%()
                     
                     '''Lazy monkey timeout excised!  Uncomment to reinstate!
                     '                    ChangeStateTo(stateLazyMonkeyTimeout%);
-                    ChangeStateTo(stateDetermineRewardType);
+                    ChangeStateTo(stateDetermineRewardType%);
                 endif;
                 
             else  'but if paused, check to see if we have a call out to a dialog box to change values
@@ -4130,10 +4130,10 @@ func IdleLoop%()
             '            if tNow - tStateStart > recLazyMonkeyTO then
             '                RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
             '                recChangeRewardType% := 1;  'will change reward type after lazy timeout, if other conditions are met 
-            '                ChangeStateTo(stateDetermineRewardType);  'restart as if we had just finished loading
+            '                ChangeStateTo(stateDetermineRewardType%);  'restart as if we had just finished loading
             '                tNextTrial := tNow;
             '            endif
-            ChangeStateTo(stateDetermineRewardType);  'we should not enter this state
+            ChangeStateTo(stateDetermineRewardType%);  'we should not enter this state
             RecLogStatus("LazyMonkeyTimeout","Entered Lazy Monkey Timeout!  This should currently be disabled, so WTF?!?"); 'log status that cannot be reached put in for...reasons, I guess
             
             
@@ -4153,7 +4153,7 @@ func IdleLoop%()
                 'for all other experiments we are generous and treat this as a slip
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
                 SampleKey("S");  'turn off LED, do not respect flash sequence lockout
-                ChangeStateTo(stateDetermineRewardType);  'no interrupt penalty, it's probably a slip, just start over, trial already loaded
+                ChangeStateTo(stateDetermineRewardType%);  'no interrupt penalty, it's probably a slip, just start over, trial already loaded
                 tNextTrial := tNow;
                 recDelayIntervalInterrupt% := 1;
             case tNow - tStateStart >= recDelayIntervalTime then
@@ -5177,7 +5177,7 @@ func IdleLoop%()
             if tNow - tStateStart > recFalseAlarmTO then
                 RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
                 recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
-                'ChangeStateTo(stateDetermineRewardType);  'was stateInitializeTrials% but we want to repeat the stimulus
+                'ChangeStateTo(stateDetermineRewardType%);  'was stateInitializeTrials% but we want to repeat the stimulus
                 'ChangeStateTo(stateInitializeTrials%);  'No, actually, I don't think we do want to repeat the stimulus
                 'ACTUALLY - we want to shuffle this back in, since there's no diff between a false positive on the final
                 'stimulus and one on a prior stimulus.  Note that in the future there may be human experiments where this
