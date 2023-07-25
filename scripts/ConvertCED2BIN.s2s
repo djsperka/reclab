@@ -1,0 +1,160 @@
+'This script is an attempt to export CED continuous electrode data as binary data that will be readable by Kilosort
+
+var ConvertSaveDir$ := "None Selected";
+var ConvertSaveFileName$ := "";
+var SaveName$;
+var Text1%;
+var datawindow%;
+var chanToExport%[100];
+var nChanFound%;
+var i%;
+var n%;
+var tempN%;
+var currChan%;
+var t;
+var bh%;
+
+#include "recfuncs.s2s"
+
+
+'Run dialog to select save location for .mat file
+SaveLocationDialog();
+
+'Select and open desired .smr file
+datawindow% := FileOpen("*.smr*",0,9);
+
+'Determine save name, based on current .smr file, if not specified
+if ConvertSaveFileName$ = "" then  'use filename from just-opened file
+    SaveName$ := ConvertSaveDir$ + FileName$(3) + ".bin";
+    printlog("save name is %s\n",SaveName$);
+else  'use filename from dialog
+    SaveName$ := ConvertSaveDir$ + ConvertSaveFileName$  + ".bin";
+    printlog("save name is %s\n",SaveName$);
+endif;
+
+
+'Find channels to export, will fill nChanFound% and chanToExport%[]
+for i% := 3 to 23 do
+    AddChanIfPresent(i%);
+next
+
+'Create variable to hold data, and fill it
+var dumpSize% := 100000;  'We cannot dump the whole variable at once, but we can dump many points at a time - 10^5 is faster than either 10^4 or 10^6
+var dataOut%[nChanFound%][dumpSize%];
+t := 0;  'Start time at 0
+
+'Open binary file to write data to
+bh% := FileOpen(SaveName$,9,1);
+if bh% <= 0 then
+    message("File " + SaveName$ + " failed to open for binary writing!  Quitting!");
+    halt;
+endif 
+
+'Keep dumping to binary file until SMR file is completely dumped
+repeat
+    'Loop through present channels and fill dataOut%[][]
+    for i% := 0 to nChanFound%-1 do
+        currChan% := chanToExport%[i%];
+        tempN% := view(dataWindow%).ChanData(currChan%,dataOut%[i%][],t,view(dataWindow%).Maxtime(currChan%));  'fill dataOut%[][] and get number of elements 
+        if i% = 0 then
+            n% := tempN%;
+        else
+            n% := min(n%,tempN%);
+        endif
+    next
+    'Write to file
+    if n% > 0 then
+        view(bh%).BWriteSize(2,dataOut%[][:n%]);  'Write up to n% values on each channel present, use 2 (2 bytes) for int16
+        t := t + n%*view(dataWindow%).BinSize(currChan%);  'Update the time
+    endif;
+until n% <= 0;
+
+'Kilosort can open these files, but dies on pre-processing with an obscure error
+
+
+
+'Close file
+FileClose(bh%);  'close the file we just opened
+
+'We're done!
+
+
+'==============Subfunctions===============
+
+'
+'
+'===== AddChanIfPresent =====
+proc AddChanIfPresent(chan%)
+if ChanTitle$(chan%) <> "" then  
+    if ChanKind(chan%) <> 1 then  'If the channel is not a Waveform channel, something is wrong
+        message("Channel " + Str$(chan%) + " is expected to be a waveform channel but is not!  Quitting!");
+        halt;
+    endif
+    chanToExport%[nChanFound%] := chan%;
+    nChanFound% += 1;
+endif; 
+end
+'===== End AddChanIfPresent =====
+'
+'
+
+
+'
+'
+'===== SaveLocationDialog =====
+
+'A simple dialog box which allows us to select the location/filename of the file to write
+proc SaveLocationDialog()
+    var i%;
+    var key$;
+    
+    
+    key$:="Reclab\\ConvertCED2BIN";
+    
+    ConvertSaveDir$ := GetStringRegistryValue$(key$, "SaveDir", ConvertSaveDir$);
+    
+    DlgCreate("Select Save Location");
+    
+    Text1% := DlgText( "Last Save Directory: " + ConvertSaveDir$,2,1,100);
+    DlgButton(2, "Select New Save Directory",SelectSaveDir%,2,2);
+    
+    DlgString(1,"File save name (if different than filename)",25,"",0,4);
+    
+    DlgButton(1, "Select Data File", 0);
+    
+    i% := DlgShow(ConvertSaveFileName$);
+    
+    if i% = 1 then  'if user hit "Select Data File"
+        printlog("Save directory is %s and file name is %s\n",ConvertSaveDir$,ConvertSaveFileName$);
+    
+        SetStringRegistryValue(key$, "SaveDir", ConvertSaveDir$);
+    else
+        halt;
+    endif;
+    
+    
+end
+
+
+'===== End SaveLocationDialog =====
+'
+'
+
+
+
+'
+'
+'===== SelectSaveDir =====
+
+func SelectSaveDir%()
+
+    ConvertSaveDir$ := SelectDirectory$();  'This will have the ending slash
+    DlgValue$(Text1%,ConvertSaveDir$);  'update value in calling dialog
+    
+	return 1;  'return 1 so calling dialog doesn't close
+    
+end;
+
+'===== End SelectSaveDir =====
+'
+'
