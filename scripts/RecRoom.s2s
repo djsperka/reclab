@@ -3473,7 +3473,8 @@ i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay,
         recExpToRun% := recExpJoyTrnButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
-    
+        
+        recFixLED% := 0;
         recActive% := 1;
     
         'assign JoyTrain-specific variables to experiment-wide variables here????
@@ -3667,6 +3668,7 @@ func RecLongToneDialog%()
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
         recDoRove% := 0;  'Do not allow roving in longtone
+        recFixLED% := 0;  'Long tone goes through different pathway, but reset value anyway
         
         LongDurs[4] := recLongToneSilentDur;  'update this value once we have 
         
@@ -4459,6 +4461,7 @@ func RecExpStereoDisDialog%()
         recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
             
         recActive% := recStereoDisActive%;
+        recFixLED% := 1;
         
         recTrialInitReward% := recStereoDisTrialInitReward%;
         recTrialHoldReward% := recStereoDisTrialHoldReward%;
