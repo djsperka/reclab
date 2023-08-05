@@ -594,6 +594,9 @@ var recTurnOffReward%;              'Do we turn off the reward?
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
 var recContinueSoundOnS2Interrupt%; 'If 0, stop sound on S2 interrupt, otherwise continue
     
+'House Light
+var recHouseLight%;                 'If 0, no house light. If 1, house light all expt. If 2 house light turns off during any timeout    
+    
 'Utility variables
 var iglob%;                         'General looping variable, global scope
 var fhglob%;                        'General file handle variable, global scope
@@ -4609,6 +4612,11 @@ func RecExpTimingRewardDialog%()
 '    rewardType$[4] := "Set probabilities";
 '    rewardType$[5] := "Juice + Stim(sometimes)";
     
+    var houseLightType$[3];
+    houseLightType$[0] := "None";
+    houseLightType$[1] := "House Light On";
+    houseLightType$[2] := "House Light w/Timeout";
+    
     intStr$[0] := "Stop Sound";
     intStr$[1] := "Complete Sound";
 
@@ -4647,7 +4655,7 @@ func RecExpTimingRewardDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 22);
+    DlgCreate("Timing and Reward Dialog", 0, 0, trwid%, 25);
     DlgGroup("Timing Parameters",1,1,trwid%-2,4);
     DlgReal(1,12,0,10,c1%,2); DlgText("Minimum Onset Delay (ITI), s",c1txt%,2);
     DlgReal(2,12,0,10,c1%,3); DlgText("Variable Onset Delay (ITI), s",c1txt%,3);
@@ -4690,11 +4698,14 @@ func RecExpTimingRewardDialog%()
     DlgList(18,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
     DlgList(19,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
     
+    DlgGroup("House Light",1,22,trwid%-2,2);
+    DlgList(24,20,houseLightType$[],3,c1%-8,23); DlgText("House Light",c1txt%,23);
+    
     DlgAllow(0xffff, 0, RecExpTimingRewardDialogChanged%);
         
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recISIVariable,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
                 eightReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
-                recJuiceWaterBooth%,recInitialJuiceVolumemL);
+                recJuiceWaterBooth%,recInitialJuiceVolumemL,recHouseLight%);
     
 'Retained code for using stimulation reward that will probably never ever come back    
 '    i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
@@ -4872,6 +4883,7 @@ proc RecTimingRewardGetParams()
     recJuiceToStimDelay% := GetIntRegistryValue%(key$, "JuiceToStimDelay", recJuiceToStimDelay%);
     recJuiceWaterBooth% := GetIntRegistryValue%(key$, "JuiceWaterBooth", recJuiceWaterBooth%);
     recInitialJuiceVolumemL := GetFloatRegistryValue(key$, "InitialJuiceVolumemL", recInitialJuiceVolumemL);
+    recHouseLight% := GetIntRegistryValue%(key$, "HouseLight", recHouseLight%);
     
 	return;
 end
@@ -4921,6 +4933,7 @@ proc RecTimingRewardSaveParams()
     SetIntRegistryValue(key$, "JuiceToStimDelay", recJuiceToStimDelay%);
     SetIntRegistryValue(key$, "JuiceWaterBooth", recJuiceWaterBooth%);
     SetFloatRegistryValue(key$, "InitialJuiceVolumemL", recInitialJuiceVolumemL);
+    SetIntRegistryValue(key$, "HouseLight", recHouseLight%);
     
 	return;
 end

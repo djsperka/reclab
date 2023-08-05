@@ -3780,6 +3780,9 @@ func IdleLoop%()
             'This state is only entered once per "experiment" - once per each time the template file passes control
             SilencePA4%();  'Set active PA4s to 99
             RecLogStatus("Start", "Starting state logic loop.");
+            if recHouseLight% > 0 then  'if using house light, turn on at start of experiment
+                SafeSampleKey("V");
+            endif
             docase
             case recExpToRun% = recExpCharButton% then
                 ChangeStateTo(stateCharInitializeTrials%);
@@ -3809,6 +3812,7 @@ func IdleLoop%()
             if RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
+                SafeSampleKey("v");  'turn off house LED
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
             endif;
             
@@ -3894,6 +3898,7 @@ func IdleLoop%()
             if RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
+                SafeSampleKey("v");  'turn off house LED
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
             endif;
             
@@ -4042,6 +4047,9 @@ func IdleLoop%()
                     if tNow > recTrialInitWindow + tNextTrial then  'Use trial init window both for getting into origin and starting trial
                         '''Lazy monkey timeout excised!  Uncomment to reinstate!
                         '                        RecLogStatus("PreBlinkPeriod", "Timeout waiting for lever/joystick into origin.");
+                        '                        if recHouseLight% = 2 then
+                        '                            SafeSampleKey("v");  'turn off house LED
+                        '                        endif;
                         '                        ChangeStateTo(stateLazyMonkeyTimeout%);                        
                         RecLogStatusSpecificTime("PreBlinkPeriod", "Waiting for joystick in origin, still waiting, NOT going to timeout",tNow);
                         tNextTrial := tNow;  'reset tNextTrial so this does not repeat EVERY loop
@@ -4067,6 +4075,8 @@ func IdleLoop%()
             case RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return, this prevents us from getting stuck if the monkey won't start a trial
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
+                SafeSampleKey("S");  'turn off LED
+                SafeSampleKey("v");  'turn off house LED
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
 
             case recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
@@ -4106,6 +4116,9 @@ func IdleLoop%()
                     ChangeThresh2(doDecTrialInit%[]);
                     
                     '''Lazy monkey timeout excised!  Uncomment to reinstate!
+                    '                    if recHouseLight% = 2 then
+                    '                        SafeSampleKey("v");  'turn off house LED
+                    '                    endif;
                     '                    ChangeStateTo(stateLazyMonkeyTimeout%);
                     ChangeStateTo(stateDetermineRewardType%);
                 endif;
@@ -4128,6 +4141,9 @@ func IdleLoop%()
             '''Lazy monkey timeout excised!  Uncomment to reinstate!
             '            CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, default assign to in origin
             '            if tNow - tStateStart > recLazyMonkeyTO then
+            '                if recHouseLight% = 2 then
+            '                    SafeSampleKey("V");  'turn on house LED
+            '                endif;
             '                RecLogStatus("LazyMonkeyTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " ready.");
             '                recChangeRewardType% := 1;  'will change reward type after lazy timeout, if other conditions are met 
             '                ChangeStateTo(stateDetermineRewardType%);  'restart as if we had just finished loading
@@ -4148,6 +4164,9 @@ func IdleLoop%()
                 RecLogStatus("DelayInterval", "False Alarm during delay.");
                 ChangeStateTo(stateFalseAlarmAudiogram%); 
                 SampleKey("S");  'turn off LED, do not respect flash sequence lockout
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 recDelayIntervalInterrupt% := 1;
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 'for all other experiments we are generous and treat this as a slip
@@ -4257,6 +4276,9 @@ func IdleLoop%()
                     isInterrupt% := 0;  'reset variable
                     StimComplete%(0, 0);  'recPreciseTrialTime was determined when interrupt occurred
                     SafeSampleKey("S");  'Turn off LED
+                    if recHouseLight% = 2 then
+                        SafeSampleKey("v");  'turn off house LED
+                    endif;
                     ChangeStateTo(stateFAInterrupt%);  'on FA interrupt, reshuffle entire stim sequence in later
                 else
                     ChangeStateTo(stateISIDelay%);
@@ -4292,6 +4314,9 @@ func IdleLoop%()
                 recPreciseTrialTime := recLeverTime;  'time false positive occurred
                 StimComplete%(0, 0);
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 ChangeStateTo(stateFAInterrupt%);  'this is a false alarm, but S2 has not played, so shuffle stimulus sequence back in
             else
                 if tempRand < 0 then  'YOU CAN'T KEEP RECOMPUTING THE RANDOM NUMBER
@@ -4870,6 +4895,9 @@ func IdleLoop%()
                 endcase
                 
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 numMisses% += 1;  'increment MISS counter
                 ChangeStateTo(stateMissTimeout%);  'Early miss used to considered interrupt, which was BAD CODING and screwed things up
                 
@@ -4897,6 +4925,9 @@ func IdleLoop%()
                     ChangeStateTo(stateHitReward%);
                     numHits% += 1; 'increment HIT counter
                 else
+                    if recHouseLight% = 2 then
+                        SafeSampleKey("v");  'turn off house LED
+                    endif;
                     ChangeStateTo(stateMissTimeout%);
                     numMisses% += 1;  'increment MISS counter
                 endif;
@@ -4907,6 +4938,9 @@ func IdleLoop%()
                 'time of early FA is recorded above
                 StimComplete%(2, 0);  'terminal S1
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 numFPs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
                 'Early CR, interrupted final stimulus, this is OK   
@@ -4985,6 +5019,9 @@ func IdleLoop%()
                 endcase
                 
                 numMisses% += 1;  'increment MISS counter
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 ChangeStateTo(stateMissTimeout%);
                 'ACTIVE AMDis/SpaceDis/StereoDis LO Miss, FC only, GNG case must be dealt with earlier in CASE statement   
             case inResponse1% = 1 and responseMode% = 3 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton%) then 'LO, MISS 
@@ -5007,6 +5044,9 @@ func IdleLoop%()
                     printlog("not repeating missed trials \n");
                 endcase
                 numMisses% += 1;  'increment MISS counter
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 ChangeStateTo(stateMissTimeout%);
                 
                 'SAME trial, in either response window    
@@ -5034,6 +5074,9 @@ func IdleLoop%()
                     numHits% += 1; 'increment HIT counter
                 else
                     ChangeStateTo(stateMissTimeout%);
+                    if recHouseLight% = 2 then
+                        SafeSampleKey("v");  'turn off house LED
+                    endif;
                     numMisses% += 1; 'increment MISS counter
                 endif;
                 
@@ -5054,6 +5097,9 @@ func IdleLoop%()
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(2, 0);  'terminal S1
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 numFPs% += 1;  'increment FA counter
                 ChangeStateTo(stateFalsePositive%);
                 'CR in response window    
@@ -5072,6 +5118,9 @@ func IdleLoop%()
                 recPreciseTrialTime := recLeverTime;  'time FA occurred
                 StimComplete%(1, 0);
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 numMisses% += 1;  'increment MISS counter
                 'ChangeStateTo(stateFalsePositive%); 'should this be MissTimeout?? - reshuffle trial?
                 ChangeStateTo(stateMissTimeout%);
@@ -5104,6 +5153,9 @@ func IdleLoop%()
                 endif;
                 RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
                 numNRs% += 1;  'increment NR counter!
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 ChangeStateTo(stateMissTimeout%);  'go to miss timeout for no response --> OR, delete reshuffling above and do FA timeout
                 
                 'ACTIVE StereoDis HI Miss, GNG only
@@ -5111,6 +5163,9 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (HI)"); 
                 StimComplete%(responseMode%, 0);  'StimComplete%(1, 0);
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 numMisses% += 1;  'increment MISS counter
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 ChangeStateTo(stateMissTimeout%);
@@ -5119,6 +5174,9 @@ func IdleLoop%()
                 RecLogStatus("InResponseWindow", "Lever not up - timed out - MISS (LO)"); 
                 StimComplete%(responseMode%, 0);  'StimComplete%(3, 0);
                 SafeSampleKey("S");  'Turn off LED
+                if recHouseLight% = 2 then
+                    SafeSampleKey("v");  'turn off house LED
+                endif;
                 numMisses% += 1;  'increment MISS counter
                 recPreciseTrialTime := tNow;  'time response window closed - note we could be more precise (e.g. tStateStart + recResponseWindow) but why?  There's no "event"
                 ChangeStateTo(stateMissTimeout%);
@@ -5133,7 +5191,10 @@ func IdleLoop%()
                     recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
                     ChangeStateTo(statePreTrialDelay%);  'for the audiogram, misses are expected, just change state to pre-trial delay and do not turn off LED
                 else
-                    SafeSampleKey("");  'Turn off LED
+                    SafeSampleKey("S");  'Turn off LED
+                    if recHouseLight% = 2 then
+                        SafeSampleKey("v");  'turn off house LED
+                    endif;
                     ChangeStateTo(stateMissTimeout%);
                 endif;
                 StimComplete%(1, 0);  'must come after UpdateAudiogram()
@@ -5161,6 +5222,9 @@ func IdleLoop%()
             thisHitReward := 0; 'reset thisreward
             if tNow - tStateStart > recMissTO then
                 RecLogStatus("MissTimeout", "Timeout period done.");
+                if recHouseLight% = 2 then
+                    SafeSampleKey("V");  'turn on house LED
+                endif;
                 recChangeRewardType% := 1;  'will change reward type after miss, if other conditions are met 
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
                 tNextTrial := tNow;  'ready to go
@@ -5175,6 +5239,9 @@ func IdleLoop%()
             'if Miss or FA, reset to thisHitReward so that it will go to base reward next time:
             thisHitReward := 0; 'reset thisreward
             if tNow - tStateStart > recFalseAlarmTO then
+                if recHouseLight% = 2 then
+                    SafeSampleKey("V");  'turn on house LED
+                endif;
                 RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
                 recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
                 'ChangeStateTo(stateDetermineRewardType%);  'was stateInitializeTrials% but we want to repeat the stimulus
@@ -5202,6 +5269,9 @@ func IdleLoop%()
             'the same intensity and same staircase state as before
             CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate inorigin for debug
             if tNow - tStateStart > recFalseAlarmTO then
+                if recHouseLight% = 2 then
+                    SafeSampleKey("V");  'turn on house LED
+                endif;
                 RecLogStatus("FalsePositiveTimeout", "Timeout period done.");
                 recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
                 
@@ -5221,6 +5291,9 @@ func IdleLoop%()
             'advance the stimulus, much less shuffle it in later.
             CheckLever%("inOrigin%",1);  'Flush lever/joystick during timeout, just simulate in origin for debug
             if tNow - tStateStart > recFalseAlarmTO then
+                if recHouseLight% = 2 then
+                    SafeSampleKey("V");  'turn on house LED
+                endif;
                 'RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being reshuffled.");
                 RecLogStatus("FAInterruptTimeout", "Timeout period done. Trial #" + str$(recCurrentTrial%) + " being repeated.");
                 recChangeRewardType% := 1;  'will change reward type after FA, if other conditions are met 
@@ -5380,6 +5453,7 @@ func IdleLoop%()
             PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");
             'PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
             SafeSampleKey("S");  'Turn off LED
+            SafeSampleKey("v");  'Turn off House LED, whether it's on or not
             RecLogStatus("Done", "");
             iStatus% := 0;
             recReadyToQuit% := 0;
@@ -5666,6 +5740,7 @@ func IdleLoop%()
                 printlog("All long tone trials complete!\n");
                 iStatus% := 0;
                 recReadyToQuit% := 0;
+                SafeSampleKey("v");  'Turn off House LED
                 ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
             else
                 printlog("Waiting for next stimulus start time\n");
@@ -5696,6 +5771,7 @@ func IdleLoop%()
             message("A TDT error has occurred!  Quitting!");
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version, we are quitting
+            SampleKey("v");  'Turn off House LED, don't use safe version, we are quitting
             iStatus% := 0;
             Stop%();
             
@@ -5712,6 +5788,7 @@ func IdleLoop%()
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version, we are quitting
+            SampleKey("v");  'Turn off House LED, don't use safe version, we are quitting
             Stop%();
             
             
@@ -5724,6 +5801,7 @@ func IdleLoop%()
             iStatus% := 0;
             recReadyToQuit% := 1;  'This will allow the entire thing to quit
             SampleKey("S");  'Turn off LED, don't use safe version, we are quitting
+            SampleKey("v");  'Turn off House LED, don't use safe version, we are quitting
             Stop%();          
         endcase
         
