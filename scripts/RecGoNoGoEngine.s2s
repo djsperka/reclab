@@ -3780,7 +3780,7 @@ func IdleLoop%()
             'This state is only entered once per "experiment" - once per each time the template file passes control
             SilencePA4%();  'Set active PA4s to 99
             RecLogStatus("Start", "Starting state logic loop.");
-            if recHouseLight% > 0 then  'if using house light, turn on at start of experiment
+            if recHouseLight% > 0 then  'if using house light, turn on at start of experiment - user should have turned it on already, but it can't hurt
                 SafeSampleKey("V");
             endif
             docase
@@ -3812,7 +3812,7 @@ func IdleLoop%()
             if RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
-                SafeSampleKey("v");  'turn off house LED
+                'SafeSampleKey("v");  'turn off house LED
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
             endif;
             
@@ -3898,7 +3898,7 @@ func IdleLoop%()
             if RTESDIsPressed% = 1 then  'if the ReturnToExperimentSelectionDialog button has been pressed, this is where we return
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
-                SafeSampleKey("v");  'turn off house LED
+                'SafeSampleKey("v");  'turn off house LED
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
             endif;
             
@@ -4076,7 +4076,7 @@ func IdleLoop%()
                 ReturnToExptSelectDialog%();  'this doesn't actually get us out...but it changes some variables
                 iStatus% := 0;  'this is how we get out
                 SafeSampleKey("S");  'turn off LED
-                SafeSampleKey("v");  'turn off house LED
+                'SafeSampleKey("v");  'turn off house LED
                 nextStateImmed% := 0;  'this keeps the rest of everything from executing
 
             case recIsPaused% = 0 and iStatus% = 1 then  'if not paused and we actually keep going, do trial initialization
@@ -5453,7 +5453,7 @@ func IdleLoop%()
             PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");
             'PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
             SafeSampleKey("S");  'Turn off LED
-            SafeSampleKey("v");  'Turn off House LED, whether it's on or not
+            'SafeSampleKey("v");  'Turn off House LED, whether it's on or not
             RecLogStatus("Done", "");
             iStatus% := 0;
             recReadyToQuit% := 0;
@@ -5740,7 +5740,7 @@ func IdleLoop%()
                 printlog("All long tone trials complete!\n");
                 iStatus% := 0;
                 recReadyToQuit% := 0;
-                SafeSampleKey("v");  'Turn off House LED
+                'SafeSampleKey("v");  'Turn off House LED
                 ReturnToExptSelectDialog%();  'If the current expt. is "done" allow another to be run without stopping sampling
             else
                 printlog("Waiting for next stimulus start time\n");
