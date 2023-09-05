@@ -1077,13 +1077,13 @@ while recReadyToQuit% = 0 do
         if trialsOK% = 1 and stimOK% = 1 and calibOK% = 1 then
             
             'Make sure that the trials file does not specify more stimuli than are present in the Stim or Stim/Cal file
-            if max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]) <= recTotalStim% then
-                printlog("All stimuli in trials file are accounted for in Stim or Stim/Cal file!\n");
-            else
-                printlog("Maximum stimulus in trials file is %d but not only %d stimuli are specified in Stim or Stim/Cal file!\n",max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]),recTotalStim%);
-                message("Starting Over!|Trials File specifies illegal stimulus number!");
-                trialsOK% := -1;
-            endif;
+            'if max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]) <= recTotalStim% then
+            '    printlog("All stimuli in trials file are accounted for in Stim or Stim/Cal file!\n");
+            'else
+            '    printlog("Maximum stimulus in trials file is %d but not only %d stimuli are specified in Stim or Stim/Cal file!\n",max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]),recTotalStim%);
+            '    message("Starting Over!|Trials File specifies illegal stimulus number!");
+            '    trialsOK% := -1;
+            'endif;
             
             'Make sure that the trials file does not specify more speakers than are present in the selected speaker array
             'Use recTrialDur[], recTrialS1Spkr%[], recTrialS2Spkr%[]
@@ -1589,6 +1589,8 @@ func RecVerifyInputFile%(fileIn$)
         printlog("File %s appears to be a Tone/Noise/AM generation file\n",fileIn$);
     case temp$ = "DurMS" then
         printlog("File %s appears to be a Stimulus file\n",fileIn$);
+    case temp$ = "Index" then
+        printlog("File %s appears to be a Stimulus file with index column\n",fileIn$);
     else
         printlog("File %s does not appear to have a header line!  Failure to read!\n",fileIn$);
         message("Starting over!|File %s does not appear to have a header line!",fileIn$);
