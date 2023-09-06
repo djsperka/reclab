@@ -676,7 +676,7 @@ proc InitializeWindows()
         
         'Setup PSTH/raster plots
         if recSearchDoPSTH% = 1 then
-            HistTotal := HistPre + HistPost + (recTrialDur[0])/1000;  'Trial duration is same on all trials for Search, recTrialDur is in MILLISECONDS
+            HistTotal := HistPre + HistPost + (recTrialStimDur[0])/1000;  'Stimulus duration is same on all trials for Search, recTrialStimDur is in MILLISECONDS
             HistBins% := HistTotal/HistBinWidth;
             for i% := 0 to 3 do
                 if recSearchWMPorts%[i%] > -1 then  'if the port is off, don't make a PSTH
@@ -1215,8 +1215,8 @@ Func PlaySound%(isS2local%)
     endif
     
     'Calculate the duration in points of the stimulus
-    'recPlayPoints% := recPlayRateHzCurrent*recTrialDur[recPWAList%[recStimCount%][playInd%]]/1000;  'recTrialDur is in ms   
-    recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStim%]/1000;  'recTrialDur is in ms     
+    'recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[recPWAList%[recStimCount%][playInd%]]/1000;  'recTrialStimDur is in ms   
+    recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStim%]/1000;  'recTrialStimDur is in ms     
     
     return status%;
 end
@@ -1560,17 +1560,17 @@ Func PlayTwoSounds%(whichStim%)
     'Calculate the duration in points of the stimulus 
     docase
 '    case recExpToRun% = recExpCharButton% and recCharLoadStim% = 1 then  'Now unused, FRA now goes through PlaySound
-'        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms
+'        recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStimArray%]/1000;  'recTrialStimDur is in ms
     case recExpToRun% = recExpCharButton% then 'and recCharLoadStim% = 3 then 
-        recPlayPoints% := recPlayRateHzCurrent*Max(recTrialDur[rec2StimList%[playInd%][0]],recTrialDur[rec2StimList%[playInd%][1]]);
-    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
+        recPlayPoints% := recPlayRateHzCurrent*Max(recTrialStimDur[rec2StimList%[playInd%][0]],recTrialStimDur[rec2StimList%[playInd%][1]]);
+    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 and whichStim% > 0 and recTrialStimDur[thisStimArray%] > recTrialStimDur[thisStimSA%] then 'if wrapping distractor around S2 
         recPlayPoints% := recPlayRateHzCurrent*recTrialDurDistractor[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then  
-        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
-    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 and whichStim% > 0 and recTrialDur[thisStimArray%] > recTrialDur[thisStimSA%] then 'if wrapping distractor around S2 
-        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimArray%]/1000;  'recTrialDur is in ms, duration of distractor
+        recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStimSA%]/1000;  'recTrialStimDur is in ms, duration of S1/S2
+    case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 and whichStim% > 0 and recTrialStimDur[thisStimArray%] > recTrialStimDur[thisStimSA%] then 'if wrapping distractor around S2 
+        recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStimArray%]/1000;  'recTrialStimDur is in ms, duration of distractor
     case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then  
-        recPlayPoints% := recPlayRateHzCurrent*recTrialDur[thisStimSA%]/1000;  'recTrialDur is in ms, duration of S1/S2
+        recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStimSA%]/1000;  'recTrialStimDur is in ms, duration of S1/S2
     endcase
     
     return status%;
@@ -2819,6 +2819,15 @@ func PrepareNextTrial%(loadPWAs%)
     
     
     if loadPWAs% = 1 then
+        'Make sure recNUniqueStims%[] has been filled, otherwise there will be no stimulus created
+        if recNUniqueStims%[thisTrial%] < 1 then
+            message("recNUniqueStims was not filled for trial " + str$(thisTrial%+1) + ", no stimulus created!!");
+            view(recLog%).print("ERROR: PrepareNextTrial - recNUniqueStims not filled, quitting!\n");
+            recReadyToQuit% := 1;  'This will allow the entire thing to quit
+            SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+            Stop%();
+            return -1;
+        endif;
         ' Generate/Load stimuli and put them into PlayWaveAreas
         'for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
         for i% := 0 to recNUniqueStims%[thisTrial%]-1 do
@@ -2856,7 +2865,7 @@ func PrepareNextTrial%(loadPWAs%)
                 loadStart := Seconds();
                 
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialStimDur[ind%]);  'size of stimulus is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[ind%]);
@@ -2893,7 +2902,7 @@ func PrepareNextTrial%(loadPWAs%)
                 statement$ := "calibval = AFFT(spk).dB;";
                 EvalMatlabStatement%(statement$);
                 'printlog("%s\n",statement$);
-                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("Values are %d %d %d %d ",recTrialStimDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
                 'printlog("%d %d %d %d %d ",recTrialGenIsSweep[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
@@ -3010,7 +3019,7 @@ func PrepareNextTrial%(loadPWAs%)
         next;
     endif;
     
-    recDur := recTrialDur[ind%]; 
+    recDur := recTrialStimDur[ind%]; 
     
     recStimCount% := 0;  'Reset stim count
     return ok%;
@@ -3129,9 +3138,9 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                 thisSpkr% := recSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
                 
                 'determine if S2 should be wrapped by a distractor; if the distractor is longer, wrap it; S1s (i% = 0) do not have a distractor
-                if i% > 0 and recTrialDur[indD%] > recTrialDur[ind%] then
+                if i% > 0 and recTrialStimDur[indD%] > recTrialStimDur[ind%] then
                     isWrapped% := 1;
-                    frontPadMs := (recTrialDur[indD%]-recTrialDur[ind%])/2;  'The front padding, in ms, is half of the excess, because we also back pad
+                    frontPadMs := (recTrialStimDur[indD%]-recTrialStimDur[ind%])/2;  'The front padding, in ms, is half of the excess, because we also back pad
                     frontPadPoints% := recPlayRateHzCurrent*frontPadMs/1000;
                     matPutOK% := matPutOK% + PutMatlabValueInt%("fpp",frontPadPoints%);  'And put this in the matlab!
                 else
@@ -3140,12 +3149,12 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
 
                 
                 'Generate the stimulus, for stereo dis this will be an AM
-                printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialDur[ind%]);
+                printlog("ind is %d and recTrialDur is %f\n",ind%,recTrialStimDur[ind%]);
                 
                 loadStart := Seconds();
                 
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialStimDur[ind%]);  'size of stimulus is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[ind%]);
@@ -3188,7 +3197,7 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                 EvalMatlabStatement%(statement$);
                 'Debug only
                 'printlog("%s\n",statement$);
-                'printlog("Values are %d %d %d %d ",recTrialDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
+                'printlog("Values are %d %d %d %d ",recTrialStimDur[ind%],recPlayRateHzCurrent,recTrialGenLowpassHz[ind%],recTrialGenHighpassHz[ind%]);
                 'printlog("%d %d %d %d %d ",recTrialGenIsSweep[ind%],recTrialGenAMFreqHz[ind%],recTrialGenAMDepthPct[ind%],recTrialGenAMPhaseDeg[ind%],recTrialGenTonePhaseDeg[ind%]);
                 'printlog("%d %d %d %d %d \n",recTrialGenGauss%[ind%],recTrialGenRampMS[ind%],recTrialGenSeed%[ind%],recMaxPoints%,thisSpkr%);
                 
@@ -3217,12 +3226,12 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                     
                     'get speaker of trial, used to calculate attenuation 
                     thisSpkr% := recDistractorSpeakerList%[i%][thisTrial%];  'Only the distractor changes speaker
-                    printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialDur[indD%]);
+                    printlog("ind is %d and recTrialDur is %f\n",indD%,recTrialStimDur[indD%]);
                     
                     loadStart := Seconds();
                     
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
-                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[indD%]);  'size of trial is variable, that's OK
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialStimDur[indD%]);  'size of stimulus is variable, that's OK
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[indD%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[indD%]);  'Ditto
                     matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[indD%]);
@@ -3255,7 +3264,7 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                     EvalMatlabStatement%(statement$);
                     'debug only
                     'printlog("%s\n",statement$);
-                    'printlog("Values are %d %d %d %d ",recTrialDur[indD%],recPlayRateHzCurrent,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
+                    'printlog("Values are %d %d %d %d ",recTrialStimDur[indD%],recPlayRateHzCurrent,recTrialGenLowpassHz[indD%],recTrialGenHighpassHz[indD%]);
                     'printlog("%d %d %d %d %d ",recTrialGenIsSweep[indD%],recTrialGenAMFreqHz[indD%],recTrialGenAMDepthPct[indD%],recTrialGenAMPhaseDeg[indD%],recTrialGenTonePhaseDeg[indD%]);
                     'printlog("%d %d %d %d %d \n",recTrialGenGauss%[indD%],recTrialGenRampMS[indD%],recTrialGenSeed%[indD%],recMaxPoints%,thisSpkr%);
                     
@@ -3417,8 +3426,8 @@ func PrepareNextTrialParallel%(loadPWAs%)
     ' Get index of current trial
     thisTrial% := recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
     
-    'recDur := recTrialDur[rec2StimList%[thisTrial%][0]]; 
-    recDur := Max(recTrialDur[rec2StimList%[thisTrial%][0]],recTrialDur[rec2StimList%[thisTrial%][1]]);  'Just in case stimuli are different durations   
+    'recDur := recTrialStimDur[rec2StimList%[thisTrial%][0]]; 
+    recDur := Max(recTrialStimDur[rec2StimList%[thisTrial%][0]],recTrialStimDur[rec2StimList%[thisTrial%][1]]);  'Just in case stimuli are different durations   
     
     ' Put current trial sequence into log file
     if recDebug% > 0 then
@@ -3481,7 +3490,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 loadStart := Seconds();
                 
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);  'on any fail, matPutOK% will increment (negative ones)
-                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialDur[ind%]);  'size of trial is variable, that's OK
+                matPutOK% := matPutOK% + PutMatlabValueFloat%("dur",recTrialStimDur[ind%]);  'size of stimulus is variable, that's OK
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("lohz",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("hihz",recTrialGenHighpassHz[ind%]);  'Ditto
                 matPutOK% := matPutOK% + PutMatlabValueFloat%("issweep",recTrialGenIsSweep[ind%]);
@@ -3505,7 +3514,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 endif;
                 
 '                printlog("Sampling freq %f\n",recPlayRateHzCurrent);
-'                printlog("dur %f\n",recTrialDur[ind%]);  'size of trial is variable, that's OK
+'                printlog("dur %f\n",recTrialStimDur[ind%]);  'size of trial is variable, that's OK
 '                printlog("lohz %f\n",recTrialGenLowpassHz[ind%]);  'Value of lowpass Hz or tone freq will be correctly interpreted by Matlab
 '                printlog("hihz %f\n",recTrialGenHighpassHz[ind%]);  'Ditto
 '                printlog("issweep %d\n",recTrialGenIsSweep[ind%]);
@@ -4105,15 +4114,15 @@ func IdleLoop%()
                     ChangeStateTo(stateTrialInitReward%);
                 case recExpToRun% = recExpOneStimDiscrimButton% then  'One stim discrimination experiments skip SoundA
                     docase
-                    case recTrialTerminalIsS2%[recCurrentTrial%-1] = 1 then
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 1 then
                         ChangeStateTo(stateStartSoundB%);
                         isS2% := 1;  'Indicates expected response is for "target" 
                         isTerminalS1% := 0;
-                    case recTrialTerminalIsS2%[recCurrentTrial%-1] = 2 then
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 then
                         ChangeStateTo(stateStartSoundD%);
                         isS2% := 3;  'Indicates expected response is for "nontarget" 
                         isTerminalS1% := 0;
-                    else 'recTrialTerminalIsS2%[recCurrentTrial%-1] = 0 then 'I guess go here if something weird happens
+                    else 'recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 0 then 'I guess go here if something weird happens
                         ChangeStateTo(stateStartSoundC%);
                         isS2% := 2;  'Indicates no expected response
                         isTerminalS1% := 1;
@@ -4301,7 +4310,7 @@ func IdleLoop%()
                 RecLogStatus("Char WaitISI", "ISI done.");
                 recPreciseTrialTime := tNow;  'time ISI is complete
                 isTerminalS1% := 0;  'arbitrary for right now, CharStimComplete() does not return this value anyhow.
-                if recCharReward%[recCurrentTrial%-2] then 'if this trial is rewarded, is -2 because recCurrentTrial% is a zero-based index (-1) AND has been incremented already, even though we associate the reward with the previous trial (-1)
+                if recCharReward%[recTrialOrder%[recCurrentTrial%-2]] then 'if this trial is rewarded, is -2 because recCurrentTrial% is a zero-based index (-1) AND has been incremented already, even though we associate the reward with the previous trial (-1)
                     ChangeStateTo(stateCharHitReward%);
                 else 'if not keep going
                     ChangeStateTo(stateStartSoundE%);
@@ -4727,15 +4736,15 @@ func IdleLoop%()
                 'Decide next state based on what experiment is happening
                 if recExpToRun% = recExpOneStimDiscrimButton% then  'One stim discrimination experiments skip SoundA
                     docase
-                    case recTrialTerminalIsS2%[recCurrentTrial%-1] = 1 then
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 1 then
                         ChangeStateTo(stateStartSoundB%);
                         isS2% := 1;  'Indicates expected response is for "target" 
                         isTerminalS1% := 0;
-                    case recTrialTerminalIsS2%[recCurrentTrial%-1] = 2 then
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 then
                         ChangeStateTo(stateStartSoundD%);
                         isS2% := 3;  'Indicates expected response is for "nontarget" 
                         isTerminalS1% := 0;
-                    else 'recTrialTerminalIsS2%[recCurrentTrial%-1] = 0 then 'I guess go here if something weird happens
+                    else 'recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 0 then 'I guess go here if something weird happens
                         ChangeStateTo(stateStartSoundC%);
                         isS2% := 2;  'Indicates no expected response
                         isTerminalS1% := 1;
@@ -6128,22 +6137,20 @@ func BehOutput(resultCode$, isS2local%)
         view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$,StimOn,recLeverTime);
     case recExpToRun% = recExpCharButton% and (recCharLoadStim% =  2 or recCharLoadStim% = 4) then  'signoise, two stims
         'calc dB for each one
-        dB1 := 65-rec2DeltadBList[recCurrentTrial%-1][0];
-        dB2 := 65-rec2DeltadBList[recCurrentTrial%-1][1];
+        dB1 := 65-rec2DeltadBList[recTrialOrder%[recCurrentTrial%-1]][0];
+        dB2 := 65-rec2DeltadBList[recTrialOrder%[recCurrentTrial%-1]][1];
         
-        'view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][0],rec2SpeakerList%[recCurrentTrial%][0]);  'this was not fixed until 3-31-21
-        'view(fh%).print("%d\t%d\t",rec2StimList%[recCurrentTrial%][1],rec2SpeakerList%[recCurrentTrial%][1]);
         view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[recCurrentTrial%-1]][0],rec2SpeakerList%[recTrialOrder%[recCurrentTrial%-1]][0]);
         view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[recCurrentTrial%-1]][1],rec2SpeakerList%[recTrialOrder%[recCurrentTrial%-1]][1]);
         view(fh%).print("%f\t%f\t",dB1,dB2);
-        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recCurrentTrial%-1]);    
+        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[recCurrentTrial%-1]]);    
     case recExpToRun% = recExpCharButton% then  'FRA/ArbStim otherwise, one stim at a atim
         'calc dB for each one
-        dB1 := 65-rec2DeltadBList[recCurrentTrial%-1][0];
+        dB1 := 65-rec2DeltadBList[recTrialOrder%[recCurrentTrial%-1]][0];
 
         view(fh%).print("%d\t%d\t",recStimList%[0][recTrialOrder%[recCurrentTrial%-1]],recSpeakerList%[0][recTrialOrder%[recCurrentTrial%-1]]);
         view(fh%).print("%f\t",dB1);
-        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recCurrentTrial%-1]);
+        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[recCurrentTrial%-1]]);
     
     case recExpToRun% = recExpStereoDisButton% then
         'This line is apparently not too long, but man, it's gotta be close.

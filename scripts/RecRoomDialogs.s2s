@@ -937,7 +937,7 @@ func RecExpSearchDialog%()
             
             'fill stimulus creation variables as if we had loaded a stimfile
             'do indices 0 and 1 because if the S2 is on a different speaker, it has to have a different calibration value, index 1 is the S2
-            arrconst(recTrialDur[0:2],200);              'Trial duration, hard code to 200 for all except variable for FM sweeps
+            arrconst(recTrialStimDur[0:2],200);              'Stimulus duration, hard code to 200 for all except variable for FM sweeps
             arrconst(recTrialGenRampMS[0:2],2);          'Duration in ms of front/back ramp, ramp is 1-Cos^2
             'A bunch of stuff we're just not using in Search
             arrconst(recTrialGenIsSweep[0:2],0);        'A list of whether each element is an FM sweep, if 0 no sweep
@@ -969,8 +969,8 @@ func RecExpSearchDialog%()
             case recSearchStimType% = 3 then  'for clicks, we won't use anything, just leave a note
                 printlog("Clicks selected from search dialog\n");
             case recSearchStimType% = 4 then  'for tone sweeps
-                'arrconst(recTrialDur[0:recSearchToneSweepNSteps%],50);
-                arrconst(recTrialDur[0:recSearchToneSweepNSteps%],200);
+                'arrconst(recTrialStimDur[0:recSearchToneSweepNSteps%],50);
+                arrconst(recTrialStimDur[0:recSearchToneSweepNSteps%],200);
                 'get the log progression with the new values
                 GetLogProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);            
                 'GetLinearProgression(recSearchToneSweepLowLim, recSearchToneSweepUpperLim, recSearchToneSweepNSteps%-1, recSearchToneSweepFreqList[]);
@@ -986,7 +986,7 @@ func RecExpSearchDialog%()
                 arrconst(recTrialGenHighpassHz[0:2],-1);      'Same as above, highpass
                 printlog("Speaker sweep (Broadband noise) selected from search dialog %d repeats\n", recSearchSpeakerSweepRepeats%);   
             case recSearchStimType% = 6 then 'for FM tone sweeps
-                arrconst(recTrialDur[0:2],recSearchFMDur*1000);  'put in duration, we expect ms
+                arrconst(recTrialStimDur[0:2],recSearchFMDur*1000);  'put in duration, we expect ms
                 var doFloatMath := recSearchFMNumReverses%;  'Have to put Int into Float to divide by 10 in next line
                 arrconst(recTrialGenIsSweep[0:2],1+(doFloatMath/10));  'Decimal holds the number of reverses
                 arrconst(recTrialGenLowpassHz[0:2],recSearchFMStartFreq);  'Put in start frequency

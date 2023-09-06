@@ -116,7 +116,7 @@ var recVarS1%;                      'Variable number of S1s
 var recPropCatch;                   'Proportion of catch trials
 var recTrialLoadLoc$[recMaxStim%];            'Disk location of files to load, stim/cal file
 var recTrialLoadLocDistractor$[recMaxStim%];  'Disk location of files to load, stim/cal file, distractors
-var recTrialDur[recMaxStim%];       '          Duration of each stimulus, in ms, stim/cal OR stim file
+var recTrialStimDur[recMaxStim%];             'Duration of each stimulus, in ms, stim/cal OR stim file
 var recTrialDurDistractor[recMaxStim%];       'Duration of each stimulus, in ms, stim/cal OR stim file, distractors
 var recTrialNumS1ns%[recMaxStim%];            'Number of S1.n stimuli on each trial, used for two-speaker distractor scenarios    
 var recTrialMF[recMaxStim%];                  'Modulation frequency of each stimulus    
@@ -491,7 +491,7 @@ while recReadyToQuit% = 0 do
     'Reset trial variables - if we are handing off, we can potentially have carry over, this hopefully covers it
     ArrConst(recTrialLoadLoc$[],"");
     ArrConst(recTrialLoadLocDistractor$[],"");
-    ArrConst(recTrialDur[],0);
+    ArrConst(recTrialStimDur[],0);
     ArrConst(recTrialDurDistractor[],0);
     ArrConst(recTrialNumS1ns%[],0);
     ArrConst(recTrialMF[],0);  
@@ -901,7 +901,6 @@ while recReadyToQuit% = 0 do
             endif;    
             
             
-            
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
             recExptText$ := "Running Cueing (load) "; 
             'Not Yet Implemented
@@ -1086,7 +1085,7 @@ while recReadyToQuit% = 0 do
             'endif;
             
             'Make sure that the trials file does not specify more speakers than are present in the selected speaker array
-            'Use recTrialDur[], recTrialS1Spkr%[], recTrialS2Spkr%[]
+            'Use recTrialStimDur[], recTrialS1Spkr%[], recTrialS2Spkr%[]
             var tempSpeakerCount%;
             if recExpToRun% = recExpStereoDisButton% then  'For this experiment, the arrays are "switched", the S1/S2 stimuli are on the standalone speaker and the distractors are on the array
                 tempSpeakerCount% := 1;
@@ -2141,7 +2140,7 @@ func RecLoadStimCalFile%(fileLoc$,nSpk%,&recTotalStim%)
         docase
         case numRead% = nSpk%+2 then
             recTrialLoadLoc$[lineCount%-1] := readLine$[0];  'Disk location of files to load, stim/cal file
-            recTrialDur[lineCount%-1] := val(readLine$[1]);  'Trial duration
+            recTrialStimDur[lineCount%-1] := val(readLine$[1]);  'Stimulus duration
             for i% := 0 to nSpk%-1 do
                 recTrialStimCal[lineCount%-1][i%] := val(readLine$[i%+2]);  'Calibration values per speaker
             next; 
@@ -2162,7 +2161,7 @@ func RecLoadStimCalFile%(fileLoc$,nSpk%,&recTotalStim%)
     
     'Just some debugging code, correct read is verified
 '    printlog("Column 1 was %s\n",recTrialLoadLoc$[]);
-'    printlog("Column 2 was %f\n",recTrialDur[]);
+'    printlog("Column 2 was %f\n",recTrialStimDur[]);
 '    printlog("Column 3 was %f\n",recTrialStimCal[][0]);
 '    printlog("Column 4 was %f\n",recTrialStimCal[][1]);
 '    printlog("Column 5 was %f\n",recTrialStimCal[][2]);
@@ -2237,7 +2236,7 @@ func RecLoadStimCalMFCarrierFile%(fileLoc$,nSpk%,&recTotalStim%)
         docase
         case numRead% = nSpk%+4 then
             recTrialLoadLoc$[lineCount%-1] := readLine$[0];  'Disk location of files to load, stim/cal file
-            recTrialDur[lineCount%-1] := val(readLine$[1]);  'Trial duration
+            recTrialStimDur[lineCount%-1] := val(readLine$[1]);  'Stimulus duration
             recTrialMF[lineCount%-1] := val(readLine$[2]);   'Modulation frequency
             recTrialCarrier$[lineCount%-1] := readLine$[3];  'Carrier type
             for i% := 0 to nSpk%-1 do
@@ -2402,7 +2401,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
         'Place values into global variables
         docase
         case numRead% = 11 then
-            recTrialDur[lineCount%-1] := val(readLine$[0]);                'Trial duration
+            recTrialStimDur[lineCount%-1] := val(readLine$[0]);            'Stimulus duration
             recTrialGenLowpassHz[lineCount%-1] := val(readLine$[1]);       'A list of lowpass values - if -1, no lowpass, same as highpass means tone
             recTrialGenHighpassHz[lineCount%-1] := val(readLine$[2]);      'Same as above, highpass
             recTrialGenIsSweep[linecount%-1] := val(readLine$[3]);         'Determines if FM sweep is present
@@ -2426,7 +2425,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
             endif
         case numRead% = 12 then
             stimIndex% := val(readLine$[0]);                             'Stimulus index, we don't need to save this for any reason
-            recTrialDur[stimIndex%] := val(readLine$[1]);                'Trial duration
+            recTrialStimDur[stimIndex%] := val(readLine$[1]);            'Stimulus duration
             recTrialGenLowpassHz[stimIndex%] := val(readLine$[2]);       'A list of lowpass values - if -1, no lowpass, same as highpass means tone
             recTrialGenHighpassHz[stimIndex%] := val(readLine$[3]);      'Same as above, highpass
             recTrialGenIsSweep[stimIndex%] := val(readLine$[4]);         'Determines if FM sweep is present
@@ -2463,7 +2462,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
     recTotalStim% := lineCount%;
     
     'Just some debugging code, correct read is verified
-'    printlog("Column 1 was %f\n",recTrialDur[]);
+'    printlog("Column 1 was %f\n",recTrialStimDur[]);
 '    printlog("Column 2 was %f\n",recTrialGenLowpassHz[]);
 '    printlog("Column 3 was %f\n",recTrialGenHighpassHz[]);
 '    printlog("Column 4 was %f\n",recTrialGenIsSweep[]);
@@ -2504,7 +2503,7 @@ func NameThatStimulus$(n%,seedind%)
     var isComb% := 0;  'Makes an IF statement cleaner
     
     'Duration is easy
-    dur$ := str$(recTrialDur[n%]) + "ms";
+    dur$ := str$(recTrialStimDur[n%]) + "ms";
     
     'Freq is a pain, also construct seed info here, but write seed at the end of the string 
     docase
@@ -2658,7 +2657,7 @@ func NameThatStimulusStereoDis$(n%,stim%,PWAind%)
     var isComb% := 0;  'Makes an IF statement cleaner
     
     'Duration is easy
-    dur$ := str$(recTrialDur[n%]) + "ms";
+    dur$ := str$(recTrialStimDur[n%]) + "ms";
     
     'Freq is a pain, also construct seed info here, but write seed at the end of the string 
     docase
@@ -2941,7 +2940,7 @@ func GenTrialsAudiogram%()
         recTrialTerminalIsS2%[i%] := 1;  'last stimulus is an S2 
         
         'write parameters for the generated stimulus
-        recTrialDur[i%] := 200;  'Jackie says always 200 ms for audiogram
+        recTrialStimDur[i%] := 200;  'Jackie says always 200 ms for audiogram
         recTrialGenRampMS[i%] := 2;  'short ramp
         recTrialGenAMFreqHz[i%] := 0;
         recTrialGenAMDepthPct[i%] := 0;
@@ -2999,7 +2998,7 @@ func GenTrialsFRAFromDialog%()
     nTonePips% := recFRAFreqNSteps%;
     
     'Set trial generation variables for the noise burst, both S2 and rate-level will use this stimulus, but at different speakers
-    recTrialDur[0] := 200;
+    recTrialStimDur[0] := 200;
     recTrialGenRampMS[0] := 2;  'short ramp
     recTrialGenAMFreqHz[0] := 0;
     recTrialGenAMDepthPct[0] := 0;
@@ -3029,7 +3028,7 @@ func GenTrialsFRAFromDialog%()
     'Also fill whichS1StimInd%[] and whichS1DeltadB[] for the tone pips
     'A lot of this COULD be "ArrConst"ed, but since we have to loop anyway, why clutter the code?
     for i% := 1 to nTonePips% do
-        recTrialDur[i%] := 50;
+        recTrialStimDur[i%] := 50;
         recTrialGenRampMS[i%] := 2;  'short ramp
         recTrialGenAMFreqHz[i%] := 0;
         recTrialGenAMDepthPct[i%] := 0;
@@ -3078,7 +3077,7 @@ func GenTrialsFRAFromDialog%()
         t := frac(i/(nFMSweeps%/2));
         temp := (nFMSweeps%/2)*t;
         ind% := round(temp);  'gets mod of i%,5...stupid, stupid floating point stuff kills it without these steps
-        recTrialDur[i%+nTonePips%] := recFMSweepDur%[ind%];  'gets duration based on mod result
+        recTrialStimDur[i%+nTonePips%] := recFMSweepDur%[ind%];  'gets duration based on mod result
         'Set direction of sweep
         ind% := floor(i/(nFMSweeps%/2));
         recTrialGenLowpassHz[i%+nTonePips%] := recFMSweep%[ind%];  'if mod is 0, goes 500-20000...
@@ -3088,7 +3087,7 @@ func GenTrialsFRAFromDialog%()
             whichS1StimInd%[count%] := i%+nTonePips%;  'i%+nTonePips% holds the stim index of the current FM sweep
             whichS1DeltadB[count%] := 65-recSpaceS2dBLevel;  'recSpaceS2dBLevel holds the dB of the tone sweeps as well as the S2s, delta dB is additional atten, default stims will play at 65
 '                printlog("count = %d\t", count%); ' check stimlist! 
-'                printlog("FMsweeps: %d\n", recTrialDur[i%+nTonePips%]);
+'                printlog("FMsweeps: %d\n", recTrialStimDur[i%+nTonePips%]);
             count% += 1;
         next;
 '        printlog("stim index = %d\t", i%+nTonePips%); ' check stim! 
@@ -3099,7 +3098,7 @@ func GenTrialsFRAFromDialog%()
 for i% := 0 to nMTFrates%-1 do
     'AM Noise generation variables - same as AMdisc
     j% := i%+nTonePips%+nFMSweeps%+1; 'use j% now as trial index instead of i%
-    recTrialDur[j%] := 500;
+    recTrialStimDur[j%] := 500;
     recTrialGenRampMS[j%] := 5;  
     recTrialGenAMFreqHz[j%] := MTFrates[i%];
     recTrialGenAMDepthPct[j%] := 100; '100% depth
@@ -3120,14 +3119,14 @@ for i% := 0 to nMTFrates%-1 do
     next;
 '    printlog("stim index = %d\t", j%); ' check stim! this is going to be a long list
 '    printlog("AM noise: this rate = %d\t", MTFrates[i%]);
-'    printlog("AM noise: duration = %d\n", recTrialDur[j%]);
+'    printlog("AM noise: duration = %d\n", recTrialStimDur[j%]);
 next;
 
 'Adding bandpass noise!
 for i% := 0 to nBPnoises%-1 do
     'BP noise generations variables
     j% := i%+nTonePips%+nFMSweeps%+nMTFrates%+1;
-    recTrialDur[j%] := 200;
+    recTrialStimDur[j%] := 200;
     recTrialGenRampMS[j%] := 2;  'short ramp
     recTrialGenAMFreqHz[j%] := 0;
     recTrialGenAMDepthPct[j%] := 0;
@@ -3562,6 +3561,8 @@ func GenTrialsStereoDis%()
         recDeltadBList[1][i%] := recTrialS2DeltadB[i%];
         recDistractorDeltadBList[1][i%] := recTrialDistractorDeltadB[i%][1];  'changed this to 2-D to accommodate GNG
         
+        'recNUniqueStims% does not need to be set when we use parallel PWAs
+        
         docase
         case recTrialMF[RecTrialS1%[i%]] > recTrialMF[RecTrialS2%[i%]]  then 
             'LO trial
@@ -3647,6 +3648,7 @@ func GenTrialsStereoDisGNG%()
             recDistractorSpeakerList%[j%][i%] := recTrialDistractorSpkr%[i%][j%];  'changed this to 2-D to accommodate GNG
             recDistractorDeltadBList[j%][i%] := recTrialDistractorDeltadB[i%][j%];  'changed this to 2-D to accommodate GNG
             
+            'recNUniqueStims% does not need to be set when we use parallel PWAs
         next;
         
         docase
@@ -3703,13 +3705,15 @@ func GenTrialsOneStimDiscrim%()
     for i% := 0 to recTotalTrials%-1 do    
         miniTrialOrder%[i%] := i%;  ' 1. populate miniTrialOrder%, etc.
         recTrialTerminalIndex%[i%] := 0;  'For this experiment, every trial has exactly one S1, so zero-based terminal index is 0
-        recPWAList%[0][i%] := 0;  'this is PWA to play, jthere is only one
+        recPWAList%[0][i%] := 0;  'this is PWA to play, there is only one
         
-        recStimList%[0][i%] := recTrialS1%[i%];  '2. save values into recStimList, recSpeakerList, recDeltadBList
+        recStimList%[0][i%] := recTrialS1%[i%];  '2. save values into recStimList, recSpeakerList, recDeltadBList, recNUniqueStims
         
         recSpeakerList%[0][i%] := recTrialS1Spkr%[i%];
     
         recDeltadBList[0][i%] := recTrialS1DeltadB[i%];
+        
+        recNUniqueStims%[i%] := 1;
         
         'Here is where the trick is.  Here is where we have to assign values that allow us to make the 
         'experiment move correctly through the GNGEngine
@@ -3729,7 +3733,7 @@ func GenTrialsOneStimDiscrim%()
         case recOneStimDiscrimTarget1Ind% = 1 then  'this is using ToneFreq as first value
             firstValue := recTrialGenLowpassHz[recTrialS1%[i%]];
         case recOneStimDiscrimTarget1Ind% = 2 then  'this is using Duration as first value
-            firstValue := recTrialDur[recTrialS1%[i%]];
+            firstValue := recTrialStimDur[recTrialS1%[i%]];
         case recOneStimDiscrimTarget1Ind% = 3 then  'this is using AMDepth as first value
             firstValue := recTrialGenAMDepthPct[recTrialS1%[i%]];
         endcase
@@ -3767,9 +3771,9 @@ func GenTrialsOneStimDiscrim%()
             else 'values are different
                 recTrialTerminalIsS2%[i%] := 2;  'Non-Target, there is no catch!
             endcase     
-        endcase        
+        endcase          
     next;
-
+halt;
     for i% := 0 to recOneStimDiscrimRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
         if recShuffle% = 1 then
