@@ -3773,7 +3773,7 @@ func GenTrialsOneStimDiscrim%()
             endcase     
         endcase          
     next;
-halt;
+
     for i% := 0 to recOneStimDiscrimRepeatsPerStim%-1 do '3. Fill recTrialOrder. go through each RepeatPerStim and...
         
         if recShuffle% = 1 then
