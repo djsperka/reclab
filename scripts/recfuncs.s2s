@@ -2,7 +2,7 @@
 
 ' Recfuncs are convenience functions to hide the calls to the TDT server behind calls that 
 ' are more practical for experimental needs. 
-
+' Also, other random convenience functions
 
 '#include "tdt.s2s"
 #include "RegistryUtils.s2s"
@@ -1076,5 +1076,104 @@ end
 
 
 '===== End SelectDirectory$ =====
+'
+'
+
+
+
+'
+'
+'===== ArrUnique%() =====
+'
+'Will place unique values (sorted, ascending) from original%[] into unique%[].
+'Returns number of elements placed into unique%[].
+'Unique%[] is zeroed prior to operation to ensure no previously-held elements
+'   are taken as being present in original%[].
+'Unique%[] must be large enough to hold all unique values from original%[], but
+'   we do not check to ensure that this will hold true (e.g. that unique%[] is
+'   the same size as original%[]).
+func ArrUnique%(original%[],&unique%[])
+    var i%;
+    var currVal%;
+    var count% := 1;
+    
+    ArrConst(unique%[],0);
+    ArrSort(original%[]);    
+    currVal% := original%[0];
+    unique%[0] := currVal%;
+    for i% := 1 to Len(original%[])-1 do  'don't need to check first element
+        if original%[i%] > currVal% then
+            currVal% := original%[i%];
+            unique%[count%] := currVal%;
+            count% += 1;
+        endif
+    next
+    
+    return count%;
+    
+end
+
+
+'===== ArrUnique%() =====
+'
+'
+
+
+
+'
+'
+'===== ArrSetDiff%() =====
+'
+'Will find elements of set1%[] that are not members of set2%[], and will place
+'   those elements (unique) into setdiff%[].
+'Returns number of elements placed into setdiff%[]
+'Setdiff%[] is zeroed prior to operation to ensure no previously-held elements
+'   are taken as being present in setdiff%[].
+'Setdiff%[] must be large enough to hold all values from the operation, but we
+'   do not check to ensure that this will hold true (e.g. that setdiff%[] is
+'   the same size as set1%[]).
+'Relies on ArrUnique%()
+func ArrSetDiff%(set1%[],set2%[],setdiff%[])
+    var s1%;
+    var s2%;
+    var u1%[Len(set1%[])];
+    var u2%[Len(set2%[])];
+    var i%;
+    var j%;
+    var count%;
+    
+    ArrConst(setdiff%[],0);
+    s1% := ArrUnique%(set1%[],u1%[]);
+    s2% := ArrUnique%(set2%[],u2%[]);
+    
+    while i% < s1% do
+        while u2%[j%] < u1%[i%] and j% < s2% do  'elements are increasing; if u2%[j%] is smaller
+                                                 'than u1%[i%], then u2%[j%] is not present in u1%[],
+                                                 'but we don't care about these elements, advance j%
+                                                 'through u2%[] until we find an element that may be
+                                                 'present in u1%[], do not advance past end of u2%[]
+            j% += 1;
+        wend
+        
+        if u1%[i%] = u2%[j%] then  'u1%[i%] is present in u2%[], advance both i% and j%
+            i% += 1;
+            j% += 1;
+        else  'u2%[j%] > u1%[i%], OR u1[i%] > u2%[end]; u1%[i%] is not present in u2%[], place u1%[i%] 
+              'in setdiff%[] and advance i%, increment count%
+            setdiff%[count%] := u1%[i%];
+            count% += 1;
+            i% += 1;
+        endif
+        
+        if j% > s2%-1 then
+            j% := s2%-1;
+        endif
+
+    wend
+    
+    return count%;
+    
+end
+'===== ArrSetDiff%() =====
 '
 '
