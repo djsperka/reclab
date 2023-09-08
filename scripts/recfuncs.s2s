@@ -1133,7 +1133,7 @@ end
 '   do not check to ensure that this will hold true (e.g. that setdiff%[] is
 '   the same size as set1%[]).
 'Relies on ArrUnique%()
-func ArrSetDiff%(set1%[],set2%[],setdiff%[])
+func ArrSetDiff%(set1%[],set2%[],&setdiff%[])
     var s1%;
     var s2%;
     var u1%[Len(set1%[])];

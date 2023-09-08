@@ -1080,30 +1080,30 @@ while recReadyToQuit% = 0 do
             
             'Make sure that the trials file does not specify stimuli that are not present in the Stim or Stim/Cal file
             'if loading, stimulus indices are sequential only, use old scheme
-            if recMatGenStim% = 0 then  
-                if max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]) <= recTotalStim% then
-                    printlog("All stimuli in trials file are accounted for in Stim/Cal file!\n");
-                else
-                    printlog("Maximum stimulus in trials file is %d but not only %d stimuli are specified in Stim/Cal file!\n",max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]),recTotalStim%);
-                    message("Starting Over!|Trials File specifies illegal stimulus number!");
-                    trialsOK% := -1;
-                endif;
-            else  'For new 12-column stimulus files (generating), stimulus number is not necessarily sequential
-                nd% := ArrSetDiff%(recTrialS1%[],recStimPresent%[],recStimSetDiff%[]);
-                nd2% := ArrSetDiff%(recTrialS2%[],recStimPresent%[],recStimSetDiff2%[]);
-                docase    
-                case nd% > 0 then
-                    printlog("The following stimulus indices were found in the Trials file but not in the Stim file!  %d\n",recStimSetDiff%[0:nd%]);
-                    message("Starting Over!|Trials File specifies illegal stimulus number!");
-                    trialsOK% := -1;
-                case recTrialS2%[max(recTrialS2%)] > 0 and nd2% > 0 then 
-                    printlog("The following stimulus indices were found in the Trials file but not in the Stim file!  %d\n",recStimSetDiff2%[0:nd2%]);
-                    message("Starting Over!|Trials File specifies illegal stimulus number!");
-                    trialsOK% := -1;
-                else
-                    printlog("All stimuli in trials file are accounted for in Stim file!\n");
-                endcase
-            endif
+'            if recMatGenStim% = 0 then  
+'                if max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]) <= recTotalStim% then
+'                    printlog("All stimuli in trials file are accounted for in Stim/Cal file!\n");
+'                else
+'                    printlog("Maximum stimulus in trials file is %d but not only %d stimuli are specified in Stim/Cal file!\n",max(recTrialS1%[max(recTrialS1%)],recTrialS2%[max(recTrialS2%)]),recTotalStim%);
+'                    message("Starting Over!|Trials File specifies illegal stimulus number!");
+'                    trialsOK% := -1;
+'                endif;
+'            else  'For new 12-column stimulus files (generating), stimulus number is not necessarily sequential
+'                nd% := ArrSetDiff%(recTrialS1%[],recStimPresent%[],recStimSetDiff%[]);
+'                nd2% := ArrSetDiff%(recTrialS2%[],recStimPresent%[],recStimSetDiff2%[]);
+'                docase    
+'                case nd% > 0 then
+'                    printlog("The following stimulus indices were found in the Trials file but not in the Stim file!  %d\n",recStimSetDiff%[0:nd%]);
+'                    message("Starting Over!|Trials File specifies illegal stimulus number!");
+'                    trialsOK% := -1;
+'                case recTrialS2%[max(recTrialS2%)] > 0 and nd2% > 0 then 
+'                    printlog("The following stimulus indices were found in the Trials file but not in the Stim file!  %d\n",recStimSetDiff2%[0:nd2%]);
+'                    message("Starting Over!|Trials File specifies illegal stimulus number!");
+'                    trialsOK% := -1;
+'                else
+'                    printlog("All stimuli in trials file are accounted for in Stim file!\n");
+'                endcase
+'            endif
             
             
             
@@ -2424,7 +2424,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
         'Place values into global variables
         docase
         case numRead% = 11 then
-            recStimPresent%[lineCount%-1] := lineCount%-1;                 'Keep this to check trials
+            'recStimPresent%[lineCount%-1] := lineCount%-1;                 'Keep this to check trials
             recTrialStimDur[lineCount%-1] := val(readLine$[0]);            'Stimulus duration
             recTrialGenLowpassHz[lineCount%-1] := val(readLine$[1]);       'A list of lowpass values - if -1, no lowpass, same as highpass means tone
             recTrialGenHighpassHz[lineCount%-1] := val(readLine$[2]);      'Same as above, highpass
@@ -2449,7 +2449,7 @@ func RecLoadStimFile%(fileLoc$,&recTotalStim%)
             endif
         case numRead% = 12 then
             stimIndex% := val(readLine$[0]);                             'Stimulus index
-            recStimPresent%[lineCount%-1] := stimIndex%;                 'Keep this to check trials
+            'recStimPresent%[lineCount%-1] := stimIndex%;                 'Keep this to check trials
             recTrialStimDur[stimIndex%] := val(readLine$[1]);            'Stimulus duration
             recTrialGenLowpassHz[stimIndex%] := val(readLine$[2]);       'A list of lowpass values - if -1, no lowpass, same as highpass means tone
             recTrialGenHighpassHz[stimIndex%] := val(readLine$[3]);      'Same as above, highpass
