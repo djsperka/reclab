@@ -1097,13 +1097,18 @@ func ArrUnique%(original%[],&unique%[])
     var currVal%;
     var count% := 1;
     
+    'ARRAYS ARE ALWAYS PASSED BY REFERENCE SO WE HAVE TO CREATE A LOCAL VARIABLE
+    'TO AVOID CHANGING THE ORIGINAL%[] ARRAY
+    var tempArray%[Len(original%[])];
+    ArrConst(tempArray%[],original%[]);
+    
     ArrConst(unique%[],0);
-    ArrSort(original%[]);    
-    currVal% := original%[0];
+    ArrSort(tempArray%[]);    
+    currVal% := tempArray%[0];
     unique%[0] := currVal%;
-    for i% := 1 to Len(original%[])-1 do  'don't need to check first element
-        if original%[i%] > currVal% then
-            currVal% := original%[i%];
+    for i% := 1 to Len(tempArray%[])-1 do  'don't need to check first element
+        if tempArray%[i%] > currVal% then
+            currVal% := tempArray%[i%];
             unique%[count%] := currVal%;
             count% += 1;
         endif
@@ -1142,9 +1147,16 @@ func ArrSetDiff%(set1%[],set2%[],&setdiff%[])
     var j%;
     var count%;
     
+    'ARRAYS ARE ALWAYS PASSED BY REFERENCE SO WE HAVE TO CREATE A LOCAL VARIABLE
+    'TO AVOID CHANGING THE SET1%[] AND SET2%[] ARRAYS
+    var tempArray1%[Len(set1%[])];
+    var tempArray2%[Len(set2%[])];
+    ArrConst(tempArray1%[],set1%[]);
+    ArrConst(tempArray2%[],set2%[]);
+    
     ArrConst(setdiff%[],0);
-    s1% := ArrUnique%(set1%[],u1%[]);
-    s2% := ArrUnique%(set2%[],u2%[]);
+    s1% := ArrUnique%(tempArray1%[],u1%[]);
+    s2% := ArrUnique%(tempArray2%[],u2%[]);
     
     while i% < s1% do
         while u2%[j%] < u1%[i%] and j% < s2% do  'elements are increasing; if u2%[j%] is smaller
