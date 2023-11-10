@@ -4711,6 +4711,10 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     'recRewardMs% := ConvertmLToSeconds(recInitRewardmL)*1000;
                     'recRewardMs := recRewardMs%;  'we need a float version for later math
+                    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                    if SampleSeqVar(3) > 1000000000 then
+                        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                    endif;
                     
                     stmp% := Reward%(recInitRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
@@ -4770,6 +4774,10 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     'recRewardMs% := ConvertmLToSeconds(recHoldRewardmL)*1000;
                     'recRewardMs := recRewardMs%;  'we need a float version for later math
+                    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                    if SampleSeqVar(3) > 1000000000 then
+                        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                    endif;
                     
                     stmp% := Reward%(recHoldRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
@@ -5310,6 +5318,10 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     'recRewardMs% := ConvertmLToSeconds(thisHitReward)*1000; 'replaced recHitRewardmL with thisHitReward
                     'recRewardMs := recRewardMs%;  'we need a float version for later math
+                    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                    if SampleSeqVar(3) > 1000000000 then
+                        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                    endif;
                     
                     stmp% := Reward%(thisHitReward);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
@@ -5354,6 +5366,10 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     'recRewardMs% := ConvertmLToSeconds(thisHitReward)*1000; 'replaced recHitRewardmL with thisHitReward
                     'recRewardMs := recRewardMs%;  'we need a float version for later math
+                    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                    if SampleSeqVar(3) > 1000000000 then
+                        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                    endif;
 
                     stmp% := Reward%(thisHitReward);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
@@ -5392,6 +5408,10 @@ func IdleLoop%()
                 if recCEDIsPresent% = 1 then
                     'recRewardMs% := ConvertmLToSeconds(recCRRewardmL)*1000;
                     'recRewardMs := recRewardMs%;  'we need a float version for later math
+                    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                    if SampleSeqVar(3) > 1000000000 then
+                        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                    endif;
 
                     stmp% := Reward%(recCRRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated
@@ -5492,6 +5512,11 @@ func IdleLoop%()
                 endif
                 if tempRand < recLongToneRewardProb and recTurnOffReward% = 0 then
                     tempRand := -1;  'tempRand is ready for a new assignment!
+                    'Check to see if we need to change TICKS offset, see logic in GetTimeOfLast1401Event, but we have to do this BEFORE starting our stimulus
+                    if SampleSeqVar(3) > 1000000000 then
+                        SafeSampleKey("0");  'Zero was the logical, available code for TICK0
+                    endif;
+                    
                     'recRewardMs% := ConvertmLToSeconds(recHitRewardmL)*1000;
                     stmp% := Reward%(recHitRewardmL);
                     'Yield(recRewardMs/1000);  'This really is an undesirable thing to do, but suspect 1401 is doing crazy stuff and I think SafeSampleKey is being violated

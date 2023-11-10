@@ -1801,7 +1801,7 @@ i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay,
         DlgValue$(-1,"Run JoyTrain"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
         recExpToRun% := recExpJoyTrnButton%;
         recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
-        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        'recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input  - doesn't actually do anything -jj
         
         recFixLED% := 0;
         recActive% := 1;
