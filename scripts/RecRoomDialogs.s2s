@@ -3080,6 +3080,15 @@ func RecExpTimingRewardDialog%()
             RecTimingRewardSaveParams();   'RecTimingRewardSaveParams() is below 
         endif;
         
+        'After saving to registry, turn off recMissRepeats% if recMissRepeatsMax% is 0; set recMissRepeatsMax% to 0 if recMissRepeats% is off
+        'This was only implemented 11-21-2023 because of confusion on the analysis side
+        'recDatabase was similarly adjusted
+        if recMissRepeats% = 0 or recMissRepeatsMax% = 0 then
+            recMissRepeats% := 0;
+            recMissRepeatsMax% := 0;
+        endif;
+        
+        
         status% := 1;
     else
         status% := 1;
