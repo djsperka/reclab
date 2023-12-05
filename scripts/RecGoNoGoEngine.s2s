@@ -5034,7 +5034,7 @@ func IdleLoop%()
                     'want to keep track of which response happened in output...
                 endif;
                 recPreciseTrialTime := recLeverTime;  'time response occurred
-                if recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpAMDiscButton% then
+                if recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% then
                     'Cheating here, and passing a value OTHER THAN actual success, so that we can know which direction the human actually responded, as that seems important
                 '    StimComplete%(2, inResponse1%);  '1 indicates response was S2 High, 0 indicates response was S2 Low
                 'else
