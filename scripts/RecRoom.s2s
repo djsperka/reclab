@@ -116,6 +116,7 @@ var recVarS1%;                      'Variable number of S1s
 var recPropCatch;                   'Proportion of catch trials
 var recTrialLoadLoc$[recMaxStim%];            'Disk location of files to load, stim/cal file
 var recTrialLoadLocDistractor$[recMaxStim%];  'Disk location of files to load, stim/cal file, distractors
+var recTrialLoadName$[recMaxStim%];           'Name of loaded files, from stim/cal file, with path and extension stripped  
 var recTrialStimDur[recMaxStim%];             'Duration of each stimulus, in ms, stim/cal OR stim file
 var recTrialDurDistractor[recMaxStim%];       'Duration of each stimulus, in ms, stim/cal OR stim file, distractors
 var recTrialNumS1ns%[recMaxStim%];            'Number of S1.n stimuli on each trial, used for two-speaker distractor scenarios    
@@ -220,6 +221,7 @@ var recTrialResponsePosition1%;     'Joystick position of response 1, same value
 var recTrialResponsePosition2%:=7;  'Joystick position of response 2, 0/1/2/3/4/5/6/7, where 7 = no second response position, default to no second response position
 var recDoIncrements%;   
 var recDoJoyTrain%; '*jao
+var recCheckGNGSandbox%;            'If StereoDis or OneStimDiscrim are active, make sure that any subsequent Joystick/Lever call respects that GNG/FC selection  
     
 'Reward durations, etc.
 var recTrainingRewardDur;           'Duration of training reward, seconds
@@ -332,8 +334,8 @@ var doIncTrialInit%[4];  'indicates which channels to increment on succesful tri
 var doDecTrialInit%[4];  'indicates which channels to decrement on failed trial init
 var doIncHit%[4];  'indicates which channels to increment on succesful hit
 var doIncCR%[4];  'indicates which channels to increment on succesful CR
-var doDecPassiveMiss%[4];  'indicates which channels to decrement on passive miss (no decrement on active miss)
-var doDecPassiveFA%[4];  'indicates which channels to decrement on passive FA (no decrement on active FA)    
+var doDecNoRespS2H%[4];  'indicates which channels to decrement on NR to S2H (no decrement on resp to S2L)
+var doDecNoRespS2L%[4];  'indicates which channels to decrement on NR to S2L (no decrement on resp to S2H)    
     
     
 var SecPerSample;                          '     
@@ -344,6 +346,8 @@ var recLeverTime;   'this is the time of the most recent lever EVENT - one that 
 var recLastLever;   'this is the time of the most recent lever change - whether we plan to record it or not
 var recPreciseTrialTime;
 var recLeverCodes%[4];    
+var doBallistic%:=0;   'Are we doing ballistic trials?  (GNG only, no release of lever after nontarg trials)
+var ballisticOn%:=0;   'Allows ballistic to be set on/off on a trial-by-trial basis, only if doBallistic% is 1 
     
 endif;
 '================================================================================================
@@ -439,7 +443,8 @@ LongDursAllocate[3] := LongDurs[3];
 LongDursAllocate[4] := LongDurs[4];
 
 'Include files that depend on above constants!
-#include "RecGoNoGoEngine.s2s"
+'#include "RecGoNoGoEngine.s2s"
+#include "RecEngine.s2s"
 
 'Open a Matlab instantiation, if present
 if recMatlabIsPresent% = 1 then 
@@ -854,11 +859,11 @@ while recReadyToQuit% = 0 do
             endif;
             
             
-        case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 0 then  'Loading stims
+        case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 0 and recIsGoNoGo% = 0 then  'Loading stims, FC
             if recOneStimDiscrimExptLabel$ <> "Generic" then  'this syntax IS legal for case-sensitive match
-                recExptText$ := "Running " + recOneStimDiscrimExptLabel$ + " (load) ";
+                recExptText$ := "Running " + recOneStimDiscrimExptLabel$ + " (load) ";  'no FC label
             else                
-                recExptText$ := "Running OneStimDiscrim (load) "; 
+                recExptText$ := "Running OneStimDiscrim (load) "; 'no FC label
             endif
             'Get stimfile and trials file lists
             RecOneStimDiscrimExpListLoadGetParams(recOneStimDiscrimExpNameLoad$[],recOneStimDiscrimStimcalNameLoad$[],recOneStimDiscrimTrialsNameLoad$[]);
@@ -872,11 +877,11 @@ while recReadyToQuit% = 0 do
                 
             calibOK% := 0;  'Short circuit, this means OK.
                     
-        case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 1 then  'Generating stims
+        case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 1 and recIsGoNoGo% = 0 then  'Generating stims, FC
             if recOneStimDiscrimExptLabel$ <> "Generic" then  'this syntax IS legal for case-sensitive match
-                recExptText$ := "Running " + recOneStimDiscrimExptLabel$ + " (gen) ";
+                recExptText$ := "Running " + recOneStimDiscrimExptLabel$ + " (gen) ";  'no FC label
             else                
-                recExptText$ := "Running OneStimDiscrim (gen) "; 
+                recExptText$ := "Running OneStimDiscrim (gen) "; 'no FC label
             endif 
             'Get stimfile and trials file lists
             RecOneStimDiscrimExpListGenGetParams(recOneStimDiscrimExpNameGen$[],recOneStimDiscrimStimNameGen$[],recOneStimDiscrimTrialsNameGen$[]);
@@ -901,7 +906,57 @@ while recReadyToQuit% = 0 do
                 else
                     message("Matlab is not open, but you have selected a scenario that requires Matlab!");
                 endif;
-            endif;    
+            endif;   
+            
+        case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 0 and recIsGoNoGo% = 1 then  'Loading stims, GNG
+            if recOneStimDiscrimExptLabel$ <> "Generic" then  'this syntax IS legal for case-sensitive match
+                recExptText$ := "Running " + recOneStimDiscrimExptLabel$ + " GNG (load) ";  'add GNG label
+            else                
+                recExptText$ := "Running OneStimDiscrim GNG (load) "; 'add GNG label
+            endif
+            'Get stimfile and trials file lists
+            RecOneStimDiscrimExpListLoadGetParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
+            'Load trials file, stim/cal file
+            trialsOK% := RecLoadTrialsFile3Col%(recOneStimDiscrimGNGTrialsNameLoad$[recOneStimDiscrimGNGExpIndexLoad%],recTotalTrials%);
+            if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
+                stimOK% := RecLoadStimCalFile%(recOneStimDiscrimGNGStimcalNameLoad$[recOneStimDiscrimGNGExpIndexLoad%],recNSpeakers%,recTotalStim%);
+            endif;
+            recSelectedStimFile$ := recOneStimDiscrimGNGStimcalNameLoad$[recOneStimDiscrimGNGExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recOneStimDiscrimGNGTrialsNameLoad$[recOneStimDiscrimGNGExpIndexLoad%]; 'ditto. for BehOutput
+                
+            calibOK% := 0;  'Short circuit, this means OK.
+                    
+        case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 1 and recIsGoNoGo% = 1 then  'Generating stims, GNG
+            if recOneStimDiscrimExptLabel$ <> "Generic" then  'this syntax IS legal for case-sensitive match
+                recExptText$ := "Running " + recOneStimDiscrimExptLabel$ + " GNG (gen) ";  'add GNG label
+            else                
+                recExptText$ := "Running OneStimDiscrim GNG (gen) "; 'add GNG label
+            endif 
+            'Get stimfile and trials file lists
+            RecOneStimDiscrimExpListGenGetParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
+            'Load trials file, stim file, cal file
+            trialsOK% := RecLoadTrialsFile3Col%(recOneStimDiscrimGNGTrialsNameGen$[recOneStimDiscrimGNGExpIndexGen%],recTotalTrials%);
+            if trialsOK% = 1 then  'Don't bother with loading Stim file if trials file is bad
+                stimOK% := RecLoadStimFile%(recOneStimDiscrimGNGStimNameGen$[recOneStimDiscrimGNGExpIndexGen%],recTotalStim%);
+            endif;
+            recSelectedStimFile$ := recOneStimDiscrimGNGStimNameGen$[recOneStimDiscrimGNGExpIndexGen%];  'var already declared but not used - need to print it to BehOutput*****
+            recSelectedTrialsFile$ := recOneStimDiscrimGNGTrialsNameGen$[recOneStimDiscrimGNGExpIndexGen%]; 'ditto. for BehOutput
+                
+            if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
+                'Load calibration file into Matlab's workspace, same details as above in Search
+                if recMatlabIsPresent% = 1 then
+                    if recCalibIsPresent% = 1 then 
+                        statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                        calibOK% := EvalMatlabStatement%(statement$);
+                    else
+                        printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                        calibOK% := 0;
+                    endif;
+                else
+                    message("Matlab is not open, but you have selected a scenario that requires Matlab!");
+                endif;
+            endif;             
+            
             
             
         case recExpToRun% = recExpCueingButton% and recMatGenStim% = 0 then  'Loading stims
@@ -934,6 +989,7 @@ while recReadyToQuit% = 0 do
             stimOK% := 1;  'Short circuit, no stim file to load
             
             'The following two settings are obligatory for Audiogram - these had been set in Audiogram dialog but subsequent calls of Timing/Reward were counterfeiting them.
+            'Hmm, Timing/Reward certainly does not do that anymore...but Joystick/Lever might
             recIsGoNoGo% := 1;  'Force experiment to be go/no-go 
             recHitRewardIncmL := 0;  'Do not allow reward incrementing for audiogram
             
@@ -1301,13 +1357,9 @@ while recReadyToQuit% = 0 do
                     recCEDIsPresent% := 2;  'Don't allow the GNGEngine to run, we will just run the Experiment Selection dialog again
                 endif
                 
-            case recExpToRun% = recExpOneStimDiscrimButton%  and recOneStimDiscrimExpDoLoad% = 1 then  'not implemented, but will exit before here
+            case recExpToRun% = recExpOneStimDiscrimButton%  and recOneStimDiscrimExpDoLoad% = 1 then 
                 'do Trial List Generation stuff!
-                'result% := GenTrialsOneStimDiscrim%();  'Generate trials for OneStimDiscrim.  Return result of 1 if OK, 0 if not.
-                message("LOADED OneStimDisrim is not yet implemented!|I GUESS YOU WERE FOOLED!");  'debug placeholder
-                if recCEDIsPresent% = 1 then
-                    recCEDIsPresent% := 2;  'Don't allow the GNGEngine to run, we will just run the Experiment Selection dialog again
-                endif
+                result% := GenTrialsOneStimDiscrim%();  'Generate trials for OneStimDiscrim.  Return result of 1 if OK, 0 if not.
                 
             case recExpToRun% = recExpOneStimDiscrimButton%  and recOneStimDiscrimExpDoGen% = 1 then
                 'do Trial List Generation stuff!
@@ -1318,8 +1370,10 @@ while recReadyToQuit% = 0 do
             recLastExpRun% := recExpToRun%; 'i think this should go here; remember the experiment that was just run for the next time around
             'Run presentation engine if CED is present or we are debugging
             if recCEDIsPresent% = 1 or recDebug% > 0 then
-                view(recLog%).print("About to call RunGoNoGoEngine%().\n");    
-                recReadyToQuit% := RunGoNoGoEngine%();  'will return 1 on fatal error
+                'view(recLog%).print("About to call RunGoNoGoEngine%().\n");    
+                'recReadyToQuit% := RunGoNoGoEngine%();  'will return 1 on fatal error
+                view(recLog%).print("About to call RunEngine%().\n");    
+                recReadyToQuit% := RunEngine%();  'will return 1 on fatal error
             endif;
             
             'Upon completion of engine, re-open experiment selection dialog (unless TDT error has occurred)
@@ -3445,13 +3499,11 @@ func GenTrialsDis%(recExpToRun%)
         for i% := 0 to recTotalTrials%-1 do  'for each trial type in input table, so,i%=line# in stim table
             
             recTrialOrder%[k%] := k%;  'Just randomize this after the loop
-            'printlog("k is %d and recTrialOrder is now %d\n",k%,recTrialOrder%);'[0][k%]); 
             'determine how many S1 repeats to do this time:
             numS1perTrial% := recMinS1%+Floor(Rand(recVarS1%+1,0)); 'how it's done in GenTrialsSearch%().. not sure why it's not: Rand({recVarS1%,1})
-            'printlog("numS1perTrial is %d for trial number %d\n",numS1perTrial%,k%);
-            recTrialTerminalIndex%[k%]  := numS1perTrial%;  'not "+1" due to 0-based indexing *jao: i have no idea what this means!       
+            recTrialTerminalIndex%[k%]  := numS1perTrial%;  'not "+1" due to 0-based indexing       
             
-            'what kind of trial is this?  ***this is probably the only part that will change for SPACE!
+            'Case through each possible type of trial
             docase  
             case recIsGoNoGo% = 1 and recExpToRun% = recExpAMDiscButton% then 'gonogo
                 if recTrialS1%[i%]<>recTrialS2%[i%] then 'case this bitch to separate up/down trials
@@ -3582,8 +3634,8 @@ func GenTrialsStereoDis%()
         recDistractorSpeakerList%[0][i%] := recTrialDistractorSpkr%[i%][1];  'Should not be read, but just in case needs to be a legal speaker
         recDistractorSpeakerList%[1][i%] := recTrialDistractorSpkr%[i%][1];  'changed this to 2-D to accommodate GNG
     
-        recDeltadBList[0][i%] := recTrialS1DeltadB[i%];
-        recDeltadBList[1][i%] := recTrialS2DeltadB[i%];
+        recDeltadBList[0][i%] := recTrialS1DeltadB[i%]+recDeltadBLevel;
+        recDeltadBList[1][i%] := recTrialS2DeltadB[i%]+recDeltadBLevel;
         recDistractorDeltadBList[1][i%] := recTrialDistractorDeltadB[i%][1];  'changed this to 2-D to accommodate GNG
         
         'recNUniqueStims% does not need to be set when we use parallel PWAs
@@ -3662,11 +3714,11 @@ func GenTrialsStereoDisGNG%()
             if j% < recTrialTerminalIndex%[i%] then
                 recStimList%[j%][i%] := RecTrialS1%[i%];  'Stim will be S1 except on terminal index
                 recSpeakerList%[j%][i%] := RecTrialS1Spkr%[i%];  'Same thing for speaker
-                recDeltadBList[j%][i%] := recTrialS1DeltadB[i%];  'Same thing for delta dB
+                recDeltadBList[j%][i%] := recTrialS1DeltadB[i%]+recDeltadBLevel;  'Same thing for delta dB
             else
                 recStimList%[j%][i%] := RecTrialS2%[i%];  'Stim will be S2 on terminal index
                 recSpeakerList%[j%][i%] := RecTrialS2Spkr%[i%];  'Same thing for speaker
-                recDeltadBList[j%][i%] := recTrialS2DeltadB[i%];  'Same thing for delta dB
+                recDeltadBList[j%][i%] := recTrialS2DeltadB[i%]+recDeltadBLevel;  'Same thing for delta dB
             endif;
             
             recDistractorStimList%[j%][i%] := recTrialDistractor%[i%][j%];  'changed this to 2-D to accommodate GNG
@@ -3722,11 +3774,18 @@ func GenTrialsOneStimDiscrim%()
     var count% := 0;
     var miniTrialOrder%[recTotalTrials%];
     var firstValue;
+    var firstValue$;
     var secondValue;
+    var secondValue$;
     
     ' ===== Create Trials =====
     recNTrials% := (recTotalTrials%*recOneStimDiscrimRepeatsPerStim%);  'Set global Ntrials
-
+    
+    'Strip out path and extension from filenames, put into recTrialLoadName$[], if necessary
+    if recOneStimDiscrimTarget1Ind% = 4 then
+        StripStimStringArray%(recTrialLoadLoc$[],recTrialLoadName$[],1,1);
+    endif
+    
     for i% := 0 to recTotalTrials%-1 do    
         miniTrialOrder%[i%] := i%;  ' 1. populate miniTrialOrder%, etc.
         recTrialTerminalIndex%[i%] := 0;  'For this experiment, every trial has exactly one S1, so zero-based terminal index is 0
@@ -3736,14 +3795,14 @@ func GenTrialsOneStimDiscrim%()
         
         recSpeakerList%[0][i%] := recTrialS1Spkr%[i%];
     
-        recDeltadBList[0][i%] := recTrialS1DeltadB[i%];
+        recDeltadBList[0][i%] := recTrialS1DeltadB[i%]+recDeltadBLevel;  'this is trial-based attenuation
         
         recNUniqueStims%[i%] := 1;
         
         'Here is where the trick is.  Here is where we have to assign values that allow us to make the 
         'experiment move correctly through the GNGEngine
-        'Note that basically whatever stimulus we will be calling the "target" response should have a
-        'value of 1 and whatever stimulus we will be calling the "nontarget" response should have a 
+        'Note that basically any stimulus we will be calling the "target" response should have a
+        'value of 1 and any stimulus we will be calling the "nontarget" response should have a 
         'value of 0
         'The "target" and "nontarget" values map more more precisely onto "Response 1" and "Response 2"
         'respectively.  We count "hits" and "CRs", etc. but really that's just for convenience to map
@@ -3761,13 +3820,16 @@ func GenTrialsOneStimDiscrim%()
             firstValue := recTrialStimDur[recTrialS1%[i%]];
         case recOneStimDiscrimTarget1Ind% = 3 then  'this is using AMDepth as first value
             firstValue := recTrialGenAMDepthPct[recTrialS1%[i%]];
+        case recOneStimDiscrimTarget1Ind% = 4 then  'this is using StimName as first value...hmm
+            firstValue$ := recTrialLoadName$[recTrialS1%[i%]];
         endcase
         'Get second value for each trial
         docase
         case recOneStimDiscrimTarget2Ind% = 0 then  'this is using AMFreq2 as second value
             secondValue := recTrialMF2[recTrialS1%[i%]];
         case recOneStimDiscrimTarget2Ind% = 1 then  'this is using VALUE as second value
-            secondValue := recOneStimDiscrimValue;
+            secondValue := recOneStimDiscrimValue;   'setting both of these is redundant, as we will only use one,
+            secondValue$ := recOneStimDiscrimValue$; 'but it's easier
         endcase
         'Compare first and second value based on request from dialog
         docase
@@ -3789,13 +3851,27 @@ func GenTrialsOneStimDiscrim%()
             else 'values are the same
                 recTrialTerminalIsS2%[i%] := 0;  'Catch
             endcase 
-        case recOneStimDiscrimVersusInd% = 2 then  'this is "target is equal to"
+        case recOneStimDiscrimVersusInd% = 2 and recOneStimDiscrimTarget1Ind% < 4 then  'this is "target is equal to", numeric version
             docase
             case firstValue = secondValue then
                 recTrialTerminalIsS2%[i%] := 1;  'Target
             else 'values are different
                 recTrialTerminalIsS2%[i%] := 2;  'Non-Target, there is no catch!
-            endcase     
+            endcase  
+        case recOneStimDiscrimVersusInd% = 2 and recOneStimDiscrimTarget1Ind% = 4 then  'this is "target is equal to", string version
+            docase
+            case firstValue$ = secondValue$ then
+                recTrialTerminalIsS2%[i%] := 1;  'Target
+            else 'values are different
+                recTrialTerminalIsS2%[i%] := 2;  'Non-Target, there is no catch!
+            endcase
+        case recOneStimDiscrimVersusInd% = 3 then  'this is "target contains" 
+            docase
+            case InStr(firstValue$,secondValue$) > 0 then
+                recTrialTerminalIsS2%[i%] := 1;  'Target
+            else 'second value is not contained in first value
+                recTrialTerminalIsS2%[i%] := 2;  'Non-Target, there is no catch!
+            endcase
         endcase          
     next;
 
@@ -4170,6 +4246,95 @@ func SplitString$(string$,char$,separator$,n%);
 end;
 
 '===== End SplitString =====
+'
+'
+
+
+
+'===== StripStimStringArray%() =====
+'
+'This function takes an array of strings and strips off the path
+'and/or the file extension in each string.  It will deal with both
+'forward and backslashes; the extension is assumed to be all the
+'characters following the final period, if present.  Stripped
+'strings are returned in the OUT$[] array, which must be long
+'enough to hold the final non-empty value in the IN$[] array.
+func StripStimStringArray%(in$[],out$[],stripPath%,stripExt%)
+    var numConverted%;
+    var i%;
+    var temp$;
+    
+    'Loop through all elements of the input string array
+    for i% := 0 to Len(in$[])-1 do
+        temp$ := in$[i%];
+        'If the input is not empty, move forward
+        if temp$ <> "" then
+            'if there is no spot in OUT for the value, quit and complain
+            if Len(out$[])-1 < i% then
+                message("The input array (" + Str$(Len(in$[])) + ") is too long for the output array (" + Str$(Len(out$[])) + ")!");
+                return numConverted%;
+            endif
+            'Strip this string and count it
+            out$[i%] := StripStimString$(temp$,stripPath%,stripExt%);
+            numConverted% += 1;
+        else  'If the input is empty, just clear OUT, don't count it
+            if Len(out$[]) > i% then
+                out$[i%] := "";
+            endif
+        endif
+    next    
+    
+    return numConverted%;   
+    'I would just note that the majority of weird stuff in this code is all designed to allow out$[] to be 
+    'smaller than in$[] so long as in$[] is empty beyond the length of out$[].  This feature will never be
+    'useful.  Oh well.
+end
+
+'===== End StripStimStringArray%() =====
+'
+'
+
+'===== StripStimString$() =====
+'
+'This function takes a string and strips off the path and/or the 
+'file extension.  It will deal with both forward and backslashes; 
+'the extension is assumed to be all the characters following the 
+'final period, if present.  Returns the stripped string.  May be
+'run as a standalone function, but is designed to do the dirty
+'work for StripStimStringArray%().
+func StripStimString$(in$,stripPath%,stripExt%)
+    var out$;
+    var forward$ := "/";
+    var back$ := "\\";
+    var period$ := ".";
+    var ind%;
+    var bind%;
+    var pind%;
+    var i%;
+    
+    out$ := in$;
+    if stripPath% > 0 then
+        'We want the last forward slash, we will flip, find the first forward slash, and adjust for the flip
+        ind% := InStr(Reverse$(out$),forward$);
+        'We want the last backslash, we will flip, find the first backslash, and adjust for the flip
+        bind% := InStr(Reverse$(out$),back$);
+        if ind% + bind% > 0 then 'if any slash is found
+            if ind% > bind% then
+                out$ := Right$(out$,ind%-1);  'Using Right$(), adjustment for the flip is easy
+            else
+                out$ := Right$(out$,bind%-1);
+            endif
+        endif
+    endif
+    if stripExt% > 0 then
+        'We want the last period, we will flip, find the first period, and adjust for the flip
+        pind% := InStr(Reverse$(out$),period$);
+        out$ := Left$(out$,Len(Out$)-pind%);
+    endif
+    return out$;
+end
+
+'===== End StripStimString$() =====
 '
 '
 

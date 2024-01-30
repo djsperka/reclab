@@ -52,6 +52,8 @@ var recSpaceDisReportExpButton%:=38;
 var recStereoDisReportExpButton%:=39;    
 var recCharReportExpButton%:=40;
 var recOneStimDiscrimReportExpButton%:=41;
+var recExpOneStimDiscrimGNGAddExpButton%:=42;
+var recExpOneStimDiscrimGNGDeleteExpButton%:=43; 
     
 
 'Selection Dialog variables
@@ -193,6 +195,7 @@ var recStereoDisRepeatsPerStim% := 1;
 var recStereoDisGNGRepeatsPerStim% := 1; 
 var recStereoDisdB := 65;   'we may change the intended dB  
 var recOneStimDiscrimRepeatsPerStim% := 1;  
+var recOneStimDiscrimGNGRepeatsPerStim% := 1;
 var recOneStimDiscrimdB := 65;   'we may change the intended dB     
 var recCharText1%;    
 var recCharText2%;  
@@ -364,10 +367,24 @@ var recOneStimDiscrimTrialsNameLoad$[recOneStimDiscrimNumExps%];
 var recOneStimDiscrimExpIndexLoad%;
 var recOneStimDiscrimExpNameGen$[recOneStimDiscrimNumExps%];
 var recOneStimDiscrimStimNameGen$[recOneStimDiscrimNumExps%];
-var recOneStimDiscrimTrialsNameGen$[recOneStimDiscrimNumExps%];
+var recOneStimDiscrimTrialsNameGen$[recOneStimDiscrimNumExps%]; 
 var recOneStimDiscrimExpIndexGen%;
+
+const recOneStimDiscrimGNGNumExps% := 40;
+var recOneStimDiscrimGNGExpNameLoad$[recOneStimDiscrimGNGNumExps%];
+var recOneStimDiscrimGNGStimcalNameLoad$[recOneStimDiscrimGNGNumExps%];
+var recOneStimDiscrimGNGStimcalDistractorNameLoad$[recOneStimDiscrimGNGNumExps%];
+var recOneStimDiscrimGNGTrialsNameLoad$[recOneStimDiscrimGNGNumExps%];
+var recOneStimDiscrimGNGExpIndexLoad%;
+var recOneStimDiscrimGNGExpNameGen$[recOneStimDiscrimGNGNumExps%];
+var recOneStimDiscrimGNGStimNameGen$[recOneStimDiscrimGNGNumExps%];
+var recOneStimDiscrimGNGTrialsNameGen$[recOneStimDiscrimGNGNumExps%]; 
+var recOneStimDiscrimGNGExpIndexGen%;
+
+var recOneStimDiscrimExpDoFC%;
 var recOneStimDiscrimExpDoGen%;
 var recOneStimDiscrimExpDoLoad%;       
+var recOneStimDiscrimExpDoGNG%;
 var recOneStimDiscrimDoRove%;               'Do we rove?
 var recOneStimDiscrimRovedB;                'How much do we rove? 
 var recOneStimDiscrimActive%;               'Active task? 
@@ -377,8 +394,10 @@ var recOneStimDiscrimTarget1Ind%;
 var recOneStimDiscrimVersusInd%;
 var recOneStimDiscrimTarget2Ind%;
 var recOneStimDiscrimValue;
+var recOneStimDiscrimValue$;  'We are going to allow either a number OR a string here, so now we have to hold it as a string
 var recOneStimDiscrimExptType%;
 var recOneStimDiscrimExptLabel$;  'recOneStimDiscrimExptType$ can't be used, it's defined in the dialog
+
 
 'Generic
 var recExpName$[recStereoDisNumExps%];  'All the NumExps are the same...if that changes, this will be more complicated.
@@ -522,7 +541,10 @@ func RecExpSelectDialog%()
 
     'Just DO this, even if we're not using the joystick.  Because I want it to just work.
     GetJoystickDegreesInVoltage(joystickVoltageConversionFactor);
-
+    
+    'Set the GNG sandbox to -1 (don't check)
+    recCheckGNGSandbox% := -1;
+    
     ' Generate the dialog
     
     DlgCreate("Experiment Selection Dialog",0,0,52,18);
@@ -906,6 +928,10 @@ func RecExpSearchDialog%()
         RecSearchSaveParams();
         recExptText$ := searchList$[recSearchStimType%];  'this puts the stimulus type into the values which will be SampleText'ed
         recDoRove% := 0;  'Do not allow roving in search
+        
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog)
+        recCheckGNGSandbox% := -1;
+        
         
         if recSearchMinS1% + recSearchVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
@@ -1469,6 +1495,9 @@ func RecExpCharDialog%()
         'Save parameters
         RecCharDialogFRASaveParams();
         
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog)
+        recCheckGNGSandbox% := -1;
+        
         'Reset dialog OK button text on Select dialog, and note which experiment to run
         DlgValue$(-1,"Run Char.");
         
@@ -1791,7 +1820,7 @@ func RecJoyTrainDialog%()
     DlgAllow(0xffff, 0, RecExpJoyTrnDialogChanged%); 'no idea how this works, but i'm sure i need it!
 
     ' Show the dialog. 
-i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay, recTrialInitPosition%, recDoIncrements%); 'DlgCheck(1... ??
+    i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay, recTrialInitPosition%, recDoIncrements%); 'DlgCheck(1... ??
 
     ' If user checked box and hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -1805,7 +1834,10 @@ i%:=DlgShow(recDoJoyTrain%, recHitRewardmL, recHitRewardIncmL, recMinOnsetDelay,
         
         recFixLED% := 0;
         recActive% := 1;
-    
+        
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog)
+        recCheckGNGSandbox% := -1;
+        
         'assign JoyTrain-specific variables to experiment-wide variables here????
         'see lines 1163-1170 in RecRoom (RecExpSearchDialog) for examples of this (i think)
     
@@ -1884,6 +1916,9 @@ func RecLongToneDialog%()
             recLongToneBPLow := -1;  'correct value for broadband noise
             recLongToneBPHigh := -1;
         endif;
+        
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog)
+        recCheckGNGSandbox% := -1;
         
         'Reset dialog OK button text on Select dialog, and note which experiment to run
         DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
@@ -2072,7 +2107,9 @@ func RecAudiogramDialog%()
         recFixLED% := 1;
         
         'Force experiment to be go/no-go (will still need to consult with Engine to make sure this will be OK but nothing else appears to be necessary in RecRoom)
-        recIsGoNoGo% := 1;
+        'recIsGoNoGo% := 1;  'Instead we should check the sandbox
+        'Set the GNG sandbox variable
+        recCheckGNGSandbox% := 1;
         
         'Do not allow reward incrementing for audiogram
         recHitRewardIncmL := 0;
@@ -2084,8 +2121,19 @@ func RecAudiogramDialog%()
         DlgEnable(1,3);  'make sure that the Nspeakers selection item is enabled on the main dialog
         DlgValue$(-1,"Run Audiogram"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
         recExpToRun% := recExpAudiogramButton%;
-        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
-        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        'Check to make sure that the joystick/lever is set up for GNG, if not, don't enable!
+        if recIsGoNoGo% = 1 then
+            recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+            recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        else
+            recExpSelectDialogAllowOK% := 0;  'Prepare to disable OK button
+            recExpSelectDialogChanged%(-1);  'Disables "OK" button, -1 is sham input
+            recExpSelectDialogAllowOK% := -1;  'But inform the joystick/lever dialog that we're good to go once GNG is fixed
+            message("Audiogram must be Go/No-Go, but the joystick dialog is set for Forced Choice!");
+        endif
+               
+        
         
         recAudiogramCurrentdB := recAudiogramStartdB;
         recMatGenStim% := 1;  'Always generate stimuli for Audiogram
@@ -2094,6 +2142,8 @@ func RecAudiogramDialog%()
     
         status% := 1;
     else
+        'Set the GNG sandbox to -1 (don't check) if cancelled
+        recCheckGNGSandbox% := -1;
         status% := 1;
     endif
     
@@ -2261,6 +2311,10 @@ func RecExpAMDiscDialog%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         RecAMDiscSaveParams();
+        
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog)
+        recCheckGNGSandbox% := -1;
+        
         if recAMDiscMinS1% + recAMDiscVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run AM Disc");
@@ -2287,7 +2341,7 @@ func RecExpAMDiscDialog%()
             message("The number of variable + constant S1s is greater than the maximum allowed number (%d)",recMaxStimPerTrial%-1);
             DlgValue$(-1,"OK");
             recExpSelectDialogAllowOK% := 0;  'Prepare to disable OK button
-            recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+            recExpSelectDialogChanged%(-1);  'Disables "OK" button, -1 is sham input
         endif;   
         
 '           'We might need to specify a number of trials here...I'm assuming yes.  Note that SEARCH runs until the
@@ -2411,6 +2465,10 @@ func RecExpSpaceDisDialog%()
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
         RecSpaceDisSaveParams();
+        
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog)
+        recCheckGNGSandbox% := -1;
+        
         if recSpaceDisMinS1% + recSpaceDisVarS1% <= recMaxStimPerTrial%-1 then
             'Reset dialog OK button text on Select dialog, and note which experiment to run
             DlgValue$(-1,"Run Space Dis");
@@ -2517,6 +2575,9 @@ func RecExpCueingDialog%()
 	if i% = 1 then
         recExpToRun% := recExpCueingButton%;
         
+        'Set the GNG sandbox to -1 (don't check, value isn't present in this dialog...I mean, for now!)
+        recCheckGNGSandbox% := -1;
+        
         status% := 1;
     else
         status% := 1;
@@ -2605,8 +2666,23 @@ func RecExpStereoDisDialog%()
         
         DlgValue$(-1,"Run StereoDis"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
         recExpToRun% := recExpStereoDisButton%;
-        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
-        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        
+        'Set the GNG sandbox variable
+        recCheckGNGSandbox% := 1 - recStereoDisExpDoFC%;
+        'Check to make sure that the joystick/lever is set correct for for GNG, if not, don't enable!
+        if recIsGoNoGo% = recCheckGNGSandbox% then
+            recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+            recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        else
+            recExpSelectDialogAllowOK% := 0;  'Prepare to disable OK button
+            recExpSelectDialogChanged%(-1);  'Disables "OK" button, -1 is sham input
+            recExpSelectDialogAllowOK% := -1;  'But inform the joystick/lever dialog that we're good to go once GNG is fixed
+            if recCheckGNGSandbox% = 1 then
+                message("Go/No-Go was selected here, but the joystick dialog is set for Forced Choice!");
+            else
+                message("Forced Choice was selected here, but the joystick dialog is set for Go/No-Go!");
+            endif
+        endif
             
         recActive% := recStereoDisActive%;
         recFixLED% := 1;
@@ -2614,23 +2690,18 @@ func RecExpStereoDisDialog%()
         recTrialInitReward% := recStereoDisTrialInitReward%;
         recTrialHoldReward% := recStereoDisTrialHoldReward%;
         
-        if recStereoDisExpDoGen% = 1 then
-            recMatGenStim% := 1;
-        else
-            recMatGenStim% := 0;
-        endif;
         
-        if recStereoDisExpDoFC% = 1 then
-            recIsGoNoGo% := 0;
-        else
-            recIsGoNoGo% := 1;
-        endif;
+        recMatGenStim% := recStereoDisExpDoGen%;
         
+        
+        recDeltadBLevel := 65-recStereoDisdB;
         recDoRove% := recStereoDisDoRove%;
         recRovedB := recStereoDisRovedB;
     
         status% := 1;
     else
+        'Set the GNG sandbox to -1 (don't check) if cancelled
+        recCheckGNGSandbox% := -1;
         status% := 1;
     endif
     
@@ -2732,19 +2803,22 @@ func RecExpOneStimDiscrimDialog%()
     
     var i%;
     var status% := 0;
-    var RecOneStimDiscrimTarget1$[4];
-    var RecOneStimDiscrimVersus$[3];
+    var RecOneStimDiscrimTarget1$[5];
+    var RecOneStimDiscrimVersus$[4];
     var RecOneStimDiscrimTarget2$[2];
-    var RecOneStimDiscrimExptType$[2];
+    var RecOneStimDiscrimExptType$[3];
+    var numChar%;
     
     RecOneStimDiscrimTarget1$[0] := "AMFreq";
     RecOneStimDiscrimTarget1$[1] := "ToneFreq";
     RecOneStimDiscrimTarget1$[2] := "Duration";
     RecOneStimDiscrimTarget1$[3] := "AMDepth";
+    RecOneStimDiscrimTarget1$[4] := "StimName";
     
     RecOneStimDiscrimVersus$[0] := "Greater Than";
     RecOneStimDiscrimVersus$[1] := "Less Than";
     RecOneStimDiscrimVersus$[2] := "Equal To";
+    RecOneStimDiscrimVersus$[3] := "Contains";
     
     RecOneStimDiscrimTarget2$[0] := "AMFreq2";
     RecOneStimDiscrimTarget2$[1] := "Value:";
@@ -2753,63 +2827,113 @@ func RecExpOneStimDiscrimDialog%()
     'The value here will be reported in the leading sampletext and will define the ExptType from there forward
     RecOneStimDiscrimExptType$[0] := "Generic";  
     RecOneStimDiscrimExptType$[1] := "AMFM"; 
+    RecOneStimDiscrimExptType$[2] := "Boilermaker (ballistic if GNG)"; 
     
-    ' Fetch parameters from registry  
+    ' Fetch parameters from registry, forced choice 
     RecOneStimDiscrimGetParams();
     RecOneStimDiscrimExpListLoadGetParams(recOneStimDiscrimExpNameLoad$[],recOneStimDiscrimStimcalNameLoad$[],recOneStimDiscrimTrialsNameLoad$[]);
     RecOneStimDiscrimExpListGenGetParams(recOneStimDiscrimExpNameGen$[],recOneStimDiscrimStimNameGen$[],recOneStimDiscrimTrialsNameGen$[]);
     
-    ' Generate the dialog    
-    DlgCreate("One Stim Discrimination Dialog",0,0,75,15);
+    ' Fetch parameters from registry, GNG
+    RecOneStimDiscrimGNGGetParams();
+    RecOneStimDiscrimGNGExpListLoadGetParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
+    RecOneStimDiscrimGNGExpListGenGetParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
     
-    DlgCheck(1,"Generate Stimuli",2,1);
+    
+    
+    ' Generate the dialog    
+    DlgCreate("One Stim Discrimination Dialog",0,0,75,18);
+    
+    
+    DlgCheck(1,"Do Forced Choice Experiment",2,1);
+    DlgCheck(2,"Generate Stimuli",30,1);
+    'DlgCheck(1,"Generate Stimuli",2,1);
     DlgButton(recOneStimDiscrimReportExpButton%, "  Experiment Details  ", RecOneStimDiscrimReportExp%,53,1);  'needs actual function written
     
     DlgGroup("Stimulus Selection, Forced Choice",1,2,73,3);
-    DlgList(2,27,recOneStimDiscrimExpNameGen$[],recOneStimDiscrimNumExps%,24,3);
-    DlgList(3,27,recOneStimDiscrimExpNameLoad$[],recOneStimDiscrimNumExps%,24,4);
+    DlgList(3,27,recOneStimDiscrimExpNameGen$[],recOneStimDiscrimNumExps%,24,3);  'these are slow
+    DlgList(4,27,recOneStimDiscrimExpNameLoad$[],recOneStimDiscrimNumExps%,24,4);
     recAMDiscText1% := DlgText("Select Exp't (Gen Stim)",2,3);
     recAMDiscText2% := DlgText("Select Exp't (Load Stim)",2,4); 
     DlgButton(recExpOneStimDiscrimAddExpButton%, "   Add Experiment   ", RecOneStimDiscrimAddExp%,53,3);
     DlgButton(recExpOneStimDiscrimDeleteExpButton%, "Delete Experiment ", RecOneStimDiscrimDeleteExp%,53,4);
     
-    DlgInteger(4,"Repeats Per Stim",1,1000,18,6);
-    DlgReal(5,"Stimulus dB",1,100,18,7);
-    DlgCheck(6,"Rove stimuli?",2,8);
-    DlgReal(7,"Rove dB, +/-",0,3,18,9);  'Rove db
-    DlgCheck(8,"Active task?",2,10);
+    DlgGroup("Stimulus Selection, Go/No-Go",1,5,73,3);
+    DlgList(5,27,recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGNumExps%,24,6);  'these are slow
+    DlgList(6,27,recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGNumExps%,24,7);
+    recAMDiscText3% := DlgText("Select Exp't (Gen Stim)",2,6); 
+    recAMDiscText4% := DlgText("Select Exp't (Load Stim)",2,7); 
+    DlgButton(recExpOneStimDiscrimGNGAddExpButton%, "   Add Experiment   ", RecOneStimDiscrimGNGAddExp%,53,6);  'TODO the one stim discrim version doesn't exist yet
+    DlgButton(recExpOneStimDiscrimGNGDeleteExpButton%, "Delete Experiment ", RecOneStimDiscrimGNGDeleteExp%,53,7);
     
-    DlgCheck(9,"Trial initiation reward?",46,6);
-    DlgCheck(10,"Trial Hold reward?",46,7);   
+    DlgInteger(7,"Repeats Per Stim",1,1000,18,9);
+    DlgReal(8,"Stimulus dB",1,100,18,10);
+    DlgCheck(9,"Rove stimuli?",2,11);
+    DlgReal(10,"Rove dB, +/-",0,3,18,12);  'Rove db
+    DlgCheck(11,"Active task?",2,13);
     
-    DlgGroup("Target (aka Response 1) Definition",1,11,73,3);
-    DlgList(11,14,recOneStimDiscrimTarget1$[],4,3,12);
-    DlgList(12,14,recOneStimDiscrimVersus$[],3,19,12);
-    DlgList(13,14,recOneStimDiscrimTarget2$[],2,35,12);
-    DlgReal(14,12,0,50000,-3,12); 
-    DlgList(15,"Experiment Type",recOneStimDiscrimExptType$[],2,18,13);
+    DlgCheck(12,"Trial initiation reward?",46,9);
+    DlgCheck(13,"Trial Hold reward?",46,10);   
+    
+    DlgGroup("Target (aka Response 1) Definition",1,14,73,3);
+    DlgList(14,14,recOneStimDiscrimTarget1$[],5,3,15);
+    DlgList(15,14,recOneStimDiscrimVersus$[],4,19,15);
+    DlgList(16,14,recOneStimDiscrimTarget2$[],2,35,15);
+    'DlgReal(17,12,0,50000,-3,15);   'Changing from real to string
+    DlgString(17,12,40,"",-3,15); 
+    DlgText("Experiment Type",2,16);
+    DlgList(18,25,recOneStimDiscrimExptType$[],3,18,16);
     
     DlgAllow(0xffff, 0, RecExpOneStimDiscrimDialogChanged%);   
     
     
-    i%:=DlgShow(recOneStimDiscrimExpDoGen%,recOneStimDiscrimExpIndexGen%,recOneStimDiscrimExpIndexLoad%,
+    i%:=DlgShow(recOneStimDiscrimExpDoFC%,recOneStimDiscrimExpDoGen%,recOneStimDiscrimExpIndexGen%,recOneStimDiscrimExpIndexLoad%,
+    recOneStimDiscrimGNGExpIndexGen%,recOneStimDiscrimGNGExpIndexLoad%,
     recOneStimDiscrimRepeatsPerStim%,recOneStimDiscrimdB,recOneStimDiscrimDoRove%,recOneStimDiscrimRovedB,
     recOneStimDiscrimActive%,recOneStimDiscrimTrialInitReward%, recOneStimDiscrimTrialHoldReward%,recOneStimDiscrimTarget1Ind%,
-    recOneStimDiscrimVersusInd%,recOneStimDiscrimTarget2Ind%,recOneStimDiscrimValue,recOneStimDiscrimExptType%);
+    recOneStimDiscrimVersusInd%,recOneStimDiscrimTarget2Ind%,recOneStimDiscrimValue$,recOneStimDiscrimExptType%);
 
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
+        'OK, honestly there are way too many indicators here, but in case they all get used, we can keep them.
+        'set the GNG indicator.  We set generic indicators below, not sure if specifics are of any use.
+        recOneStimDiscrimExpDoGNG% := 1-recOneStimDiscrimExpDoFC%;
         'set the load stimulus indicator
         recOneStimDiscrimExpDoLoad% := 1-recOneStimDiscrimExpDoGen%;
         
-        RecOneStimDiscrimSaveParams();        
+        RecOneStimDiscrimSaveParams();             
+        
+        'Set real value of comparison, if real value is needed
+        if recOneStimDiscrimTarget1Ind% < 4 then  'if this is 4, we're looking for a stimulus name, if it's less, we're looking for a value
+            recOneStimDiscrimValue := Val(recOneStimDiscrimValue$,numChar%);
+            if numChar% = 0 then
+                message("Error: The comparison value was empty or a string, must be a number!  Quitting!");
+                halt;
+            endif
+        endif
+        
         
         DlgValue$(-1,"Run OneStimDisc"); 'to enable OK button? see also ~line 1156 in RecRoom (RecExpSearchDialog) 
         recExpToRun% := recExpOneStimDiscrimButton%;
-        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
-        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
-            
+        
+        'Set the GNG sandbox variable
+        recCheckGNGSandbox% := recOneStimDiscrimExpDoGNG%;
+        'Check to make sure that the joystick/lever is set correct for for GNG, if not, don't enable!
+        if recIsGoNoGo% = recCheckGNGSandbox% then
+            recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+            recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        else
+            recExpSelectDialogAllowOK% := 0;  'Prepare to disable OK button
+            recExpSelectDialogChanged%(-1);  'Disables "OK" button, -1 is sham input
+            recExpSelectDialogAllowOK% := -1;  'But inform the joystick/lever dialog that we're good to go once GNG is fixed
+            if recCheckGNGSandbox% = 1 then
+                message("Go/No-Go was selected here, but the joystick dialog is set for Forced Choice!");
+            else
+                message("Forced Choice was selected here, but the joystick dialog is set for Go/No-Go!");
+            endif
+        endif
+        
         recActive% := recOneStimDiscrimActive%;
         recFixLED% := 1;
         
@@ -2818,20 +2942,36 @@ func RecExpOneStimDiscrimDialog%()
         
         recOneStimDiscrimExptLabel$ := recOneStimDiscrimExptType$[recOneStimDiscrimExptType%];
         
-        if recOneStimDiscrimExpDoGen% = 1 then
-            recMatGenStim% := 1;
-        else
-            recMatGenStim% := 0;
-        endif;
+        recMatGenStim% := recOneStimDiscrimExpDoGen%;
         
-        'There is not a GNG version of this discrimination experiment
-        recIsGoNoGo% := 0;
-        
+        recDeltadBLevel := 65-recOneStimDiscrimdB;
         recDoRove% := recOneStimDiscrimDoRove%;
         recRovedB := recOneStimDiscrimRovedB;
-    
+        
+        'Set ballistic here - as of first implementation 1/19/24, this is the only place 
+        'ballistic is set, and only for Boilermaker GNG (but code should work for other
+        'circumstances)
+        if recOneStimDiscrimExptType% = 2 and recActive% = 1 and recIsGoNoGo% = 1 then
+            doBallistic% := 1;
+            'The idea behind ballistic is that in this case, for GNG non-target trials where 
+            'no response (i.e. hold) is the correct response (i.e. correct rejections), we
+            'want the animal to continue holding and the next stimulus will begin promptly,
+            'rather than request a move to the origin and a new press to initiate a new trial.
+            'Typically we would not expect these CRs to be rewarded, but because we can't be
+            'sure this will always be true, the CR reward will have to be turned off at the
+            'timing/reward dialog.  We will need to enforce continued hold in the initiation
+            'position through the beginning of presentation of the next stimulus (at which
+            'point the hold is naturally enforced); break of hold should be given FA penalty.
+        else
+            doBallistic% := 0;
+        endif
+        
+        
+        
         status% := 1;
     else
+        'Set the GNG sandbox to -1 (don't check) if cancelled
+        recCheckGNGSandbox% := -1;
         status% := 1;
     endif
     
@@ -2849,32 +2989,114 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
     
     'For now, we should simply disallow any LOAD entries in this dialog and only allow GEN, we can add load
     'later if we need to
-    DlgValue(1,1);
-    DlgEnable(0,1);
-    DlgEnable(0,3); 'Disable FC list selection (load)
+    'Full steam ahead, boys, we're adding LOAD!
+    'DlgValue(1,2);
+    'DlgEnable(0,2);
+    'DlgEnable(0,4); 'Disable FC list selection (load)
         
+'    docase
+'    case DlgValue(2) = 1 then  'if we are running Gen, disable Load buttons
+'        DlgEnable(1,3); 'Enable FC list selection (gen)
+'        DlgEnable(0,4); 'Disable FC list selection (load)
+'        'DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
+'        'DlgEnable(1,-recExpOneStimDiscrimDeleteExpButton%); 'Enable FC delete button
+'        DlgEnable(1,recAMDiscText1%);  'Enable FC generate list text
+'        DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
+'    case DlgValue(2) = 0 then 'if we are running Load, disable Gen buttons
+'        DlgEnable(0,3); 'Disable FC list selection (gen)
+'        DlgEnable(1,34); 'Enable FC list selection (load)
+'        'DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
+'        'DlgEnable(0,-recExpOneStimDiscrimDeleteExpButton%); 'Disable FC delete button
+'        DlgEnable(0,recAMDiscText1%);  'Disable FC generate list text
+'        DlgEnable(1,recAMDiscText2%);  'Enable FC load list text
+'    endcase;
+    
     docase
-    case item% >= 1 and DlgValue(1) = 1 then  'if we are running Gen, disable Load buttons
-        DlgEnable(1,2); 'Enable FC list selection (gen)
-        DlgEnable(0,3); 'Disable FC list selection (load)
-        'DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
-        'DlgEnable(1,-recExpOneStimDiscrimDeleteExpButton%); 'Enable FC delete button
+    case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) = 1 then  'if we are running FC/Gen, disable GNG/Load buttons
+        DlgEnable(1,3); 'Enable FC list selection (gen)
+        DlgEnable(0,4); 'Disable FC list selection (load)
+        DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
+        DlgEnable(1,-recExpOneStimDiscrimDeleteExpButton%); 'Enable FC delete button
+        DlgEnable(0,5); 'Disable GNG list selection (gen)
+        DlgEnable(0,6); 'Disable GNG list selection (load)
+        DlgEnable(0,-recExpOneStimDiscrimGNGAddExpButton%); 'Disable GNG add button
+        DlgEnable(0,-recExpOneStimDiscrimGNGDeleteExpButton%); 'Disable GNG delete button
         DlgEnable(1,recAMDiscText1%);  'Enable FC generate list text
         DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
-    case item% >= 1 and DlgValue(1) = 0 then 'if we are running Load, disable Gen buttons
-        DlgEnable(0,2); 'Disable FC list selection (gen)
-        DlgEnable(1,3); 'Enable FC list selection (load)
-        'DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
-        'DlgEnable(0,-recExpOneStimDiscrimDeleteExpButton%); 'Disable FC delete button
+        DlgEnable(0,recAMDiscText3%);  'Disable GNG generate list text
+        DlgEnable(0,recAMDiscText4%);  'Disable GNG load list text
+    case item% <= 2 and DlgValue(1) = 0 and DlgValue(2) = 1 then 'if we are running GNG/Gen, disable FC/Load buttons
+        DlgEnable(0,3); 'Disable FC list selection (gen)
+        DlgEnable(0,4); 'Disable FC list selection (load)
+        DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
+        DlgEnable(0,-recExpOneStimDiscrimDeleteExpButton%); 'Disable FC delete button
+        DlgEnable(1,5); 'Enable GNG list selection (gen)
+        DlgEnable(0,6); 'Disable GNG list selection (load)
+        DlgEnable(1,-recExpOneStimDiscrimGNGAddExpButton%); 'Enable GNG add button
+        DlgEnable(1,-recExpOneStimDiscrimGNGDeleteExpButton%); 'Enable GNG delete button
+        DlgEnable(0,recAMDiscText1%);  'Disable FC generate list text
+        DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
+        DlgEnable(1,recAMDiscText3%);  'Enable GNG generate list text
+        DlgEnable(0,recAMDiscText4%);  'Disable GNG load list text
+    case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) = 0 then  'if we are running FC/Load, disable GNG/Gen buttons
+        DlgEnable(0,3); 'Disable FC list selection (gen)
+        DlgEnable(1,4); 'Enable FC list selection (load)
+        DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
+        DlgEnable(1,-recExpOneStimDiscrimDeleteExpButton%); 'Enable FC delete button
+        DlgEnable(0,5); 'Disable GNG list selection (gen)
+        DlgEnable(0,6); 'Disable GNG list selection (load)
+        DlgEnable(0,-recExpOneStimDiscrimGNGAddExpButton%); 'Disable GNG add button
+        DlgEnable(0,-recExpOneStimDiscrimGNGDeleteExpButton%); 'Disable GNG delete button
         DlgEnable(0,recAMDiscText1%);  'Disable FC generate list text
         DlgEnable(1,recAMDiscText2%);  'Enable FC load list text
+        DlgEnable(0,recAMDiscText3%);  'Disable GNG generate list text
+        DlgEnable(0,recAMDiscText4%);  'Disable GNG load list text
+    case item% <= 2 and DlgValue(1) = 0 and DlgValue(2) = 0 then 'if we are running GNG/Load, disable FC/Gen buttons
+        DlgEnable(0,3); 'Disable FC list selection (gen)
+        DlgEnable(0,4); 'Disable FC list selection (load)
+        DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
+        DlgEnable(0,-recExpOneStimDiscrimDeleteExpButton%); 'Disable FC delete button
+        DlgEnable(0,5); 'Disable GNG list selection (gen)
+        DlgEnable(1,6); 'Enable GNG list selection (load)
+        DlgEnable(1,-recExpOneStimDiscrimGNGAddExpButton%); 'Enable GNG add button
+        DlgEnable(1,-recExpOneStimDiscrimGNGDeleteExpButton%); 'Enable GNG delete button
+        DlgEnable(0,recAMDiscText1%);  'Disable FC generate list text
+        DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
+        DlgEnable(0,recAMDiscText3%);  'Disable GNG generate list text
+        DlgEnable(1,recAMDiscText4%);  'Enable GNG load list text
     endcase;
     
+    
+    
+    
+    
     'Enable/diable dB value based on rove checkbox
-    DlgEnable(DlgValue(6),7);
+    DlgEnable(DlgValue(8),10);
+    
+    'Do not allow illegal selections in the drop down boxes
+    if DlgValue(14) > 0 then  'If we are not using AMFreq in the first value, AMFreq2 cannot be the second value!
+        'Do not allow second comparator to be AMFreq2, must be Value
+        DlgValue(16,1);  'We don't have to check, just set it
+    endif
+    if DlgValue(2) = 1 and DlgValue(14) = 4 then  'If we are generating stimuli, we don't have a StimName!
+        DlgValue(14,0);  'force to AMFreq
+    endif;
+    if DlgValue(14) = 4 then  'if we are doing StimName
+        'Do not allow "greater than" or "less than"
+        if DlgValue(15) < 2 then
+            DlgValue(15,2);  'force to "equal to"
+        endif
+        'Do not allow second comparator to be AMFreq2, must be Value
+        DlgValue(16,1);  'We don't have to check, just set it
+    else 'if we are NOT doing StimName
+        'Do not allow "contains"
+        if DlgValue(15) = 3 then
+            DlgValue(15,2);  'force to "equal to"
+        endif
+    endif
     
     'Enable/disable "value" of target based on third dropdown list
-    DlgEnable(DlgValue(13),14);
+    DlgEnable(DlgValue(16),17);
     
     return 1;
 end
@@ -3254,6 +3476,20 @@ func RecExpLeverJoystickDialog%()
 	if i% = 1 then
         RecExpSelectDialogChanged%(0); 'this might work?  Yep!  This changes the button label on the main dialog, if necessary
         
+        'Check GNG sandbox, if necessary
+        if recCheckGNGSandbox% > -1 then
+            if recIsGoNoGo% <> recCheckGNGSandbox% then
+                message("The FC/GNG value set here does not match the value set in the active experiment!");
+            else
+                'Enable the OK button if all was well in a dialog whose GNG/FC value conflicted with here
+                if recExpSelectDialogAllowOK% = -1 then
+                    recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+                    recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+                endif
+            endif
+        endif
+
+        
         'Apply flip, be explicit
         docase
         case recUseJoystick% = 1 then
@@ -3370,18 +3606,18 @@ func RecExpLeverJoystickDialog%()
         'Set incrementing variables, start by zeroing everything then change what is needed
         '[0] = up, [1] = down, [2] = left, [3] = right
         'The current increment/decerement rules are as follows:
-        'Increment trial initiation direction on successful trial initiation
-        'Decrement trial initiation direction on failed trial initiation
-        'Increment S2 response direction on Hit
-        'Decrement S2 response direction on Passive Miss (nothing on Active Miss)
-        'Increment S1 response direction on CR
-        'Decrement S1 response direction on Passive FA (nothing on Active FA)
+        'Increment trial initiation direction on successful trial initiation 
+        'Decrement trial initiation direction on failed trial initiation 
+        'Increment S2 response direction on Hit, FC only (GNG is return to center)
+        'Decrement S2 response direction on NR to S2H (no decrement on resp to S2L)
+        'Increment S1 response direction on CR, for FC only (GNG is hold)
+        'Decrement S1 response direction on NR to S2L (no decrement on resp to S2H)
         ArrConst(doIncTrialInit%[],0);
         ArrConst(doDecTrialInit%[],0);
         ArrConst(doIncHit%[],0);
-        ArrConst(doDecPassiveMiss%[],0);
+        ArrConst(doDecNoRespS2H%[],0);
         ArrConst(doIncCR%[],0);
-        ArrConst(doDecPassiveFA%[],0);
+        ArrConst(doDecNoRespS2L%[],0);
         if recDoIncrements% = 1 then
             docase
             case recTrialInitPosition% = 1 then
@@ -3409,55 +3645,55 @@ func RecExpLeverJoystickDialog%()
             endcase
             'Note that because there is no logical to inc/dec a return to center (it just conflicts with
             'the trial initiation inc/dec), these docases are structured exactly the same as the trial init one above
-            'This is S2 response direction
+            'This is S2/S2H response direction
             docase
             case recTrialResponsePosition1% = 1 then
                 doIncHit%[1] := 1;
-                doDecPassiveMiss%[1] := -1;
+                doDecNoRespS2H%[1] := -1;
             case recTrialResponsePosition1% = 2 then
                 doIncHit%[0] := 1;
-                doDecPassiveMiss%[0] := -1;
+                doDecNoRespS2H%[0] := -1;
             case recTrialResponsePosition1% = 3 then
                 doIncHit%[3] := 1;
-                doDecPassiveMiss%[3] := -1;
+                doDecNoRespS2H%[3] := -1;
             case recTrialResponsePosition1% = 4 then
                 doIncHit%[2] := 1;
-                doDecPassiveMiss%[2] := -1;
+                doDecNoRespS2H%[2] := -1;
             case recTrialResponsePosition1% = 5 then
                 doIncHit%[2] := 1;
-                doDecPassiveMiss%[2] := -1;
+                doDecNoRespS2H%[2] := -1;
                 doIncHit%[3] := 1;
-                doDecPassiveMiss%[3] := -1;    
+                doDecNoRespS2H%[3] := -1;    
             case recTrialResponsePosition1% = 6 then
                 doIncHit%[0] := 1;
-                doDecPassiveMiss%[0] := -1;
+                doDecNoRespS2H%[0] := -1;
                 doIncHit%[1] := 1;
-                doDecPassiveMiss%[1] := -1;
+                doDecNoRespS2H%[1] := -1;
             endcase    
-            'This is S1 response direction
+            'This is S1/S2L response direction
             docase
             case recTrialResponsePosition2% = 1 then
                 doIncCR%[1] := 1;
-                doDecPassiveFA%[1] := -1;
+                doDecNoRespS2L%[1] := -1;
             case recTrialResponsePosition2% = 2 then
                 doIncCR%[0] := 1;
-                doDecPassiveFA%[0] := -1;
+                doDecNoRespS2L%[0] := -1;
             case recTrialResponsePosition2% = 3 then
                 doIncCR%[3] := 1;
-                doDecPassiveFA%[3] := -1;
+                doDecNoRespS2L%[3] := -1;
             case recTrialResponsePosition2% = 4 then
                 doIncCR%[2] := 1;
-                doDecPassiveFA%[2] := -1;
+                doDecNoRespS2L%[2] := -1;
             case recTrialResponsePosition2% = 5 then
                 doIncCR%[2] := 1;
-                doDecPassiveFA%[2] := -1;
+                doDecNoRespS2L%[2] := -1;
                 doIncCR%[3] := 1;
-                doDecPassiveFA%[3] := -1;    
+                doDecNoRespS2L%[3] := -1;    
             case recTrialResponsePosition2% = 6 then
                 doIncCR%[0] := 1;
-                doDecPassiveFA%[0] := -1;
+                doDecNoRespS2L%[0] := -1;
                 doIncCR%[1] := 1;
-                doDecPassiveFA%[1] := -1;
+                doDecNoRespS2L%[1] := -1;
             endcase    
                 
                 
@@ -4100,7 +4336,8 @@ proc RecOneStimDiscrimSaveParams()
     SetIntRegistryValue(key$, "OneStimDiscrimTarget1Ind", recOneStimDiscrimTarget1Ind%);
     SetIntRegistryValue(key$, "OneStimDiscrimVersusInd", recOneStimDiscrimVersusInd%);
     SetIntRegistryValue(key$, "OneStimDiscrimTarget2Ind", recOneStimDiscrimTarget2Ind%);
-    SetFloatRegistryValue(key$, "OneStimDiscrimValue", recOneStimDiscrimValue);
+    'SetFloatRegistryValue(key$, "OneStimDiscrimValue", recOneStimDiscrimValue);
+    SetStringRegistryValue(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     SetIntRegistryValue(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
 
     
@@ -4130,7 +4367,8 @@ proc RecOneStimDiscrimGetParams()
     recOneStimDiscrimTarget1Ind% := GetIntRegistryValue%(key$, "OneStimDiscrimTarget1Ind", recOneStimDiscrimTarget1Ind%);
     recOneStimDiscrimVersusInd% := GetIntRegistryValue%(key$, "OneStimDiscrimVersusInd", recOneStimDiscrimVersusInd%);
     recOneStimDiscrimTarget2Ind% := GetIntRegistryValue%(key$, "OneStimDiscrimTarget2Ind", recOneStimDiscrimTarget2Ind%);
-    recOneStimDiscrimValue := GetFloatRegistryValue(key$, "OneStimDiscrimValue", recOneStimDiscrimValue);
+    'recOneStimDiscrimValue := GetFloatRegistryValue(key$, "OneStimDiscrimValue", recOneStimDiscrimValue);
+    recOneStimDiscrimValue$ := GetStringRegistryValue$(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     recOneStimDiscrimExptType% := GetIntRegistryValue%(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
     
 	return;
@@ -4139,6 +4377,50 @@ end
 '===== End RecOneStimDiscrimGetParams =====
 '
 '
+
+
+
+'
+'===== RecOneStimDiscrimGNGSaveParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecOneStimDiscrimGNGSaveParams()
+	var key$;
+    key$:="Reclab\\OneStimDiscrimParam";  
+    
+    SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
+    SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexGen", recOneStimDiscrimGNGExpIndexGen%);
+    SetIntRegistryValue(key$, "OneStimDiscrimGNGRepeatsPerStim", recOneStimDiscrimGNGRepeatsPerStim%);
+    SetIntRegistryValue(key$, "OneStimDiscrimExpDoGNG", recOneStimDiscrimExpDoGNG%);
+    
+	return;
+end
+
+'===== End RecOneStimDiscrimGNGSaveParams =====
+'
+'
+'
+'===== RecOneStimDiscrimGNGGetParams =====
+
+'Fetch Debugging parameters from the registry
+proc RecOneStimDiscrimGNGGetParams()
+	var key$;
+    key$:="Reclab\\OneStimDiscrimParam";  
+    
+    recOneStimDiscrimGNGExpIndexLoad% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
+    recOneStimDiscrimGNGExpIndexGen% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexGen", recOneStimDiscrimGNGExpIndexGen%);
+    recOneStimDiscrimGNGRepeatsPerStim% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGRepeatsPerStim", recOneStimDiscrimGNGRepeatsPerStim%);   
+    recOneStimDiscrimExpDoGNG% := GetIntRegistryValue%(key$, "OneStimDiscrimExpDoGNG", recOneStimDiscrimExpDoGNG%);
+    
+	return;
+end
+
+'===== End RecOneStimDiscrimGNGGetParams =====
+'
+'
+
+
+
 
 
 
@@ -6381,6 +6663,8 @@ end;
 'This function will report (both to a message box and to the log file) the full path of the stim/trials files
 'for the current experiment - it's just a simple function that we need rather than continually diving into the
 'registry to figure this out.
+'Note that the report version of the code will base its output on the value of the forced choice checkbox automatically,
+'no need for a second GNG version of the function
 func RecOneStimDiscrimReportExp%()
     
     var currIndex%;
@@ -6417,6 +6701,219 @@ end;
 '===== End RecOneStimDiscrimReportExp =====
 '
 '
+
+
+
+
+
+
+
+
+
+'
+'
+'===== RecOneStimDiscrimGNGAddExp =====
+
+'This is a dialog that comes up to allow adding "experiments" to the OneStimDiscrim dialog
+'Please note that in order to reset the list box in the calling dialog, we have to actually
+'CLOSE the calling dialog and reopen it.  That's gotta be manual.
+func RecOneStimDiscrimGNGAddExp%()
+    
+    var i%;
+    var j%;
+    var k%;
+    var status% := 0;
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+    var createMode%;
+    
+    if DlgValue(1) = 1 then
+        createMode% := 1;  'generate stimuli
+    else
+        createMode% := 0;  'load stimuli
+    endif;
+    
+    ' Fetch parameters from registry    
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("OneStimDiscrim GNG Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    if createMode% = 0 then
+        DlgButton(recSelectStimFileButton%,   "S1/S2 Stim/Cal File", RecSelectStimFile%,2,2);
+    else
+        DlgButton(recSelectStimFileButton%,   "S1/S2 Stim File", RecSelectStimFile%,2,2);
+    endif
+    DlgString(2,40,200,"",26,2);  'for visual confirmation of selected stim file
+    DlgButton(recSelectTrialsFileButton%, "    Trials File   ", RecSelectTrialsFile%,2,3);
+    DlgString(3,40,200,"",26,3);  'for visual confirmation of selected trials file
+
+    
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$);
+    
+    
+    ' If user hit OK then add new experiment 
+	if i% = 1 then
+        'reload parameters
+        if createMode% = 0 then
+            RecOneStimDiscrimGNGExpListLoadGetParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
+            'find first empty slot
+            j% := 0;
+            k% := -1;
+            while j% < recOneStimDiscrimGNGNumExps% do
+                if recOneStimDiscrimGNGExpNameLoad$[j%] = "" then
+                    k% := j%;  'k% holds index of first empty slot
+                    j% := recOneStimDiscrimGNGNumExps%;
+                endif;
+                j%+=1;
+            wend
+            'Return if all slots are full
+            if k% = -1 then
+                Message("All " + Str$(recOneStimDiscrimGNGNumExps%) + " slots are full!  You must delete an experiment!");
+                return 1;
+            endif;
+            'Otherwise place values 
+            recOneStimDiscrimGNGExpNameLoad$[k%] := mystr$;
+            recOneStimDiscrimGNGStimcalNameLoad$[k%] := mystr2$;
+            recOneStimDiscrimGNGTrialsNameLoad$[k%] := mystr3$;
+            'And save them
+            RecOneStimDiscrimGNGExpListLoadSaveParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
+        else
+            RecOneStimDiscrimGNGExpListGenGetParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
+            'find first empty slot
+            j% := 0;
+            k% := -1;
+            while j% < recOneStimDiscrimGNGNumExps% do
+                if recOneStimDiscrimGNGExpNameGen$[j%] = "" then
+                    k% := j%;  'k% holds index of first empty slot
+                    j% := recOneStimDiscrimGNGNumExps%;
+                endif;
+                j%+=1;
+            wend
+            'Return if all slots are full
+            if k% = -1 then
+                Message("All " + Str$(recOneStimDiscrimGNGNumExps%) + " slots are full!  You must delete an experiment!");
+                return 1;
+            endif;
+            'Otherwise place values 
+            recOneStimDiscrimGNGExpNameGen$[k%] := mystr$;
+            recOneStimDiscrimGNGStimNameGen$[k%] := mystr2$;
+            recOneStimDiscrimGNGTrialsNameGen$[k%] := mystr3$;
+            'And save them
+            RecOneStimDiscrimGNGExpListGenSaveParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
+        endif;
+        
+        status% := 0;  'close the calling dialog - necessary to refresh list in OneStimDiscrimDialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecOneStimDiscrimAddExp =====
+'
+'
+
+
+
+'
+'
+'===== RecOneStimDiscrimGNGDeleteExp =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the OneStimDiscrim dialog
+func RecOneStimDiscrimGNGDeleteExp%()
+
+    var i%;
+    var j%;
+    var status% := 0;
+    var mystr$[recOneStimDiscrimGNGNumExps%];
+    var mystr2$[recOneStimDiscrimGNGNumExps%];
+    var mystr3$[recOneStimDiscrimGNGNumExps%];
+    var sli%;
+    var createMode%;
+    
+    if DlgValue(1) = 1 then
+        createMode% := 1;  'generate stimuli
+    else
+        createMode% := 0;  'load stimuli
+    endif;
+    
+    ' Fetch parameters from registry  
+    if createMode% = 0 then
+        RecOneStimDiscrimGNGExpListLoadGetParams(mystr$[],mystr2$[],mystr3$[]);
+    else
+        RecOneStimDiscrimGNGExpListGenGetParams(mystr$[],mystr2$[],mystr3$[]);
+    endif;
+    
+    
+    ' Generate the dialog
+    
+    DlgCreate("OneStimDiscrim GNG Experiment DELETE Dialog", 62, 10);
+    DlgText("Select Experiment to Delete",2,1);
+    DlgList(1,27,mystr$,recOneStimDiscrimNumExps%,28,1);
+
+    ' Show the dialog. 
+    i%:=DlgShow(sli%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Remove experiment that has been selected and move everything up one
+        if createMode% = 0 then
+            if sli% < recOneStimDiscrimGNGNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+                for j% := sli% to recOneStimDiscrimGNGNumExps%-2 do
+                    mystr$[j%] := mystr$[j%+1];
+                    mystr2$[j%] := mystr2$[j%+1];
+                    mystr3$[j%] := mystr3$[j%+1];
+                next;
+            endif;
+            'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+            mystr$[recOneStimDiscrimGNGNumExps%-1] := "";
+            mystr2$[recOneStimDiscrimGNGNumExps%-1] := "";
+            mystr3$[recOneStimDiscrimGNGNumExps%-1] := "";
+            
+            'Save the new values
+            RecOneStimDiscrimGNGExpListLoadSaveParams(mystr$[],mystr2$[],mystr3$[]);
+        else
+            if sli% < recOneStimDiscrimGNGNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+                for j% := sli% to recOneStimDiscrimGNGNumExps%-2 do
+                    mystr$[j%] := mystr$[j%+1];
+                    mystr2$[j%] := mystr2$[j%+1];
+                    mystr3$[j%] := mystr3$[j%+1];
+                next;
+            endif;
+            'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+            mystr$[recOneStimDiscrimGNGNumExps%-1] := "";
+            mystr2$[recOneStimDiscrimGNGNumExps%-1] := "";
+            mystr3$[recOneStimDiscrimGNGNumExps%-1] := "";
+            
+            'Save the new values
+            RecOneStimDiscrimGNGExpListGenSaveParams(mystr$[],mystr2$[],mystr3$[]);
+        endif;
+        
+        
+        status% := 0;  'Close the calling dialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecOneStimDiscrimGNGDeleteExp =====
+'
+'
+
+
+
+
 
 
 
