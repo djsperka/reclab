@@ -1,0 +1,33 @@
+'SaveOpenScriptNamesToRegistry.s2s
+
+'Unlike decent software like Matlab (sorry, CED!) Spike2 does not provide for re-opening files that were
+'open when it was shut down.  This makes me never want to shut down Spike2, or my computer.  So I'm going
+'to fix that now.  It actually isn't that hard in the end!
+
+'The basic idea is that we're going to grab all the names of the files that are open, and then write them
+'to the registry.  Then we can just do the reverse when we open Spike2.
+
+var i%;
+var fileCount%;
+var key$ := "Jeff\\OpenScripts";
+var regName$;
+var value$;
+	
+
+'Loop through all possible views 
+for i% := 1 to 32767 do
+    if ViewKind(i%) = 3 then 'if this view is a Spike2 script
+        fileCount% += 1; 'keep track of how many files we have found
+        'Write file name to registry as "ScriptN" where N is the current file count
+        regName$ := "Script" + Str$(fileCount%);
+        value$ := view(i%).FileName$();
+        printlog("regName is %s and value is %s\n",regName$,value$);
+        Profile(key$, regName$, value$);
+        Printlog("Wrote %s\n",value$);
+    endif;
+next
+
+'Save number of open scripts for when we open
+Profile(key$, "FileCount", fileCount%);
+
+'And for this half, that's it!
