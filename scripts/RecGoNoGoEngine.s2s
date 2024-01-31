@@ -16,10 +16,7 @@ var recChanTM%;
 
 
 'Variables for PlaySound 
-'const recTTMaxSpeakers% := 100;
 const recDAC0Key$        := "A";
-'var recTTSpeakers%[recTTMaxSpeakers%];    ' speaker numbers - each is considered a trial type. Can have duplicates. 
-'var recTTAtten[recTTMaxSpeakers%];        ' atten to use for each speaker number in g_spcTTSpeakers%[]
 var recTone%                := 0;
 var recFreq%                := 20000;
 var StimOn;                                ' time of stimulus onset
@@ -39,7 +36,6 @@ const recStartButton%         := 1;
 const recPauseButton%         := 2;
 const recResumeButton%        := 3;
 const recSelectNewExptButton% := 4;
-'const recRewardButton%        := 5; 'REMOVED! use Timing/Reward button instead!
 const recStopButton%          := 5;
 const recTimingRewardButton%  := 6;
 const recJoystickButton%      := 7;
@@ -133,7 +129,6 @@ var percentUPthisBlock;
 var percentHITthisBlock;
 var amountRewarded := 0;
 
-'var channels%[4];
 
 var expectedOffTime;
 var foundDigMarkOnTime;
@@ -1621,7 +1616,8 @@ func StimComplete%(isS2local%, success%)
             resultCode$ := "F";
         endif
         
-    case isS2local% = 1 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) then  'If it's an S2 High (target), e.g. AMDis S2-HI *jao
+    case isS2local% = 1 and recIsGoNoGo% = 0 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) then  'If it's an S2 High (target), e.g. AMDis S2-HI *jao...Forced Choice only
+        'added recIsGoNoGo% requirement 1/11/24 -jj
         docase
         case recExpToRun% = recExpAMDiscButton% then
             printlog("AMDis Hi!, current trial is %d\n", recCurrentTrial%); 
@@ -1647,7 +1643,7 @@ func StimComplete%(isS2local%, success%)
         endif;
         
     'If it's an S2 Low (target) e.g. AMDis S2-LO *jao - case is unique to AMDis/SpaceDis/StereoDis/OneStimDiscrim        
-    case isS2local% = 3 then 'implies***  and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) then  
+    case isS2local% = 3 then 'implies*** and recIsGoNoGo% = 0 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) then  
         docase
         case recExpToRun% = recExpAMDiscButton% then
             printlog("AMDis Low!, current trial is %d\n", recCurrentTrial%); 
@@ -1666,7 +1662,8 @@ func StimComplete%(isS2local%, success%)
         endif;
         
         
-    case isS2local% = 2 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then 'If it's a terminal S1 (intended no-response in gonogo) 'AMDis Hi/Lo case *jao
+    case isS2local% = 2 and recIsGoNoGo% = 0 and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton%) then 'If it's a terminal S1 'AMDis Hi/Lo case *jao
+        'added recIsGoNoGo% requirement 1/11/24 -jj
         if recExpToRun% = recExpAMDiscButton% then
             printlog("AMDis SAME!, current trial is %d\n", recCurrentTrial%); 
         else
@@ -1689,7 +1686,7 @@ func StimComplete%(isS2local%, success%)
             resultCode$ := "CODINGERROR";
         endcase;
         
-    case isS2local% = 2 and (recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) and recIsGoNoGo% = 0 then  'If this is the final stimulus in the Stereo Distractor FC/OneStimDiscrim FC experiment, S2 Same
+    case isS2local% = 2 and recIsGoNoGo% = 0 and (recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) then  'If this is the final stimulus in the Stereo Distractor FC/OneStimDiscrim FC experiment, S2 Same
         if recExpToRun% = recExpStereoDisButton% then
             printlog("Stereo Distractor FC Same!, current trial is %d\n", recCurrentTrial%);
         else
@@ -1713,7 +1710,7 @@ func StimComplete%(isS2local%, success%)
             resultCode$ := "CODINGERROR";
         endcase;        
         
-    case isS2local% = 2 then 'If it's a terminal S1 (intended no-response)  - (SAME/DIFF)
+    case isS2local% = 2 then 'If it's a terminal S1 (intended no-response in GNG)  - (SAME/DIFF)
         if success% = 1 then
             resultCode$ := "C";
         else
@@ -4118,18 +4115,22 @@ func IdleLoop%()
                         ChangeStateTo(stateStartSoundB%);
                         isS2% := 1;  'Indicates expected response is for "target" 
                         isTerminalS1% := 0;
-                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 then
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 and recIsGoNoGo% = 0 then
                         ChangeStateTo(stateStartSoundD%);
-                        isS2% := 3;  'Indicates expected response is for "nontarget" 
+                        isS2% := 3;  'Indicates expected response is movement to "nontarget" 
                         isTerminalS1% := 0;
-                    else 'recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 0 then 'I guess go here if something weird happens
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 and recIsGoNoGo% = 1 then
                         ChangeStateTo(stateStartSoundC%);
-                        isS2% := 2;  'Indicates no expected response
+                        isS2% := 2;  'Indicates expected response is hold for "nontarget" 
+                        isTerminalS1% := 1;    
+                    else 'recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 0 then 'go here if value is identical to criterion or if something weird happens
+                        ChangeStateTo(stateStartSoundC%);
+                        isS2% := 2;  'Indicates expected response is hold ("S1T") but we will randomly reward
                         isTerminalS1% := 1;
                         coinFlipResult% := round(rand()); 'simple 50/50 way. might want to create a variable "sameRewardRate" or something.
                         printlog("coinFlipResult% = /d%", coinFlipResult%); 
                     endcase
-                    responseMode% := isS2%;  'need to carry this down for the response window
+                    responseMode% := isS2%;  'need to carry this down for the response window 
                 case recExpToRun% = recExpAudiogramButton% then
                     isS2% := 1;  'all audiogram stimuli deserve a response
                     ChangeStateTo(stateStartSoundB%);  'for audiogram, there is only one sound, we want a response, so let's just call it sound B
@@ -4744,13 +4745,17 @@ func IdleLoop%()
                         ChangeStateTo(stateStartSoundB%);
                         isS2% := 1;  'Indicates expected response is for "target" 
                         isTerminalS1% := 0;
-                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 then
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 and recIsGoNoGo% = 0 then
                         ChangeStateTo(stateStartSoundD%);
-                        isS2% := 3;  'Indicates expected response is for "nontarget" 
+                        isS2% := 3;  'Indicates expected response is movement to "nontarget" 
                         isTerminalS1% := 0;
-                    else 'recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 0 then 'I guess go here if something weird happens
+                    case recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 2 and recIsGoNoGo% = 1 then
                         ChangeStateTo(stateStartSoundC%);
-                        isS2% := 2;  'Indicates no expected response
+                        isS2% := 2;  'Indicates expected response is hold for "nontarget" 
+                        isTerminalS1% := 1;
+                    else 'recTrialTerminalIsS2%[recTrialOrder%[recCurrentTrial%-1]] = 0 then 'Catch trial
+                        ChangeStateTo(stateStartSoundC%);
+                        isS2% := 2;  'Indicates expected response is hold ("S1T") but we will randomly reward
                         isTerminalS1% := 1;
                         coinFlipResult% := round(rand()); 'simple 50/50 way. might want to create a variable "sameRewardRate" or something.
                         printlog("coinFlipResult% = /d%", coinFlipResult%); 
@@ -4956,14 +4961,25 @@ func IdleLoop%()
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
-                'ACTIVE StereoDis/OneStimDiscrim LO Hit, GNG only (note OneStimDiscrim GNG is not currently implemented but don't want to miss setting this up)
-            case inResponse1% = 1 and responseMode% = 3 and (recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%) and recIsGoNoGo% = 1 then 'LO, HIT 
+                'ACTIVE StereoDis LO Hit, GNG only (not confident is OK) (removed OneStimDiscrim, which was set up in anticipation, because these values correspond to a FA!)
+            case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpStereoDisButton% and recIsGoNoGo% = 1 then 'LO, HIT 
                 RecLogStatus("InResponseWindow", "In response position 1 - HIT LO"); 
                 StimComplete%(responseMode%, 1);  'StimComplete%(3, 1);
                 SafeSampleKey("S");  'Turn off LED
                 numHits% += 1; 'increment HIT counter
                 recPreciseTrialTime := recLeverTime; 'time hit occurred
                 ChangeStateTo(stateHitReward%);
+                'ACTIVE OneStimDiscrm FA, GNG only (actually, StereoDis GNG might need to go here, if implemented) 
+'            case inResponse1% = 1 and responseMode% = 3 and recExpToRun% = recExpOneStimDiscrimButton% and recIsGoNoGo% = 1 then 'FA
+'                RecLogStatus("InResponseWindow", "In response position 1 - False Alarm");
+'                recPreciseTrialTime := recLeverTime;  'time FA occurred
+'                StimComplete%(2, 0);  'terminal S1
+'                SafeSampleKey("S");  'Turn off LED
+'                if recHouseLight% = 2 then
+'                    SafeSampleKey("v");  'turn off house LED
+'                endif;
+'                numFPs% += 1;  'increment FA counter
+'                ChangeStateTo(stateFalsePositive%);
                 'ACTIVE AMDis/SpaceDis/StereoDis/OneStimDiscrim LO Hit, FC only (cannot get inResponse2% = 1 in GNG)
             case inResponse2% = 1 and responseMode% = 3 then 'LO, HIT -implied: and (recExpToRun% = recExpAMDiscButton% or recExpToRun% = recExpSpaceDisButton% or recExpToRun% = recExpStereoDisButton% or recExpToRun% = recExpOneStimDiscrimButton%)
                 RecLogStatus("InResponseWindow", "In response position 2 - HIT Lo");
