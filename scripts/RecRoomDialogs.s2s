@@ -6470,7 +6470,7 @@ func RecOneStimDiscrimAddExp%()
     var mystr3$;
     var createMode%;
     
-    if DlgValue(1) = 1 then
+    if DlgValue(2) = 1 then
         createMode% := 1;  'generate stimuli
     else
         createMode% := 0;  'load stimuli
@@ -6581,7 +6581,7 @@ func RecOneStimDiscrimDeleteExp%()
     var sli%;
     var createMode%;
     
-    if DlgValue(1) = 1 then
+    if DlgValue(2) = 1 then
         createMode% := 1;  'generate stimuli
     else
         createMode% := 0;  'load stimuli
@@ -6673,19 +6673,25 @@ func RecOneStimDiscrimReportExp%()
     var ssTrialsName$;
     
     docase
-    case DlgValue(1) = 1 then  'gen
-        currIndex% := DlgValue(2);
-        RecOneStimDiscrimExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
-    case DlgValue(1) = 0 then  'load
+    case DlgValue(2) = 1 and DlgValue(1) = 1 then  'FC, gen
         currIndex% := DlgValue(3);
+        RecOneStimDiscrimExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(2) = 0 and DlgValue(1) = 1 then  'FC, load
+        currIndex% := DlgValue(4);
         RecOneStimDiscrimExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(2) = 1 and DlgValue(1) = 0 then  'GNG, gen
+        currIndex% := DlgValue(3);
+        RecOneStimDiscrimGNGExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
+    case DlgValue(2) = 0 and DlgValue(1) = 0 then  'GNG, load
+        currIndex% := DlgValue(4);
+        RecOneStimDiscrimGNGExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
     endcase;  
     
     'report
     ssExpName$ := SplitString$(recExpName$[currIndex%],"slash","\n",60);
     ssStimcalName$ := SplitString$(recStimcalName$[currIndex%],"slash","\n",60);
     ssTrialsName$ := SplitString$(recTrialsName$[currIndex%],"slash","\n",60);
-    if DlgValue(1) = 1 then
+    if DlgValue(2) = 1 then
         printlog("\nExperiment name: %s\nStim(cal) file: %s\nTrials file: %s\n\n",recExpName$[currIndex%],recStimcalName$[currIndex%],recTrialsName$[currIndex%]);
         Message("Experiment name: %s\nStim(cal) file: %s\nTrials file: %s",ssExpName$,ssStimcalName$,ssTrialsName$);
     else
@@ -6728,7 +6734,7 @@ func RecOneStimDiscrimGNGAddExp%()
     var mystr3$;
     var createMode%;
     
-    if DlgValue(1) = 1 then
+    if DlgValue(2) = 1 then
         createMode% := 1;  'generate stimuli
     else
         createMode% := 0;  'load stimuli
@@ -6839,7 +6845,7 @@ func RecOneStimDiscrimGNGDeleteExp%()
     var sli%;
     var createMode%;
     
-    if DlgValue(1) = 1 then
+    if DlgValue(2) = 1 then
         createMode% := 1;  'generate stimuli
     else
         createMode% := 0;  'load stimuli
