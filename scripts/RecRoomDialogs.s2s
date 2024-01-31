@@ -6680,10 +6680,10 @@ func RecOneStimDiscrimReportExp%()
         currIndex% := DlgValue(4);
         RecOneStimDiscrimExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
     case DlgValue(2) = 1 and DlgValue(1) = 0 then  'GNG, gen
-        currIndex% := DlgValue(3);
+        currIndex% := DlgValue(5);
         RecOneStimDiscrimGNGExpListGenGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
     case DlgValue(2) = 0 and DlgValue(1) = 0 then  'GNG, load
-        currIndex% := DlgValue(4);
+        currIndex% := DlgValue(6);
         RecOneStimDiscrimGNGExpListLoadGetParams(recExpName$[],recStimcalName$[],recTrialsName$[]);
     endcase;  
     
