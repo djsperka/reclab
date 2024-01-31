@@ -915,7 +915,7 @@ while recReadyToQuit% = 0 do
                 recExptText$ := "Running OneStimDiscrim GNG (load) "; 'add GNG label
             endif
             'Get stimfile and trials file lists
-            RecOneStimDiscrimExpListLoadGetParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
+            RecOneStimDiscrimGNGExpListLoadGetParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
             'Load trials file, stim/cal file
             trialsOK% := RecLoadTrialsFile3Col%(recOneStimDiscrimGNGTrialsNameLoad$[recOneStimDiscrimGNGExpIndexLoad%],recTotalTrials%);
             if trialsOK% = 1 then  'Don't bother with loading Stim/Cal file if trials file is bad
@@ -933,7 +933,7 @@ while recReadyToQuit% = 0 do
                 recExptText$ := "Running OneStimDiscrim GNG (gen) "; 'add GNG label
             endif 
             'Get stimfile and trials file lists
-            RecOneStimDiscrimExpListGenGetParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
+            RecOneStimDiscrimGNGExpListGenGetParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
             'Load trials file, stim file, cal file
             trialsOK% := RecLoadTrialsFile3Col%(recOneStimDiscrimGNGTrialsNameGen$[recOneStimDiscrimGNGExpIndexGen%],recTotalTrials%);
             if trialsOK% = 1 then  'Don't bother with loading Stim file if trials file is bad
