@@ -1609,11 +1609,21 @@ func StimComplete$(StimTypeLocal$, success%)
     var now;
     var resultCode$;
     var StimTypeReturn$;
+    var recCurrentTrialLocal%;
     
     status% := 0;  'By default, we will assume the next stimulus will be an S1
     
+    'Fix problems associated with repeating trials on no-response
+    '(Problem is related to StimComplete$() being called AFTER the recCurrentTrial% decrement,
+    'which does NOT happen for repeat-on-miss)
+    recCurrentTrialLocal% := recCurrentTrial%;
+    if success% = -2 then  'This is the bat signal
+        success% := -1;  'Restore expected success% value
+        recCurrentTrialLocal% += 1;  'Increment recCurrentTrialLocal%
+    endif;
+    
     'Get index of current trial
-    stimInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
+    stimInd% := recTrialOrder%[recCurrentTrialLocal%-1];  'recCurrentTrial is in human units, convert to index units
     docase
     case StimTypeLocal$ = "S1" then  'stimulus is S1, not terminal
         if success% = 1 then
@@ -1643,13 +1653,13 @@ func StimComplete$(StimTypeLocal$, success%)
     case StimTypeLocal$ = "S2H" then  'If it's an S2 High (target), e.g. AMDis S2-HI *jao...Forced Choice only
         docase
         case recExpToRun% = recExpAMDiscButton% then
-            printlog("AMDis Hi!, current trial is %d\n", recCurrentTrial%); 
+            printlog("AMDis Hi!, current trial is %d\n", recCurrentTrialLLocal%); 
         case recExpToRun% = recExpSpaceDisButton% then
-            printlog("SpaceDis Hi!, current trial is %d\n", recCurrentTrial%);
+            printlog("SpaceDis Hi!, current trial is %d\n", recCurrentTrialLocal%);
         case recExpToRun% = recExpStereoDisButton% then
-            printlog("Stereo Distractor FC Hi!, current trial is %d\n", recCurrentTrial%); 
+            printlog("Stereo Distractor FC Hi!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpOneStimDiscrimButton% then
-            printlog("OneStimDiscrim FC Hi!, current trial is %d\n", recCurrentTrial%);
+            printlog("OneStimDiscrim FC Hi!, current trial is %d\n", recCurrentTrialLocal%);
         endcase;
         
         docase
@@ -1664,13 +1674,13 @@ func StimComplete$(StimTypeLocal$, success%)
     case StimTypeLocal$ = "S2L" then  'If it's an S2 Low (target) e.g. AMDis S2-LO *jao - case is unique to AMDis/SpaceDis/StereoDis/OneStimDiscrim - fine, any FC experiment really 
         docase
         case recExpToRun% = recExpAMDiscButton% then
-            printlog("AMDis Low!, current trial is %d\n", recCurrentTrial%); 
+            printlog("AMDis Low!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpSpaceDisButton% then
-            printlog("SpaceDis Low!, current trial is %d\n", recCurrentTrial%);
+            printlog("SpaceDis Low!, current trial is %d\n", recCurrentTrialLocal%);
         case recExpToRun% = recExpStereoDisButton% then
-            printlog("Stereo Distractor FC Low!, current trial is %d\n", recCurrentTrial%); 
+            printlog("Stereo Distractor FC Low!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpOneStimDiscrimButton% then
-            printlog("OneStimDiscrim FC Low!, current trial is %d\n", recCurrentTrial%);
+            printlog("OneStimDiscrim FC Low!, current trial is %d\n", recCurrentTrialLocal%);
         endcase;
         
         docase
@@ -1685,13 +1695,13 @@ func StimComplete$(StimTypeLocal$, success%)
     case StimTypeLocal$ = "CAT" and recIsGoNoGo% = 0 then 'If it's a catch trial (equal to S1, or in case of OneStimDiscrim, equal to criterion value)
         docase
         case recExpToRun% = recExpAMDiscButton% then
-            printlog("AMDis SAME!, current trial is %d\n", recCurrentTrial%); 
+            printlog("AMDis SAME!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpSpaceDisButton% then
-            printlog("SpaceDis SAME!, current trial is %d\n", recCurrentTrial%); 
+            printlog("SpaceDis SAME!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpStereoDisButton% then
-            printlog("Stereo Distractor FC Same!, current trial is %d\n", recCurrentTrial%); 
+            printlog("Stereo Distractor FC Same!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpOneStimDiscrimButton% then
-            printlog("OneStimDiscrim FC Same!, current trial is %d\n", recCurrentTrial%);
+            printlog("OneStimDiscrim FC Same!, current trial is %d\n", recCurrentTrialLocal%);
         endcase;
 
         'we want to know if they went up or down!! (and also if rewarded, but need to know behavior too!!
@@ -1723,15 +1733,15 @@ func StimComplete$(StimTypeLocal$, success%)
     'Write sample text 
     if StimTypeLocal$ = "S1" then  'trial is not over, just the stimulus is over
         if recExpToRun% = recExpAudiogramButton% then
-            strtmp$ := Print$("EndStim %d,%d,%s,%f", recStimCount%,recCurrentTrial%, resultCode$, recAudiogramPreviousdB);  'use previous dB, current dB is already updated
+            strtmp$ := Print$("EndStim %d,%d,%s,%f", recStimCount%,recCurrentTrialLocal%, resultCode$, recAudiogramPreviousdB);  'use previous dB, current dB is already updated
         else
-            strtmp$ := Print$("EndStim %d,%d,%s", recStimCount%,recCurrentTrial%, resultCode$);
+            strtmp$ := Print$("EndStim %d,%d,%s", recStimCount%,recCurrentTrialLocal%, resultCode$);
         endif;
     else 'Trial is over
         if recExpToRun% = recExpAudiogramButton% then
-            strtmp$ := Print$("EndTrial %d,%s,%f", recCurrentTrial%, resultCode$, recAudiogramPreviousdB);  'use previous dB, current dB is already updated
+            strtmp$ := Print$("EndTrial %d,%s,%f", recCurrentTrialLocal%, resultCode$, recAudiogramPreviousdB);  'use previous dB, current dB is already updated
         else
-            strtmp$ := Print$("EndTrial %d,%s", recCurrentTrial%, resultCode$);
+            strtmp$ := Print$("EndTrial %d,%s", recCurrentTrialLocal%, resultCode$);
         endif;
     endif;
     SampleText(strtmp$, recPreciseTrialTime);  'This puts the sampletext at the time of the response (or, if no response, at the time we noticed the end of the stimulus)
@@ -4981,6 +4991,7 @@ func IdleLoop%()
                         if recShuffle% = 1 and recMissRepeats% = 0 then  'shuffle unresponded trial, but not if trials are specifically ordered or if we are doing miss repeats
                             'Decrement current trial index (which was incremented above in stateInitializeTrials)
                             recCurrentTrial% := recCurrentTrial% - 1;
+                            trlsuccess% := -2;  'this is a signal to StimComplete which will fix a recCurrentTrial% problem caused by the decrement
                             'Send current trial to "middle" of remaining trials
                             SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
                             RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
@@ -4995,6 +5006,7 @@ func IdleLoop%()
                         if recShuffle% = 1 and recMissRepeats% = 0 then  'shuffle unresponded trial, but not if trials are specifically ordered or if we are doing miss repeats
                             'Decrement current trial index (which was incremented above in stateInitializeTrials)
                             recCurrentTrial% := recCurrentTrial% - 1;
+                            trlsuccess% := -2;  'this is a signal to StimComplete which will fix a recCurrentTrial% problem caused by the decrement
                             'Send current trial to "middle" of remaining trials
                             SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
                             RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
@@ -5009,6 +5021,7 @@ func IdleLoop%()
                         if recShuffle% = 1 and recMissRepeats% = 0 then  'shuffle unresponded trial, but not if trials are specifically ordered or if we are doing miss repeats
                             'Decrement current trial index (which was incremented above in stateInitializeTrials)
                             recCurrentTrial% := recCurrentTrial% - 1;
+                            trlsuccess% := -2;  'this is a signal to StimComplete which will fix a recCurrentTrial% problem caused by the decrement
                             'Send current trial to "middle" of remaining trials
                             SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial 'reshuffle trial if no response!
                             RecLogStatus("InResponseWindow", "NO RESPONSE ON FORCED CHOICE - trial reshuffled");
