@@ -1653,7 +1653,7 @@ func StimComplete$(StimTypeLocal$, success%)
     case StimTypeLocal$ = "S2H" then  'If it's an S2 High (target), e.g. AMDis S2-HI *jao...Forced Choice only
         docase
         case recExpToRun% = recExpAMDiscButton% then
-            printlog("AMDis Hi!, current trial is %d\n", recCurrentTrialLLocal%); 
+            printlog("AMDis Hi!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpSpaceDisButton% then
             printlog("SpaceDis Hi!, current trial is %d\n", recCurrentTrialLocal%);
         case recExpToRun% = recExpStereoDisButton% then
