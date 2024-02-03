@@ -1653,7 +1653,7 @@ func StimComplete$(StimTypeLocal$, success%)
     case StimTypeLocal$ = "S2H" then  'If it's an S2 High (target), e.g. AMDis S2-HI *jao...Forced Choice only
         docase
         case recExpToRun% = recExpAMDiscButton% then
-            printlog("AMDis Hi!, current trial is %d\n", recCurrentTrialLLocal%); 
+            printlog("AMDis Hi!, current trial is %d\n", recCurrentTrialLocal%); 
         case recExpToRun% = recExpSpaceDisButton% then
             printlog("SpaceDis Hi!, current trial is %d\n", recCurrentTrialLocal%);
         case recExpToRun% = recExpStereoDisButton% then
@@ -1749,7 +1749,7 @@ func StimComplete$(StimTypeLocal$, success%)
     
     'call BehOutput now, do not increment StimCounter until AFTER call to BehOutput!!!
     if recLogThisResult% = 1 then  'this value will be 1 and not be changed if we are not doing an audiogram - so basically always log, unless audiogram, in which case maybe log
-        BehOutput(resultCode$, StimTypeLocal$);
+        BehOutput(resultCode$, StimTypeLocal$,recCurrentTrialLocal%);
     endif;
     
     
@@ -1810,7 +1810,7 @@ func CharStimComplete%()
     strtmp$ := Print$("EndTrial %d", recCurrentTrial%);
     
     SampleText(strtmp$, StimStopped);
-    BehOutput(resultCode$, "FRA");  'BehOutput will not use second input for Char
+    BehOutput(resultCode$, "FRA", recCurrentTrial%);  'BehOutput will not use second input for Char
     
     return status%;
     
@@ -5925,14 +5925,16 @@ end;
 ' creates and writes to text file output with relevant behavioral variables
 ' for each experiment (Space and AMDis so far)
 ' probably could be a proc, not a function, but i'll leave it in case I want to add a return value??
-func BehOutput(resultCode$, stimTypeLocal$)
+func BehOutput(resultCode$, stimTypeLocal$, currentTrialLocal%)
     'called from StimComplete%
     'resultCode$ is determined in StimComplete% from success% and stimTypeLocal$ is passed forward from IdleLoop%
     'see NameThatStimulus$ (RecRoom) for how to extract stimulus variables!
+    'currentTrialLocal% is necessary (after redesign) because in some instances BehOutput is being called after the
+    'variable recCurrentTrial% has been decremented
     
     var fh%; 'file handle
     var exptext$;
-    'var playInd% := recTrialOrder%[recCurrentTrial%-1];  'recCurrentTrial is in human units, convert to index units
+    'var playInd% := recTrialOrder%[currentTrialLocal%-1];  'recCurrentTrial is in human units, convert to index units
     var thisStim%;
     var spkr%;
     var thisStimD%;  'Distractor in StereoDis
@@ -5962,7 +5964,7 @@ func BehOutput(resultCode$, stimTypeLocal$)
     
     
     
-    'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]]),0);
+    'NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[currentTrialLocal%-1]]][recTrialOrder%[currentTrialLocal%-1]]),0);
     'other vars to include?
     'Get trial-based attenuation for current stimulus
     '   trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
@@ -5992,20 +5994,20 @@ func BehOutput(resultCode$, stimTypeLocal$)
         exptext$ := "Audiogram"; 
     case recExpToRun% = recExpStereoDisButton% then
         exptext$ := "StereoDis";
-        thisStimD% := recDistractorStimList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]];  
-        spkrD% := recDistractorSpeakerList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]];
+        thisStimD% := recDistractorStimList%[recStimCount%][recTrialOrder%[currentTrialLocal%-1]];  
+        spkrD% := recDistractorSpeakerList%[recStimCount%][recTrialOrder%[currentTrialLocal%-1]];
         PrintLog("***thisStimDistractor = %d and thisSpeakerDistractor = %d\n",thisStimD%,spkrD%);
     case recExpToRun% = recExpOneStimDiscrimButton% then
         exptext$ := "OneStimDiscrim"; 
     endcase
     
     
-    thisStim% := recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
-    spkr% := recSpeakerList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]];
+    thisStim% := recStimList%[recPWAList%[recStimCount%][recTrialOrder%[currentTrialLocal%-1]]][recTrialOrder%[currentTrialLocal%-1]];
+    spkr% := recSpeakerList%[recPWAList%[recStimCount%][recTrialOrder%[currentTrialLocal%-1]]][recTrialOrder%[currentTrialLocal%-1]];
     
     PrintLog("***thisStim = %d and thisSpeaker = %d\n",thisStim%,spkr%);
     'This won't work for loaded stims but it's there anyway...
-    printlog("**Stim should be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[recCurrentTrial%-1]]][recTrialOrder%[recCurrentTrial%-1]],0));
+    printlog("**Stim should be %s\n",NameThatStimulus$(recStimList%[recPWAList%[recStimCount%][recTrialOrder%[currentTrialLocal%-1]]][recTrialOrder%[currentTrialLocal%-1]],0));
     
     
     joyResponse% :=0;
@@ -6098,32 +6100,32 @@ func BehOutput(resultCode$, stimTypeLocal$)
         view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\n",spkr%,recTrialGenLowpassHz[thisStim%],recAudiogramPreviousdB,resultCode$,StimOn,recLeverTime);
     case recExpToRun% = recExpCharButton% and (recCharLoadStim% =  2 or recCharLoadStim% = 4) then  'signoise, two stims
         'calc dB for each one
-        dB1 := 65-rec2DeltadBList[recTrialOrder%[recCurrentTrial%-1]][0];
-        dB2 := 65-rec2DeltadBList[recTrialOrder%[recCurrentTrial%-1]][1];
+        dB1 := 65-rec2DeltadBList[recTrialOrder%[currentTrialLocal%-1]][0];
+        dB2 := 65-rec2DeltadBList[recTrialOrder%[currentTrialLocal%-1]][1];
         
-        view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[recCurrentTrial%-1]][0],rec2SpeakerList%[recTrialOrder%[recCurrentTrial%-1]][0]);
-        view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[recCurrentTrial%-1]][1],rec2SpeakerList%[recTrialOrder%[recCurrentTrial%-1]][1]);
+        view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[currentTrialLocal%-1]][0],rec2SpeakerList%[recTrialOrder%[currentTrialLocal%-1]][0]);
+        view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[currentTrialLocal%-1]][1],rec2SpeakerList%[recTrialOrder%[currentTrialLocal%-1]][1]);
         view(fh%).print("%f\t%f\t",dB1,dB2);
-        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[recCurrentTrial%-1]]);    
+        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[currentTrialLocal%-1]]);    
     case recExpToRun% = recExpCharButton% then  'FRA/ArbStim otherwise, one stim at a atim
         'calc dB for each one
-        dB1 := 65-rec2DeltadBList[recTrialOrder%[recCurrentTrial%-1]][0];
+        dB1 := 65-rec2DeltadBList[recTrialOrder%[currentTrialLocal%-1]][0];
 
-        view(fh%).print("%d\t%d\t",recStimList%[0][recTrialOrder%[recCurrentTrial%-1]],recSpeakerList%[0][recTrialOrder%[recCurrentTrial%-1]]);
+        view(fh%).print("%d\t%d\t",recStimList%[0][recTrialOrder%[currentTrialLocal%-1]],recSpeakerList%[0][recTrialOrder%[currentTrialLocal%-1]]);
         view(fh%).print("%f\t",dB1);
-        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[recCurrentTrial%-1]]);
+        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[currentTrialLocal%-1]]);
     
     case recExpToRun% = recExpStereoDisButton% then
         'This line is apparently not too long, but man, it's gotta be close.
-        view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\t%s\t%d\t%f\t%s\t%d\t%f\t%f\n",recCurrentTrial%,stimTypeOutput%,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
-        recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],recTrialMFDistractor[thisStimD%],recTrialCarrierDistractor$[thisStimD%],spkrD%,
-        recDistractorDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
+        view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\t%s\t%d\t%f\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
+        recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],recTrialMFDistractor[thisStimD%],recTrialCarrierDistractor$[thisStimD%],spkrD%,
+        recDistractorDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
         
         
     case recExpToRun% = recExpOneStimDiscrimButton% then
-        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",recCurrentTrial%,stimTypeOutput%,recTrialMF[thisStim%],recTrialMF2[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!
+        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,recTrialMF[thisStim%],recTrialMF2[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!
     else
-        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",recCurrentTrial%,stimTypeOutput%,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[recCurrentTrial%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!
+        view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!
     endcase
     
     
