@@ -397,6 +397,7 @@ var recOneStimDiscrimValue;
 var recOneStimDiscrimValue$;  'We are going to allow either a number OR a string here, so now we have to hold it as a string
 var recOneStimDiscrimExptType%;
 var recOneStimDiscrimExptLabel$;  'recOneStimDiscrimExptType$ can't be used, it's defined in the dialog
+var recUpdateRewardByGap% := 0;   'This is listed under OneStimDiscrim because for now it can only be used in the Boilermaker context
 
 
 'Generic
@@ -2842,7 +2843,7 @@ func RecExpOneStimDiscrimDialog%()
     
     
     ' Generate the dialog    
-    DlgCreate("One Stim Discrimination Dialog",0,0,75,18);
+    DlgCreate("One Stim Discrimination Dialog",0,0,75,19);
     
     
     DlgCheck(1,"Do Forced Choice Experiment",2,1);
@@ -2875,7 +2876,7 @@ func RecExpOneStimDiscrimDialog%()
     DlgCheck(12,"Trial initiation reward?",46,9);
     DlgCheck(13,"Trial Hold reward?",46,10);   
     
-    DlgGroup("Target (aka Response 1) Definition",1,14,73,3);
+    DlgGroup("Target (aka Response 1) Definition",1,14,73,4);
     DlgList(14,14,recOneStimDiscrimTarget1$[],5,3,15);
     DlgList(15,14,recOneStimDiscrimVersus$[],4,19,15);
     DlgList(16,14,recOneStimDiscrimTarget2$[],2,35,15);
@@ -2883,15 +2884,17 @@ func RecExpOneStimDiscrimDialog%()
     DlgString(17,12,40,"",-3,15); 
     DlgText("Experiment Type",2,16);
     DlgList(18,25,recOneStimDiscrimExptType$[],3,18,16);
+    DlgCheck(19,"Update Reward By Gap",2,17);
+    
     
     DlgAllow(0xffff, 0, RecExpOneStimDiscrimDialogChanged%);   
     
     
     i%:=DlgShow(recOneStimDiscrimExpDoFC%,recOneStimDiscrimExpDoGen%,recOneStimDiscrimExpIndexGen%,recOneStimDiscrimExpIndexLoad%,
-    recOneStimDiscrimGNGExpIndexGen%,recOneStimDiscrimGNGExpIndexLoad%,
-    recOneStimDiscrimRepeatsPerStim%,recOneStimDiscrimdB,recOneStimDiscrimDoRove%,recOneStimDiscrimRovedB,
-    recOneStimDiscrimActive%,recOneStimDiscrimTrialInitReward%, recOneStimDiscrimTrialHoldReward%,recOneStimDiscrimTarget1Ind%,
-    recOneStimDiscrimVersusInd%,recOneStimDiscrimTarget2Ind%,recOneStimDiscrimValue$,recOneStimDiscrimExptType%);
+    recOneStimDiscrimGNGExpIndexGen%,recOneStimDiscrimGNGExpIndexLoad%,recOneStimDiscrimRepeatsPerStim%,recOneStimDiscrimdB,
+    recOneStimDiscrimDoRove%,recOneStimDiscrimRovedB,recOneStimDiscrimActive%,recOneStimDiscrimTrialInitReward%, 
+    recOneStimDiscrimTrialHoldReward%,recOneStimDiscrimTarget1Ind%,recOneStimDiscrimVersusInd%,recOneStimDiscrimTarget2Ind%,
+    recOneStimDiscrimValue$,recOneStimDiscrimExptType%,recUpdateRewardByGap%);
 
     
     ' If user hit OK then save parameters (and return 1). 
@@ -2966,12 +2969,19 @@ func RecExpOneStimDiscrimDialog%()
             doBallistic% := 0;
         endif
         
-        
+        'Do not allow recUpdateRewardByGap% if experiment is not Boilermaker
+        if recOneStimDiscrimExptType% <> 2 then
+            recUpdateRewardByGap% := 0;
+        endif
         
         status% := 1;
     else
         'Set the GNG sandbox to -1 (don't check) if cancelled
         recCheckGNGSandbox% := -1;
+        
+        'Make sure to reset recUpdateRewardByGap% if we do not click OK
+        recUpdateRewardByGap% := 0;
+        
         status% := 1;
     endif
     
@@ -3097,6 +3107,14 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
     
     'Enable/disable "value" of target based on third dropdown list
     DlgEnable(DlgValue(16),17);
+    
+    'Enable/disable value of recUpdateRewardByGap% based on third dropdown list
+    if DlgValue(18) = 2 then
+        DlgEnable(1,19);
+    else
+        DlgEnable(0,19);
+        DlgValue(19,0);  'set value to 0
+    endif
     
     return 1;
 end
@@ -3896,7 +3914,11 @@ proc RecSearchGetParams()
     recSearchWMPorts%[1] := GetIntRegistryValue%(key$, "SearchWMPort2", recSearchWMPorts%[1]);
     recSearchWMPorts%[2] := GetIntRegistryValue%(key$, "SearchWMPort3", recSearchWMPorts%[2]);
     recSearchWMPorts%[3] := GetIntRegistryValue%(key$, "SearchWMPort4", recSearchWMPorts%[3]);
-      
+    
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
 	return;
 end
 
@@ -3994,7 +4016,11 @@ proc RecCharDialogFRAGetParams()
     recCharExpIndexGenFRA% := GetIntRegistryValue%(key$, "CharExpIndexGenFRA", recCharExpIndexGenFRA%);
     recCharExpIndexGenSigNoise% := GetIntRegistryValue%(key$, "CharExpIndexGenSigNoise", recCharExpIndexGenSigNoise%);
     recCharExpIndexLoadArbStim% := GetIntRegistryValue%(key$, "CharExpIndexLoadArbStim", recCharExpIndexLoadArbStim%);
-
+    
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
 	return;
 end
 
@@ -4006,7 +4032,7 @@ end
 
 '
 '
-'===== RecCharDialogFRASaveParams =====
+'===== RecCharDialogCharSaveParams =====
 
 'Note that while this dialog has had a name change (FRA-->Char) the registry entries are being left as-is
 'Save FRA (dialog) parameters to the registry
@@ -4046,45 +4072,9 @@ proc RecCharDialogFRASaveParams()
 	return;
 end
 
-'===== End RecCharDialogFRASaveParams =====
+'===== End RecCharDialogFCharSaveParams =====
 '
 '
-
-
-'These two functions have fallen out of use (not sure when, noticed 1/19/22)
-''
-''===== FRALoadSaveParams =====
-'
-''Fetch Debugging parameters from the registry
-'proc RecFRALoadSaveParams()
-'	var key$;
-'    key$:="Reclab\\FRAParam";
-'    
-'    SetIntRegistryValue(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%); 
-'    
-'	return;
-'end
-'
-''===== End RecFRALoadSaveParams =====
-''
-''
-'
-'
-''
-''===== RecFRALoadGetParams =====
-'
-''Fetch Debugging parameters from the registry
-'proc RecFRALoadGetParams()
-'	var key$;
-'    key$:="Reclab\\FRAParam";
-'    
-'    recCharExpIndexLoadFRA% := GetIntRegistryValue%(key$, "FRAExpIndexLoad", recCharExpIndexLoadFRA%);   
-'	return;
-'end
-'
-''===== End RecFRALoadGetParams =====
-''
-''
 
 
 
@@ -4112,7 +4102,11 @@ proc RecAMDiscGetParams()
     recAMDiscRovedB := GetFloatRegistryValue(key$, "RovedB", recAMDiscRovedB);
     
     recAMDiscActive% := GetIntRegistryValue%(key$, "ActiveTask", recAMDiscActive%);
-
+    
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
 	return;
 end
 
@@ -4177,7 +4171,11 @@ proc RecSpaceDisGetParams()
     recSpaceDisDoRove% := GetIntRegistryValue%(key$, "DoRove", recSpaceDisDoRove%);
     recSpaceDisRovedB := GetFloatRegistryValue(key$, "RovedB", recSpaceDisRovedB);
     recSpaceDisActive% := GetIntRegistryValue%(key$, "ActiveTask", recSpaceDisActive%);
-
+    
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
 	return;
 end
 
@@ -4268,6 +4266,9 @@ proc RecStereoDisGetParams()
     recStereoDisTrialHoldReward% := GetIntRegistryValue%(key$, "StereoDisTrialHoldReward", recStereoDisTrialHoldReward%);
     
     
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
 	return;
 end
 
@@ -4339,6 +4340,7 @@ proc RecOneStimDiscrimSaveParams()
     'SetFloatRegistryValue(key$, "OneStimDiscrimValue", recOneStimDiscrimValue);
     SetStringRegistryValue(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     SetIntRegistryValue(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
+    SetIntRegistryValue(key$, "UpdateRewardByGap", recUpdateRewardByGap%);
 
     
 	return;
@@ -4370,6 +4372,9 @@ proc RecOneStimDiscrimGetParams()
     'recOneStimDiscrimValue := GetFloatRegistryValue(key$, "OneStimDiscrimValue", recOneStimDiscrimValue);
     recOneStimDiscrimValue$ := GetStringRegistryValue$(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     recOneStimDiscrimExptType% := GetIntRegistryValue%(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
+    recUpdateRewardByGap% := GetIntRegistryValue%(key$, "UpdateRewardByGap", recUpdateRewardByGap%);
+    
+    
     
 	return;
 end
@@ -4484,7 +4489,11 @@ func RecJoyTrainGetParams()
     recMinOnsetDelay := GetFloatRegistryValue(key$, "MinOnsetDelay", recMinOnsetDelay);
     recTrialInitPosition% := GetFloatRegistryValue(key$, "TrialInitPosition", recTrialInitPosition%);
     recDoIncrements% := GetFloatRegistryValue(key$, "DoIncrements", recDoIncrements%);
-
+    
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
     return;
 
 end; 
@@ -4529,6 +4538,9 @@ func RecLongToneGetParams()
     recLongToneTargetdB := GetFloatRegistryValue(key$, "LongToneTargetdB", recLongToneTargetdB);  
     recLongToneRewardProb := GetFloatRegistryValue(key$, "LongToneRewardProb", recLongToneRewardProb);
     
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
     
     return;
 
@@ -4588,7 +4600,11 @@ func RecAudiogramGetParams()
     recAudiogramInitialdBStep := GetFloatRegistryValue(key$, "AGInitialdBStep", recAudiogramInitialdBStep);
     recAudiogramLouderdBStep := GetFloatRegistryValue(key$, "AGLouderdBStep", recAudiogramLouderdBStep);
     recAudiogramQuieterdBStep := GetFloatRegistryValue(key$, "AGQuieterdBStep", recAudiogramQuieterdBStep);
-
+    
+    
+    'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
+    recUpdateRewardByGap% := 0;
+    
     return;
 
 end; 

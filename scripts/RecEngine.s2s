@@ -5085,6 +5085,10 @@ func IdleLoop%()
                     SafeSampleKey("V");  'turn on house LED
                 endif;
                 recChangeRewardType% := 1;  'will change reward type after miss, if other conditions are met 
+                'If we are keeping track of gap, reset on a miss
+                if recUpdateRewardByGap% > 0 then
+                    recUpdateRewardByGap% := 1;
+                endif
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
                 tNextTrial := tNow;  'ready to go
             endif
@@ -5119,7 +5123,10 @@ func IdleLoop%()
                     'Send current trial to "middle" of remaining trials
                     SendTrialToMiddle%(recNTrials%,recCurrentTrial%,1,recTrialOrder%[]);  'at least one intervening trial
                 endif;
-                
+                'If we are keeping track of gap, reset on a FA
+                if recUpdateRewardByGap% > 0 then
+                    recUpdateRewardByGap% := 1;
+                endif
                 ChangeStateTo(stateInitializeTrials%); 
                 tNextTrial := tNow;  'ready to go
             endif
@@ -5193,16 +5200,31 @@ func IdleLoop%()
             recMissRepeatsCounter% := 0; 'reset MissRepeatsCounter to 0, keep track of consecutive Misses
             
             if recHitRewardmL > 0 and recTurnOffReward% = 0 then
-                'do reward increment stuff (note: if no increment then adding 0 every time will do nothing)
-                if thisHitReward = 0 then 'it was reset! (or this is the first trial)
+                'do reward increment stuff 
+                'There are now two different increment types - one increments the reward for every hit until
+                'there is a miss; the other, which is only legal for Project Boilermaker, increases the size
+                'of the reward based on the number of intervening (correctly-rejected) no-response trials
+                'since the last reward.  These are obviously incompatible, so we can assume that the reward
+                'increment types are either/or.
+                docase
+                case recUpdateRewardByGap% > 0 then  'if Boilmermaker-style increments are on, then ignore standard incrementing
+                    if recUpdateRewardByGap% <= 3 then 'if there are 0, 1, or 2 CRs since the last reward, set to base reward size
+                        thisHitReward := recHitRewardmL; 'this reward will be the base reward level
+                    else 'increment once for each CR beyond 2, note that delivery only happens on Hit
+                        thisHitReward := recHitRewardmL + recHitRewardIncmL*(recUpdateRewardByGap%-3);  'hmm, verified that float math is OK here!
+                        if thisHitReward > recMaxHitRewardmL then 'check if this exceeds Max
+                            thisHitReward := recMaxHitRewardmL;
+                        endif
+                    endif;
+                case thisHitReward = 0 then 'If regular increments are on (or off) and the reward was reset, or this is the first trial
                     thisHitReward := recHitRewardmL; 'this reward will be the base reward level
                     'lastHitReward not needed in this case, will be initialized below after first Hit is given
-                else
-                    thisHitReward := lastHitReward + recHitRewardIncmL;
+                else 'If regular increments are on (or off) and the reward has not been reset
+                    thisHitReward := lastHitReward + recHitRewardIncmL;  'If increments are off (i.e. increment = 0) then adding 0 every time will do nothing
                     if thisHitReward > recMaxHitRewardmL then 'check if this exceeds Max
                         thisHitReward := recMaxHitRewardmL;
                     endif    
-                endif
+                endcase
                 RecLogStatus("HitReward", "Giving Hit Reward, size=" + str$(thisHitReward) + " mLs"); 'replaced recHitRewardmL with thisHitReward
                 amountRewarded += thisHitReward;  'add this reward to juice counter
                 lastHitReward := thisHitReward; 'save this hit reward value for next time (does this need to be lower down?)
@@ -5232,6 +5254,10 @@ func IdleLoop%()
                 else
                     ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
                     tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                endif
+                'If we are keeping track of gap, reset after reward is issued
+                if recUpdateRewardByGap% > 0 then
+                    recUpdateRewardByGap% := 1;
                 endif
             else
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
@@ -5296,6 +5322,11 @@ func IdleLoop%()
             'Increment, if appropriate
             if recIsGoNoGo% = 0 then
                 ChangeThresh2(doIncCR%[]);  'This increment only makes sense in the FC case
+            endif
+            
+            'If we are keeping track of gap, increment gap on a CR
+            if recUpdateRewardByGap% > 0 then
+                recUpdateRewardByGap% += 1;
             endif
             
             if recCRRewardmL > 0 then
