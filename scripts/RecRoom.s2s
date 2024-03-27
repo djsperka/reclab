@@ -3363,8 +3363,9 @@ func GenTrialsCharParallel%()
     
     
     'Rewards for FRA are based on random intervals of 10 to 15 trials between rewards
-    'Old silly commented code has been deleted 1/18/22, if you need it, go back earlier than that.
-    
+    'Old silly commented code has been deleted 1/18/22, if you need it, go back earlier than that. 
+    'Note - DO NOT INDEX THIS WITH RecTrialOrder%[] - it's a payment schedule and if the 
+    'stimuli are randomized the payment schedule goes all wrong
     count% := 0;  'reset count
     while count% < recNTrials%-15 do
         j% := rand(6,10);  'random integer between 10 and 15
@@ -3436,7 +3437,9 @@ func GenTrialsCharSingle%()
     next;
     
     
-    'Rewards for FRA are based on random intervals of 10 to 15 trials between rewards    
+    'Rewards for FRA are based on random intervals of 10 to 15 trials between rewards 
+    'Note - DO NOT INDEX THIS WITH RecTrialOrder%[] - it's a payment schedule and if the 
+    'stimuli are randomized the payment schedule goes all wrong
     count% := 0;  'reset count
     while count% < recNTrials%-15 do
         j% := rand(6,10);  'random integer between 10 and 15

@@ -4393,7 +4393,7 @@ func IdleLoop%()
                 RecLogStatus("Char WaitISI", "ISI done.");
                 recPreciseTrialTime := tNow;  'time ISI is complete
                 isTerminalS1% := 0;  'arbitrary for right now, CharStimComplete() does not return this value anyhow.
-                if recCharReward%[recTrialOrder%[recCurrentTrial%-2]] then 'if this trial is rewarded, is -2 because recCurrentTrial% is a zero-based index (-1) AND has been incremented already, even though we associate the reward with the previous trial (-1)
+                if recCharReward%[recCurrentTrial%-2] then 'if this trial is rewarded, is -2 because recCurrentTrial% is a zero-based index (-1) AND has been incremented already, even though we associate the reward with the previous trial (-1)
                     ChangeStateTo(stateCharHitReward%);
                 else 'if not keep going
                     ChangeStateTo(stateStartSoundE%);
@@ -5207,7 +5207,7 @@ func IdleLoop%()
                 'since the last reward.  These are obviously incompatible, so we can assume that the reward
                 'increment types are either/or.
                 docase
-                case recUpdateRewardByGap% > 0 then  'if Boilmermaker-style increments are on, then ignore standard incrementing
+                case recUpdateRewardByGap% > 0 then  'if Boilermaker-style increments are on, then ignore standard incrementing
                     if recUpdateRewardByGap% <= 3 then 'if there are 0, 1, or 2 CRs since the last reward, set to base reward size
                         thisHitReward := recHitRewardmL; 'this reward will be the base reward level
                     else 'increment once for each CR beyond 2, note that delivery only happens on Hit
@@ -6137,14 +6137,14 @@ func BehOutput(resultCode$, stimTypeLocal$, currentTrialLocal%)
         view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[currentTrialLocal%-1]][0],rec2SpeakerList%[recTrialOrder%[currentTrialLocal%-1]][0]);
         view(fh%).print("%d\t%d\t",rec2StimList%[recTrialOrder%[currentTrialLocal%-1]][1],rec2SpeakerList%[recTrialOrder%[currentTrialLocal%-1]][1]);
         view(fh%).print("%f\t%f\t",dB1,dB2);
-        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[currentTrialLocal%-1]]);    
+        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[currentTrialLocal%-1]);    
     case recExpToRun% = recExpCharButton% then  'FRA/ArbStim otherwise, one stim at a atim
         'calc dB for each one
         dB1 := 65-rec2DeltadBList[recTrialOrder%[currentTrialLocal%-1]][0];
 
         view(fh%).print("%d\t%d\t",recStimList%[0][recTrialOrder%[currentTrialLocal%-1]],recSpeakerList%[0][recTrialOrder%[currentTrialLocal%-1]]);
         view(fh%).print("%f\t",dB1);
-        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[recTrialOrder%[currentTrialLocal%-1]]);
+        view(fh%).print("%f\t%d\n",StimOn,recCharReward%[currentTrialLocal%-1]);
     
     case recExpToRun% = recExpStereoDisButton% then
         'This line is apparently not too long, but man, it's gotta be close.
