@@ -578,7 +578,11 @@ proc CreateSampleConfiguration()
         thisTrodeString$ := "Trode " + Str$(recTrodePosition%[i%]);
         SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
         SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
-        '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n");   
+        '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n"); 
+        if recAddNotchFilter% = 1 then
+            'Add IIR digital filter (0), BandStop (3), Resonator (4), Order (2, obligatory for resonator), CF 60 Hz, unused for resonator (0), Q Factor 100 (recommended)
+            SampleProcess(recTrodeChannel%[i%],0,3,4,2,60,0,100);
+        endif
     next;
     
     ' NOTE: wavemark channels must be b/w 1-100    
