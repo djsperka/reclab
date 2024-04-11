@@ -68,7 +68,8 @@ recCalibLoc$ := recDrivePath$ + "Data\\Calib\\";           'Have to set this too
 const recFileSaveLocKershaw$  := "E:\\Core Grant\\reclab2017\\testTextFiles\\";       'Have to set this...  
 const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";           'Have to set this too...   
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
-var recAddNotchFilter%;             'Should we add a notch filter to each electrode?  Note: this process may be unworkably computational, particularly for the 16-array, but we're giving it a shot    
+var recAddFilter%;                  'Should we add a filter to each electrode?  Note: this process may be unworkably computational, particularly for the 16-array, but we're giving it a shot  
+                                    'Currently there is only one type of filter, and this is an on/off.  In the future we may specify different types of filter with different integer values
 var recNBAKs%;                      'Number of BAKs to record from, event channels
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    

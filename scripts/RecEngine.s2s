@@ -579,9 +579,12 @@ proc CreateSampleConfiguration()
         SampleTitle$(recTrodeChannel%[i%], thisTrodeString$); 'name Channel with actual trode position #
         SampleComment$(recTrodeChannel%[i%], thisTrodeString$); 'and comment Channel with Trode Position #
         '    printlog("thisTrodeString$ = " + thisTrodeString$ + "\n"); 
-        if recAddNotchFilter% = 1 then
+        if recAddFilter% = 1 then
             'Add IIR digital filter (0), BandStop (3), Resonator (4), Order (2, obligatory for resonator), CF 60 Hz, unused for resonator (0), Q Factor 100 (recommended)
-            SampleProcess(recTrodeChannel%[i%],0,3,4,2,60,0,100);
+            'SampleProcess(recTrodeChannel%[i%],0,3,4,2,60,0,100);
+            
+            'Add IIR digital filter (0), Bandpass (2), Butterworth(0), Order 4, Low Pass 300, high pass 10k
+            SampleProcess(recTrodeChannel%[i%],0,2,0,4,300,10000);
         endif
     next;
     
