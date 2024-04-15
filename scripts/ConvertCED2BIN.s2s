@@ -86,8 +86,8 @@ FileClose(bh%);  'close the file we just opened
 '===== AddChanIfPresent =====
 proc AddChanIfPresent(chan%)
 if ChanTitle$(chan%) <> "" then  
-    if ChanKind(chan%) <> 1 then  'If the channel is not a Waveform channel, something is wrong
-        message("Channel " + Str$(chan%) + " is expected to be a waveform channel but is not!  Quitting!");
+    if ChanKind(chan%) <> 1 and ChanKind(chan%) <> 9 then  'If the channel is not a Waveform or RealWave channel, something is wrong
+        message("Channel " + Str$(chan%) + " is expected to be a waveform/realwave channel but is not!  Quitting!");
         halt;
     endif
     chanToExport%[nChanFound%] := chan%;
