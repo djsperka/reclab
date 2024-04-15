@@ -1,0 +1,6 @@
+File Location	 Duration	 CalSp1	 CalSp2	CalSp3	 CalSp4	 CalSp5	 CalSp6	 CalSp7	 CalSp8	 CalSp9	 CalSp10	 CalSp11	 CalSp12	 CalSp13	 CalSp14	 CalSp15	 CalSp16
+I:\work\reclab\stim\MaloneBabble\Fore.wfm	3800	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+I:\work\reclab\stim\MaloneBabble\Fore+OriginalBabble.wfm	3800	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+I:\work\reclab\stim\MaloneBabble\Fore+OriginalBirdBabble.wfm	3800	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+I:\work\reclab\stim\MaloneBabble\Fore+PhaseRandomizedBabble.wfm	3800	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+I:\work\reclab\stim\MaloneBabble\Fore+PhaseRandomizedBirdBabble.wfm	3800	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0

@@ -1,0 +1,52 @@
+'OpenSavedScriptNamesFromRegistry.s2s
+
+'Unlike decent software like Matlab (sorry, CED!) Spike2 does not provide for re-opening files that were
+'open when it was shut down.  This makes me never want to shut down Spike2, or my computer.  So I'm going
+'to fix that now.  It actually isn't that hard in the end!
+
+'For this script, the names of the open files have already been written to the registry, now all we have
+'to do is to open them all up!
+
+var i%;
+var fileCount%;
+var key$ := "Jeff\\OpenScripts";
+var regName$;
+var value$;
+var ret%;
+
+'Get number of open scripts
+Profile(key$, "FileCount", fileCount%, fileCount%);
+
+'Loop through each saved file
+for i% := 1 to fileCount% do
+    'Get each file name in Value$
+    regName$ := "Script" + Str$(i%);
+    Profile(key$, regName$, value$, value$);
+    'And open the file, adding in backslashes when necessary
+    ret% := FileOpen(AddInBackslash$(value$),3,1);
+    View(ret%).WindowVisible(2);  'minimize the window
+    'printlog("Attempting to open %s resulted in %d\n",AddInBackslash$(value$),ret%);
+next
+
+'Yeah, you're done!
+
+
+
+
+'This function just throws an extra backslash in where there's a backslash, because of escape characters and
+'filepaths and stuff like that
+func AddInBackslash$(in$)
+    var out$;
+    var i%;
+    
+    for i% := 1 to Len(in$) do  'note that Mid$() starts indexing at 1, because, thanks CED!
+        if Mid$(in$,i%,1) = "\\" then  'Ah, see?  An escape character!
+            out$ += Mid$(in$,i%,1);  'just do it twice
+            out$ += Mid$(in$,i%,1);
+        else
+            out$ += Mid$(in$,i%,1);
+        endif;
+    next
+
+    return out$;
+end
