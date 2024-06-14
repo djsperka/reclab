@@ -7,6 +7,8 @@ var chanToExport%[100];
 var nChanFound%;
 var i%;
 var WMCount%;
+var dropWFs%;
+var dropWMs%;
 
 #include "recfuncs.s2s"
 
@@ -48,18 +50,23 @@ AddChanIfPresent(32);  'Digital marker      ("ToneStar" - is requested to be "To
 'Note that there is a convention for electrodes to begin on channel 3.  This is an awkward convention, because one day somebody
 'will think..."gee, why don't electrodes start on channel 1" and break everything.  I've added a note to the GNGEngine at the right
 'spot.  Hopefully that prevents me (or anybody else) from messing this up.
-for i% := 3 to 23 do
-    ChanTitle$(i%,"Trode_"+Str$(i%-2));  'Change chan title to be 1 to 21, if present
-    AddChanIfPresent(i%);
-next
+if dropWFs% = 0 then  'New!  Now we have an option to skip huge WF channels
+    for i% := 3 to 23 do
+        ChanTitle$(i%,"Trode_"+Str$(i%-2));  'Change chan title to be 1 to 21, if present
+        AddChanIfPresent(i%);
+    next
+endif
+
 
 'This code assumes that any channel in the 40-60 range is a wavemark corresponding to waveforms on channels 3-23
-for i% := 40 to 60 do
-    if ChanKind(i%) = 6 then  'this check should be redundant under this assumption, but may as well check
-        ChanTitle$(i%,"WM_"+Str$(i%-39));  'Change chan title to be 1 to 21, if present
-        AddChanIfPresent(i%);
-    endif
-next
+if dropWMs% = 0 then  'For Kilosort testing we will not want to do wavemarks either
+    for i% := 40 to 60 do
+        if ChanKind(i%) = 6 then  'this check should be redundant under this assumption, but may as well check
+            ChanTitle$(i%,"WM_"+Str$(i%-39));  'Change chan title to be 1 to 21, if present
+            AddChanIfPresent(i%);
+        endif
+    next
+endif
 
 'This code checks every channel to see if it is a wavemark, in case the above 40-60 assumption is not valid.
 'However, it does assume that the wavemark channels will be found in consecutive order, and in the same order
@@ -131,14 +138,16 @@ end
 '===== SaveLocationDialog =====
 
 'A simple dialog box which allows us to select the location/filename of the file to write
+'It will now also allow us to NOT convert any waveform channels
 proc SaveLocationDialog()
     var i%;
     var key$;
     
-    
     key$:="Reclab\\ConvertCED2MAT";
     
     ConvertSaveDir$ := GetStringRegistryValue$(key$, "SaveDir", ConvertSaveDir$);
+    dropWFs% := GetIntRegistryValue%(key$, "dropWFs", dropWFs%);
+    dropWMs% := GetIntRegistryValue%(key$, "dropWMs", dropWMs%);
     
     DlgCreate("Select Save Location");
     
@@ -149,12 +158,18 @@ proc SaveLocationDialog()
     
     DlgButton(1, "Select Data File", 0);
     
-    i% := DlgShow(ConvertSaveFileName$);
+    DlgCheck(2,"Drop waveform data (makes .mat file smaller)",2,6);
+    
+    DlgCheck(3,"Drop wavemark data (useful if doing kilosort sorting)",2,7);
+    
+    i% := DlgShow(ConvertSaveFileName$,dropWFs%,dropWMs%);
     
     if i% = 1 then  'if user hit "Select Data File"
         printlog("Save directory is %s and file name is %s\n",ConvertSaveDir$,ConvertSaveFileName$);
     
         SetStringRegistryValue(key$, "SaveDir", ConvertSaveDir$);
+        SetIntRegistryValue(key$, "dropWFs", dropWFs%);
+        SetIntRegistryValue(key$, "dropWMs", dropWMs%);
     else
         halt;
     endif;
