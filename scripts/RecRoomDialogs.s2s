@@ -3222,8 +3222,9 @@ func RecExpTimingRewardDialog%()
     
     ' Because the Audiogram experiment reassigns some of the values from this dialog, if this
     ' dialog is selected AFTER the audiogram dialog is selected, disable "OK" and force audiogram
-    ' dialog to be selected again.
-    if recExpToRun% = recExpAudiogramButton% then
+    ' dialog to be selected again.  But don't do this if this dialog is called mid-recording because
+    ' the dialog changed function will not refer to a valid dialog
+    if recExpToRun% = recExpAudiogramButton% and recRunTimeCall% = 0 then
         DlgValue$(-1,"Reselect Audiogram"); 'to rename OK button 
         recExpSelectDialogAllowOK% := 0;  'Prepare to disable OK button
         recExpSelectDialogChanged%(-1);  'Disables "OK" button, -1 is sham input
@@ -3510,21 +3511,24 @@ func RecExpLeverJoystickDialog%()
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        RecExpSelectDialogChanged%(0); 'this might work?  Yep!  This changes the button label on the main dialog, if necessary
         
-        'Check GNG sandbox, if necessary
-        if recCheckGNGSandbox% > -1 then
-            if recIsGoNoGo% <> recCheckGNGSandbox% then
-                message("The FC/GNG value set here does not match the value set in the active experiment!");
-            else
-                'Enable the OK button if all was well in a dialog whose GNG/FC value conflicted with here
-                if recExpSelectDialogAllowOK% = -1 then
-                    recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
-                    recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+        if recRunTimeCall% = 0 then  'don't run the dialog changed function that applies to the main dialog if the main dialog isn't open!
+            RecExpSelectDialogChanged%(0); 'this might work?  Yep!  This changes the button label on the main dialog, if necessary
+            
+            'Check GNG sandbox, if necessary
+            if recCheckGNGSandbox% > -1 then
+                if recIsGoNoGo% <> recCheckGNGSandbox% then
+                    message("The FC/GNG value set here does not match the value set in the active experiment!");
+                else
+                    'Enable the OK button if all was well in a dialog whose GNG/FC value conflicted with here
+                    if recExpSelectDialogAllowOK% = -1 then
+                        recExpSelectDialogAllowOK% := 1;  'Prepare to enable OK button
+                        recExpSelectDialogChanged%(-1);  'Enables "OK" button, -1 is sham input
+                    endif
                 endif
             endif
         endif
-
+        
         
         'Apply flip, be explicit
         docase

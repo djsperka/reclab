@@ -1839,8 +1839,8 @@ func Start%()
     ToolbarEnable(recStartButton%, 0);
     ToolbarEnable(recStopButton%, 1);
     ToolbarEnable(recPauseButton%, 1);
-    ToolbarEnable(recTimingRewardButton%, 1);
-    ToolbarEnable(recJoystickButton%, 1);
+    'ToolbarEnable(recTimingRewardButton%, 1);  'Do not enable these until the experiment is paused!
+    'ToolbarEnable(recJoystickButton%, 1);
     ToolbarEnable(recSelectNewExptButton%, 1); 'enable it here because I disabled it before
     if recSearchDoPSTH% = 1 then
         ToolbarSet(recCalibrationButton%, "Reset PSTH", ResetPSTH%);  'If doing a PSTH, allow reset once sampling is started
@@ -2031,6 +2031,8 @@ func Pause%()
     endif;
     ToolbarEnable(recResumeButton%, 1);
     ToolbarEnable(recPauseButton%, 0);
+    ToolbarEnable(recTimingRewardButton%, 1);
+    ToolbarEnable(recJoystickButton%, 1);
     return 1;
 end
 
@@ -2061,6 +2063,8 @@ func Resume%()
     recIsPaused% := 0;
     ToolbarEnable(recResumeButton%, 0);
     ToolbarEnable(recPauseButton%, 1);
+    ToolbarEnable(recTimingRewardButton%, 0);
+    ToolbarEnable(recJoystickButton%, 0);
     return 1;
 end
 
@@ -2136,8 +2140,8 @@ func ReturnFromDialogCall%()
     ToolbarEnable(recSelectNewExptButton%, 1);
     '    ToolbarEnable(recRewardButton%, 1);
     ToolbarEnable(recStopButton%, 1);
-    ToolbarEnable(recTimingRewardButton%, 1);
-    ToolbarEnable(recJoystickButton%, 1);
+    ToolbarEnable(recTimingRewardButton%, 0);
+    ToolbarEnable(recJoystickButton%, 0);
     return 1;
 end
 
