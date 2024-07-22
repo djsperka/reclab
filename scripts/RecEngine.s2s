@@ -2142,6 +2142,7 @@ func ReturnFromDialogCall%()
     ToolbarEnable(recStopButton%, 1);
     ToolbarEnable(recTimingRewardButton%, 0);
     ToolbarEnable(recJoystickButton%, 0);
+    ToolbarEnable(recResumeButton%, 0);
     return 1;
 end
 
