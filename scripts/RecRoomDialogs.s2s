@@ -62,6 +62,7 @@ var recSpeakerArrayIndex%;          'Allows selection of a speaker array via dia
 var recSpeakerArrayIndex2%;         'Allows selection of another speaker array via dialog list (to assign which PA4 if there are two)    
 var recShuffle%;                    'Allows shuffle of trial order
 var recExpSelectSamplingRateIndex%; 'Index of drop-down to select sampling rate
+var recExpSelectPlayRateIndex%;     'Index of drop-down to select audio playback rate
 
 'Search Dialog variables
 var recSearchStimType%;             'Integer index to experiment selection list
@@ -503,6 +504,7 @@ func RecExpSelectDialog%()
     var spkArr1$[3];
     var spkArr2$[3];
     var fsArr$[2];
+    var fsPlayArr$[2];
     var levText$;
 '    spkArr$[0] := "None";
 '    spkArr$[1] := "15";
@@ -518,8 +520,11 @@ func RecExpSelectDialog%()
     spkArr2$[1] := "StandAlone";
     spkArr2$[2] := "StdAlNoPA4";
     
-    fsArr$[0] := "100000";  'Wrote this initially with an option for 50 kHz but not sure it would ever be useful
-    fsArr$[1] := "44100";
+    fsPlayArr$[0] := "100000";
+    fsPlayArr$[1] := "44100";
+    
+    fsArr$[0] := "50000";  
+    fsArr$[1] := "30000";
     
     RecExpSelectDialogGetParams();
     
@@ -548,7 +553,7 @@ func RecExpSelectDialog%()
     
     ' Generate the dialog
     
-    DlgCreate("Experiment Selection Dialog",0,0,52,19);
+    DlgCreate("Experiment Selection Dialog",0,0,52,20);
     
     DlgGroup("Experimental Details", 1,1,50,8);
     DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
@@ -579,13 +584,15 @@ func RecExpSelectDialog%()
     
     DlgCheck(8,"Shuffle Stimuli",2,15);
     DlgCheck(9,"Turn Off Reward",2,16);
-    DlgList(10,"Sampling rate (Hz)",fsArr$[],10,0,17);
+    DlgList(10,"Audio play rate (Hz)",fsPlayArr$[],10,0,17);
+    DlgList(11,"Electrode sampling rate (Hz)",fsArr$[],11,0,18);
+    
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
     i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recAddFilter%,recNBAKs%,recSpeakerArrayIndex%,
-    recSpeakerArrayIndex2%,blockTag$,recShuffle%,recTurnOffReward%,recExpSelectSamplingRateIndex%); 
+    recSpeakerArrayIndex2%,blockTag$,recShuffle%,recTurnOffReward%,recExpSelectPlayRateIndex%,recExpSelectSamplingRateIndex%); 
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
@@ -600,15 +607,21 @@ func RecExpSelectDialog%()
 '            recNSpeakers% := 11;  %11-speaker array does not actually exist
 '        endcase;
         
-        'Assign sampling rate
+        'Assign audio playback rate
         docase
-        case recExpSelectSamplingRateIndex% = 0 then
+        case recExpSelectPlayRateIndex% = 0 then
             recPlayRateHzCurrent := 100000;
-        case recExpSelectSamplingRateIndex% = 1 then
+        case recExpSelectPlayRateIndex% = 1 then
             recPlayRateHzCurrent := 44100;            
         endcase
             
-        
+        'Assign sampling rate
+        docase
+        case recExpSelectSamplingRateIndex% = 0 then
+            recSamplingRateHzCurrent := 50000;
+        case recExpSelectSamplingRateIndex% = 1 then
+            recSamplingRateHzCurrent := 30000;            
+        endcase
         
         'Assign speaker number and PA4 variables.  This is more complicated since the addition of a second PA4.
         'Speaker number has to be either 15 or 16, we do not have any scenarios which currently allow ONLY the
@@ -4464,6 +4477,7 @@ proc RecExpSelectDialogGetParams()
     recTurnOffReward% := GetIntRegistryValue%(key$, "TurnOffReward", recTurnOffReward%); 
     recNBAKs% := GetIntRegistryValue%(key$, "NBAKs", recNBAKs%);    
     recExpSelectSamplingRateIndex% := GetIntRegistryValue%(key$, "SampRateIndex", recExpSelectSamplingRateIndex%);
+    recExpSelectPlayRateIndex% := GetIntRegistryValue%(key$, "PlayRateIndex", recExpSelectPlayRateIndex%);
     recAddFilter% := GetIntRegistryValue%(key$, "AddFilter", recAddFilter%);
     
 	return;
@@ -4487,6 +4501,7 @@ proc RecExpSelectDialogSaveParams()
     SetIntRegistryValue(key$, "TurnOffReward", recTurnOffReward%);
     SetIntRegistryValue(key$, "NBAKs", recNBAKs%);
     SetIntRegistryValue(key$, "SampRateIndex", recExpSelectSamplingRateIndex%);
+    SetIntRegistryValue(key$, "PlayRateIndex", recExpSelectPlayRateIndex%);
     SetIntRegistryValue(key$, "AddFilter", recAddFilter%);
     
 	return;

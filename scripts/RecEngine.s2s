@@ -365,7 +365,7 @@ proc CreateSampleConfiguration()
     var i%;
     var thisTrodeString$;
     var sampleRate%;
-    sampleRate% := 50000; 'was 28000
+    sampleRate% := recSamplingRateHzCurrent;  
     'call SetTrodeChannels to fill Trode Channels, Ports, and Numbers arrays
     SetTrodeChannels();
     

@@ -86,7 +86,8 @@ var trialsOK%;                      'If 1, successfully loaded trials file
 var stimOK%;                        'If 1, successfully loaded stim or stim/cal file
 var calibOK%;                       'If 1, successfully loaded calibration file
 var recPlayRateHzDefault:=100000;   'Set default stimulus play rate to 100 kHz  
-var recPlayRateHzCurrent;    
+var recPlayRateHzCurrent;   
+var recSamplingRateHzCurrent;    
 const recMaxStimLengthSec:=10.0;    'Set maximum length of each individual stimulus, in seconds (was 4.0, may need to be 10 for DMR, will that work?)
 var recThisStimLengthSec;           'Let's allow the user to make this smaller, which will make loads MUCH faster    
 const recDAC0% := 0;                'Set output channel to DAC 0, don't let this change
