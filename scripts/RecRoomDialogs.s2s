@@ -3212,7 +3212,7 @@ func RecExpTimingRewardDialog%()
     intStr$[1] := "Complete Sound";
 
     
-    ' Fetch parameters from registry , only if not a runtime call
+    ' Fetch parameters from registry , only if not a runtime call, in a runtime call, use current (i.e. most recent) values
     if recRunTimeCall% = 0 then   
         RecTimingRewardGetParams();   'RecTimingRewardGetParams() is below 
     endif;
@@ -3348,9 +3348,10 @@ func RecExpTimingRewardDialog%()
         'endif;
         
         
-        if recRunTimeCall% = 0 then 'only save parameters if it's a non-run-time call, run-time calls are often for late-session adjustments and shouldn't start the next session
+        'if recRunTimeCall% = 0 then 'only save parameters if it's a non-run-time call, run-time calls are often for late-session adjustments and shouldn't start the next session
+        'Request has come down to countermand that directive - save parameters to the registry even on a runtime call!
             RecTimingRewardSaveParams();   'RecTimingRewardSaveParams() is below 
-        endif;
+        'endif;
         
         'After saving to registry, turn off recMissRepeats% if recMissRepeatsMax% is 0; set recMissRepeatsMax% to 0 if recMissRepeats% is off
         'This was only implemented 11-21-2023 because of confusion on the analysis side
