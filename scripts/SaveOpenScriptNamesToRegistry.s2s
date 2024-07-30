@@ -22,8 +22,15 @@ for i% := 1 to 32767 do
         regName$ := "Script" + Str$(fileCount%);
         value$ := view(i%).FileName$();
         printlog("regName is %s and value is %s\n",regName$,value$);
-        Profile(key$, regName$, value$);
-        Printlog("Wrote %s\n",value$);
+        'If we find a file that is not saved (e.g. testing script), it will have a blank filename,
+        'which results in a file-open dialog that kills the Reg2Script function.  Skip it.
+        if value$ = "" then
+            fileCount% -= 1;  'decrement counter
+            PrintLog("Found a file that has not been saved!  Cannot write filename to registry, skipping!\n");
+        else
+            Profile(key$, regName$, value$);
+            Printlog("Wrote %s\n",value$);
+        endif;
     endif;
 next
 
