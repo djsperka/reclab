@@ -618,9 +618,9 @@ func RecExpSelectDialog%()
         'Assign sampling rate
         docase
         case recExpSelectSamplingRateIndex% = 0 then
-            recSamplingRateHzCurrent := 50000;
+            recSamplingRateHzRequested := 50000;
         case recExpSelectSamplingRateIndex% = 1 then
-            recSamplingRateHzCurrent := 30000;            
+            recSamplingRateHzRequested := 30000;            
         endcase
         
         'Assign speaker number and PA4 variables.  This is more complicated since the addition of a second PA4.

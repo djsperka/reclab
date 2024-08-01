@@ -365,7 +365,7 @@ proc CreateSampleConfiguration()
     var i%;
     var thisTrodeString$;
     var sampleRate%;
-    sampleRate% := recSamplingRateHzCurrent;  
+    sampleRate% := recSamplingRateHzRequested;  
     'call SetTrodeChannels to fill Trode Channels, Ports, and Numbers arrays
     SetTrodeChannels();
     
@@ -662,6 +662,15 @@ proc CreateSampleConfiguration()
     this1401Type% := Determine1401Type%();  'this1401Type% is used by Get1401Type%();
     SampleOptimise(2, 1, Get1401Type%(), 2, 50, -1, 1);  'Optimization settings using Get1401Type%; turn burst mode on
     SampleMode(1);  'Continuous recording
+    
+    'Get actual sampling rate for first recording channel (should be same as others? Check.) if it exists
+    if recNElectrodes% > 0 then
+        recSamplingRateHzActual := SampleChanInfo(recTrodeChannel%[0],4);
+    else
+        recSamplingRateHzActual := 0;
+    endif;
+    
+    
 end
 
 ' ========== end CreateSampleConfiguration ===============
@@ -6477,8 +6486,8 @@ proc WriteExpParamsSampleText()
     SampleText(s$);
     yield(0.01);    
     
-    s$ := Print$("Param16 RoveLeveldB=%.2f,AudioPlayRateHz=%.2f",
-    recRovedB,recPlayRateHzCurrent); 
+    s$ := Print$("Param16 RoveLeveldB=%.2f,AudioPlayRateHz=%.2f,SamplingRateHzRequested=%.2f,SamplingRateHzActual=%.2f",
+    recRovedB,recPlayRateHzCurrent,recSamplingRateHzRequested,recSamplingRateHzActual); 
     SampleText(s$);
     yield(0.01); 
     
