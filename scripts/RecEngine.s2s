@@ -946,31 +946,6 @@ end
 
 
 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'
-' InitializePlayWaveAreaLongBB - add play wave area for Long Tone exps (BB noise only). 
-' Area "N" only will be allocated.  It will be one second long.  We will set the value
-' of PlayWaveCycles() to repeat the PWA until the full duration of the noise stimulus
-' is complete.  We will reload the PlayWaveArea multiple times per trial if necessary
-' (every second) WHILE IT IS PLAYING so that the noise does not repeat.
-'
-' This function is currently not used and is disabled.  It was kind of clever, so I'm
-' keeping it around in case the skeleton is useful someday.
-' 
-'''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-'Proc InitializePlayWaveAreaLongBB()
-'    var st;
-'  
-'    st := PlayWaveAdd("N", "N", recDAC0%, recPlayRateHzDefault, recMaxLongNoisePoints%);
-'    if st < 0 then
-'        Message("Error in PlayWaveAdd for area " + GetPlayWaveKey$(0));
-'        halt;
-'    else
-'        PlayWaveTrigger("N", 1);  'set playwave area to triggered mode
-'    endif        
-'        
-'end
-
 
 
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
