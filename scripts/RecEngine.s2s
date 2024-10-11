@@ -4670,27 +4670,6 @@ func IdleLoop%()
             
         case iState% = stateSoundEPlaying% then
             
-            'This particular IF statement seems not terribly useful, but as designed it is the only way to get out
-            'of this idle loop state.  
-            if tNow - (stimOn + (recDur/1000) + 0.01) > 0 then
-                'We can avoid calling PlayWaveStop with the PWA already stopped, so let's do so
-                if PWA$ = "" then
-                    RecLogStatus("WaitTrialSoundE", "Noticed SoundE is already done before calling playwave stop.");
-                else
-                    RecLogStatus("WaitTrialSoundE", "Calling playwave stop.");
-                    PlayWaveStop(); 
-                endif
-
-                if StimStoppedNotSet% then
-                    StimStopped :=  View(recDataWindowView%).MaxTime();
-                    StimStoppedNotSet% := 0;
-                endif;
-                
-                dummy% := CharStimComplete%();  
-                ChangeStateTo(stateCharInitializeTrials%);
-
-            endif;
-            
             'See if sound is still playing, get number of points played
             if recCEDIsPresent% = 1 then  'only check play wave status if the CED is there
                 PWA$ := PlayWaveStatus$(recPointsPlayed%);
@@ -4704,10 +4683,36 @@ func IdleLoop%()
             endif;
             
             'If sound is still playing, see if it should be over, stop it if so
-            if recPointsPlayed% >= recPlayPoints%  then
+            docase
+            case (recPointsPlayed% >= recPlayPoints%) or PWA$ = "" then  'we've played more points than the stimulus is supposed to have, current points should be silence, so stop playing (or stimulus is already done)
+                if PWA$ <> "" then  'If PWA is still playing, stop it
+                    PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
+                    printlog("At time %f, recPointsPlayed is %d and recPlayPoints is %d, PWA was still playing\n",tNow,recPointsPlayed%,recPlayPoints%);
+                else
+                    printlog("At time %f, recPointsPlayed is %d and recPlayPoints is %d, PWA was already stopped\n",tNow,recPointsPlayed%,recPlayPoints%);
+                endif
+                
+                'In any case, we are done, so get out of here
+                if StimStoppedNotSet% then
+                    StimStopped :=  View(recDataWindowView%).MaxTime();
+                    StimStoppedNotSet% := 0;
+                endif;
+                
+                dummy% := CharStimComplete%();  
+                ChangeStateTo(stateCharInitializeTrials%);
+            case tNow - (stimOn + (recDur/1000) + 0.01) > 0 then  'somehow, PlayWaveStatus is not reporting stimulus done, but my goodness, look at the time!  Something may have gone wrong.  Stop things now.
                 PlayWaveStopWithErrorCheck();  'stop playing stimulus while we're at it
-                printlog("At time %f, recPointsPlayed is %d and recPlayPoints is %d\n",tNow,recPointsPlayed%,recPlayPoints%);
-            endif;
+                printlog("At time %f, recPointsPlayed is %d and recPlayPoints is %d, PWA was still playing even though it was over time\n",tNow,recPointsPlayed%,recPlayPoints%);
+                
+                'And we are done, so get out of here
+                if StimStoppedNotSet% then
+                    StimStopped :=  View(recDataWindowView%).MaxTime();
+                    StimStoppedNotSet% := 0;
+                endif;
+                
+                dummy% := CharStimComplete%();  
+                ChangeStateTo(stateCharInitializeTrials%);
+            endcase;
             
             if PWA$ = "" then    
                 SilencePA4%();  'When sound is done, set active PA4s to 99
