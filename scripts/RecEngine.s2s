@@ -2633,7 +2633,7 @@ func PrepareLongNoiseAllAtOnce()
                 
                 if atten < 0 then
                     atten := 0;
-                    message("Requested intensity is louder than max intensity for this tone, setting attenuation to 0!");
+                    message("Requested intensity (" + Str$(recLongToneTargetdB) + " dB) is louder than max intensity for this tone ( " + Str$(recLongToneTargetdB+atten) + " dB), setting attenuation to 0!");
                 endif;
                 
                 if matGetAttenOK% < 0 then 'error

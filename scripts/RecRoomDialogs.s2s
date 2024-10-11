@@ -504,7 +504,7 @@ func RecExpSelectDialog%()
     var spkArr1$[3];
     var spkArr2$[3];
     var fsArr$[2];
-    var fsPlayArr$[2];
+    var fsPlayArr$[3];
     var levText$;
 '    spkArr$[0] := "None";
 '    spkArr$[1] := "15";
@@ -521,7 +521,8 @@ func RecExpSelectDialog%()
     spkArr2$[2] := "StdAlNoPA4";
     
     fsPlayArr$[0] := "100000";
-    fsPlayArr$[1] := "44100";
+    fsPlayArr$[1] := "48000";
+    fsPlayArr$[2] := "44100";
     
     fsArr$[0] := "50000";  
     fsArr$[1] := "30000";
@@ -612,6 +613,8 @@ func RecExpSelectDialog%()
         case recExpSelectPlayRateIndex% = 0 then
             recPlayRateHzCurrent := 100000;
         case recExpSelectPlayRateIndex% = 1 then
+            recPlayRateHzCurrent := 48000; 
+        case recExpSelectPlayRateIndex% = 2 then
             recPlayRateHzCurrent := 44100;            
         endcase
             
@@ -1928,7 +1931,7 @@ func RecLongToneDialog%()
     DlgReal(3,"Low Freq Cutoff (Hz)",1,30000);
     DlgReal(4,"High Freq Cutoff (Hz)",2,100000);
     DlgInteger(5,"Speaker",1,16);
-    DlgInteger(6,"Number of repeats per tone",1,8);  'We have to restrict this to 8 because of maximum variable size allowed by CED (have to hold all the damn long noises!)
+    DlgInteger(6,"Number of repeats per tone",1,12);  'We have to restrict this to 8 because of maximum variable size allowed by CED (have to hold all the damn long noises!)  Heck, try 12 and see...
     DlgReal(7,"ISI, seconds",1,100);
     DlgReal(8,"Silence trial, seconds",10.1,24.9);  'We have to restrict this to be > 10 and < 25 to ensure that Matlab analysis works and is backcompatible. See treatment of DURS, approx. line 105-113 RecLongToneSingleCellAnalysis
     DlgReal(9,"Target dB",1,100);

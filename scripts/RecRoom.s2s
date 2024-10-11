@@ -3329,7 +3329,7 @@ func GenTrialsCharParallel%()
         halt
     endif  
     
-    'recTrialTerminalndex%[] is just 0 as there is only one sound per trial
+    'recTrialTerminalIndex%[] is just 0 as there is only one sound per trial
 
     for i% := 0 to recTotalTrials%-1 do ' 1. populate miniTrialOrder%
         miniTrialOrder%[i%] := i%;
@@ -3396,10 +3396,10 @@ func GenTrialsCharSingle%()
     var i%;
     var j%;
     var count% := 0;
-    var rewardInt% := 5;
+    'var rewardInt% := 5;
     var miniTrialOrder%[recTotalTrials%];
     var RepeatsPerStim% := 1;
-    var rewardArray%[80];
+    'var rewardArray%[80];
     var rewardIndex%;
     
     ' ===== Create Trials =====
@@ -3409,7 +3409,7 @@ func GenTrialsCharSingle%()
         halt
     endif  
     
-    'recTrialTerminalndex%[] is just 0 as there is only one sound per trial
+    'recTrialTerminalIndex%[] is just 0 as there is only one sound per trial
 
     for i% := 0 to recTotalTrials%-1 do ' 1. populate miniTrialOrder%
         miniTrialOrder%[i%] := i%;
