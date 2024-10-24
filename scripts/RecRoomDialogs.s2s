@@ -282,7 +282,7 @@ var recAMDiscRovedB;                'How much do we rove?
 var recSelectedStimFile$;           'Stim or stim/cal file selected in add/delete 
 var recSelectedStimDistractorFile$;    
 var recSelectedTrialsFile$;         'Trials file selected in add/delete
-var recSelectedPrefix$;             'Prefix of the selected file, for now only used with ArbStim
+var recSelectedPrefix$ := "";       'Prefix of the selected file, for now only used with ArbStim
 const recAMDiscNumExps% := 40;      'The allowable number of defined experiments in AMDisc, DO NOT CHANGE WITHOUT OVERHAUL OF GETPARAM, ETC. STUFF
 var recAMDiscExpNameLoad$[recAMDiscNumExps%];       'Experiment names, loading files
 var recAMDiscStimcalNameLoad$[recAMDiscNumExps%];   'Stim/Cal file names, loading files

@@ -4633,7 +4633,11 @@ func IdleLoop%()
                 case recUse2PWAs% = 1 then  'Use2PWAs + SoundE should be only SigNoise
                     stmp% := PlayTwoSounds%(recStimCount%);  'For Char, we need to pass a value, but it will be ignored
                 case recCharLoadStim% = 5 then
-                    stmp% := PlaySound%("ARB");    'indicate an arbitrary stimulus  trial
+                    if recSelectedPrefix$ = "" then
+                        stmp% := PlaySound%("ARB");    'indicate an arbitrary stimulus  trial
+                    else
+                        stmp% := PlaySound%(recSelectedPrefix$);    'give a bit more info on trial type if available
+                    endif
                 else
                     stmp% := PlaySound%("FRA");  'indicate an FRA trial
                 endcase
