@@ -2192,6 +2192,27 @@ end;
 
 
 
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' 
+' ChangeStateToWithStartTime
+' 
+' As ChangeStateTo, but allows arbitrary setting of tStateStart - useful for allowing an
+' intermediate process to take place during a delay that uses a tStateStart time to
+' determine when to move forward; other uses could be found
+' Call this function on exit from a state. The var stateTo% should be the state to enter
+' on the next call to the loop function. The var t is the time to set for tStateStart.
+'
+''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+proc ChangeStateToWithStartTime(stateTo%,t)
+	iState% := stateTo%;
+    nextStateImmed% := 1;  'nothing to wait for
+    tStateStart := t;
+end;
+
+
+
+
+
 
 ''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' 
@@ -4064,7 +4085,12 @@ func IdleLoop%()
                             recDelayIntervalTime := recMinOnsetDelay + Rand(recVarOnsetDelay, 0);
                         endif;
                         RecLogStatus("WaitTrlInit", "Delay interval=" + str$(recDelayIntervalTime) + " s.");
-                        ChangeStateTo(statePreTrialDelay%);
+                        'Decide what to do now
+                        if recTrialInitReward% = 1  and recExpToRun% = recExpOneStimDiscrimButton% then
+                            ChangeStateTo(stateTrialInitReward%);  'If OneStimDiscrim + TrialInitReward, give trial init reward NOW
+                        else
+                            ChangeStateTo(statePreTrialDelay%);  'Otherwise, do standard pre-trial delay
+                        endif;
                     endif;
                 else  'this is timeout
                     SampleKey("S"); 'stop blink sequence immediately, though it should already be stopped - don't use SafeSampleKey, OK to force in
@@ -4151,10 +4177,10 @@ func IdleLoop%()
                 case recDoJoyTrain% = 1 then
                     SampleKey("S");  'turn off LED, do not respect flash sequence lockout
                     ChangeStateTo(stateHitReward%);   'go straight to the hit reward
-                case recTrialInitReward% = 0 then  'no trial init reward, go straight to trial init
-                    ChangeStateTo(stateTrialInit%);
-                else 'if recTrialInitReward is 1, go to trial init reward
+                case recTrialInitReward% = 1 and recExpToRun% <> recExpOneStimDiscrimButton% then  'go to trial init reward, but for OneStimDiscrim we do the init reward earlier
                     ChangeStateTo(stateTrialInitReward%);
+                else 'if recTrialInitReward is 0, no trial init reward, go straight to trial init
+                    ChangeStateTo(stateTrialInit%);
                 endcase
             endcase
             '----- End statePreTrialDelay% -----
@@ -4187,8 +4213,13 @@ func IdleLoop%()
             else
                 RecLogStatus("TrialInitReward", "No trial init reward.");
             endif
-            'Go to trial initiation
-            ChangeStateTo(stateTrialInit%);
+            'Decide what to do now
+            if recExpToRun% = recExpOneStimDiscrimButton% then
+                ChangeStateToWithStartTime(statePreTrialDelay%,tStateStart);  'Go to pre-trial delay, we haven't done it yet, but measure delay based on time that we entered this state!
+            else                
+                ChangeStateTo(stateTrialInit%);  'Go to trial initiation, we have already done the pre-trial delay
+            endif;
+            
             '----- End stateTrialInitReward% -----
             
             
