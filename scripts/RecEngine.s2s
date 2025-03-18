@@ -4149,7 +4149,7 @@ func IdleLoop%()
             docase  
             case ballisticOn% = 1 and inTrialInit% <> 1 then
                 RecLogStatus("DelayInterval", "Interrupt during ballistic delay.");
-                SampleKey("S");  'turn off LED, do not respect flash sequence lockout
+                SafeSampleKey("S");  'turn off LED, do not respect flash sequence lockout
                 if recHouseLight% = 2 then
                     SafeSampleKey("v");  'turn off house LED
                 endif;
@@ -4158,7 +4158,7 @@ func IdleLoop%()
                 'for the Audiogram experiment, we need to treat this NOT as a slip
                 RecLogStatus("DelayInterval", "False Alarm during delay.");
                 ChangeStateTo(stateFalseAlarmAudiogram%); 
-                SampleKey("S");  'turn off LED, do not respect flash sequence lockout
+                SafeSampleKey("S");  'turn off LED, do not respect flash sequence lockout
                 if recHouseLight% = 2 then
                     SafeSampleKey("v");  'turn off house LED
                 endif;
@@ -4166,7 +4166,7 @@ func IdleLoop%()
             case inTrialInit% <> 1 and recCEDIsPresent% = 1  and recActive% = 1 then
                 'for all other experiments we are generous and treat this as a slip
                 RecLogStatus("DelayInterval", "Interrupt during delay.");
-                SampleKey("S");  'turn off LED, do not respect flash sequence lockout
+                SafeSampleKey("S");  'turn off LED, do not respect flash sequence lockout
                 ChangeStateTo(stateDetermineRewardType%);  'no interrupt penalty, it's probably a slip, just start over, trial already loaded
                 tNextTrial := tNow;
                 recDelayIntervalInterrupt% := 1;
@@ -4175,7 +4175,7 @@ func IdleLoop%()
                 recDelayIntervalInterrupt% := 0;
                 docase
                 case recDoJoyTrain% = 1 then
-                    SampleKey("S");  'turn off LED, do not respect flash sequence lockout
+                    SafeSampleKey("S");  'turn off LED, do not respect flash sequence lockout
                     ChangeStateTo(stateHitReward%);   'go straight to the hit reward
                 case recTrialInitReward% = 1 and recExpToRun% <> recExpOneStimDiscrimButton% then  'go to trial init reward, but for OneStimDiscrim we do the init reward earlier
                     ChangeStateTo(stateTrialInitReward%);
