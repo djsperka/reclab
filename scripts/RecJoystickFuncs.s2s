@@ -224,11 +224,13 @@ func ReadJoystick%()
     
     'Set tic value
     tic := SecPerSample;  'This tic prevents us from reading the same event twice
-    tic2 := 0.005;  'This tic allows us to grab 5 ms of redundant time - that corresponds to 25 samples of
-    'the joystick channels - because threshold crossings were being missed on occasion
+    tic2 := tic*25;       'MemImport can apparently miss events for stupid reasons.  If this value is 5*tic, 
+                          'there is a like 1-in-10 miss probability, but at 15 it never misses, so make it 25
     
-    'find out what time it is now
-    Now := maxtime();
+    'Find out what time it is now
+    'Now := maxtime();
+    'Find out what time is is smarter
+    Now := Min(maxtime(configJoyXChannel%),maxtime(configJoyYChannel%));
     
     'find most recent time ReadJoystick% was run and most recent event time
     LastRunTime := HoldLastCheckTime;  'LastRunTime updates every call the ReadJoystick, regardless of whether there was a joystick event or not
