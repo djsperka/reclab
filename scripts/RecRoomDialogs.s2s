@@ -196,7 +196,6 @@ var recStereoDisRepeatsPerStim% := 1;
 var recStereoDisGNGRepeatsPerStim% := 1; 
 var recStereoDisdB := 65;   'we may change the intended dB  
 var recOneStimDiscrimRepeatsPerStim% := 1;  
-var recOneStimDiscrimGNGRepeatsPerStim% := 1;
 var recOneStimDiscrimdB := 65;   'we may change the intended dB     
 var recCharText1%;    
 var recCharText2%;  
@@ -2864,13 +2863,14 @@ func RecExpOneStimDiscrimDialog%()
     RecOneStimDiscrimExptType$[1] := "AMFM"; 
     RecOneStimDiscrimExptType$[2] := "Boilermaker (ballistic if GNG)"; 
     
-    ' Fetch parameters from registry, forced choice 
+    ' Fetch parameters from registry, majority of dialog
     RecOneStimDiscrimGetParams();
+    
+    ' Fetch parameters from registry, files for forced choice experiments
     RecOneStimDiscrimExpListLoadGetParams(recOneStimDiscrimExpNameLoad$[],recOneStimDiscrimStimcalNameLoad$[],recOneStimDiscrimTrialsNameLoad$[]);
     RecOneStimDiscrimExpListGenGetParams(recOneStimDiscrimExpNameGen$[],recOneStimDiscrimStimNameGen$[],recOneStimDiscrimTrialsNameGen$[]);
     
-    ' Fetch parameters from registry, GNG
-    RecOneStimDiscrimGNGGetParams();
+    ' Fetch parameters from registry, files for GNG experiments
     RecOneStimDiscrimGNGExpListLoadGetParams(recOneStimDiscrimGNGExpNameLoad$[],recOneStimDiscrimGNGStimcalNameLoad$[],recOneStimDiscrimGNGTrialsNameLoad$[]);
     RecOneStimDiscrimGNGExpListGenGetParams(recOneStimDiscrimGNGExpNameGen$[],recOneStimDiscrimGNGStimNameGen$[],recOneStimDiscrimGNGTrialsNameGen$[]);
     
@@ -3115,7 +3115,7 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
     
     
     'Enable/diable dB value based on rove checkbox
-    DlgEnable(DlgValue(8),10);
+    DlgEnable(DlgValue(9),10);
     
     'Do not allow illegal selections in the drop down boxes
     if DlgValue(14) > 0 then  'If we are not using AMFreq in the first value, AMFreq2 cannot be the second value!
@@ -4380,7 +4380,15 @@ proc RecOneStimDiscrimSaveParams()
     SetStringRegistryValue(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     SetIntRegistryValue(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
     SetIntRegistryValue(key$, "UpdateRewardByGap", recUpdateRewardByGap%);
-
+    
+    'These had been set separately in a "GNG-only" function that made no sense
+    SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
+    SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexGen", recOneStimDiscrimGNGExpIndexGen%);
+    SetIntRegistryValue(key$, "OneStimDiscrimExpDoGNG", recOneStimDiscrimExpDoGNG%);
+    
+    'And this wasn't being set at all!
+    SetIntRegistryValue(key$, "OneStimDiscrimExpDoGen", recOneStimDiscrimExpDoGen%);
+    
     
 	return;
 end
@@ -4413,7 +4421,14 @@ proc RecOneStimDiscrimGetParams()
     recOneStimDiscrimExptType% := GetIntRegistryValue%(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
     recUpdateRewardByGap% := GetIntRegistryValue%(key$, "UpdateRewardByGap", recUpdateRewardByGap%);
     
+    'These had been set separately in a "GNG-only" function that made no sense
+    recOneStimDiscrimGNGExpIndexLoad% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
+    recOneStimDiscrimGNGExpIndexGen% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexGen", recOneStimDiscrimGNGExpIndexGen%);  
+    recOneStimDiscrimExpDoGNG% := GetIntRegistryValue%(key$, "OneStimDiscrimExpDoGNG", recOneStimDiscrimExpDoGNG%);
+    recOneStimDiscrimExpDoFC% := 1 - recOneStimDiscrimExpDoGNG%;  'Because the dialog checkbox asks for FC, not GNG
     
+    'And this wasn't being set at all!
+    recOneStimDiscrimExpDoGen% := GetIntRegistryValue%(key$, "OneStimDiscrimExpDoGen", recOneStimDiscrimExpDoGen%);
     
 	return;
 end
@@ -4421,48 +4436,6 @@ end
 '===== End RecOneStimDiscrimGetParams =====
 '
 '
-
-
-
-'
-'===== RecOneStimDiscrimGNGSaveParams =====
-
-'Fetch Debugging parameters from the registry
-proc RecOneStimDiscrimGNGSaveParams()
-	var key$;
-    key$:="Reclab\\OneStimDiscrimParam";  
-    
-    SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
-    SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexGen", recOneStimDiscrimGNGExpIndexGen%);
-    SetIntRegistryValue(key$, "OneStimDiscrimGNGRepeatsPerStim", recOneStimDiscrimGNGRepeatsPerStim%);
-    SetIntRegistryValue(key$, "OneStimDiscrimExpDoGNG", recOneStimDiscrimExpDoGNG%);
-    
-	return;
-end
-
-'===== End RecOneStimDiscrimGNGSaveParams =====
-'
-'
-'
-'===== RecOneStimDiscrimGNGGetParams =====
-
-'Fetch Debugging parameters from the registry
-proc RecOneStimDiscrimGNGGetParams()
-	var key$;
-    key$:="Reclab\\OneStimDiscrimParam";  
-    
-    recOneStimDiscrimGNGExpIndexLoad% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
-    recOneStimDiscrimGNGExpIndexGen% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexGen", recOneStimDiscrimGNGExpIndexGen%);
-    recOneStimDiscrimGNGRepeatsPerStim% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGRepeatsPerStim", recOneStimDiscrimGNGRepeatsPerStim%);   
-    recOneStimDiscrimExpDoGNG% := GetIntRegistryValue%(key$, "OneStimDiscrimExpDoGNG", recOneStimDiscrimExpDoGNG%);
-    
-	return;
-end
-
-'===== End RecOneStimDiscrimGNGGetParams =====
-'
-'
-
 
 
 
