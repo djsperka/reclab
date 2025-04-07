@@ -1163,8 +1163,11 @@ Func PlaySound%(StimTypeLocal$)
         endif;
         
         'status% := recAtten%(atten);
-        status% := recAttenByID%(atten,arrayPA4ID%);
-        'status% := recAttenByID%(trlatten,arrayPA4ID%);  'testing
+        if recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 and recTrialTerminalIsS2%[playInd%] = 1 then
+            status% := recAttenByID%(0,arrayPA4ID%);  'set the PA4 to 0 on Active Boilermaker, the attenuation has been done digitally
+        else
+            status% := recAttenByID%(atten,arrayPA4ID%);  'For everything else, set attenuation as expected
+        endif
         if status% <> 0 then
             status% := 810;  '810 = "atten", see?
             return status%;
@@ -1199,22 +1202,27 @@ Func PlaySound%(StimTypeLocal$)
         
         docase
         case recMatGenStim% = 0 then 'stimuli are read from a file
-            's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[recPWAList%[recStimCount%][playInd%]]);
-            's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, recTrialLoadLoc$[thisStim%]);
-            s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%]);
+            'If we are doing active boilermaker we should note the exact time of the target sound onset within the stimulus
+            if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTrialTerminalIsS2%[playInd%] = 1 then
+                s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s,%f", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%],recPlayTimeBMTarget);
+            else
+                s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%]);
+            endif
             SampleText(s$, StimOn, MarkerCode%[]);
         case recMatGenStim% = 1 then 'stimuli are generated
-            's$ := Print$("\"%s\",%s,%d,%d,%.1f,\"%s\"", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(recPWAList%[recStimCount%][playInd%]));
-            's$ := Print$("\"%s\",%f,%s,%d,%d,%.1f,\"%s\"", playChar$, StimOn, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, NameThatStimulus$(thisStim%));
             s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, NameThatStimulus$(thisStim%,0));
             SampleText(s$, StimOn, MarkerCode%[]);
         endcase
         
     endif
     
-    'Calculate the duration in points of the stimulus
-    'recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[recPWAList%[recStimCount%][playInd%]]/1000;  'recTrialStimDur is in ms   
-    recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStim%]/1000;  'recTrialStimDur is in ms     
+    'Calculate the duration in points of the stimulus 
+    'We now need to assign a potentially different duration for targets in the active boilermaker, is calculated in PrepareNextTrial%()
+    if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTrialTerminalIsS2%[playInd%] = 1 then
+        recPlayPoints% := recPlayPointsBMTarget%;
+    else
+        recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStim%]/1000;  'recTrialStimDur is in ms     
+    endif;
     
     return status%;
 end
@@ -1722,7 +1730,8 @@ func StimComplete$(StimTypeLocal$, success%)
     endcase
     
     'Write sample text 
-    if StimTypeLocal$ = "S1" then  'trial is not over, just the stimulus is over
+    docase
+    case StimTypeLocal$ = "S1" then  'trial is not over, just the stimulus is over
         if recExpToRun% = recExpAudiogramButton% then
             strtmp$ := Print$("EndStim %d,%d,%s,%f", recStimCount%,recCurrentTrialLocal%, resultCode$, recAudiogramPreviousdB);  'use previous dB, current dB is already updated
         else
@@ -1734,7 +1743,7 @@ func StimComplete$(StimTypeLocal$, success%)
         else
             strtmp$ := Print$("EndTrial %d,%s", recCurrentTrialLocal%, resultCode$);
         endif;
-    endif;
+    endcase;
     SampleText(strtmp$, recPreciseTrialTime);  'This puts the sampletext at the time of the response (or, if no response, at the time we noticed the end of the stimulus)
     
     
@@ -2806,6 +2815,12 @@ func PrepareNextTrial%(loadPWAs%)
     var tempfloat;
     var loadStart;
     var loadEnd;
+    var tempScale;
+    var calAttenLocal;
+    var sDur%;             'stimulus duration, for Boilermaker Active
+    var tDur%;             'target duration, for Boilermaker Active
+    var tIns%;             'target insertion point, for Boilermaker Active
+    
     
     
     ' Check to see if we are done
@@ -2818,7 +2833,6 @@ func PrepareNextTrial%(loadPWAs%)
     
     ' Get index of current trial
     thisTrial% := recTrialOrder%[recCurrentTrial%];  'recCurrentTrial is an index, BUT it hasn't been incremented yet, so don't subtract 1
-    
     
     
     ' Put current trial sequence into log file
@@ -2855,16 +2869,79 @@ func PrepareNextTrial%(loadPWAs%)
             Stop%();
             return -1;
         endif;
+        
+        'Generate (and scale!) "target" stimulus in the case of active Boilermaker
+        'Current conception only requires a single load, same target will be used for the entire experiment
+        'Also currently only imagine using a 200-ms pink noise, so this is "hardcoded"
+        if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTargetSoundLoaded% = 0 then
+            if recMatlabIsPresent% = 0 or recCalibIsPresent% = 0 then
+                message("Holy crap, I can't generate the 'target' stimulus because you either said there's no Matlab or no calibration!");
+                view(recLog%).print("ERROR: PrepareNextTrial - Matlab not open or calibration not present, cannot generate 'target' stimulus, quitting!\n");
+                recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+                Stop%();
+                return -1;
+            endif
+            
+            'Build Matlab statement
+            matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);
+            matPutOK% := matPutOK% + PutMatlabValueInt%("pad",recTargetSoundPoints%);
+            matPutOK% := matPutOK% + PutMatlabValueInt%("spk",recTrialS1Spkr%[0]);  'There's only one speaker used in these experiments, so whatever the first trial is is OK
+            statement$ := "[stimulus atten65 seed] = reclab_panstim(200,fs,-1,-1,0,0,0,0,0,-1,2,0,pad,AFFT(1,spk));";  'this is pink noise, 200 ms
+            
+            'Create and grab the target sound, various other info
+            EvalMatlabStatement%(statement$);
+            statement$ := "calibval = AFFT(spk).dB;";
+            EvalMatlabStatement%(statement$);
+            matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recTargetSound%[]);
+            matGetAttenOK% := GetMatlabValueFloat%("atten65",recTargetSoundAtten);
+            matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
+            printlog("Matlab's calib value for target sound is %f\n",tempfloat);
+            printlog("Value to get target sound to 65 dB is %f\n",recTargetSoundAtten);
+            matGetSeedOK% := GetMatlabValueInt%("seed",recTargetSoundRandomSeed%);  'report in a sampletext
+            
+            'Check for error, if this breaks we can't really continue...
+            docase
+            case matGetStimOK% < 0 then 'error
+                message("There has been an error in getting target sound stimulus data from Matlab!");
+                recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                SafeSampleKey("M");  'Turn off LED
+                Stop%();
+                return -1;
+            case matGetAttenOK% < 0 then 'error
+                message("There has been an error in getting target sound atten data from Matlab!");
+                recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                SafeSampleKey("M");  'Turn off LED
+                Stop%();
+                return -1;
+            case matGetSeedOK% < 0 then 'error
+                message("There has been an error in getting target sound seed data from Matlab!");
+                recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                SafeSampleKey("M");  'Turn off LED
+                Stop%();
+                return -1;
+            endcase;
+            
+            'Scale target sound, do it once and for all here            
+            tempScale := recTargetSoundAtten;  'this is dB to get to 65 dB
+            tempScale := tempScale + 65 - recTargetSounddB;  'this is dB atten to get to target sound dB 
+            tempScale := pow(10,(-tempScale/20));  'solving "dB = 20 * log10(A1/A2)" for (A1/A2) gives multiplicative scale factor
+            ArrMul(recTargetSound%[],tempScale);
+            
+            recTargetSoundLoaded% := 1;  'Set this value so we only generate this target stimulus once
+        endif
+        
+        
         ' Generate/Load stimuli and put them into PlayWaveAreas
         'for i% := 0 to recTrialTerminalIndex%[thisTrial%] do
         for i% := 0 to recNUniqueStims%[thisTrial%]-1 do
             'Get play wave area for current stimulus
             pwChar$ := GetPlayWaveKey$(i%); 
             
-            'get index of trial
+            'get index of current stimulus
             ind% := recStimList%[i%][thisTrial%];
             
-            'get speaker of trial
+            'get speaker for current stimulus/trial
             thisSpkr% := recSpeakerList%[i%][thisTrial%];
             
             'Set recStimTransfer%[] to zeros
@@ -3018,6 +3095,49 @@ func PrepareNextTrial%(loadPWAs%)
                 fileclose();  'close fh%
                 
             endcase;
+            
+            
+            'For active Boilermaker, we need to do stimulus attenuation here, and add in the target if appropriate
+            if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
+                
+                'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
+                calAttenLocal := recTrialStimCal[ind%][thisSpkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
+
+                'Trial-based attenuation for current stimulus is this, used below directly
+                'For reference it is: recDeltadBList[0][ind%]
+             
+                'Scale boilermaker sound, will NOT use PA4           
+                tempScale := calAttenLocal;  'this is dB to get to 65 dB
+                tempScale := tempScale + recDeltadBList[0][ind%];  'this is dB atten to get to intended dB 
+                tempScale := pow(10,(-tempScale/20));  'solving "dB = 20 * log10(A1/A2)" for (A1/A2) gives multiplicative scale factor
+                ArrMul(recStimTransfer%[],tempScale);
+                
+                
+                'If target stim, add in target sound, save time of target sound onset
+                if recTrialTerminalIsS2%[thisTrial%] = 1 then
+                    'Get durations in points
+                    sDur% := recPlayRateHzCurrent*recTrialStimDur[ind%]/1000;  'Stimulus duration values are expected to be in integer ms, should be fine to cast to integer from float
+                    tDur% := recPlayRateHzCurrent*0.2;  'Target duration is hardcoded to be 200 ms
+                    
+                    'Determine random target onset time, relative to the start point of the stimulus, in seconds
+                    recPlayTimeBMTarget := rand(recTrialStimDur[ind%]/1000,0);
+                    
+                    'Find this "insertion point" time in samples
+                    tIns% := recPlayRateHzCurrent*recPlayTimeBMTarget;
+                    
+                    'And insert
+                    ArrAdd(recStimTransfer%[tIns%:tDur%],recTargetSound%[0:tDur%]);
+                    
+                    'Calculate the actual value of the end point of the stimulus and keep the insertion point for use in the idle loop
+                    recPlayPointsBMTarget% := max(sDur%,tIns%+tDur%);
+                    recOnsetPointsBMTarget% := tIns%;
+                endif
+                
+                
+                
+            endif
+            
+            
             
             'Finally, place the stimulus into the appropriate Play Wave Area
             if recCEDIsPresent% = 1 then
@@ -4491,13 +4611,21 @@ func IdleLoop%()
                 RecLogStatus("WaitTrialSoundB", "Sound done playing.");
                 ChangeStateTo(stateTrialHoldReward%);  'check no matter what, hold reward will not be given if isEarlyResponse% > 0
             case recActive% = 0 then
-                'Do nothing here if sound is playing but there is no task; simply wait for sound to stop
+                'Do nothing here if sound is playing but there is no task; simply wait for sound to stop    
             case inResponse1% = 1 or inResponse2% = 1 then  'if there is an early response
                 'accept response whether sound should be stopped or not
                 if isEarlyResponse% = 0 then
-                    isEarlyResponse% := 2-inResponse1%;  'Clever avoidance of IF; isEarlyResponse% will be equal to 1/2 for resp1/resp2
                     recPreciseTrialTime := recLeverTime;  'time early hit occurred
                     RecLogStatus("WaitTrialSoundB", "Lever is in response " + Str$(isEarlyResponse%) + " - response interrupting S2");
+                    
+                    'In most cases an early response is considered a valid response, but for active boilermaker
+                    'we must insist that the target has begun to play before the response can be considered correct
+                    if recPointsPlayed% < recOnsetPointsBMTarget% and recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
+                        isEarlyResponse% := -1;  'Should currently be the only usage of -1 for isEarlyResponse%
+                    else    
+                        isEarlyResponse% := 2-inResponse1%;  'Clever avoidance of IF; isEarlyResponse% will be equal to 1/2 for resp1/resp2
+                    endif
+                    
                     'Determine whether sound should be stopped
                     if recContinueSoundOnS2Interrupt% = 0 then
                         if recCEDIsPresent% = 1 then
@@ -4820,7 +4948,18 @@ func IdleLoop%()
             else 'If this scenario is active, Case through all possible responses
                 
                 docase
-                'Early response, interrupted final stimulus, Recanzone lab universally accepts early response  
+                'Early response, interrupted final stimulus, Recanzone lab universally accepts 
+                'early response EXCEPT if it occurs before the target portion in active Boilermaker
+                case isEarlyResponse% = -1 then  'this is a false alarm in Active Boilermaker
+                    SafeSampleKey("S");  'Turn off LED
+                    'recPreciseTrialTime has already been set
+                    
+                    trlsuccess% := 0;
+                    numFPs% += 1;  'increment FP counter
+                    allowrepeat% := 1;  'Allow RecMissRepeats% to work even though we should not select it in this case
+                    ChangeStateTo(stateFalsePositive%);
+                    
+                    isEarlyResponse% := 0;  'reset
                 case isEarlyResponse% > 0 then  'we don't care about the state of the lever/joystick; early response already happened
                     SafeSampleKey("S");  'Turn off LED
                     'recPreciseTrialTime has already been set
@@ -6150,6 +6289,8 @@ func BehOutput(resultCode$, stimTypeLocal$, currentTrialLocal%)
             'hmm
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","StimMF","StimCarrier","StimAtten","DistStimMF",
             "DistStimCarrier","DistSpkr","DistAtten","Result","Resp","StimOnset","LeverTime"); 'header for Stereo Distractor vars
+        case recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then  'for active boilermaker, we only care whether it was a target or not, there's no AM rates
+            view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","Spkr","Atten","Result","Resp","StimOnset","LeverTime"); 'header for trial vars
         case recExpToRun% = recExpOneStimDiscrimButton% then 'just copy the "default" case but add the second MF
             view(fh%).print("\n%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\t%s\n","Trial","Stype","AMrate","AMrate2","Spkr","Atten","Result","Resp","StimOnset","LeverTime"); 'header for trial vars
         else 'in all other cases, this is what Jackie has right now - case statement can be easily updated in the future
@@ -6187,10 +6328,13 @@ func BehOutput(resultCode$, stimTypeLocal$, currentTrialLocal%)
         view(fh%).print("%d\t%d\t%f\t%s\t%f\t%f\t%s\t%d\t%f\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,recTrialMF[thisStim%],recTrialCarrier$[thisStim%],
         recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],recTrialMFDistractor[thisStimD%],recTrialCarrierDistractor$[thisStimD%],spkrD%,
         recDistractorDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime);
-        
+            
+    case recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
+        view(fh%).print("%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,spkr%,recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!        
         
     case recExpToRun% = recExpOneStimDiscrimButton% then
         view(fh%).print("%d\t%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,recTrialMF[thisStim%],recTrialMF2[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!
+        
     else
         view(fh%).print("%d\t%d\t%d\t%d\t%d\t%s\t%d\t%f\t%f\n",currentTrialLocal%,stimTypeOutput%,recTrialGenAMFreqHz[thisStim%],spkr%,recDeltadBList[recStimCount%][recTrialOrder%[currentTrialLocal%-1]],resultCode$,joyResponse%,StimOn,recLeverTime); 'data!
     endcase

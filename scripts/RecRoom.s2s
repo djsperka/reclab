@@ -107,7 +107,7 @@ var arrayPA4ID%;                    'What is the PA4 ID for the PA4 connected to
 var standalonePA4ID%;               'What is the PA4 ID for the PA4 connected to the standalone speaker?    
     
 'Trial list generation variables
-const recMaxStim%:=5000;            'Maximum number of stimuli, 1000 is probably overlarge, nope not if you do the "designate each AM individually for trial file ease"
+const recMaxStim%:=10000;            'Maximum number of stimuli, 1000 is probably overlarge, nope not if you do the "designate each AM individually for trial file ease" - worse for "master Boilermaker"!
 const recMaxStimPerTrial%:=30;      'Holds the max number of stimuli per trial, this can exceed recMaxPWA% but only if there are at most recMaxPWA% unique stimuli
 const recMaxPWA%:=10;               'Holds the maximum number of Play Wave Areas *don't change this! *jao 
 const recMaxParallelPWA%:=2;        'Holds the maximum number of parallel PWAs    
@@ -151,6 +151,7 @@ var nd%, nd2%;                                       'To hold number of stimuli 
     
     
 var recGeneratedAtten[recMaxPWA%];  'for calibration of generated stims  
+var recTargetSoundAtten;            'for calibration of "target sound" in active Boilermaker    
     
 var recTrialS1%[recMaxTrial%];                'Index corresponding to S1 stimulus (index to recTrialLoadLoc$ or recTrialGen...)
 var recTrialS2%[recMaxTrial%];                'Index corresponding to S2 stimulus
@@ -163,6 +164,9 @@ var recTrialDistractorSpkr%[recMaxTrial%][recMaxDistractor%];    'Index correspo
 var recTrialDistractorDeltadB[recMaxTrial%][recMaxDistractor%];  'Allows a single trial's distractor to be different from default intensity     
     
 var recPlayPoints%;                 'Holds the number of points to play for each stimulus    
+var recPlayPointsBMTarget%;         'Holds the number of points to play for a Boilermaker Target    
+var recOnsetPointsBMTarget%;        'Holds the number of points at target onset for a Boilermaker Target    
+var recPlayTimeBMTarget;            'Holds the time, in seconds, when the target begins in a Boilermaker Target    
 var recPointsPlayed%;               'Allows us to stop the sound once the stimulus is over and the PWA is spitting out zeros    
    
     
@@ -180,6 +184,7 @@ var recDeltadBList[recMaxStimPerTrial%][recMaxTrial%];  'Same as recPWAList%[][]
 var recTrialOrder%[recMaxTrial%];                       'Holds order in which trials should be presented
 var recCurrentTrial%;                                   'Holds current trial in ordinal sequence, will be used to index recTrialOrder%[]    
 var recCurrRandomSeed%[recMaxPWA%];                     'Holds the random seeds used to generate each trial, only done on a trial-by-trial basis    
+var recTargetSoundRandomSeed%;                          'Holds random seed used to generate a target sound in active Boilermaker, currently only one per expt, so is scalar    
 var recStimCount%;                                      'Counter for current recMaxStimPerTrial%   
 var recLongToneDurationList[recMaxTrial%];              'Holds the duration of each long tone
 var recLongToneDurationIndex%[recMaxTrial%];            'Holds the index of the duration, useful for triggering correct PWA, when necessary 
@@ -414,6 +419,7 @@ view(recLog%).print("\nrunning RecRoom"+Date$(2,2,3,3,"-")+" "+Time$(1,3)+"\n");
 'After the initial Debug dialog (where we allow setting of the longest long noise/tone now), set various MaxPoint values based on the sampling rate
 'const recMaxPoints% := recPlayRateHzDefault*recMaxStimLengthSec;  'Holds the maximum number of points in a stimulus 
 const recMaxPoints% := recPlayRateHzDefault*recThisStimLengthSec;  'Holds the maximum number of points in a stimulus
+const recTargetSoundPoints% := recPlayRateHzDefault*0.2;  'For now, the target sound (used for Boilermaker Active) can only be 0.2 seconds long
 'const recMaxLongNoiseBPPoints% := recPlayRateHzDefault*100;
 'const recMaxLongNoisePoints% := recPlayRateHzDefault;   'Not doing multiplication by seconds because seconds is by definition 1. (??)
 const LongPoints0% := LongDur0*recPlayRateHzDefault;
@@ -422,6 +428,8 @@ const LongPoints2% := LongDur2*recPlayRateHzDefault;
 const LongPoints3% := LongDur3*recPlayRateHzDefault;
 var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
 var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
+var recTargetSound%[recTargetSoundPoints%];  'Will load target sound for Boilermaker Active
+var recTargetSoundLoaded% := 0;
 'var recStimTransferLongNoiseOW%[recMaxLongNoisePoints%];  
 'var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    
 var recStimTransferLongNoise%[LongPoints3%];
@@ -1363,10 +1371,12 @@ while recReadyToQuit% = 0 do
                 
             case recExpToRun% = recExpOneStimDiscrimButton%  and recOneStimDiscrimExpDoLoad% = 1 then 
                 'do Trial List Generation stuff!
+                'Note this is not different from Gen version (for now??)
                 result% := GenTrialsOneStimDiscrim%();  'Generate trials for OneStimDiscrim.  Return result of 1 if OK, 0 if not.
                 
             case recExpToRun% = recExpOneStimDiscrimButton%  and recOneStimDiscrimExpDoGen% = 1 then
                 'do Trial List Generation stuff!
+                'Note this is not different from Load version (for now??)
                 result% := GenTrialsOneStimDiscrim%();  'Generate trials for OneStimDiscrim.  Return result of 1 if OK, 0 if not.
                    
                 
@@ -3788,7 +3798,7 @@ func GenTrialsOneStimDiscrim%()
     ' ===== Create Trials =====
     recNTrials% := (recTotalTrials%*recOneStimDiscrimRepeatsPerStim%);  'Set global Ntrials
     
-    'Strip out path and extension from filenames, put into recTrialLoadName$[], if necessary
+    'Strip out path and extension from filenames, put into recTrialLoadName$[], if necessary - if we are using stimulus name as the target definition
     if recOneStimDiscrimTarget1Ind% = 4 then
         StripStimStringArray%(recTrialLoadLoc$[],recTrialLoadName$[],1,1);
     endif

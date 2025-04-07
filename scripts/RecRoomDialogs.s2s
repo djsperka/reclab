@@ -398,6 +398,7 @@ var recOneStimDiscrimValue$;  'We are going to allow either a number OR a string
 var recOneStimDiscrimExptType%;
 var recOneStimDiscrimExptLabel$;  'recOneStimDiscrimExptType$ can't be used, it's defined in the dialog
 var recUpdateRewardByGap% := 0;   'This is listed under OneStimDiscrim because for now it can only be used in the Boilermaker context
+var recTargetSounddB := 65;       'Also only used in OneStimDiscrim
 
 
 'Generic
@@ -2877,7 +2878,7 @@ func RecExpOneStimDiscrimDialog%()
     
     
     ' Generate the dialog    
-    DlgCreate("One Stim Discrimination Dialog",0,0,75,19);
+    DlgCreate("One Stim Discrimination Dialog",0,0,75,20);
     
     
     DlgCheck(1,"Do Forced Choice Experiment",2,1);
@@ -2901,24 +2902,25 @@ func RecExpOneStimDiscrimDialog%()
     DlgButton(recExpOneStimDiscrimGNGAddExpButton%, "   Add Experiment   ", RecOneStimDiscrimGNGAddExp%,53,6);  'TODO the one stim discrim version doesn't exist yet
     DlgButton(recExpOneStimDiscrimGNGDeleteExpButton%, "Delete Experiment ", RecOneStimDiscrimGNGDeleteExp%,53,7);
     
-    DlgInteger(7,"Repeats Per Stim",1,1000,18,9);
-    DlgReal(8,"Stimulus dB",1,100,18,10);
-    DlgCheck(9,"Rove stimuli?",2,11);
-    DlgReal(10,"Rove dB, +/-",0,3,18,12);  'Rove db
-    DlgCheck(11,"Active task?",2,13);
+    DlgInteger(7,"Repeats Per Stim",1,1000,22,9);
+    DlgReal(8,"Stimulus dB",1,100,22,10);
+    DlgReal(20,"Boilermaker Target dB",1,100,22,11);
+    DlgCheck(9,"Rove stimuli?",2,12);
+    DlgReal(10,"Rove dB, +/-",0,3,22,13);  'Rove db
+    DlgCheck(11,"Active task?",2,14);
     
     DlgCheck(12,"Trial initiation reward?",46,9);
     DlgCheck(13,"Trial Hold reward?",46,10);   
     
-    DlgGroup("Target (aka Response 1) Definition",1,14,73,4);
-    DlgList(14,14,recOneStimDiscrimTarget1$[],5,3,15);
-    DlgList(15,14,recOneStimDiscrimVersus$[],4,19,15);
-    DlgList(16,14,recOneStimDiscrimTarget2$[],2,35,15);
-    'DlgReal(17,12,0,50000,-3,15);   'Changing from real to string
-    DlgString(17,12,40,"",-3,15); 
-    DlgText("Experiment Type",2,16);
-    DlgList(18,25,recOneStimDiscrimExptType$[],3,18,16);
-    DlgCheck(19,"Update Reward By Gap",2,17);
+    DlgGroup("Target (aka Response 1) Definition",1,15,73,4);
+    DlgList(14,14,recOneStimDiscrimTarget1$[],5,3,16);
+    DlgList(15,14,recOneStimDiscrimVersus$[],4,19,16);
+    DlgList(16,14,recOneStimDiscrimTarget2$[],2,35,16);
+    'DlgReal(17,12,0,50000,-3,16);   'Changing from real to string
+    DlgString(17,12,40,"",-3,16); 
+    DlgText("Experiment Type",2,17);
+    DlgList(18,25,recOneStimDiscrimExptType$[],3,18,17);
+    DlgCheck(19,"Update Reward By Gap",2,18);
     
     
     DlgAllow(0xffff, 0, RecExpOneStimDiscrimDialogChanged%);   
@@ -2928,7 +2930,7 @@ func RecExpOneStimDiscrimDialog%()
     recOneStimDiscrimGNGExpIndexGen%,recOneStimDiscrimGNGExpIndexLoad%,recOneStimDiscrimRepeatsPerStim%,recOneStimDiscrimdB,
     recOneStimDiscrimDoRove%,recOneStimDiscrimRovedB,recOneStimDiscrimActive%,recOneStimDiscrimTrialInitReward%, 
     recOneStimDiscrimTrialHoldReward%,recOneStimDiscrimTarget1Ind%,recOneStimDiscrimVersusInd%,recOneStimDiscrimTarget2Ind%,
-    recOneStimDiscrimValue$,recOneStimDiscrimExptType%,recUpdateRewardByGap%);
+    recOneStimDiscrimValue$,recOneStimDiscrimExptType%,recUpdateRewardByGap%,recTargetSounddB);
 
     
     ' If user hit OK then save parameters (and return 1). 
@@ -3112,6 +3114,15 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
     
     
     
+    'Enable/disable value of Boilermaker Target dB and Rove based on third dropdown and active
+    if DlgValue(18) = 2 and DlgValue(11) = 1 then
+        DlgEnable(0,9);  'Disable rove for active boilermaker
+        DlgValue(9,0);   'And turn off roving
+        DlgEnable(1,20); 'Enable boilermaker target dB
+    else
+        DlgEnable(1,9);  'Enable rove
+        DlgEnable(0,20); 'Disable boilermaker target dB
+    endif
     
     
     'Enable/diable dB value based on rove checkbox
@@ -3149,6 +3160,7 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
         DlgEnable(0,19);
         DlgValue(19,0);  'set value to 0
     endif
+    
     
     return 1;
 end
@@ -4380,6 +4392,7 @@ proc RecOneStimDiscrimSaveParams()
     SetStringRegistryValue(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     SetIntRegistryValue(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
     SetIntRegistryValue(key$, "UpdateRewardByGap", recUpdateRewardByGap%);
+    SetFloatRegistryValue(key$, "TargetSounddB", recTargetSounddB);
     
     'These had been set separately in a "GNG-only" function that made no sense
     SetIntRegistryValue(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
@@ -4420,6 +4433,8 @@ proc RecOneStimDiscrimGetParams()
     recOneStimDiscrimValue$ := GetStringRegistryValue$(key$, "OneStimDiscrimValueStr", recOneStimDiscrimValue$);
     recOneStimDiscrimExptType% := GetIntRegistryValue%(key$, "OneStimDiscrimTargetExptType", recOneStimDiscrimExptType%);
     recUpdateRewardByGap% := GetIntRegistryValue%(key$, "UpdateRewardByGap", recUpdateRewardByGap%);
+    recTargetSounddB := GetFloatRegistryValue(key$, "TargetSounddB", recTargetSounddB);
+    
     
     'These had been set separately in a "GNG-only" function that made no sense
     recOneStimDiscrimGNGExpIndexLoad% := GetIntRegistryValue%(key$, "OneStimDiscrimGNGExpIndexLoad", recOneStimDiscrimGNGExpIndexLoad%); 
