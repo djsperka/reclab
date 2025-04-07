@@ -935,8 +935,25 @@ while recReadyToQuit% = 0 do
             endif;
             recSelectedStimFile$ := recOneStimDiscrimGNGStimcalNameLoad$[recOneStimDiscrimGNGExpIndexLoad%];  'var already declared but not used - need to print it to BehOutput*****
             recSelectedTrialsFile$ := recOneStimDiscrimGNGTrialsNameLoad$[recOneStimDiscrimGNGExpIndexLoad%]; 'ditto. for BehOutput
-                
-            calibOK% := 0;  'Short circuit, this means OK.
+            
+            if recActive% = 1 then  'This is active Boilermaker, we need to generate the pink noise even though we load the main stimuli
+                if stimOK% = 1 then  'Don't bother with loading Calib file if trials or stim file is bad
+                    'Load calibration file into Matlab's workspace, same details as above in Search
+                    if recMatlabIsPresent% = 1 then
+                        if recCalibIsPresent% = 1 then 
+                            statement$ := "load('" + recCalibLoc$ + "Array" + Str$(recNSpeakers%) + ".mat');";
+                            calibOK% := EvalMatlabStatement%(statement$);
+                        else
+                            printlog("Calibration is not present, stimuli will be uncalibrated!\n");
+                            calibOK% := 0;
+                        endif;
+                    else
+                        message("Matlab is not open, but you have selected a scenario that requires Matlab!");
+                    endif;
+                endif; 
+            else
+                calibOK% := 0;  'Short circuit, this means OK.
+            endif
                     
         case recExpToRun% = recExpOneStimDiscrimButton% and recMatGenStim% = 1 and recIsGoNoGo% = 1 then  'Generating stims, GNG
             if recOneStimDiscrimExptLabel$ <> "Generic" then  'this syntax IS legal for case-sensitive match
@@ -1231,30 +1248,36 @@ while recReadyToQuit% = 0 do
                 tempglob% := 0;
                 for iglob%:=0 to recTotalStim%-1 do
                     if tempglob% = 0 then  'this is because we can't break - and we don't want like 100 messages if all 100 stims don't exist
-                        fhglob%:=fileopen(recTrialLoadLoc$[iglob%],9,0);
+                        'fhglob%:=fileopen(recTrialLoadLoc$[iglob%],9,0);  'old version
+                        fhglob%:=FileStatus(recTrialLoadLoc$[iglob%]);  'loading is SLOW, but Spike10 introduced FileStatus, much faster!
                         if fhglob%<0 then
-                            message("Warning Message | Failed to load at least one stimulus waveform!");
-                            printlog("Stim waveform %s failed to load!\n",recTrialLoadLoc$[iglob%]);
+                            'message("Warning Message | Failed to load at least one stimulus waveform!");
+                            'printlog("Stim waveform %s failed to load!\n",recTrialLoadLoc$[iglob%]);
+                            message("Warning Message | Failed to locate at least one stimulus waveform!");
+                            printlog("Stim waveform %s was not found!\n",recTrialLoadLoc$[iglob%]);
                             trialsOK% := -1;
                             'Can't BREAK prior to Spike2 v. 7.0!
                             tempglob% := 1;
                         endif;
-                        fileclose();  'Close fhglob%, currently open file
+                        'fileclose();  'Close fhglob%, currently open file  'old version
                     endif;
                 next;
                 if recExpToRun% = recExpStereoDisButton% then  'Check distractors too
                     tempglob% := 0;
                     for iglob%:=0 to recTotalDistractorStim%-1 do
                         if tempglob% = 0 then  'this is because we can't break - and we don't want like 100 messages if all 100 stims don't exist
-                            fhglob%:=fileopen(recTrialLoadLocDistractor$[iglob%],9,0);
+                            'fhglob%:=fileopen(recTrialLoadLocDistractor$[iglob%],9,0);  'old version
+                            fhglob%:=FileStatus(recTrialLoadLocDistractor$[iglob%]);  'loading is SLOW, but Spike10 introduced FileStatus, much faster!
                             if fhglob%<0 then
-                                message("Warning Message | Failed to load at least one distractor stimulus waveform!");
-                                printlog("Stim waveform %s failed to load!\n",recTrialLoadLocDistractor$[iglob%]);
+                                'message("Warning Message | Failed to load at least one distractor stimulus waveform!");
+                                'printlog("Stim waveform %s failed to load!\n",recTrialLoadLocDistractor$[iglob%]);
+                                message("Warning Message | Failed to locate at least one distractor stimulus waveform!");
+                                printlog("Distractor stim waveform %s was not found!\n",recTrialLoadLocDistractor$[iglob%]);
                                 trialsOK% := -1;
                                 'Can't BREAK prior to Spike2 v. 7.0!
                                 tempglob% := 1;
                             endif;
-                            fileclose();  'Close fhglob%, currently open file
+                            'fileclose();  'Close fhglob%, currently open file  'old version
                         endif;
                     next;
                 endif;
