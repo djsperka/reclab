@@ -5132,8 +5132,10 @@ func IdleLoop%()
                     
                 'The response window is closed but there has been no response
                 case tNow - tStateStart > recResponseWindow then
-                    'Turn off LED in every case but audiogram
-                    if recExpToRun% <> recExpAudiogramButton% then
+                    'Turn off LED in every case but audiogram or Active Boilermaker
+                    if recExpToRun% = recExpAudiogramButton% or (recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1) then
+                        'Do nothing, do not turn off LED
+                    else
                         SafeSampleKey("S");  'Turn off LED
                     endif
                     
