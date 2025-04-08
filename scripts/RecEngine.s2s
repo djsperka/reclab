@@ -1163,7 +1163,8 @@ Func PlaySound%(StimTypeLocal$)
         endif;
         
         'status% := recAtten%(atten);
-        if recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 and recTrialTerminalIsS2%[playInd%] = 1 then
+        'if recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 and recTrialTerminalIsS2%[playInd%] = 1 then
+        if recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 then
             status% := recAttenByID%(0,arrayPA4ID%);  'set the PA4 to 0 on Active Boilermaker, the attenuation has been done digitally
         else
             status% := recAttenByID%(atten,arrayPA4ID%);  'For everything else, set attenuation as expected
