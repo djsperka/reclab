@@ -3108,7 +3108,7 @@ func PrepareNextTrial%(loadPWAs%)
              
                 'Scale boilermaker sound, will NOT use PA4           
                 tempScale := calAttenLocal;  'this is dB to get to 65 dB
-                tempScale := tempScale + recDeltadBList[0][ind%];  'this is dB atten to get to intended dB 
+                tempScale := tempScale + recDeltadBList[0][thisTrial%];  'this is dB atten to get to intended dB 
                 tempScale := pow(10,(-tempScale/20));  'solving "dB = 20 * log10(A1/A2)" for (A1/A2) gives multiplicative scale factor
                 ArrMul(recStimTransfer%[],tempScale);
                 
