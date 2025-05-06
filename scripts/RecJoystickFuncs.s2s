@@ -223,7 +223,8 @@ func ReadJoystick%()
     view(recDataWindowView%);
     
     'Set tic value
-    tic := SecPerSample;  'This tic prevents us from reading the same event twice
+    'tic := SecPerSample;  'This tic prevents us from reading the same event twice
+    tic := 1/5000;        'Joystick sampling rate is hard coded at 5 kHz
     tic2 := tic*25;       'MemImport can apparently miss events for stupid reasons.  If this value is 5*tic, 
                           'there is a like 1-in-10 miss probability, but at 15 it never misses, so make it 25
     

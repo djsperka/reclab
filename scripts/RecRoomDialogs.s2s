@@ -399,7 +399,7 @@ var recOneStimDiscrimExptType%;
 var recOneStimDiscrimExptLabel$;  'recOneStimDiscrimExptType$ can't be used, it's defined in the dialog
 var recUpdateRewardByGap% := 0;   'This is listed under OneStimDiscrim because for now it can only be used in the Boilermaker context
 var recTargetSounddB := 65;       'Also only used in OneStimDiscrim
-
+var recRoveAttenDig;              'Need a second rove attenuation for "digital" roving, used only in active boilermaker for the pink noise target
 
 'Generic
 var recExpName$[recStereoDisNumExps%];  'All the NumExps are the same...if that changes, this will be more complicated.
@@ -3116,11 +3116,11 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
     
     'Enable/disable value of Boilermaker Target dB and Rove based on third dropdown and active
     if DlgValue(18) = 2 and DlgValue(11) = 1 then
-        DlgEnable(0,9);  'Disable rove for active boilermaker
-        DlgValue(9,0);   'And turn off roving
+        'DlgEnable(0,9);  'Disable rove for active boilermaker - on second thought, allow rove on boilermaker target stimulus
+        'DlgValue(9,0);   'And turn off roving
         DlgEnable(1,20); 'Enable boilermaker target dB
     else
-        DlgEnable(1,9);  'Enable rove
+        'DlgEnable(1,9);  'Enable rove - on second thought, allow rove on boilermaker target stimulus
         DlgEnable(0,20); 'Disable boilermaker target dB
     endif
     

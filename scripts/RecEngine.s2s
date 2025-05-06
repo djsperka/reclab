@@ -1205,7 +1205,8 @@ Func PlaySound%(StimTypeLocal$)
         case recMatGenStim% = 0 then 'stimuli are read from a file
             'If we are doing active boilermaker we should note the exact time of the target sound onset within the stimulus
             if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTrialTerminalIsS2%[playInd%] = 1 then
-                s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s,%f", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%],recPlayTimeBMTarget);
+                'Note that if there is roving attenuation here, we have to use a global value from PrepareNextTrial because the digital "attenuation" was set there (unlike PA4 roving, set in this function)
+                s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s,%f", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB+recRoveAttenDig, recTrialLoadLoc$[thisStim%],recPlayTimeBMTarget);
             else
                 s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%]);
             endif
@@ -2923,9 +2924,19 @@ func PrepareNextTrial%(loadPWAs%)
                 return -1;
             endcase;
             
+            'Get trial-based roving attenuation for current stimulus
+            if recDoRove% = 1 then
+                recRoveAttenDig := Rand(2*recRovedB,-recRovedB);
+                printlog("Roving attenuation is %f\n",recRoveAttenDig);
+            else
+                recRoveAttenDig := 0;
+                printlog("No roving attenuation\n")
+            endif
+            
+            
             'Scale target sound, do it once and for all here            
             tempScale := recTargetSoundAtten;  'this is dB to get to 65 dB
-            tempScale := tempScale + 65 - recTargetSounddB;  'this is dB atten to get to target sound dB 
+            tempScale := tempScale + 65 - recTargetSounddB + recRoveAttenDig;  'this is dB atten to get to target sound dB 
             tempScale := pow(10,(-tempScale/20));  'solving "dB = 20 * log10(A1/A2)" for (A1/A2) gives multiplicative scale factor
             ArrMul(recTargetSound%[],tempScale);
             
