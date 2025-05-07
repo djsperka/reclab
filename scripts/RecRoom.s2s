@@ -428,7 +428,8 @@ const LongPoints2% := LongDur2*recPlayRateHzDefault;
 const LongPoints3% := LongDur3*recPlayRateHzDefault;
 var recStimTransfer%[recMaxPoints%]; 'Will be used for loading, transferring stims
 var rec2StimTransfer%[recMaxPoints%][2]; 'Will be used for loading, transferring stims (2-dim PWA!!)    
-var recTargetSound%[recTargetSoundPoints%];  'Will load target sound for Boilermaker Active
+var recTargetSoundOrig%[recTargetSoundPoints%];  'Will load target sound for Boilermaker Active
+var recTargetSound%[recTargetSoundPoints%];  'Will hold dB-adjusted target sound for Boilermaker Active, must keep separate value to rove
 var recTargetSoundLoaded% := 0;
 'var recStimTransferLongNoiseOW%[recMaxLongNoisePoints%];  
 'var recStimTransferLongNoiseBP%[recMaxLongNoiseBPPoints%];    

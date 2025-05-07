@@ -1095,18 +1095,23 @@ Func PlaySound%(StimTypeLocal$)
     trlatten := recDeltadBList[recStimCount%][playInd%];  'corresponds to recPWAList%[][], index the same way
     printlog("Trial-based attenuation is %f\n",trlatten);
     
-    'Get trial-based roving attenuation for current stimulus
-    if recDoRove% = 1 then
+    'Get trial-based roving attenuation for current stimulus, but DO NOT ROVE MVOX/TIMIT stimuli in active Boilermaker
+    docase
+    case recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 then
+        roveatten := 0;
+        printlog("No roving attenuation of active Boilermaker MVOX or TIMIT\n")
+    case recDoRove% = 1 then
         roveatten := Rand(2*recRovedB,-recRovedB);
         printlog("Roving attenuation is %f\n",roveatten);
     else
         roveatten := 0;
         printlog("No roving attenuation\n")
-    endif
+    endcase
     
     
     'Get total attenuation
-    if recExpToRun% = recExpAudiogramButton% then
+    docase
+    case recExpToRun% = recExpAudiogramButton% then
         printlog("cal atten is %f and current db is %f\n",calatten,recAudiogramCurrentdB);
         atten := 65 + calatten - recAudiogramCurrentdB;
         targdB := recAudiogramCurrentdB;  'convinced myself this is right
@@ -1116,7 +1121,7 @@ Func PlaySound%(StimTypeLocal$)
         targdB := 65 - trlatten - roveatten;  'convinced myself this is right
         printlog("Overall attenuation is %f\n",atten);
         printlog("Target dB is %f\n",targdB);
-    endif;
+    endcase;
     
     'It is possible that due to the maximum intensity of the stimulus that the requested attenuation
     '(particularly in the audiogram) could be negative.  If so, we are screwed.  Set atten to 0 and point
@@ -1206,7 +1211,9 @@ Func PlaySound%(StimTypeLocal$)
             'If we are doing active boilermaker we should note the exact time of the target sound onset within the stimulus
             if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTrialTerminalIsS2%[playInd%] = 1 then
                 'Note that if there is roving attenuation here, we have to use a global value from PrepareNextTrial because the digital "attenuation" was set there (unlike PA4 roving, set in this function)
-                s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s,%f", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB+recRoveAttenDig, recTrialLoadLoc$[thisStim%],recPlayTimeBMTarget);
+                'Also note that it will be such a PITA to parse this right if we record the PINK NOISE dB level that we may as well just not do it, we aren't analyzing those trials anyway so do we really care?
+                's$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s,%.1f,%f", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%], recTargetSounddB + recRoveAttenDig, recPlayTimeBMTarget);
+                s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s,%f", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%], recPlayTimeBMTarget);
             else
                 s$ := Print$("Sound %s,%s,%d,%d,%.1f,%.1f,%s", playChar$, StimTypeLocal$, recCurrentTrial%, spkr%, trlatten, targdB, recTrialLoadLoc$[thisStim%]);
             endif
@@ -2872,8 +2879,9 @@ func PrepareNextTrial%(loadPWAs%)
             return -1;
         endif;
         
-        'Generate (and scale!) "target" stimulus in the case of active Boilermaker
+        'Generate "target" stimulus in the case of active Boilermaker
         'Current conception only requires a single load, same target will be used for the entire experiment
+        'BUT target will be unscaled so that we can implement a trial-by-trial rove
         'Also currently only imagine using a 200-ms pink noise, so this is "hardcoded"
         if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTargetSoundLoaded% = 0 then
             if recMatlabIsPresent% = 0 or recCalibIsPresent% = 0 then
@@ -2895,7 +2903,7 @@ func PrepareNextTrial%(loadPWAs%)
             EvalMatlabStatement%(statement$);
             statement$ := "calibval = AFFT(spk).dB;";
             EvalMatlabStatement%(statement$);
-            matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recTargetSound%[]);
+            matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recTargetSoundOrig%[]);
             matGetAttenOK% := GetMatlabValueFloat%("atten65",recTargetSoundAtten);
             matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
             printlog("Matlab's calib value for target sound is %f\n",tempfloat);
@@ -2924,24 +2932,37 @@ func PrepareNextTrial%(loadPWAs%)
                 return -1;
             endcase;
             
+            
+            
+            recTargetSoundLoaded% := 1;  'Set this value so we only generate this target stimulus once
+        endif
+        
+        
+        'Scale "target" stimulus in the case of active Boilermaker
+        'We scale on each trial so we may do a trial-by-trial rove
+        if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
+            
+            'Fill target sound with original
+            ArrConst(recTargetSound%[],recTargetSoundOrig%[]);
+            
             'Get trial-based roving attenuation for current stimulus
             if recDoRove% = 1 then
                 recRoveAttenDig := Rand(2*recRovedB,-recRovedB);
-                printlog("Roving attenuation is %f\n",recRoveAttenDig);
+                printlog("Roving attenuation for active boilermaker target is %f\n",recRoveAttenDig);
             else
                 recRoveAttenDig := 0;
-                printlog("No roving attenuation\n")
+                printlog("No roving attenuation for active boilermaker target\n")
             endif
-            
-            
-            'Scale target sound, do it once and for all here            
+
+            'Scale target sound            
             tempScale := recTargetSoundAtten;  'this is dB to get to 65 dB
             tempScale := tempScale + 65 - recTargetSounddB + recRoveAttenDig;  'this is dB atten to get to target sound dB 
             tempScale := pow(10,(-tempScale/20));  'solving "dB = 20 * log10(A1/A2)" for (A1/A2) gives multiplicative scale factor
             ArrMul(recTargetSound%[],tempScale);
             
-            recTargetSoundLoaded% := 1;  'Set this value so we only generate this target stimulus once
         endif
+            
+        
         
         
         ' Generate/Load stimuli and put them into PlayWaveAreas
@@ -3110,6 +3131,7 @@ func PrepareNextTrial%(loadPWAs%)
             
             
             'For active Boilermaker, we need to do stimulus attenuation here, and add in the target if appropriate
+            'Note that for active Boilermaker, any roving is done to the pink noise target, NOT to the MVOX/TIMIT stimuli
             if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
                 
                 'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
