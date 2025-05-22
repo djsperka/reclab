@@ -5192,6 +5192,8 @@ func IdleLoop%()
                         RecLogStatus("InResponseWindow", "Response window closed, stim nontarget - CORRECT REJECTION");
                         trlsuccess% := 1;
                         if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
+                            'For now do nothing, but definitely don't increment the hits counter
+                        else                            
                             numHits% += 1; 'increment HIT counter, we do not have a CR counter
                         endif
                         allowrepeat% := 0;
