@@ -5162,10 +5162,10 @@ func IdleLoop%()
                         Stop%();    
                     endcase
                     recPreciseTrialTime := recLeverTime; 'time response occurred
+
                     
-                    
-                'The response window is closed but there has been no response
-                case tNow - tStateStart > recResponseWindow then
+                'The response window is closed but there has been no response (on nontargets in active Boilermaker we do not want to wait through the response window, just short-circuit)
+                case (tNow - tStateStart > recResponseWindow) or (recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and StimType$ = "S1T") then
                     'Turn off LED in every case but audiogram or Active Boilermaker
                     if recExpToRun% = recExpAudiogramButton% or (recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1) then
                         'Do nothing, do not turn off LED
@@ -5191,7 +5191,9 @@ func IdleLoop%()
                     case StimType$ = "S1T" then 'Correct Rejection (go/no-go)
                         RecLogStatus("InResponseWindow", "Response window closed, stim nontarget - CORRECT REJECTION");
                         trlsuccess% := 1;
-                        numHits% += 1; 'increment HIT counter, we do not have a CR counter
+                        if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
+                            numHits% += 1; 'increment HIT counter, we do not have a CR counter
+                        endif
                         allowrepeat% := 0;
                         ChangeStateTo(stateCRReward%);  'but we DO have a CRReward state evidently
                     case StimType$ = "S2H" then 'No-Response-HI (FC)
