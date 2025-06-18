@@ -153,9 +153,11 @@ var tempRand := -1;   'initialize at -1, this variable won't be re-calculated on
 var numHits% := 0;
 var numMisses% := 0;
 var numNRs% := 0;  'we should not count these as misses!
+var numCRs% := 0;  'late to the game, but we need a CR counter
 var numFPs% := 0;
-var NRtext$ := "";  'let's not display NRs or FPs (which are basically interrupts) unless they actually happen!
+var NRtext$ := "";  'let's not display CRs or NRs or FPs (which are basically interrupts) unless they actually happen!
 var FPtext$ := "";
+var CRtext$ := "";
 'numFAs% has been removed because it was unused
 var numHiResps% := 0; 'reset after each block?
 var numLoResps% := 0; 'reset after each block? (kind of redundant, but that's OK)
@@ -1936,8 +1938,10 @@ func Stop%()
     if numNRs% > 0 then
         NRtext$ := ",   #NRs = " + str$(numNRs%);
     endif
-    'PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
-    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
+    if numCRs% > 0 then
+        CRtext$ := ",   #CRs = " + str$(numCRs%);
+    endif           
+    PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + CRtext$ + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
     recCurrentlySampling% := 0;    
     
     ' Stop sampling....
@@ -3910,10 +3914,12 @@ func IdleLoop%()
             if numNRs% > 0 then
                 NRtext$ := ",   #NRs = " + str$(numNRs%);
             endif
-            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ";   LastHit(mL) = " + str$(LastHitReward) + 
+            if numCRs% > 0 then
+                CRtext$ := ",   #CRs = " + str$(numCRs%);
+            endif
+            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + CRtext$ + NRtext$ + FPtext$ + ";   LastHit(mL) = " + str$(LastHitReward) + 
             ",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");
-            'ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ";   LastHit(mL) = " + str$(LastHitReward) + 
-            '",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");                       
+                      
             
             ' prepare stimuli for the next trial.
             ' this is the point where the expt can be paused. Operator can hit the pause
@@ -4014,7 +4020,10 @@ func IdleLoop%()
             if numNRs% > 0 then
                 NRtext$ := ",   #NRs = " + str$(numNRs%);
             endif
-            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ";   LastHit(mL) = " + str$(LastHitReward) + 
+            if numCRs% > 0 then
+                CRtext$ := ",   #CRs = " + str$(numCRs%);
+            endif
+            ToolbarText("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + CRtext$ + NRtext$ + FPtext$ + ";   LastHit(mL) = " + str$(LastHitReward) + 
             ",   TOTAL(mL) = " + str$(amountRewarded) + ";   On Trial # " + str$(recCurrentTrial%) + " of " + str$(recNTrials%) + ".");                       
             
             ' prepare stimuli for the next trial.
@@ -5192,9 +5201,10 @@ func IdleLoop%()
                         RecLogStatus("InResponseWindow", "Response window closed, stim nontarget - CORRECT REJECTION");
                         trlsuccess% := 1;
                         if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
-                            'For now do nothing, but definitely don't increment the hits counter
+                            numCRs% += 1;  'increment the CR counter
                         else                            
-                            numHits% += 1; 'increment HIT counter, we do not have a CR counter
+                            'numHits% += 1; 'increment HIT counter, we do not have a CR counter
+                            numCRs% += 1;  'now we have a CR counter
                         endif
                         allowrepeat% := 0;
                         ChangeStateTo(stateCRReward%);  'but we DO have a CRReward state evidently
@@ -5591,8 +5601,10 @@ func IdleLoop%()
             if numNRs% > 0 then
                 NRtext$ := ",   #NRs = " + str$(numNRs%);
             endif
-            PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");
-            'PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + ",   #FPs = " + str$(numFPs%) + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
+            if numCRs% > 0 then
+                CRtext$ := ",   #CRs = " + str$(numCRs%);
+            endif
+            PrintLog("#HITS = " + str$(numHits%) + ",   #MISSES = " + str$(numMisses%) + CRtext$ + NRtext$ + FPtext$ + ",   LastHitReward(mL) = " + str$(LastHitReward) + ",   TOTAL Juice(mL) = " + str$(amountRewarded) + ".\n");            
             SafeSampleKey("S");  'Turn off LED
             SafeSampleKey("v");  'Turn off House LED, whether it's on or not
             RecLogStatus("Done", "");
