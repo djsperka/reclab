@@ -137,13 +137,19 @@ endif;
 'now for the functions
 func CreateJoystickChannels%()
     MemChanJoystickRO% := MemChan(3,0);  'Create event channels for joystick transitions
-    MemChanJoystickLO% := MemChan(3,0);
+    'MemChanJoystickLO% := MemChan(3,0);
     MemChanJoystickUO% := MemChan(3,0);
-    MemChanJoystickDO% := MemChan(3,0);
-    MemChanJoystickRI% := MemChan(3,0);
+    'MemChanJoystickDO% := MemChan(3,0);
+    'MemChanJoystickRI% := MemChan(3,0);
     MemChanJoystickLI% := MemChan(3,0);
-    MemChanJoystickUI% := MemChan(3,0);
+    'MemChanJoystickUI% := MemChan(3,0);
     MemChanJoystickDI% := MemChan(3,0);
+    
+    MemChanJoystickLO% := MemChan(2,0);  'another hail mary?  Strangely (??) we have always used Event+ (rising-edge, "3")
+    MemChanJoystickDO% := MemChan(2,0);  'channels to hold both "rising" and "falling" data.  But for these channels, the 
+    MemChanJoystickRI% := MemChan(2,0);  'data should be "falling" data.  Since two issues we are having relate to DO and
+    MemChanJoystickUI% := MemChan(2,0);  'maybe to UI, changing to more-appropriate falling-edge chans might fix it?
+    
     MemChanJoystick% := MemChan(8,30);  'Channel to save joystick info, don't show?
     ChanTitle$(MemChanJoystick%,"JoyEvents");  'Give it a title
     ChanTitle$(MemChanJoystickRO%,"JoystickRight");
@@ -224,7 +230,7 @@ func ReadJoystick%()
     'Set tic value
     'tic := SecPerSample;  'This tic prevents us from reading the same event twice
     tic := 1/5000;        'Joystick sampling rate is hard coded at 5 kHz
-    tic2 := tic*5;       'MemImport can apparently miss events for stupid reasons.  If this value is 5*tic, 
+    tic2 := tic*25;       'MemImport can apparently miss events for stupid reasons.  If this value is 5*tic, 
                           'there is a like 1-in-10 miss probability, but at 15 it never misses, so make it 25
     
     'Find out what time it is now
