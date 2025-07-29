@@ -137,19 +137,13 @@ endif;
 'now for the functions
 func CreateJoystickChannels%()
     MemChanJoystickRO% := MemChan(3,0);  'Create event channels for joystick transitions
-    'MemChanJoystickLO% := MemChan(3,0);
+    MemChanJoystickLO% := MemChan(3,0);
     MemChanJoystickUO% := MemChan(3,0);
-    'MemChanJoystickDO% := MemChan(3,0);
-    'MemChanJoystickRI% := MemChan(3,0);
+    MemChanJoystickDO% := MemChan(3,0);
+    MemChanJoystickRI% := MemChan(3,0);
     MemChanJoystickLI% := MemChan(3,0);
-    'MemChanJoystickUI% := MemChan(3,0);
-    MemChanJoystickDI% := MemChan(3,0);
-    
-    MemChanJoystickLO% := MemChan(2,0);  'another hail mary?  Strangely (??) we have always used Event+ (rising-edge, "3")
-    MemChanJoystickDO% := MemChan(2,0);  'channels to hold both "rising" and "falling" data.  But for these channels, the 
-    MemChanJoystickRI% := MemChan(2,0);  'data should be "falling" data.  Since two issues we are having relate to DO and
-    MemChanJoystickUI% := MemChan(2,0);  'maybe to UI, changing to more-appropriate falling-edge chans might fix it?
-    
+    MemChanJoystickUI% := MemChan(3,0);
+    MemChanJoystickDI% := MemChan(3,0);    
     MemChanJoystick% := MemChan(8,30);  'Channel to save joystick info, don't show?
     ChanTitle$(MemChanJoystick%,"JoyEvents");  'Give it a title
     ChanTitle$(MemChanJoystickRO%,"JoystickRight");
@@ -337,6 +331,7 @@ func ReadJoystick%()
     'but needs mechanism for report and variables do not exist.
     if NumEventsRO% < 0 then
         TimesArrayRO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Right-Out channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsRO% > Len(TimesArrayRO)-1 then
@@ -350,6 +345,7 @@ func ReadJoystick%()
     endif;
     if NumEventsLO% < 0 then
         TimesArrayLO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Left-Out channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsLO% > Len(TimesArrayLO)-1 then
@@ -363,6 +359,7 @@ func ReadJoystick%()
     endif;
     if NumEventsUO% < 0 then
         TimesArrayUO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Up-Out channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsUO% > Len(TimesArrayUO)-1 then
@@ -376,6 +373,7 @@ func ReadJoystick%()
     endif;
     if NumEventsDO% < 0 then
         TimesArrayDO[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Down-Out channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsDO% > Len(TimesArrayDO)-1 then
@@ -389,6 +387,7 @@ func ReadJoystick%()
     endif;
     if NumEventsRI% < 0 then
         TimesArrayRI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Right-In channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsRI% > Len(TimesArrayRI)-1 then
@@ -402,6 +401,7 @@ func ReadJoystick%()
     endif;
     if NumEventsLI% < 0 then
         TimesArrayLI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Left-In channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsLI% > Len(TimesArrayLI)-1 then
@@ -415,6 +415,7 @@ func ReadJoystick%()
     endif;
     if NumEventsUI% < 0 then
         TimesArrayUI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Up-In channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsUI% > Len(TimesArrayUI)-1 then
@@ -428,6 +429,7 @@ func ReadJoystick%()
     endif;
     if NumEventsDI% < 0 then
         TimesArrayDI[0] := 99999999;  'If negative value in index would cause crash, just change first value
+        printlog("-----------------Error in ReadJoystick% - negative number of events found on Down-In channel!------------\n");
         'NumFoundNegativeIndex% += 1;  'and remember this, report it at the end.
     else
         if NumEventsDI% > Len(TimesArrayDI)-1 then
@@ -463,9 +465,9 @@ func ReadJoystick%()
         IsRealEvent% := 1;  'Assume for now the event is real    
         
         docase
-            case temp = TimesArrayRO[rio%] then	  'Crossing RO thresh going outward
+        case temp = TimesArrayRO[rio%] then	  'Crossing RO thresh going outward
             docase
-                case xstat% = 0 then  'unexpected - the joystick went from left to right without registering in the center
+            case xstat% = 0 then  'unexpected - the joystick went from left to right without registering in the center
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -475,12 +477,12 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayRO[rio%];  'fill TimesArrayAll because it's a real event
                 rio% := rio%+1;  'and update both indices
                 ai% := ai%+1;  
-                case xstat% = 1 then  'center to right movement
+            case xstat% = 1 then  'center to right movement
                 xstat% := 2;
                 TimesArrayAll[ai%] := TimesArrayRO[rio%];  'fill TimesArrayAll because it's a real event
                 rio% := rio%+1;  'and update both indices
                 ai% := ai%+1;
-                case xstat% = 2 then  're-crossed threshold without going to center - just ignore 
+            case xstat% = 2 then  're-crossed threshold without going to center - just ignore 
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -489,9 +491,9 @@ func ReadJoystick%()
                 'endif;
                 rio% := rio%+1;  'and update rio% index, or we get stuck here - do not update ai% index
             endcase;
-            case temp = TimesArrayLO[lio%] then   'Crossing LO thresh going outward
+        case temp = TimesArrayLO[lio%] then   'Crossing LO thresh going outward
             docase
-                case xstat% = 2 then  'unexpected - the joystick went from right to left without registering in the center
+            case xstat% = 2 then  'unexpected - the joystick went from right to left without registering in the center
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary                
                 'if VerboseJoyLev% = 1 then
@@ -501,12 +503,12 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayLO[lio%];  'fill TimesArrayAll because it's a real event
                 lio% := lio%+1;  'and update both indices
                 ai% := ai%+1;
-                case xstat% = 1 then  'center to leftt movement
+            case xstat% = 1 then  'center to leftt movement
                 xstat% := 0;
                 TimesArrayAll[ai%] := TimesArrayLO[lio%];  'fill TimesArrayAll because it's a real event
                 lio% := lio%+1;  'and update both indices
                 ai% := ai%+1;
-                case xstat% = 0 then  're-crossed threshold without going to center - just ignore
+            case xstat% = 0 then  're-crossed threshold without going to center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary                
@@ -515,9 +517,9 @@ func ReadJoystick%()
                 'endif;
                 lio% := lio%+1;  'and update lio% index, or we get stuck here - do not update ai% index
             endcase;
-            case temp = TimesArrayUO[uio%] then	  'Crossing UO thresh going outward		
+        case temp = TimesArrayUO[uio%] then	  'Crossing UO thresh going outward		
             docase
-                case ystat% = 0 then  'unexpected - the joystick went from down to up without registering in the center
+            case ystat% = 0 then  'unexpected - the joystick went from down to up without registering in the center
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -527,12 +529,12 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayUO[uio%];  'fill TimesArrayAll because it's a real event
                 uio% := uio%+1;  'and update both indices
                 ai% := ai%+1;
-                case ystat% = 10 then  'center to up movement
+            case ystat% = 10 then  'center to up movement
                 ystat% := 20;
                 TimesArrayAll[ai%] := TimesArrayUO[uio%];  'fill TimesArrayAll because it's a real event
                 uio% := uio%+1;  'and update both indices
                 ai% := ai%+1;
-                case ystat% = 20 then  're-crossed threshold without going to center - just ignore
+            case ystat% = 20 then  're-crossed threshold without going to center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -541,9 +543,9 @@ func ReadJoystick%()
                 'endif;
                 uio% := uio%+1;  'and update uio% index, or we get stuck here - do not update ai% index
             endcase;
-            case temp = TimesArrayDO[dio%] then   'Crossing DO thresh going outward
+        case temp = TimesArrayDO[dio%] then   'Crossing DO thresh going outward
             docase
-                case ystat% = 20 then  'unexpected - the joystick went from up to down without registering in the center
+            case ystat% = 20 then  'unexpected - the joystick went from up to down without registering in the center
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -553,12 +555,12 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayDO[dio%];  'fill TimesArrayAll because it's a real event
                 dio% := dio%+1;  'and update both indices
                 ai% := ai%+1;
-                case ystat% = 10 then  'center to down movement
+            case ystat% = 10 then  'center to down movement
                 ystat% := 0;
                 TimesArrayAll[ai%] := TimesArrayDO[dio%];  'fill TimesArrayAll because it's a real event
                 dio% := dio%+1;  'and update both indices
                 ai% := ai%+1;
-                case ystat% = 0 then  're-crossed threshold without going to center - just ignore
+            case ystat% = 0 then  're-crossed threshold without going to center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -567,9 +569,9 @@ func ReadJoystick%()
                 'endif;
                 dio% := dio%+1;  'and update dio% index, or we get stuck here - do not update ai% index
             endcase;
-            case temp = TimesArrayRI[rii%] then   'Crossing RI thresh going inward
+        case temp = TimesArrayRI[rii%] then   'Crossing RI thresh going inward
             docase
-                case xstat% = 0 then  'highly unexpected - the joystick went from left to crossing a right threshold towards the left
+            case xstat% = 0 then  'highly unexpected - the joystick went from left to crossing a right threshold towards the left
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -579,7 +581,7 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayRI[rii%];  'fill TimesArrayAll because it's a real event
                 rii% := rii%+1;  'and update both indices
                 ai% := ai%+1;
-                case xstat% = 1 then  're-crossed threshold without leaving center - just ignore
+            case xstat% = 1 then  're-crossed threshold without leaving center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -587,15 +589,15 @@ func ReadJoystick%()
                 '    view(HiddenLogHandle%).print("Joystick recrossed inner right threshold without going fully right!\r")
                 'endif;
                 rii% := rii%+1;  'and update rii% index, or we get stuck here - do not update ai% index
-                case xstat% = 2 then  'right to center movement 
+            case xstat% = 2 then  'right to center movement 
                 xstat% := 1;
                 TimesArrayAll[ai%] := TimesArrayRI[rii%];  'fill TimesArrayAll because it's a real event
                 rii% := rii%+1;  'and update both indices
                 ai% := ai%+1;
             endcase;
-            case temp = TimesArrayLI[lii%] then   'Crossing LI thresh going inward
+        case temp = TimesArrayLI[lii%] then   'Crossing LI thresh going inward
             docase
-                case xstat% = 2 then  'highly unexpected - the joystick went from right to crossing a left threshold towards the right
+            case xstat% = 2 then  'highly unexpected - the joystick went from right to crossing a left threshold towards the right
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -605,7 +607,7 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayLI[lii%];  'fill TimesArrayAll because it's a real event
                 lii% := lii%+1;  'and update both indices
                 ai% := ai%+1;
-                case xstat% = 1 then  're-crossed threshold without leaving center - just ignore
+            case xstat% = 1 then  're-crossed threshold without leaving center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -613,15 +615,15 @@ func ReadJoystick%()
                 '    view(HiddenLogHandle%).print("Joystick recrossed inner left threshold without going fully left!\r")
                 'endif;
                 lii% := lii%+1;  'and update lii% index, or we get stuck here - do not update ai% index
-                case xstat% = 0 then  'left to center movement 
+            case xstat% = 0 then  'left to center movement 
                 xstat% := 1;
                 TimesArrayAll[ai%] := TimesArrayLI[lii%];  'fill TimesArrayAll because it's a real event
                 lii% := lii%+1;  'and update both indices
                 ai% := ai%+1;
             endcase;
-            case temp = TimesArrayUI[uii%] then   'Crossing UI thresh going inward
+        case temp = TimesArrayUI[uii%] then   'Crossing UI thresh going inward
             docase
-                case ystat% = 0 then  'highly unexpected - the joystick went from down to crossing an up threshold downwards
+            case ystat% = 0 then  'highly unexpected - the joystick went from down to crossing an up threshold downwards
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -631,7 +633,7 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayUI[uii%];  'fill TimesArrayAll because it's a real event
                 uii% := uii%+1;  'and update both indices
                 ai% := ai%+1;
-                case ystat% = 10 then  're-crossed threshold without leaving center - just ignore
+            case ystat% = 10 then  're-crossed threshold without leaving center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -639,15 +641,15 @@ func ReadJoystick%()
                 '    view(HiddenLogHandle%).print("Joystick recrossed inner up threshold without going fully up!\r")
                 'endif;
                 uii% := uii%+1;  'and update uii% index, or we get stuck here - do not update ai% index
-                case ystat% = 20 then  'up to center movement 
+            case ystat% = 20 then  'up to center movement 
                 ystat% := 10;
                 TimesArrayAll[ai%] := TimesArrayUI[uii%];  'fill TimesArrayAll because it's a real event
                 uii% := uii%+1;  'and update both indices
                 ai% := ai%+1;
             endcase;
-            case temp = TimesArrayDI[dii%] then  'Crossing DI thresh going inward
+        case temp = TimesArrayDI[dii%] then  'Crossing DI thresh going inward
             docase
-                case ystat% = 20 then  'highly unexpected - the joystick went from up to crossing a down threshold upwards
+            case ystat% = 20 then  'highly unexpected - the joystick went from up to crossing a down threshold upwards
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
@@ -657,7 +659,7 @@ func ReadJoystick%()
                 TimesArrayAll[ai%] := TimesArrayDI[dii%];  'fill TimesArrayAll because it's a real event
                 dii% := dii%+1;  'and update both indices
                 ai% := ai%+1;
-                case ystat% = 10 then  're-crossed threshold without leaving center - just ignore
+            case ystat% = 10 then  're-crossed threshold without leaving center - just ignore
                 IsRealEvent% := 0;  'This is not a real event after all, correct for earlier assertion
                 
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
@@ -665,7 +667,7 @@ func ReadJoystick%()
                 '    view(HiddenLogHandle%).print("Joystick recrossed inner down threshold without going fully down!\r")
                 'endif;
                 dii% := dii%+1;  'and update dii% index, or we get stuck here - do not update ai% index
-                case ystat% = 0 then  'down to center movement 
+            case ystat% = 0 then  'down to center movement 
                 ystat% := 10;
                 TimesArrayAll[ai%] := TimesArrayDI[dii%];  'fill TimesArrayAll because it's a real event
                 dii% := dii%+1;  'and update both indices
@@ -677,6 +679,7 @@ func ReadJoystick%()
             'if VerboseJoyLev% = 1 then
             '    view(HiddenLogHandle%).print("Error in ReadJoystick% - event time does not correspond to known event!\r");
             'endif;
+            printlog("-----------------Error in ReadJoystick% - event time does not correspond to known event!------------\n");
         endcase;
         if IsRealEvent% = 1 then  'we are definitely getting excessive counts of IsRealEvent when doing a passive/active
             'switch when Udon has the joystick...is it checking joystick position during passive?
