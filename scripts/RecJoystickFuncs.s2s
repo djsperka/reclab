@@ -168,7 +168,6 @@ end
 func ReadJoystick%()
     
     var Now;								'Gets current time at begining of function execution
-    var TimesArrayTemp[1000];   'getting rid of "asserted" events
     var TimesArrayRO[1000];		'Arrays of event times for each of the eight memory channels
     var TimesArrayLO[1000];
     var TimesArrayUO[1000];
@@ -310,22 +309,14 @@ func ReadJoystick%()
     endif;
     
     'Put recent events into time arrays
-    NumEventsRO% := chandata(MemChanJoystickRO%,TimesArrayTemp[],LastEventTime+tic,Now);  'Put recent event times in a temporary array
-    arrconst(TimesArrayRO[],TimesArrayTemp[]);  'Move temporary numbers to real array, "asserted" events removed
-    NumEventsLO% := chandata(MemChanJoystickLO%,TimesArrayTemp[],LastEventTime+tic,Now);  
-    arrconst(TimesArrayLO[],TimesArrayTemp[]);
-    NumEventsUO% := chandata(MemChanJoystickUO%,TimesArrayTemp[],LastEventTime+tic,Now);  
-    arrconst(TimesArrayUO[],TimesArrayTemp[]);
-    NumEventsDO% := chandata(MemChanJoystickDO%,TimesArrayTemp[],LastEventTime+tic,Now);  
-    arrconst(TimesArrayDO[],TimesArrayTemp[]);
-    NumEventsRI% := chandata(MemChanJoystickRI%,TimesArrayTemp[],LastEventTime+tic,Now);
-    arrconst(TimesArrayRI[],TimesArrayTemp[]);
-    NumEventsLI% := chandata(MemChanJoystickLI%,TimesArrayTemp[],LastEventTime+tic,Now);  
-    arrconst(TimesArrayLI[],TimesArrayTemp[]);
-    NumEventsUI% := chandata(MemChanJoystickUI%,TimesArrayTemp[],LastEventTime+tic,Now);  
-    arrconst(TimesArrayUI[],TimesArrayTemp[]);
-    NumEventsDI% := chandata(MemChanJoystickDI%,TimesArrayTemp[],LastEventTime+tic,Now);  
-    arrconst(TimesArrayDI[],TimesArrayTemp[]);
+    NumEventsRO% := chandata(MemChanJoystickRO%,TimesArrayRO[],LastEventTime+tic,Now);
+    NumEventsLO% := chandata(MemChanJoystickLO%,TimesArrayLO[],LastEventTime+tic,Now);  
+    NumEventsUO% := chandata(MemChanJoystickUO%,TimesArrayUO[],LastEventTime+tic,Now);  
+    NumEventsDO% := chandata(MemChanJoystickDO%,TimesArrayDO[],LastEventTime+tic,Now);  
+    NumEventsRI% := chandata(MemChanJoystickRI%,TimesArrayRI[],LastEventTime+tic,Now);
+    NumEventsLI% := chandata(MemChanJoystickLI%,TimesArrayLI[],LastEventTime+tic,Now);  
+    NumEventsUI% := chandata(MemChanJoystickUI%,TimesArrayUI[],LastEventTime+tic,Now);  
+    NumEventsDI% := chandata(MemChanJoystickDI%,TimesArrayDI[],LastEventTime+tic,Now);  
     
     
     'We are getting some frustrating crashes here, and I can't figure out why there should be a problem so I am going to 
@@ -793,26 +784,26 @@ func ReadJoystick%()
                 LeverString$ := "Y Down to Middle (X Left)";
                 move% := -4;
             else
-                
+                LeverString$ := "Unexplained Movement";
+                move% := 0;
                 'taking out hidden log for Recanzone, can wrangle back in if necessary
                 'if VerboseJoyLev% = 1 then
                 '    view(HiddenLogHandle%).print("Error! JoystickAfter (%d) and LastPos (%d) do not correspond to any known combo!\r",JoystickAfter%[ii%],LastPos%);
                 'endif;
             endcase;
-            if move% > 2 or move% < -2 then  'if it was a move in the Y direction
+            docase
+            case move% = 4 or move% = 3 or move% = -4 or move% = -3 then  'if it was a move in the Y direction
                 ymove% := move%;  'set ymove% to most recent move in Y direction
                 yind% := 1;  'set yind% to 1 because y was the last direction moved
                 xind% := xind% + 1;  'Increment xind% by 1 - will hold the number of ymoves since the last xmove, plus 1
-            else
-                if move% < 3 and move% > -3 then  'do opposite
-                    xmove% := move%;
-                    xind% := 1;
-                    yind% := yind% + 1;
-                else
-                    xind% := xind% + 1;  'increment both if the move was "unexplained"
-                    yind% := yind% + 1;
-                endif;
-            endif;
+            case move% = 2 or move% = 1 or move% = -2 or move% = -1 then  'do opposite
+                xmove% := move%;
+                xind% := 1;
+                yind% := yind% + 1;
+            else 'note that prior to 7/29/2025 this else could not actually be reached due to bad coding by the person writing this comment
+                xind% := xind% + 1;  'increment both if the move was "unexplained"
+                yind% := yind% + 1;
+            endcase;
             LastPos% := JoystickAfter%[ii%];  'Update LastPos%
             if TimesArrayAll[ii%] > Now then 'This is a hack to try to prevent the script from putting in a memory item at a too-large time
                 tempEventTime := TimesArrayAll[ii%-1]+tic;  'don't know what to use, this should in principle keep it at about the right time
