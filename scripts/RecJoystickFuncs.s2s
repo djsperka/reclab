@@ -222,10 +222,13 @@ func ReadJoystick%()
     view(recDataWindowView%);
     
     'Set tic value
-    'tic := SecPerSample;  'This tic prevents us from reading the same event twice
-    tic := 1/5000;        'Joystick sampling rate is hard coded at 5 kHz
-    tic2 := tic*25;       'MemImport can apparently miss events for stupid reasons.  If this value is 5*tic, 
-                          'there is a like 1-in-10 miss probability, but at 15 it never misses, so make it 25
+    tic := SecPerSample;  'This tic prevents us from reading the same event twice (tic = 10 usec)
+    tic2 := 0.005;
+    'This is Sutter Lab Fix - DO NOT USE.  This causes all sorts of bad things to happen
+    'Will try to figure this out later.
+    'tic := 1/5000;        'Joystick sampling rate is hard coded at 5 kHz
+    'tic2 := tic*25;       'MemImport can apparently miss events for stupid reasons.  If this value is 5*tic, 
+                           'there is a like 1-in-10 miss probability, but at 15 it never misses, so make it 25
     
     'Find out what time it is now
     'Now := maxtime();
