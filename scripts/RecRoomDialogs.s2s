@@ -561,7 +561,7 @@ func RecExpSelectDialog%()
     DlgText("File suffix letter",32,2); DlgString(7,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
     DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,21,0,3); 
     DlgCheck(3,"Add Electrode Filter?",2,4);
-    DlgInteger(4,"Number of BAKs",0,2,0,5);
+    DlgInteger(4,"Number of BAKs",0,5,0,5);  'Increased legal number of BAKs to 5, this may be silly but with the new box we have that many available ports, save 2 at end for future
     DlgList(5,"Speaker array, first (left) PA4",spkArr1$[],10,0,6);
     DlgList(6,"Speaker array, second (right) PA4",spkArr2$[],10,0,7);
     

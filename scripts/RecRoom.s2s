@@ -289,9 +289,12 @@ const recLeverChannel% := 33;         ' Channel for behavioral lever recording
 const configJoyXChannel% := 34;       ' Channel for JoystickX
 const configJoyYChannel% := 35;       ' Channel for JoystickY
 const audioOutputCopyChannel% := 36;  ' Audio output should be tee'd and input to ADC port 2 
-const recBAK1Channel% := 37;             ' First BAK
-const recBAK2Channel% := 38;             ' Second BAK
-
+var recBAKChannel%[5];    
+var localloop%;  'Just don't want to step on a possible later i%    
+for localloop% := 1 to 5 do
+    recBAKChannel%[localloop%-1] := localloop%+60;  'indices 0-4 filled with digital ports 61-65 (wavemark channels are 40-60)
+next;    
+    
 'electrode channel, port & number variables (because you cant make a const array)
 const maxTrodes% := 21; 'Can record 24 ADCs, but three are taken by JoyX/JoyY/AudioCopy
 var recTrodePosition%[maxTrodes%];
@@ -301,9 +304,12 @@ var recWMChannel%[maxTrodes%];
 'var maxTrodesThisExpt% := 4;  'if we are stimulating, we need two ports to monitor the stimulation, this reduces the number of ports available for electrodes
 
 ' ports
-const recLeverPort% := 1;    'Event port
-const recBAK1Port% := 0;        'Event port
-const recBAK2Port% := 1;        'Event port  --  Note that recLeverPort% and BAK2Port conflict for now.  It is anticipated that there should not be recording+lever until late 2020
+const recLeverPort% := 0;    'Event port, changed to port 0
+var recBAKPort%[5];
+for localloop% := 1 to 5 do
+    recBAKPort%[localloop%-1] := localloop%;  'indices 0-4 filled with digital ports 1-5
+next;        
+    
 const configJoyXPort% := 0;  'A2D port 
 const configJoyYPort% := 1;  'A2D port
 'const configEyeXPort% := 2;  'A2D port  'not yet implemented

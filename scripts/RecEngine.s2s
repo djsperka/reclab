@@ -528,29 +528,38 @@ proc CreateSampleConfiguration()
 '    endif
     
     
-    docase
-    case recNBAKs% = 1 then
-        ' Event channel 0 is for the first BAK
-        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
-        SampleTitle$(recBAK1Channel%, "BAK1");
-        SampleComment$(recBAK1Channel%, "BAK1");
-    case recNBAKs% = 2 and recUseJoystick% > 0 then  'If using joystick, there are ports for both BAKs
-        ' Event channel 0 is for the first BAK
-        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
-        SampleTitle$(recBAK1Channel%, "BAK1");
-        SampleComment$(recBAK1Channel%, "BAK1");
-        ' Event channel 1 is for the second BAK
-        SampleEvent(recBAK2Channel%, recBAK2Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
-        SampleTitle$(recBAK2Channel%, "BAK2");
-        SampleComment$(recBAK2Channel%, "BAK2");
-    case recNBAKs% = 2 and recUseJoystick% = 0 then  'If using lever, only the first BAK can be used, note this
-        ' Event channel 0 is for the first BAK
-        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
-        SampleTitle$(recBAK1Channel%, "BAK1");
-        SampleComment$(recBAK1Channel%, "BAK1");
-        
-        Message("The lever cannot be used with 2 BAKs!  Second BAK will not be used, lever should be in event port 1!");
-    endcase
+'    docase
+'    case recNBAKs% = 1 then
+'        ' Event channel 0 is for the first BAK
+'        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+'        SampleTitle$(recBAK1Channel%, "BAK1");
+'        SampleComment$(recBAK1Channel%, "BAK1");
+'    case recNBAKs% = 2 and recUseJoystick% > 0 then  'If using joystick, there are ports for both BAKs
+'        ' Event channel 0 is for the first BAK
+'        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+'        SampleTitle$(recBAK1Channel%, "BAK1");
+'        SampleComment$(recBAK1Channel%, "BAK1");
+'        ' Event channel 1 is for the second BAK
+'        SampleEvent(recBAK2Channel%, recBAK2Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+'        SampleTitle$(recBAK2Channel%, "BAK2");
+'        SampleComment$(recBAK2Channel%, "BAK2");
+'    case recNBAKs% = 2 and recUseJoystick% = 0 then  'If using lever, only the first BAK can be used, note this
+'        ' Event channel 0 is for the first BAK
+'        SampleEvent(recBAK1Channel%, recBAK1Port%, 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+'        SampleTitle$(recBAK1Channel%, "BAK1");
+'        SampleComment$(recBAK1Channel%, "BAK1");
+'        
+'        Message("The lever cannot be used with 2 BAKs!  Second BAK will not be used, lever should be in event port 1!");
+'    endcase
+    
+    
+    'For the new up-to-5-BAKs version the lever has been moved to port 0, so we can do this in one loop
+    for i% := 0 to recNBAKs%-1 do
+        SampleEvent(recBAKChannel%[i%], recBAKPort%[i%], 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+        SampleTitle$(recBAKChannel%[i%], "BAK"+Str$(recNBAKs%));
+        SampleComment$(recBAKChannel%[i%], "BAK"+Str$(recNBAKs%));
+    next
+    
     
     
     ' Text marks
