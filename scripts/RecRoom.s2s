@@ -70,6 +70,7 @@ const recCalibLocKershaw$ := "E:\\Core Grant\\reclab2017\\testTextFiles\\";     
 var recNElectrodes%:=-1;            'Number of electrodes in use, determines number of channels recorded, start invalid on first run
 var recAddFilter%;                  'Should we add a filter to each electrode?  Note: this process may be unworkably computational, particularly for the 16-array, but we're giving it a shot  
                                     'Currently there is only one type of filter, and this is an on/off.  In the future we may specify different types of filter with different integer values
+var recMultiProbeName$;             'A name designated for a multi-unit probe (e.g. "NeuroNexus-4-tetrode")    
 var recNBAKs%;                      'Number of BAKs to record from, event channels
 var recExpToRun%;                   'Integer holding which experiment to run - corresponds to dialog button value
 var recLastExpRun%;                 'Holds last value of recExpToRun to suppress LEDReminderDialog in certain cases    
@@ -289,6 +290,8 @@ const recLeverChannel% := 33;         ' Channel for behavioral lever recording
 const configJoyXChannel% := 34;       ' Channel for JoystickX
 const configJoyYChannel% := 35;       ' Channel for JoystickY
 const audioOutputCopyChannel% := 36;  ' Audio output should be tee'd and input to ADC port 2 
+'Note that channels 37/38 were previously used as BAK channels.  ConvertCED2MAT.s2s will STILL convert these channels if they
+'exist, because we may still analyze older files.  If 37/38 get reused we will need to consider what action to take in that file.    
 var recBAKChannel%[5];    
 var localloop%;  'Just don't want to step on a possible later i%    
 for localloop% := 1 to 5 do

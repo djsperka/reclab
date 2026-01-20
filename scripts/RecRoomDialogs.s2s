@@ -58,6 +58,7 @@ var recExpOneStimDiscrimGNGDeleteExpButton%:=43;
 
 'Selection Dialog variables
 var recExpSelectDialogAllowOK%;     'Does not allow the "OK" button to be pressed until an experiment is selected
+var recProbeArrayIndex%;            'Allows selection of multi-unit probe via dialog list
 var recSpeakerArrayIndex%;          'Allows selection of a speaker array via dialog list
 var recSpeakerArrayIndex2%;         'Allows selection of another speaker array via dialog list (to assign which PA4 if there are two)    
 var recShuffle%;                    'Allows shuffle of trial order
@@ -499,13 +500,19 @@ func RecExpSelectDialog%()
     
     var i%;
     var j%;
-    var status% := 0;  
+    var status% := 0; 
+    var probeArr$[3];    
     var spkArr$[5];
     var spkArr1$[3];
     var spkArr2$[3];
     var fsArr$[2];
     var fsPlayArr$[3];
     var levText$;
+    
+    probeArr$[0] := "No Multiunit Probe";
+    probeArr$[1] := "NeuroNexus 4-tetrode";
+    probeArr$[2] := "NeuroNexus 16-Poly2";
+    
 '    spkArr$[0] := "None";
 '    spkArr$[1] := "15";
 '    spkArr$[2] := "16";
@@ -558,12 +565,13 @@ func RecExpSelectDialog%()
     
     DlgGroup("Experimental Details", 1,1,50,8);
     DlgString(1,"Monkey Name",10,"",17,2);  'currently no "legal" specified, meaning all characters OK
-    DlgText("File suffix letter",32,2); DlgString(7,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
-    DlgInteger(2,"Number of electrodes (0 for behavioral)",-1,21,0,3); 
-    DlgCheck(3,"Add Electrode Filter?",2,4);
-    DlgInteger(4,"Number of BAKs",0,5,0,5);  'Increased legal number of BAKs to 5, this may be silly but with the new box we have that many available ports, save 2 at end for future
-    DlgList(5,"Speaker array, first (left) PA4",spkArr1$[],10,0,6);
-    DlgList(6,"Speaker array, second (right) PA4",spkArr2$[],10,0,7);
+    DlgText("File suffix letter",32,2); DlgString(2,"|e.g., a,b,c,d...",2,"",46,2);  'currently no "legal" specified, meaning all characters OK; max 2chars
+    DlgInteger(3,"Number of electrodes (0 for behavioral)",-1,21,0,3); 
+    DlgCheck(4,"Add Electrode Filter?",2,4);
+    DlgList(5,22,probeArr$[],10,0,4);  
+    DlgInteger(6,"Number of BAKs",0,5,0,5);  'Increased legal number of BAKs to 5, this may be silly but with the new box we have that many available ports, save 2 at end for future
+    DlgList(7,"Speaker array, first (left) PA4",spkArr1$[],10,0,6);
+    DlgList(8,"Speaker array, second (right) PA4",spkArr2$[],10,0,7);
     
     DlgGroup("Experiments", 1,9,50,6);
     DlgButton(0,"         Quit         ");
@@ -583,20 +591,30 @@ func RecExpSelectDialog%()
     DlgButton(recExpTimingRewardButton%, "   Timing/Reward    ", RecExpTimingRewardDialog%, 2, 8);
     DlgButton(recLeverJoystickButton%, levText$, RecExpLeverJoystickDialog%, 30, 8);
     
-    DlgCheck(8,"Shuffle Stimuli",2,15);
-    DlgCheck(9,"Turn Off Reward",2,16);
-    DlgList(10,"Audio play rate (Hz)",fsPlayArr$[],10,0,17);
-    DlgList(11,"Electrode sampling rate (Hz)",fsArr$[],11,0,18);
+    DlgCheck(9,"Shuffle Stimuli",2,15);
+    DlgCheck(10,"Turn Off Reward",2,16);
+    DlgList(11,"Audio play rate (Hz)",fsPlayArr$[],10,0,17);
+    DlgList(12,"Electrode sampling rate (Hz)",fsArr$[],11,0,18);
     
     
     DlgAllow(0xffff, 0, RecExpSelectDialogChanged%);
     
     ' Show the dialog. 
-    i%:=DlgShow(recMonkPrefix$,recNElectrodes%,recAddFilter%,recNBAKs%,recSpeakerArrayIndex%,
-    recSpeakerArrayIndex2%,blockTag$,recShuffle%,recTurnOffReward%,recExpSelectPlayRateIndex%,recExpSelectSamplingRateIndex%); 
+    i%:=DlgShow(recMonkPrefix$,blockTag$,recNElectrodes%,recAddFilter%,recProbeArrayIndex%,recNBAKs%,recSpeakerArrayIndex%,
+    recSpeakerArrayIndex2%,recShuffle%,recTurnOffReward%,recExpSelectPlayRateIndex%,recExpSelectSamplingRateIndex%); 
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
+        
+        'Assign multiprobe label
+        docase
+        case recProbeArrayIndex% = 0 then
+            recMultiProbeName$ := "None";
+        case recProbeArrayIndex% = 1 then
+            recMultiProbeName$ := "NeuroNexus-4-tetrode";
+        case recProbeArrayIndex% = 2 then
+            recMultiProbeName$ := "NeuroNexus-16-Poly2";
+        endcase
         
         'Assign speaker number, old single PA4 version
 '        docase
@@ -730,6 +748,13 @@ func RecExpSelectDialogChanged%(item%)
     var levText$;
     var speakersOK% := 0;
     
+    docase
+    case DlgValue(5) = 1 then  'This is for the 4-tetrode probe, set nTrodes to 16
+        DlgValue(3,16);
+    case DlgValue(5) = 2 then  'This is for the 16-2 probe, set nTrodes to 16
+        DlgValue(3,16);
+    endcase
+    
     'Identifying legal speaker setups
     'Basically, at least one must be an array, they can't both be arrays
     'This is no longer relevant since we are NOT allowing "swapping" of the arrays, the PM1 will always be connected to the first output
@@ -742,23 +767,23 @@ func RecExpSelectDialogChanged%(item%)
     'If a standalone is requested for the wrong experiment, the easiest thing to do is ignore it (but an error would be nice)
     
     docase
-    case (DlgValue(4) = 1 or DlgValue(4) = 2) then
+    case (DlgValue(7) = 1 or DlgValue(7) = 2) then
         speakersOK% := 1;
-    case (DlgValue(5) = 1 or DlgValue(5) = 2) then
+    case (DlgValue(8) = 1 or DlgValue(8) = 2) then
         speakersOK% := 1;    
     endcase
     
     'Disable two buttons, note that this allows the remainder of the infrastructure for these expts to remain intact
     'DlgEnable(0,-recExpStereoDisButton%);  'Almost certainly broken, see GenTrialsStereoDis%() for more details
-    DlgEnable(0,-recExpCueingButton%);  'Never full implemented
+    DlgEnable(0,-recExpCueingButton%);  'Never fully implemented
     
     
     'Disable the electrode filter checkbox if there are no electrodes specified
     'Note that in the future we may make this more flexible than just a single filter
-    if DlgValue(2) > 0 then
-        DlgEnable(1,3);  'Enable electrode filter checkbox
+    if DlgValue(3) > 0 then
+        DlgEnable(1,4);  'Enable electrode filter checkbox
     else
-        DlgEnable(0,3);  'Disable electrode filter checkbox
+        DlgEnable(0,4);  'Disable electrode filter checkbox
     endif
     
     
@@ -766,7 +791,7 @@ func RecExpSelectDialogChanged%(item%)
     'AND a file name is chosen AND a number of electrodes is entered AND the speaker array selection is legal
     
     'if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 and DlgValue(3) > 0 then
-    if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(2) > -1 and speakersOK% = 1 then
+    if recExpSelectDialogAllowOK% = 1 and len(DlgValue$(1)) > 0 and DlgValue(3) > -1 and speakersOK% = 1 then
         DlgEnable(1,-1);  'enable "OK" 
     else
         DlgEnable(0,-1);  'Otherwise disable "OK"

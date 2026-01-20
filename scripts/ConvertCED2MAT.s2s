@@ -38,7 +38,7 @@ endif;
 AddChanIfPresent(33);  'Lever channel       ("Lever")
 AddChanIfPresent(34);  'JoystickX channel   ("JoystikX")
 AddChanIfPresent(35);  'JoystickY channel   ("JoystikY")
-AddChanIfPresent(37);  'BAK1 channel        ("BAK1")
+AddChanIfPresent(37);  'BAK1 channel        ("BAK1")  'Note that BAK channels have moved, but for NOW channel 37/38 have not been reused
 AddChanIfPresent(38);  'BAK2 channel        ("BAK2")
 ChanTitle$(30,"TextMark");  'Sometimes, it's "untitled", change to "TextMark"
 AddChanIfPresent(30);  'Textmark channel (may list as "untitled")
@@ -72,6 +72,17 @@ if dropWMs% = 0 then  'For Kilosort testing we will not want to do wavemarks eit
         endif
     next
 endif
+
+
+'This code assumes that any channel in the 61-65 range is a BAK channel
+for i% := 61 to 65 do
+    if ChanKind(i%) = 4 then  'this check should be redundant under this assumption, but may as well check
+        ChanTitle$(i%,"BAK"+Str$(i%-60));  'Change chan title to be 1 to 5, if present
+        AddChanIfPresent(i%);
+    endif
+next
+
+
 
 'This code checks every channel to see if it is a wavemark, in case the above 40-60 assumption is not valid.
 'However, it does assume that the wavemark channels will be found in consecutive order, and in the same order

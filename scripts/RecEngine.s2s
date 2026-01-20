@@ -6630,8 +6630,8 @@ proc WriteExpParamsSampleText()
     if recSpeakerArrayIndex2% >= 1 then
         rsai2% := recSpeakerArrayIndex2% + 2;
     endif
-    s$ := Print$("Param1 MonkeyName=%s,FileSuffix=%s,NTrodes=%d,NBAKs=%d,SpkrArray1=%d,SpkrArray2=%d,DoNotShuffle=%d,TurnOffReward=%d",
-    recMonkPrefix$,blockTag$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,rsai2%,1-recShuffle%,recTurnOffReward%);    
+    s$ := Print$("Param1 MonkeyName=%s,FileSuffix=%s,Probe=%s,NTrodes=%d,NBAKs=%d,SpkrArray1=%d,SpkrArray2=%d,DoNotShuffle=%d,TurnOffReward=%d",
+    recMonkPrefix$,blockTag$,recMultiProbeName$,recNElectrodes%,recNBAKs%,recSpeakerArrayIndex%,rsai2%,1-recShuffle%,recTurnOffReward%);    
     SampleText(s$);
     yield(0.01);
     
