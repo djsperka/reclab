@@ -2,6 +2,8 @@
 'will be readable by Kilosort (ConvertCED2BIN.s2s) AND the export of the necessary trial information
 '(ConvertCED2MAT.s2s).  Should hopefully be pretty seamless.
 
+var YeahThisFunctionIsNotFullyUpdatedAndIDoNotHaveTimeNow
+
 var ConvertSaveDir$ := "None Selected";
 var ConvertSaveFileName$ := "";
 var SaveNameBin$;
@@ -96,7 +98,7 @@ FileClose(bh%);
 AddChanIfPresentMat(33);  'Lever channel       ("Lever")
 AddChanIfPresentMat(34);  'JoystickX channel   ("JoystikX")
 AddChanIfPresentMat(35);  'JoystickY channel   ("JoystikY")
-AddChanIfPresentMat(37);  'BAK1 channel        ("BAK1")
+AddChanIfPresentMat(37);  'BAK1 channel        ("BAK1")  'Note that BAK channels have moved, but for NOW channel 37/38 have not been reused
 AddChanIfPresentMat(38);  'BAK2 channel        ("BAK2")
 ChanTitle$(30,"TextMark");  'Sometimes, it's "untitled", change to "TextMark"
 AddChanIfPresentMat(30);  'Textmark channel (may list as "untitled")
@@ -112,7 +114,13 @@ ExportChanList();  'clear ExportChanList options, necessary step!
 ExportChanList(0,view(datawindow%).maxtime(),chanToExportMat%[]);  'set channel list for export of all channels at times 0 to maxtime()
 FileSaveAs(SaveNameMat$,100,0,"",0,"UseSName=0|UseCName=1|WaveData=1");  'flag of 1 in position three forces overwrite without asking user, WaveData=1 forces data into "single" to save space
 
-
+'This code assumes that any channel in the 61-65 range is a BAK channel
+for i% := 61 to 65 do
+    if ChanKind(i%) = 4 then  'this check should be redundant under this assumption, but may as well check
+        ChanTitle$(i%,"BAK"+Str$(i%-60));  'Change chan title to be 1 to 5, if present
+        AddChanIfPresentMat(i%);
+    endif
+next
 
 
 'We're done!
@@ -169,7 +177,7 @@ proc SaveLocationDialog()
     
     ConvertSaveDir$ := GetStringRegistryValue$(key$, "SaveDir", ConvertSaveDir$);
     
-    DlgCreate("Select Save Location");
+    DlgCreate("Select Save Location -- Note This Function Is Not Exactly Up To Date While the Separate BIN And MAT Functions Are");
     
     Text1% := DlgText( "Last Save Directory: " + ConvertSaveDir$,2,1,100);
     DlgButton(2, "Select New Save Directory",SelectSaveDir%,2,2);
