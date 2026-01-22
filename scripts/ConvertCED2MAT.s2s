@@ -76,7 +76,7 @@ endif
 
 'This code assumes that any channel in the 61-65 range is a BAK channel
 for i% := 61 to 65 do
-    if ChanKind(i%) = 4 then  'this check should be redundant under this assumption, but may as well check
+    if ChanKind(i%) = 3 or ChanKind(i%) = 4 then  'this check should be redundant under this assumption, but may as well check (3 = event+ [new], 4 = level [old])
         ChanTitle$(i%,"BAK"+Str$(i%-60));  'Change chan title to be 1 to 5, if present
         AddChanIfPresent(i%);
     endif

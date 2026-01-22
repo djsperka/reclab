@@ -555,7 +555,7 @@ proc CreateSampleConfiguration()
     
     'For the new up-to-5-BAKs version the lever has been moved to port 0, so we can do this in one loop
     for i% := 0 to recNBAKs%-1 do
-        SampleEvent(recBAKChannel%[i%], recBAKPort%[i%], 2, 100);  'create a level channel for the BAK, 100 Hz max sustained
+        SampleEvent(recBAKChannel%[i%], recBAKPort%[i%], 1, 100);  'create an event+ channel for the BAK (=1, use 2 for Level, but we don't want both sides!), 100 Hz max sustained
         SampleTitle$(recBAKChannel%[i%], "BAK"+Str$(i%+1));
         SampleComment$(recBAKChannel%[i%], "BAK"+Str$(i%+1));
     next
