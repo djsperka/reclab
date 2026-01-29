@@ -82,7 +82,7 @@ repeat
     for i% := 0 to nChanFound%-1 do
         currChan% := chanToExport%[i%];
         tempN% := view(dataWindow%).ChanData(currChan%,dataOut%[i%][],t,view(dataWindow%).Maxtime(currChan%));  'fill dataOut%[][] and get number of elements 
-        if i% <> dumpSize% then
+        if tempN% <> dumpSize% then
             n% := -1;  'if we ever find a channel that was smaller than the dump size, set to bail out!
         endif
     next
