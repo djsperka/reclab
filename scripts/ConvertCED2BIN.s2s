@@ -51,15 +51,39 @@ if bh% <= 0 then
 endif 
 
 'Keep dumping to binary file until SMR file is completely dumped
+'repeat
+'    'Loop through present channels and fill dataOut%[][]
+'    for i% := 0 to nChanFound%-1 do
+'        currChan% := chanToExport%[i%];
+'        tempN% := view(dataWindow%).ChanData(currChan%,dataOut%[i%][],t,view(dataWindow%).Maxtime(currChan%));  'fill dataOut%[][] and get number of elements 
+'        if i% = 0 then
+'            n% := tempN%;
+'        else
+'            n% := min(n%,tempN%);
+'        endif
+'    next
+'    'Write to file
+'    if n% > 0 then
+'        view(bh%).BWriteSize(2,dataOut%[][:n%]);  'Write up to n% values on each channel present, use 2 (2 bytes) for int16
+'        t := t + n%*view(dataWindow%).BinSize(currChan%);  'Update the time
+'    endif;
+'until n% <= 0;
+
+'We are having a problem where Kilosort is (rarely) failing to operate correctly on a binary file that looks otherwise fine.
+'I don't know what is making Kilosort unhappy, but I am going to try the following:  Instead of attempting to grab every last
+'possible bit of data, if the dataOut%[][] array is not completely filled (there was less than 100000 samples, or about 3.3
+'seconds of data, just fugeddahboutit and exit.  Just in case there is some sort of issue with the final write.  Because if
+'it's not the final write, I have no idea how to chase this down.
+
+'Keep dumping to binary file until SMR file is (almost) completely dumped, but don't dump the final tail of the data
 repeat
     'Loop through present channels and fill dataOut%[][]
+    n% := dumpSize%;
     for i% := 0 to nChanFound%-1 do
         currChan% := chanToExport%[i%];
         tempN% := view(dataWindow%).ChanData(currChan%,dataOut%[i%][],t,view(dataWindow%).Maxtime(currChan%));  'fill dataOut%[][] and get number of elements 
-        if i% = 0 then
-            n% := tempN%;
-        else
-            n% := min(n%,tempN%);
+        if i% <> dumpSize% then
+            n% := -1;  'if we ever find a channel that was smaller than the dump size, set to bail out!
         endif
     next
     'Write to file
@@ -68,8 +92,6 @@ repeat
         t := t + n%*view(dataWindow%).BinSize(currChan%);  'Update the time
     endif;
 until n% <= 0;
-
-'Kilosort can open these files, but dies on pre-processing with an obscure error
 
 
 
@@ -91,7 +113,7 @@ if ChanTitle$(chan%) <> "" then
         halt;
     endif
     chanToExport%[nChanFound%] := chan%;
-    nChanFound% += 1;
+    nChanFound% += 1;  'Here we increment nChanFound% after using it as an index, because chanToExport% is not being used by ExportChanList(), so the 0th element is available for use
 endif; 
 end
 '===== End AddChanIfPresent =====

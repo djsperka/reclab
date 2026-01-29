@@ -137,7 +137,7 @@ FileClose();  'close the file we just opened
 '===== AddChanIfPresent =====
 proc AddChanIfPresent(chan%)
     if ChanTitle$(chan%) <> "" then
-        nChanFound% += 1;
+        nChanFound% += 1;  'Here we increment nChanFound% first, because the 0th element of ChanToExport% is expected to be a count, not a channel index, when used by ExportChanList()
         chanToExport%[nChanFound%] := chan%;
     endif; 
 end
