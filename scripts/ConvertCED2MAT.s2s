@@ -10,6 +10,7 @@ var WMCount%;
 var dropWFs%;
 var dropWMs%;
 var dropAudio%;
+var errCode;
 
 #include "recfuncs.s2s"
 
@@ -35,18 +36,22 @@ endif;
 'if they exist, we will add them to the list of channels to be exported
 'At first glance, it doesn't appear that one can loop through a vector, so...
 'Go through this based on known channels from CreateSampleConfiguration
-AddChanIfPresent(33);  'Lever channel       ("Lever")
-AddChanIfPresent(34);  'JoystickX channel   ("JoystikX")
-AddChanIfPresent(35);  'JoystickY channel   ("JoystikY")
-AddChanIfPresent(37);  'BAK1 channel        ("BAK1")  'Note that BAK channels have moved, but for NOW channel 37/38 have not been reused
-AddChanIfPresent(38);  'BAK2 channel        ("BAK2")
+'I have changed the order here because it appears that some files are crashing on the Joystick channels for unknown reason...well that didn't help
 ChanTitle$(30,"TextMark");  'Sometimes, it's "untitled", change to "TextMark"
 AddChanIfPresent(30);  'Textmark channel (may list as "untitled")
 AddChanIfPresent(31);  'Keyboard channel    ("Keyboard")
-'AddChanIfPresent(36);  'Audio copy channel  ("Audio")  - now gated by a dialog checkbox, won't be automatically included
+AddChanIfPresent(37);  'BAK1 channel        ("BAK1")  'Note that BAK channels have moved, but for NOW channel 37/38 have not been reused
+AddChanIfPresent(38);  'BAK2 channel        ("BAK2")
+AddChanIfPresent(32);  'Digital marker      ("ToneStar" - is requested to be "ToneStartStop" but of course it's limited to 8 chars)
+AddChanIfPresent(33);  'Lever channel       ("Lever")
+AddChanIfPresent(34);  'JoystickX channel   ("JoystikX")
+AddChanIfPresent(35);  'JoystickY channel   ("JoystikY")
 AddChanIfPresent(28);  'EyeX channel        ("EyeX")  'currently EyeX/Y channels do not exist, but they may be implemented in the future
 AddChanIfPresent(29);  'EyeY channel        ("EyeY")
-AddChanIfPresent(32);  'Digital marker      ("ToneStar" - is requested to be "ToneStartStop" but of course it's limited to 8 chars)
+
+'AddChanIfPresent(36);  'Audio copy channel  ("Audio")  - now gated by a dialog checkbox, won't be automatically included
+
+
 
 'Note that there is a convention for electrodes to begin on channel 3.  This is an awkward convention, because one day somebody
 'will think..."gee, why don't electrodes start on channel 1" and break everything.  I've added a note to the GNGEngine at the right
@@ -121,8 +126,11 @@ chanToExport%[0] := nChanFound%;
 
 ExportChanList();  'clear ExportChanList options, necessary step!
 ExportChanList(0,view(datawindow%).maxtime(),chanToExport%[]);  'set channel list for export of all channels at times 0 to maxtime()
-FileSaveAs(SaveName$,100,0,"",0,"UseSName=0|UseCName=1|WaveData=1");  'flag of 1 in position three forces overwrite without asking user, WaveData=1 forces data into "single" to save space
+errCode := FileSaveAs(SaveName$,100,0,"",0,"UseSName=0|UseCName=1|WaveData=1");  'flag of 1 in position three forces overwrite without asking user, WaveData=1 forces data into "single" to save space
 'FileSaveAs(ConvertSaveDir$ + "*",100,1,"",0,"UseSName=0|UseCName=1");  'flag of 1 in position three forces overwrite without asking user
+if errCode <> 0 then
+    printlog("Error in saving output file, error is %d\n",errCode);
+endif
 
 
 'Close file
@@ -136,9 +144,11 @@ FileClose();  'close the file we just opened
 '
 '===== AddChanIfPresent =====
 proc AddChanIfPresent(chan%)
+    printlog("Channel name = %s\n",ChanTitle$(chan%));
     if ChanTitle$(chan%) <> "" then
         nChanFound% += 1;  'Here we increment nChanFound% first, because the 0th element of ChanToExport% is expected to be a count, not a channel index, when used by ExportChanList()
         chanToExport%[nChanFound%] := chan%;
+        printlog("Adding channel %d, name = %s, nChanFound = %d\n",chan%,ChanTitle$(chan%),nChanFound%);
     endif; 
 end
 '===== End AddChanIfPresent =====
