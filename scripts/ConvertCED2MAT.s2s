@@ -1,5 +1,6 @@
 var ConvertSaveDir$ := "None Selected";
 var ConvertSaveFileName$ := "";
+var ConvertSaveFileNameChanged$ := "";
 var SaveName$;
 var Text1%;
 var datawindow%;
@@ -10,6 +11,11 @@ var WMCount%;
 var dropWFs%;
 var dropWMs%;
 var dropAudio%;
+var doRealTimeBoilermaker%;
+var BMFilesToMove$[100];  'move up to 100 but like Highlander THERE CAN BE ONLY ONE
+var numBMFiles%;
+var currDir$;
+var ok%;
 var errCode;
 
 #include "recfuncs.s2s"
@@ -19,17 +25,41 @@ var errCode;
 'Run dialog to select save location for .mat file
 SaveLocationDialog();
 
+'If doing RealTimeBoilermaker...
+if doRealTimeBoilermaker% = 1 then
+    'set save directory automatically (disk26 location)
+    ConvertSaveDir$ := "\\\\cns-nas.ucdavis.edu\\recanzone\\disk26\\RealTimeBoilermaker\\matFiles\\";
+    
+    'move any file currently in the directory to the "complete" directory so we have a clean directory
+    currDir$ := FilePath$();  'save current path in case anybody cares
+    FilePathSet(ConvertSaveDir$);  'change path to RTBM directory because FileList wants to start from the current path
+    numBMFiles% := FileList(BMFilesToMove$[],-1,"RTBM*");  'get a list of possible files to move
+    'printlog("Number of files is %d\n",numBMFiles%);  'just for testing, don't need this IRL
+    for i% := 0 to numBMFiles%-1 do
+        'printlog("File name is %s\n",BMFilesToMove$[i%]);  'testing
+        ok% := FileCopy(ConvertSaveDir$+BMFilesToMove$[i%],ConvertSaveDir$+"complete\\"+BMFilesToMove$[i%],1);  '1 = allow overwrite
+        if ok% = 1 then  'don't delete the old file unless it actually got moved successfully
+            FileDelete(ConvertSaveDir$+BMFilesToMove$[i%]);
+        endif
+        'And hey, if the move didn't happen, well, fine.  We don't want to quit out, we want the conversion to happen anyway.
+    next
+    FilePathSet(CurrDir$);  'change path back to original in case anybody cares    
+endif
+
+
 'Select and open desired .smr file
 datawindow% := FileOpen("*.smr*",0,9);
 
 'Determine save name, based on current .smr file, if not specified
-if ConvertSaveFileName$ = "" then  'use filename from just-opened file
+docase
+case ConvertSaveFileName$ = "" then  'use filename from just-opened file
     SaveName$ := ConvertSaveDir$ + FileName$(3) + ".mat";
-    printlog("save name is %s\n",SaveName$);
-else  'use filename from dialog
+case ConvertSaveFileName$ = "RTBM" then  'use filename from just-opened file, with "RTBM_" prepended, ALL RealTimeBoilermaker files require this convention
+    SaveName$ := ConvertSaveDir$ + "RTBM_" + FileName$(3) + ".mat";
+else  'use filename from dialog (cannot be the used for RealTimeBoilermaker experiments)
     SaveName$ := ConvertSaveDir$ + ConvertSaveFileName$  + ".mat";
-    printlog("save name is %s\n",SaveName$);
-endif;
+endcase;
+printlog("save name is %s\n",SaveName$);
 
 'Save correct channels
 'We are going to go through possible channels that we might have, and determine if they exist on any given file,
@@ -39,37 +69,42 @@ endif;
 'I have changed the order here because it appears that some files are crashing on the Joystick channels for unknown reason...well that didn't help
 ChanTitle$(30,"TextMark");  'Sometimes, it's "untitled", change to "TextMark"
 AddChanIfPresent(30);  'Textmark channel (may list as "untitled")
-AddChanIfPresent(31);  'Keyboard channel    ("Keyboard")
+
 AddChanIfPresent(37);  'BAK1 channel        ("BAK1")  'Note that BAK channels have moved, but for NOW channel 37/38 have not been reused
 AddChanIfPresent(38);  'BAK2 channel        ("BAK2")
-AddChanIfPresent(32);  'Digital marker      ("ToneStar" - is requested to be "ToneStartStop" but of course it's limited to 8 chars)
-AddChanIfPresent(33);  'Lever channel       ("Lever")
-AddChanIfPresent(34);  'JoystickX channel   ("JoystikX")
-AddChanIfPresent(35);  'JoystickY channel   ("JoystikY")
-AddChanIfPresent(28);  'EyeX channel        ("EyeX")  'currently EyeX/Y channels do not exist, but they may be implemented in the future
-AddChanIfPresent(29);  'EyeY channel        ("EyeY")
 
-'AddChanIfPresent(36);  'Audio copy channel  ("Audio")  - now gated by a dialog checkbox, won't be automatically included
+if doRealTimeBoilermaker% = 0 then  'Skip these channels entirely if we are doind RealTimeBoilermaker
+    AddChanIfPresent(31);  'Keyboard channel    ("Keyboard")
+    AddChanIfPresent(32);  'Digital marker      ("ToneStar" - is requested to be "ToneStartStop" but of course it's limited to 8 chars)
+    AddChanIfPresent(33);  'Lever channel       ("Lever")
+    AddChanIfPresent(34);  'JoystickX channel   ("JoystikX")
+    AddChanIfPresent(35);  'JoystickY channel   ("JoystikY")
+    AddChanIfPresent(28);  'EyeX channel        ("EyeX")  'currently EyeX/Y channels do not exist, but they may be implemented in the future
+    AddChanIfPresent(29);  'EyeY channel        ("EyeY")
+    'AddChanIfPresent(36);  'Audio copy channel  ("Audio")  - now gated by a dialog checkbox, won't be automatically included
+endif
+
+
 
 
 
 'Note that there is a convention for electrodes to begin on channel 3.  This is an awkward convention, because one day somebody
 'will think..."gee, why don't electrodes start on channel 1" and break everything.  I've added a note to the GNGEngine at the right
 'spot.  Hopefully that prevents me (or anybody else) from messing this up.
-if dropWFs% = 0 then  'New!  Now we have an option to skip huge WF channels
+if dropWFs%+doRealTimeBoilermaker% = 0 then  'New!  Now we have an option to skip huge WF channels
     for i% := 3 to 23 do
         ChanTitle$(i%,"Trode_"+Str$(i%-2));  'Change chan title to be 1 to 21, if present
         AddChanIfPresent(i%);
     next
 endif
 
-if dropAudio% = 0 then  'New!  Now we have an option to skip the huge audio channel
+if dropAudio%+doRealTimeBoilermaker% = 0 then  'New!  Now we have an option to skip the huge audio channel
     AddChanIfPresent(36);  'Audio copy channel  ("Audio")
 endif
 
 
 'This code assumes that any channel in the 40-60 range is a wavemark corresponding to waveforms on channels 3-23
-if dropWMs% = 0 then  'For Kilosort testing we will not want to do wavemarks either
+if dropWMs%+doRealTimeBoilermaker% = 0 then  'For Kilosort testing/RTBM we will not want to do wavemarks either
     for i% := 40 to 60 do
         if ChanKind(i%) = 6 then  'this check should be redundant under this assumption, but may as well check
             ChanTitle$(i%,"WM_"+Str$(i%-39));  'Change chan title to be 1 to 21, if present
@@ -175,6 +210,7 @@ proc SaveLocationDialog()
     dropWFs% := GetIntRegistryValue%(key$, "dropWFs", dropWFs%);
     dropWMs% := GetIntRegistryValue%(key$, "dropWMs", dropWMs%);
     dropAudio% := GetIntRegistryValue%(key$, "dropAudio", dropAudio%);
+    doRealTimeBoilermaker% := GetIntRegistryValue%(key$, "doRealTimeBoilermaker", doRealTimeBoilermaker%);
     
     DlgCreate("Select Save Location");
     
@@ -186,13 +222,13 @@ proc SaveLocationDialog()
     DlgButton(1, "Select Data File", 0);
     
     DlgCheck(2,"Drop waveform data (makes .mat file smaller)",2,6);
-    
     DlgCheck(3,"Drop audio data (makes .mat file smaller)",2,7);
-    
     DlgCheck(4,"Drop wavemark data (useful if doing kilosort sorting)",2,8);
+    DlgCheck(5,"Do Real-Time Boilermaker",2,9);
     
+    DlgAllow(0xffff, 0, SaveLocationDialogChanged%);
     
-    i% := DlgShow(ConvertSaveFileName$,dropWFs%,dropAudio%,dropWMs%);
+    i% := DlgShow(ConvertSaveFileName$,dropWFs%,dropAudio%,dropWMs%,doRealTimeBoilermaker%);
     
     if i% = 1 then  'if user hit "Select Data File"
         printlog("Save directory is %s and file name is %s\n",ConvertSaveDir$,ConvertSaveFileName$);
@@ -201,6 +237,7 @@ proc SaveLocationDialog()
         SetIntRegistryValue(key$, "dropWFs", dropWFs%);
         SetIntRegistryValue(key$, "dropWMs", dropWMs%);
         SetIntRegistryValue(key$, "dropAudio", dropAudio%);
+        SetIntRegistryValue(key$, "doRealTimeBoilermaker", doRealTimeBoilermaker%);
     else
         halt;
     endif;
@@ -210,6 +247,43 @@ end
 
 
 '===== End SaveLocationDialog =====
+'
+'
+
+
+
+'
+'
+'===== SaveLocationDialogChanged  =====
+
+' Here we are only concerned about the status of the RTBM checkbox
+func SaveLocationDialogChanged%(item%)
+    
+    var tempFileName$;
+    
+    'First off, store the current value of the filename, because it *may* have been specified (this ability is rarely used)
+    tempFileName$ := DlgValue$(1);
+    
+    'Check value of RTBM checkbox, and act appropriately
+    DlgEnable(1-DlgValue(5),1);  'Will disable all dialogs if RTBM is checked, enable all if not
+    DlgEnable(1-DlgValue(5),2);
+    DlgEnable(1-DlgValue(5),3);
+    DlgEnable(1-DlgValue(5),4);
+    
+    'Only muck around if we played with the checkbox (also add RTBM to save filename dialog if RTBM checkbox is on first time through 
+    if item% = 5 or item% = 0 then
+        if DlgValue(5) = 1 then
+            DlgValue$(1,"RTBM");  'indicate real time boilermaker expt
+            ConvertSaveFileNameChanged$ := tempFileName$;  'Store the value that was in this dialog before we changed it
+        else
+            DlgValue$(1,ConvertSaveFileNameChanged$);  'Replace the most recent value from the dialog before RTBM checkbox checked
+        endif
+    endif
+    
+    return 1;
+end
+
+'===== End SaveLocationDialogChanged =====
 '
 '
 
