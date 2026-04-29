@@ -1097,8 +1097,8 @@ Func PlaySound%(StimTypeLocal$)
     'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
     if recMatGenStim% = 0 then
         calatten := recTrialStimCal[thisStim%][spkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
-    else
-        calatten := recGeneratedAtten[thisPWAIndex%];  'value created at time of stimulus generation
+    else  'Will get here for generated stims OR uncalibrated loaded stims
+        calatten := recGeneratedAtten[thisPWAIndex%];  'value created at time of stimulus generation, works for both generated stimuli and uncalibrated loaded stimuli
         printlog("Calibrating attenuation is %f\n",calatten);
     endif;
     
@@ -1110,7 +1110,8 @@ Func PlaySound%(StimTypeLocal$)
     docase
     case recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 then
         roveatten := 0;
-        printlog("No roving attenuation of active Boilermaker MVOX or TIMIT\n")
+        calatten := 0;  'Don't need to do this, but may as well
+        printlog("Calibrating attenuation done digitally; no roving attenuation of active Boilermaker\n")
     case recDoRove% = 1 then
         roveatten := Rand(2*recRovedB,-recRovedB);
         printlog("Roving attenuation is %f\n",roveatten);
@@ -1178,10 +1179,8 @@ Func PlaySound%(StimTypeLocal$)
             return status%;
         endif;
         
-        'status% := recAtten%(atten);
-        'if recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 and recTrialTerminalIsS2%[playInd%] = 1 then
         if recExpToRun% = recExpOneStimDiscrimButton% and recActive% = 1 and recOneStimDiscrimExptType% = 2 then
-            status% := recAttenByID%(0,arrayPA4ID%);  'set the PA4 to 0 on Active Boilermaker, the attenuation has been done digitally
+            status% := recAttenByID%(trlatten,arrayPA4ID%);  'set the PA4 to only trial-based attenuation on Active Boilermaker, the calibrating attenuation has been done digitally
         else
             status% := recAttenByID%(atten,arrayPA4ID%);  'For everything else, set attenuation as expected
         endif
@@ -1218,7 +1217,7 @@ Func PlaySound%(StimTypeLocal$)
         '    what the best "english" translation of the stimulus is...
         
         docase
-        case recMatGenStim% = 0 then 'stimuli are read from a file
+        case recMatGenStim% < 1 then 'stimuli are read from a file
             'If we are doing active boilermaker we should note the exact time of the target sound onset within the stimulus
             if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTrialTerminalIsS2%[playInd%] = 1 then
                 'Note that if there is roving attenuation here, we have to use a global value from PrepareNextTrial because the digital "attenuation" was set there (unlike PA4 roving, set in this function)
@@ -1300,7 +1299,7 @@ Func PlayTwoSounds%(whichStim%)
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         if recMatGenStim% = 0 then  'get attenuation from StimCal file
             calattenArray := recTrialStimCal[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
-        else
+        else  'will use calculated attenuation for either generated or uncalibrated stimuli
             calattenArray := recGeneratedAtten[0];  'First value in recGeneratedAtten is for the array speaker
         endif
             
@@ -1320,7 +1319,7 @@ Func PlayTwoSounds%(whichStim%)
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
         if recMatGenStim% = 0 then  'get attenuation from StimCal file
             calattenSA := recTrialStimCalDistractor[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
-        else
+        else  'will use calculated attenuation for either generated or uncalibrated stimuli
             calattenSA := recGeneratedAtten[1];  'Second value in recGeneratedAtten is for the standalone speaker
         endif
         
@@ -1356,6 +1355,7 @@ Func PlayTwoSounds%(whichStim%)
         else  'loading stimulus, cal value was in stimcal file
             printlog("CAL ATTEN INDICES ARE:  thisStimArray %d, sprkArray %d\n",thisStimArray%,spkrArray%-1);
             calattenArray := recTrialStimCalDistractor[thisStimArray%][spkrArray%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
+        'StereoDis does not currently allow uncalibrated loaded stimuli    
         endif
         
         'Get trial-based attenuation for current stimulus
@@ -1380,7 +1380,7 @@ Func PlayTwoSounds%(whichStim%)
         'S1/S2 are on standalone speaker by definition
         
         'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
-        if recMatGenStim% = 1 then
+        if recMatGenStim% = 1 then  'StereoDis does not currently allow uncalibrated loaded stimuli 
             calattenSA := recStereoDisGeneratedAttenList[whichStim%][1] - recStereoDisdB + 65;
         else  'loading stimulus, cal value was in stimcal file
             calattenSA := recTrialStimCalDistractor[thisStimSA%][0];  'There is only one standalone speaker, but the recTrialStimCal variable is a matrix for other code
@@ -1567,10 +1567,10 @@ Func PlayTwoSounds%(whichStim%)
         case recExpToRun% = recExpCharButton% and recCharLoadStim% = 4 then  'This is for *generated* SigNoise
             s$ := Print$("Sound %s,SigNoiseDis,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulus$(rec2StimList%[playInd%][0],0));  
             s2$ := Print$("Sound2 %s,SigNoiseTest,%d,standalone,%.1f,%.1f,%s", playChar$, recCurrentTrial%, trlAttenSA, targdBSA, NameThatStimulus$(rec2StimList%[playInd%][1],1));    
-        case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then   
+        case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 1 then  'StereoDis does not currently allow uncalibrated loaded stimuli  
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, NameThatStimulusStereoDis$(recStimList%[whichStim%][playInd%],whichStim%,1));  
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, NameThatStimulusStereoDis$(recDistractorStimList%[whichStim%][playInd%],whichStim%,0));  
-        case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then
+        case recExpToRun% = recExpStereoDisButton% and recMatGenStim% = 0 then  'StereoDis does not currently allow uncalibrated loaded stimuli 
             s$ := Print$("Sound %s,%s,%d,standalone,%.1f,%.1f,%s", playChar$, isS2$, recCurrentTrial%, trlattenSA, targdBSA, recTrialLoadLoc$[thisStimSA%]);
             s2$ := Print$("Sound2 %s,distractor,%d,%d,%.1f,%.1f,%s", playChar$, recCurrentTrial%, spkrArray%, trlattenArray, targdBArray, recTrialLoadLoc$[thisStimArray%]);  
         endcase            
@@ -1581,7 +1581,7 @@ Func PlayTwoSounds%(whichStim%)
         
     endif
     
-    'Calculate the duration in points of the stimulus 
+    'Calculate the duration in points of the stimulus;  StereoDis does not currently allow uncalibrated loaded stimuli 
     docase
 '    case recExpToRun% = recExpCharButton% and recCharLoadStim% = 1 then  'Now unused, FRA now goes through PlaySound
 '        recPlayPoints% := recPlayRateHzCurrent*recTrialStimDur[thisStimArray%]/1000;  'recTrialStimDur is in ms
@@ -2892,10 +2892,10 @@ func PrepareNextTrial%(loadPWAs%)
             return -1;
         endif;
         
-        'Generate "target" stimulus in the case of active Boilermaker
+        'Generate "target" stimulus in the case of active Boilermaker - this is only run once at the beginning of the experiment
         'Current conception only requires a single load, same target will be used for the entire experiment
         'BUT target will be unscaled so that we can implement a trial-by-trial rove
-        'Also currently only imagine using a 200-ms pink noise, so this is "hardcoded"
+        'Also we currently only envision using a 200-ms pink noise, so this is "hardcoded"
         if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 and recTargetSoundLoaded% = 0 then
             if recMatlabIsPresent% = 0 or recCalibIsPresent% = 0 then
                 message("Holy crap, I can't generate the 'target' stimulus because you either said there's no Matlab or no calibration!");
@@ -2921,7 +2921,7 @@ func PrepareNextTrial%(loadPWAs%)
             matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
             printlog("Matlab's calib value for target sound is %f\n",tempfloat);
             printlog("Value to get target sound to 65 dB is %f\n",recTargetSoundAtten);
-            matGetSeedOK% := GetMatlabValueInt%("seed",recTargetSoundRandomSeed%);  'report in a sampletext
+            matGetSeedOK% := GetMatlabValueInt%("seed",recTargetSoundRandomSeed%);  'report in a sampletext TODO no such SampleText exists
             
             'Check for error, if this breaks we can't really continue...
             docase
@@ -3115,7 +3115,7 @@ func PrepareNextTrial%(loadPWAs%)
                 'arrconst(recStimTransfer%[3:500],30000);
                 'printlog("click values are %d\n",recStimTransfer%[0:20]); 
                 
-            else  'Load stimuli from file
+            else  'Load stimuli from file, whether calibrated or not
                 
                 'get filename
                 file$ := recTrialLoadLoc$[ind%];
@@ -3136,9 +3136,50 @@ func PrepareNextTrial%(loadPWAs%)
                     printlog("There was an error in reading the binary file!  The error is number %d and the text of the error is '%s'\n",nread%,Error$(nread%));
                 endif;
                 
-                
-                'close current stimulus
+                'close current stimulus file
                 fileclose();  'close fh%
+                
+                
+                'if loading uncalibrated stimuli, calculate attenuation value
+                if recMatGenStim% = -1 then
+                    
+                    loadStart := Seconds();
+                    
+                    'Get duration in points
+                    sDur% := recPlayRateHzCurrent*recTrialStimDur[ind%]/1000;  'Stimulus duration values are expected to be in integer ms, should be fine to cast to integer from float
+                    'Place loaded stimulus into matlab array
+                    matPutOK% := matPutOK% + PutMatlabValueIntArray%("stimulus",recStimTransfer%[0:sDur%]);  'Use sDur% to put only the actual stimulus, no trailing zeros
+                    'Place fs and spk, AFFT is placed earlier
+                    matPutOK% := matPutOK% + PutMatlabValueFloat%("fs",recPlayRateHzCurrent);
+                    matPutOK% := matPutOK% + PutMatlabValueInt%("spk",thisSpkr%);
+                    
+                    if matPutOK% < 0 then 'error in one of the matlab put operations - quit
+                        message("There has been an error in sending data to Matlab!  Quitting!");
+                        view(recLog%).print("ERROR: PrepareNextTrial - error sending calibration data to Matlab, quitting!\n");
+                        recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                        SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+                        Stop%();
+                        return -1;
+                    endif;
+                    
+                    statement$ := "atten65 = reclab_calibrate(stimulus,fs,AFFT(1,spk));";  'this is for the FFT filtering method
+                    EvalMatlabStatement%(statement$);
+                    matGetAttenOK% := GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
+                    
+                    if matGetAttenOK% < 0 then 'error
+                        message("There has been an error in getting atten data from Matlab!");
+                        view(recLog%).print("ERROR: PrepareNextTrial - error getting atten data from Matlab, quitting!\n");
+                        recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                        SampleKey("S");  'Turn off LED, don't use safe version because we are quitting
+                        Stop%();
+                        return -1;
+                    endif
+                    
+                    loadEnd := Seconds();
+                    printlog("Time to place stimulus, calculate attenuation, load attenuation = %f seconds\n",loadEnd-loadStart);
+                    
+                endif;
+                
                 
             endcase;
             
@@ -3148,8 +3189,13 @@ func PrepareNextTrial%(loadPWAs%)
             if recExpToRun% = recExpOneStimDiscrimButton% and recOneStimDiscrimExptType% = 2 and recActive% = 1 then
                 
                 'Get calibrating attenuation for current stimulus - this is the value to set a stimulus to 65 dB, by definition
-                calAttenLocal := recTrialStimCal[ind%][thisSpkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
-
+                if recMatGenStim% = 0 then  'We don't expect recMatGenStim% to be 1 here...but if it is I think default grabbing recGeneratedAtten[] should work
+                    calAttenLocal := recTrialStimCal[ind%][thisSpkr%-1];  'I think we have to label speakers 1:N, not 0:N-1, so adjusting that here
+                else  'recMatGenStim% = -1, uncalibrated stimulus, calibration calculated above
+                    calAttenLocal := recGeneratedAtten[i%];
+                endif
+                
+                    
                 'Trial-based attenuation for current stimulus is this, used below directly
                 'For reference it is: recDeltadBList[0][ind%]
              
@@ -3489,6 +3535,7 @@ func PrepareNextTrial2ParallelPWAs(loadPWAs%)
                 
                 
             else  'Load stimuli from file (as of 7/8/22 this has not been vetted for some time, and load versions of StereoDis have been disabled at the dialog)
+                  'We also do not allow loaded uncalibrated stimuli here.  Presumably there is work to be done if that needs to happen.
                 
                 if i% > 0 then  'do not load a distractor for the first S1, rec2StimTransfer%[][0] will remain zeroes, and a "blank" stimulus will play
                     'get filename
@@ -3640,6 +3687,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
     
     if loadPWAs% = 1 then
         'Generate/Load stimuli and put them into PlayWaveArea
+        'Here we do not currently allow uncalibrated loaded stimuli 
         
         'get speaker on array for this trial (second stimulus plays on stand-alone)
         thisSpkr% := rec2SpeakerList%[thisTrial%][0];

@@ -46,14 +46,16 @@ var recCharDeleteExpGenSigNoiseButton%:=32;
 var recCharAddExpLoadSigNoiseButton%:=33;
 var recCharDeleteExpLoadSigNoiseButton%:=34;
 var recCharAddExpLoadArbStimButton%:=35;
-var recCharDeleteExpLoadArbStimButton%:=36;  
-var recAMDiscReportExpButton%:=37;  'buttons to report experiment details
-var recSpaceDisReportExpButton%:=38;
-var recStereoDisReportExpButton%:=39;    
-var recCharReportExpButton%:=40;
-var recOneStimDiscrimReportExpButton%:=41;
-var recExpOneStimDiscrimGNGAddExpButton%:=42;
-var recExpOneStimDiscrimGNGDeleteExpButton%:=43; 
+var recCharDeleteExpLoadArbStimButton%:=36; 
+var recCharAddExpLoadArbStimUncalButton%:=37;
+var recCharDeleteExpLoadArbStimUncalButton%:=38; 
+var recAMDiscReportExpButton%:=39;  'buttons to report experiment details
+var recSpaceDisReportExpButton%:=40;
+var recStereoDisReportExpButton%:=41;    
+var recCharReportExpButton%:=42;
+var recOneStimDiscrimReportExpButton%:=43;
+var recExpOneStimDiscrimGNGAddExpButton%:=44;
+var recExpOneStimDiscrimGNGDeleteExpButton%:=45; 
     
 
 'Selection Dialog variables
@@ -173,6 +175,7 @@ var recCharExpNameLoadSigNoise$[recCharNumExps%];    'Loaded SigNoise
 var recCharExpNameGenFRA$[recCharNumExps%];       'Generated FRA
 var recCharExpNameGenSigNoise$[recCharNumExps%];       'Generated SigNoise
 var recCharExpNameLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus    
+var recCharExpNameLoadArbStimUncal$[recCharNumExps%];    'Loaded arbitrary uncalibrated stimulus 
 'These are the stim (or stim/cal) and trials file locations for the above experiments, a stim/cal file and a trial file for each type of experiment    
 var recCharStimcalFileLoadFRA$[recCharNumExps%];   'Loaded FRA Stim/Cal file
 var recCharTrialsFileLoadFRA$[recCharNumExps%];    'Loaded FRA Trials file
@@ -184,6 +187,8 @@ var recCharStimFileGenSigNoise$[recCharNumExps%];   'Generated SigNoise Stim fil
 var recCharTrialsFileGenSigNoise$[recCharNumExps%];    'Generated SigNoise Trials file
 var recCharStimcalFileLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus Stim/Cal file
 var recCharTrialsFileLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus Trials file
+var recCharStimcalFileLoadArbStimUncal$[recCharNumExps%];    'Loaded arbitrary uncalibrated stimulus Stim/Uncal file
+var recCharTrialsFileLoadArbStimUncal$[recCharNumExps%];    'Loaded arbitrary uncalibrated stimulus Trials file
 'These are the experiment indices for indexing the above variables, one per type of experiment
 var recCharExpIndexLoadFRA%;
 var recCharExpIndexLoadSigNoise%;    'loaded signoise        
@@ -191,6 +196,8 @@ var recCharExpIndexGenFRA%;
 var recCharExpIndexGenSigNoise%;
 var recCharExpIndexLoadArbStim%;     'Arbitrary
 var recCharExpPrefixLoadArbStim$[recCharNumExps%];    'Loaded arbitrary stimulus  
+var recCharExpIndexLoadArbStimUncal%;     'Arbitrary uncalibrated
+var recCharExpPrefixLoadArbStimUncal$[recCharNumExps%];    'Loaded arbitrary uncalibrated stimulus  
 var recCharRepeatsPerStim% := 1;       'Number of repeats for each stimulus defined in the trials file, this value is currently not assigned by dialog, fixed at 1  
     
 var recStereoDisRepeatsPerStim% := 1;  
@@ -202,7 +209,8 @@ var recCharText1%;
 var recCharText2%;  
 var recCharText3%;
 var recCharText4%;
-var recCharText5%;    
+var recCharText5%; 
+var recCharText6%; 
 var recCharLoadStim% := 1;
 var recDur;     
     
@@ -506,7 +514,7 @@ func RecExpSelectDialog%()
     var spkArr1$[3];
     var spkArr2$[3];
     var fsArr$[2];
-    var fsPlayArr$[3];
+    var fsPlayArr$[4];
     var levText$;
     
     probeArr$[0] := "No Multiunit Probe";
@@ -530,6 +538,7 @@ func RecExpSelectDialog%()
     fsPlayArr$[0] := "100000";
     fsPlayArr$[1] := "48000";
     fsPlayArr$[2] := "44100";
+    fsPlayArr$[3] := "16000";  'may be needed for optimized boilermaker
     
     fsArr$[0] := "50000";  
     fsArr$[1] := "30000";
@@ -633,7 +642,9 @@ func RecExpSelectDialog%()
         case recExpSelectPlayRateIndex% = 1 then
             recPlayRateHzCurrent := 48000; 
         case recExpSelectPlayRateIndex% = 2 then
-            recPlayRateHzCurrent := 44100;            
+            recPlayRateHzCurrent := 44100;   
+        case recExpSelectPlayRateIndex% = 3 then
+            recPlayRateHzCurrent := 16000;            
         endcase
             
         'Assign sampling rate
@@ -1305,7 +1316,7 @@ end
 func RecExpCharDialog%()
     var eightInts%[8];
     var threeInts%[3];
-    var fiveInts%[5];
+    var sixInts%[6];
     '    var astring$;
     var i%;
     var k%;
@@ -1317,13 +1328,14 @@ func RecExpCharDialog%()
         inds%[j%] := j%;
     next;
     
-    var recCharDoLoad$[6];
+    var recCharDoLoad$[7];
     recCharDoLoad$[0] := "Use Dialog Values";
     recCharDoLoad$[1] := "Load FRA From Script";   'was load FRA/SigNoise
     recCharDoLoad$[2] := "Load SigNoise From Script";
     recCharDoLoad$[3] := "Generate FRA From Script";  'was in index 2
     recCharDoLoad$[4] := "Generate SigNoise From Script";  'was in index 3
     recCharDoLoad$[5] := "Load Arbitrary Stimuli";
+    recCharDoLoad$[6] := "Load Arbitrary Uncalibrated Stimuli";
     
     ' Fetch parameters from registry    
     RecCharDialogFRAGetParams();
@@ -1332,6 +1344,7 @@ func RecExpCharDialog%()
     RecCharExpListGenFRAGetParams(recCharExpNameGenFRA$[],recCharStimFileGenFRA$[],recCharTrialsFileGenFRA$[]);
     RecCharExpListGenSigNoiseGetParams(recCharExpNameGenSigNoise$[],recCharStimFileGenSigNoise$[],recCharTrialsFileGenSigNoise$[]);
     RecCharExpListLoadArbStimGetParams(recCharExpNameLoadArbStim$[],recCharStimcalFileLoadArbStim$[],recCharTrialsFileLoadArbStim$[],recCharExpPrefixLoadArbStim$[]);
+    RecCharExpListLoadArbStimUncalGetParams(recCharExpNameLoadArbStimUncal$[],recCharStimcalFileLoadArbStimUncal$[],recCharTrialsFileLoadArbStimUncal$[],recCharExpPrefixLoadArbStimUncal$[]);
     
     threeInts%[0] := recCharS1Speaker%;
     threeInts%[1] := recCharMinS1%;
@@ -1346,11 +1359,12 @@ func RecExpCharDialog%()
     eightInts%[6] := recFMSweepDur4%;
     eightInts%[7] := recFMSweepDur5%;
     
-    fiveInts%[0] := recCharExpIndexLoadFRA%;
-    fiveInts%[1] := recCharExpIndexLoadSigNoise%;
-    fiveInts%[2] := recCharExpIndexGenFRA%;
-    fiveInts%[3] := recCharExpIndexGenSigNoise%;
-    fiveInts%[4] := recCharExpIndexLoadArbStim%;
+    sixInts%[0] := recCharExpIndexLoadFRA%;
+    sixInts%[1] := recCharExpIndexLoadSigNoise%;
+    sixInts%[2] := recCharExpIndexGenFRA%;
+    sixInts%[3] := recCharExpIndexGenSigNoise%;
+    sixInts%[4] := recCharExpIndexLoadArbStim%;
+    sixInts%[5] := recCharExpIndexLoadArbStimUncal%;
     
 
     ' Initial calculation of dB steps, Freq. steps
@@ -1370,7 +1384,7 @@ func RecExpCharDialog%()
     
     
     ' Generate the dialog    
-    DlgCreate("Characterization Dialog",0,0,120,30);
+    DlgCreate("Characterization Dialog",0,0,120,31);
     
     DlgGroup("S1 Stimuli",1,1,118,2);
     DlgInteger(1,6,1,16,22,2);
@@ -1462,35 +1476,39 @@ func RecExpCharDialog%()
 
     DlgAllow(0xffff, 0, RecExpCharDialogChanged%); 
     
-    DlgGroup("Experiment Selection",1,22,120,7);
-    DlgList(25,30,recCharDoLoad$[],6,3,23);
+    DlgGroup("Experiment Selection",1,22,120,8);
+    DlgList(25,30,recCharDoLoad$[],7,3,23);
     DlgButton(recCharReportExpButton%, "  Experiment Details  ", RecCharReportExp%,58,23);  'needs actual function written
     
-    DlgList(26,22,recCharExpNameLoadFRA$[],recCharNumExps%,34,24);
+    DlgList(26,22,recCharExpNameLoadFRA$[],recCharNumExps%,44,24);
     recCharText1% := DlgText("Select Exp't (Load FRA)",2,24);
-    DlgButton(recCharAddExpLoadFRAButton%, "  Add Experiment  ", RecCharAddExpLoadFRA%,58,24);
-    DlgButton(recCharDeleteExpLoadFRAButton%, "Delete Experiment ", RecCharDeleteExpLoadFRA%,78,24);
+    DlgButton(recCharAddExpLoadFRAButton%, "  Add Experiment  ", RecCharAddExpLoadFRA%,68,24);
+    DlgButton(recCharDeleteExpLoadFRAButton%, "Delete Experiment ", RecCharDeleteExpLoadFRA%,88,24);
     
-    DlgList(27,22,recCharExpNameLoadSigNoise$[],recCharNumExps%,34,25);
+    DlgList(27,22,recCharExpNameLoadSigNoise$[],recCharNumExps%,44,25);
     recCharText2% := DlgText("Select Exp't (Load SigNoise)",2,25);
-    DlgButton(recCharAddExpLoadSigNoiseButton%, "  Add Experiment  ", RecCharAddExpLoadSigNoise%,58,25);
-    DlgButton(recCharDeleteExpLoadSigNoiseButton%, "Delete Experiment ", RecCharDeleteExpLoadSigNoise%,78,25);
+    DlgButton(recCharAddExpLoadSigNoiseButton%, "  Add Experiment  ", RecCharAddExpLoadSigNoise%,68,25);
+    DlgButton(recCharDeleteExpLoadSigNoiseButton%, "Delete Experiment ", RecCharDeleteExpLoadSigNoise%,88,25);
     
-    DlgList(28,22,recCharExpNameGenFRA$[],recCharNumExps%,34,26);
+    DlgList(28,22,recCharExpNameGenFRA$[],recCharNumExps%,44,26);
     recCharText3% := DlgText("Select Exp't (Gen FRA)",2,26);
-    DlgButton(recCharAddExpGenFRAButton%, "  Add Experiment  ", RecCharAddExpGenFRA%,58,26);
-    DlgButton(recCharDeleteExpGenFRAButton%, "Delete Experiment ", RecCharDeleteExpGenFRA%,78,26);
+    DlgButton(recCharAddExpGenFRAButton%, "  Add Experiment  ", RecCharAddExpGenFRA%,68,26);
+    DlgButton(recCharDeleteExpGenFRAButton%, "Delete Experiment ", RecCharDeleteExpGenFRA%,88,26);
     
-    DlgList(29,22,recCharExpNameGenSigNoise$[],recCharNumExps%,34,27);
+    DlgList(29,22,recCharExpNameGenSigNoise$[],recCharNumExps%,44,27);
     recCharText4% := DlgText("Select Exp't (Gen SigNoise)",2,27);
-    DlgButton(recCharAddExpGenSigNoiseButton%, "  Add Experiment  ", RecCharAddExpGenSigNoise%,58,27);
-    DlgButton(recCharDeleteExpGenSigNoiseButton%, "Delete Experiment ", RecCharDeleteExpGenSigNoise%,78,27);
+    DlgButton(recCharAddExpGenSigNoiseButton%, "  Add Experiment  ", RecCharAddExpGenSigNoise%,68,27);
+    DlgButton(recCharDeleteExpGenSigNoiseButton%, "Delete Experiment ", RecCharDeleteExpGenSigNoise%,88,27);
     
-    DlgList(30,22,recCharExpNameLoadArbStim$[],recCharNumExps%,34,28);
+    DlgList(30,22,recCharExpNameLoadArbStim$[],recCharNumExps%,44,28);
     recCharText5% := DlgText("Select Exp't (Load Arbitrary Stimulus)",2,28);
-    DlgButton(recCharAddExpLoadArbStimButton%, "  Add Experiment  ", RecCharAddExpLoadArbStim%,58,28);
-    DlgButton(recCharDeleteExpLoadArbStimButton%, "Delete Experiment ", RecCharDeleteExpLoadArbStim%,78,28);
+    DlgButton(recCharAddExpLoadArbStimButton%, "  Add Experiment  ", RecCharAddExpLoadArbStim%,68,28);
+    DlgButton(recCharDeleteExpLoadArbStimButton%, "Delete Experiment ", RecCharDeleteExpLoadArbStim%,88,28);
     
+    DlgList(31,22,recCharExpNameLoadArbStimUncal$[],recCharNumExps%,44,29);
+    recCharText6% := DlgText("Select Exp't (Load Arbitrary Uncalibrated Stimulus)",2,29);
+    DlgButton(recCharAddExpLoadArbStimUncalButton%, "  Add Experiment  ", RecCharAddExpLoadArbStimUncal%,68,29);
+    DlgButton(recCharDeleteExpLoadArbStimUncalButton%, "Delete Experiment ", RecCharDeleteExpLoadArbStimUncal%,88,29);
 
     DlgAllow(0xffff, 0, RecExpCharDialogChanged%); 
     
@@ -1502,7 +1520,7 @@ func RecExpCharDialog%()
                 recS1AMnoiseReps%,'S1 AM Noise
                 recBPnoiseReps%, 'S1 Bandpass Noise
                 recSpaceS2dBLevel, recSpaceNRepeats%, recCharActive%, 'S2 Stimuli (space)
-                recCharLoadStim%,fiveInts%);'Stimulus Selection 
+                recCharLoadStim%,sixInts%);'Stimulus Selection 
 
                 'printlog("Value is %d\n", recCharExpIndexLoadFRA%);
 
@@ -1519,11 +1537,12 @@ func RecExpCharDialog%()
                 recFMSweepDur4%    := eightInts%[6];
                 recFMSweepDur5%    := eightInts%[7];
     
-                recCharExpIndexLoadFRA%      := fiveInts%[0];
-                recCharExpIndexLoadSigNoise% := fiveInts%[1];
-                recCharExpIndexGenFRA%       := fiveInts%[2];
-                recCharExpIndexGenSigNoise%  := fiveInts%[3];
-                recCharExpIndexLoadArbStim%  := fiveInts%[4];
+                recCharExpIndexLoadFRA%           := sixInts%[0];
+                recCharExpIndexLoadSigNoise%      := sixInts%[1];
+                recCharExpIndexGenFRA%            := sixInts%[2];
+                recCharExpIndexGenSigNoise%       := sixInts%[3];
+                recCharExpIndexLoadArbStim%       := sixInts%[4];
+                recCharExpIndexLoadArbStimUncal%  := sixInts%[5];
 
     'make sure the dialog values are OK
     docase
@@ -1584,12 +1603,16 @@ func RecExpCharDialog%()
         recS1Speaker% := recCharS1Speaker%;
         recActive% := recCharActive%;
         recFixLED% := 1;
-        if recCharLoadStim% = 1 or recCharLoadStim% = 2 or recCharLoadStim% = 5 then  'Always generate stimuli for FRA unless it's a load scenario 
-                                                                                      '(0 is dialog gen, 1 is load FRA, 2 is load SigNoise, 3 is gen FRA, 4 is gen SigNoise, 5 is load ArbStim)
+        docase
+        case recCharLoadStim% = 1 or recCharLoadStim% = 2 or recCharLoadStim% = 5 then  'Always generate stimuli for FRA unless it's a load scenario 
+                                                                                      '(0 is dialog gen, 1 is load FRA, 2 is load SigNoise, 3 is gen FRA, 
+                                                                                      '4 is gen SigNoise, 5 is load ArbStim, 6 is load Uncalibrated ArbStim)
             recMatGenStim% := 0;
+        case recCharLoadStim% = 6 then  
+            recMatGenStim% := -1;
         else
             recMatGenStim% := 1;  
-        endif;
+        endcase;
         if recCharLoadStim% = 2 or recCharLoadStim% = 4 then
             recUse2PWAs% := 1;  'when doing SigNoise, use 2 PWAs
         else
@@ -1697,6 +1720,9 @@ func RecExpCharDialogChanged%(item%)
             DlgEnable(0,30);
             DlgEnable(0,-recCharAddExpLoadArbStimButton%);
             DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            DlgEnable(0,31);
+            DlgEnable(0,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimUncalButton%);
             'Enable all the other values
             for j% := 1 to 23 do
                 DlgEnable(1,j%);
@@ -1720,6 +1746,9 @@ func RecExpCharDialogChanged%(item%)
             DlgEnable(0,30);
             DlgEnable(0,-recCharAddExpLoadArbStimButton%);
             DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            DlgEnable(0,31);
+            DlgEnable(0,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimUncalButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
@@ -1743,6 +1772,9 @@ func RecExpCharDialogChanged%(item%)
             DlgEnable(0,30);
             DlgEnable(0,-recCharAddExpLoadArbStimButton%);
             DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            DlgEnable(0,31);
+            DlgEnable(0,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimUncalButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
@@ -1766,6 +1798,9 @@ func RecExpCharDialogChanged%(item%)
             DlgEnable(0,30);
             DlgEnable(0,-recCharAddExpLoadArbStimButton%);
             DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            DlgEnable(0,31);
+            DlgEnable(0,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimUncalButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
@@ -1789,6 +1824,9 @@ func RecExpCharDialogChanged%(item%)
             DlgEnable(0,30);
             DlgEnable(0,-recCharAddExpLoadArbStimButton%);
             DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            DlgEnable(0,31);
+            DlgEnable(0,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimUncalButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
@@ -1812,10 +1850,40 @@ func RecExpCharDialogChanged%(item%)
             DlgEnable(0,29);
             DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
             DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
+            DlgEnable(0,31);
+            DlgEnable(0,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimUncalButton%);
             'Disable all the other values
             for j% := 1 to 23 do
                 DlgEnable(0,j%);
             next
+            
+        case DlgValue(25) = 6 then
+            'Enable load Uncalibrated ArbStim version
+            DlgEnable(1,31);
+            DlgEnable(1,-recCharAddExpLoadArbStimUncalButton%);
+            DlgEnable(1,-recCharDeleteExpLoadArbStimUncalButton%);
+            'Disable other versions
+            DlgEnable(0,26);
+            DlgEnable(0,-recCharAddExpLoadFRAButton%);
+            DlgEnable(0,-recCharDeleteExpLoadFRAButton%);
+            DlgEnable(0,27);
+            DlgEnable(0,-recCharAddExpLoadSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpLoadSigNoiseButton%);
+            DlgEnable(0,28);
+            DlgEnable(0,-recCharAddExpGenFRAButton%);
+            DlgEnable(0,-recCharDeleteExpGenFRAButton%);
+            DlgEnable(0,29);
+            DlgEnable(0,-recCharAddExpGenSigNoiseButton%);
+            DlgEnable(0,-recCharDeleteExpGenSigNoiseButton%);
+            DlgEnable(0,30);
+            DlgEnable(0,-recCharAddExpLoadArbStimButton%);
+            DlgEnable(0,-recCharDeleteExpLoadArbStimButton%);
+            'Disable all the other values
+            for j% := 1 to 23 do
+                DlgEnable(0,j%);
+            next            
+            
             
         endcase
     endcase;
@@ -2392,7 +2460,7 @@ func RecExpAMDiscDialog%()
             recDeltadBLevel := 65-recAMDiscdBLevel;
             recActive% := recAMDiscActive%;
             recFixLED% := 1;
-            recMatGenStim% := recAMDiscMatGenStim%;
+            recMatGenStim% := recAMDiscMatGenStim%;  'Uses checkbox, for AMDisc we do not currently allow uncalibrated load
             recTrialInitReward% := recAMDiscTrialInitReward%;
             recTrialHoldReward% := recAMDiscTrialHoldReward%;
             recDoRove% := recAMDiscDoRove%;
@@ -2546,7 +2614,7 @@ func RecExpSpaceDisDialog%()
             recDeltadBLevel := 65-recSpaceDisdBLevel;
             recActive% := recSpaceDisActive%; 
             recFixLED% := 1;
-            recMatGenStim% := recSpaceDisMatGenStim%;
+            recMatGenStim% := recSpaceDisMatGenStim%;  'Uses checkbox, for SpaceDis we do not currently allow uncalibrated load
             recTrialInitReward% := recSpaceDisTrialInitReward%;
             recTrialHoldReward% := recSpaceDisTrialHoldReward%;
             recDoRove% := recSpaceDisDoRove%;
@@ -2751,7 +2819,7 @@ func RecExpStereoDisDialog%()
         recTrialHoldReward% := recStereoDisTrialHoldReward%;
         
         
-        recMatGenStim% := recStereoDisExpDoGen%;
+        recMatGenStim% := recStereoDisExpDoGen%;  'Uses checkbox, forStereoDis we do not currently allow uncalibrated load
         
         
         recDeltadBLevel := 65-recStereoDisdB;
@@ -2867,6 +2935,7 @@ func RecExpOneStimDiscrimDialog%()
     var RecOneStimDiscrimVersus$[4];
     var RecOneStimDiscrimTarget2$[2];
     var RecOneStimDiscrimExptType$[3];
+    var RecOneStimDiscrimLoadType$[3];
     var numChar%;
     
     RecOneStimDiscrimTarget1$[0] := "AMFreq";
@@ -2889,6 +2958,13 @@ func RecExpOneStimDiscrimDialog%()
     RecOneStimDiscrimExptType$[1] := "AMFM"; 
     RecOneStimDiscrimExptType$[2] := "Boilermaker (ballistic if GNG)"; 
     
+    
+    'With the introduction of real-time Boilermaker, we need to be able to load UNCALIBRATED stimuli
+    RecOneStimDiscrimLoadType$[0] := "Load Uncalibrated Stimuli";  
+    RecOneStimDiscrimLoadType$[1] := "Load Pre-calibrated Stimuli"; 
+    RecOneStimDiscrimLoadType$[2] := "Generate Stimuli"; 
+    
+    
     ' Fetch parameters from registry, majority of dialog
     RecOneStimDiscrimGetParams();
     
@@ -2906,9 +2982,9 @@ func RecExpOneStimDiscrimDialog%()
     DlgCreate("One Stim Discrimination Dialog",0,0,75,20);
     
     
-    DlgCheck(1,"Do Forced Choice Experiment",2,1);
-    DlgCheck(2,"Generate Stimuli",30,1);
-    'DlgCheck(1,"Generate Stimuli",2,1);
+    DlgCheck(1,"Do Forced Choice Expt.",2,1);
+    'DlgCheck(2,"Generate Stimuli",30,1);
+    DlgList(2,25,RecOneStimDiscrimLoadType$[],3,25,1);
     DlgButton(recOneStimDiscrimReportExpButton%, "  Experiment Details  ", RecOneStimDiscrimReportExp%,53,1);  'needs actual function written
     
     DlgGroup("Stimulus Selection, Forced Choice",1,2,73,3);
@@ -3006,7 +3082,8 @@ func RecExpOneStimDiscrimDialog%()
         
         recOneStimDiscrimExptLabel$ := recOneStimDiscrimExptType$[recOneStimDiscrimExptType%];
         
-        recMatGenStim% := recOneStimDiscrimExpDoGen%;
+        
+        recMatGenStim% := recOneStimDiscrimExpDoGen%-1;  'Take index of list box, subtract 1 to match up values correctly
         
         recDeltadBLevel := 65-recOneStimDiscrimdB;
         recDoRove% := recOneStimDiscrimDoRove%;
@@ -3058,32 +3135,11 @@ end;
 ' This function is initially called with a "0" input
 func RecExpOneStimDiscrimDialogChanged%(item%)
     
-    'For now, we should simply disallow any LOAD entries in this dialog and only allow GEN, we can add load
-    'later if we need to
-    'Full steam ahead, boys, we're adding LOAD!
-    'DlgValue(1,2);
-    'DlgEnable(0,2);
-    'DlgEnable(0,4); 'Disable FC list selection (load)
-        
-'    docase
-'    case DlgValue(2) = 1 then  'if we are running Gen, disable Load buttons
-'        DlgEnable(1,3); 'Enable FC list selection (gen)
-'        DlgEnable(0,4); 'Disable FC list selection (load)
-'        'DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
-'        'DlgEnable(1,-recExpOneStimDiscrimDeleteExpButton%); 'Enable FC delete button
-'        DlgEnable(1,recAMDiscText1%);  'Enable FC generate list text
-'        DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
-'    case DlgValue(2) = 0 then 'if we are running Load, disable Gen buttons
-'        DlgEnable(0,3); 'Disable FC list selection (gen)
-'        DlgEnable(1,34); 'Enable FC list selection (load)
-'        'DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
-'        'DlgEnable(0,-recExpOneStimDiscrimDeleteExpButton%); 'Disable FC delete button
-'        DlgEnable(0,recAMDiscText1%);  'Disable FC generate list text
-'        DlgEnable(1,recAMDiscText2%);  'Enable FC load list text
-'    endcase;
+    'Note that DlgValue(2) is now 0/1 for load experiments and 2 for generate experiments (this is not how the
+    'the proper recMatGenStim% variable behaves, just the DlgValue)
     
     docase
-    case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) = 1 then  'if we are running FC/Gen, disable GNG/Load buttons
+    case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) = 2 then  'if we are running FC/Gen, disable GNG/Load buttons
         DlgEnable(1,3); 'Enable FC list selection (gen)
         DlgEnable(0,4); 'Disable FC list selection (load)
         DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
@@ -3096,7 +3152,7 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
         DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
         DlgEnable(0,recAMDiscText3%);  'Disable GNG generate list text
         DlgEnable(0,recAMDiscText4%);  'Disable GNG load list text
-    case item% <= 2 and DlgValue(1) = 0 and DlgValue(2) = 1 then 'if we are running GNG/Gen, disable FC/Load buttons
+    case item% <= 2 and DlgValue(1) = 0 and DlgValue(2) = 2 then 'if we are running GNG/Gen, disable FC/Load buttons
         DlgEnable(0,3); 'Disable FC list selection (gen)
         DlgEnable(0,4); 'Disable FC list selection (load)
         DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
@@ -3109,7 +3165,7 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
         DlgEnable(0,recAMDiscText2%);  'Disable FC load list text
         DlgEnable(1,recAMDiscText3%);  'Enable GNG generate list text
         DlgEnable(0,recAMDiscText4%);  'Disable GNG load list text
-    case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) = 0 then  'if we are running FC/Load, disable GNG/Gen buttons
+    case item% <= 2 and DlgValue(1) = 1 and DlgValue(2) < 2 then  'if we are running FC/Load, disable GNG/Gen buttons
         DlgEnable(0,3); 'Disable FC list selection (gen)
         DlgEnable(1,4); 'Enable FC list selection (load)
         DlgEnable(1,-recExpOneStimDiscrimAddExpButton%); 'Enable FC add button
@@ -3122,7 +3178,7 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
         DlgEnable(1,recAMDiscText2%);  'Enable FC load list text
         DlgEnable(0,recAMDiscText3%);  'Disable GNG generate list text
         DlgEnable(0,recAMDiscText4%);  'Disable GNG load list text
-    case item% <= 2 and DlgValue(1) = 0 and DlgValue(2) = 0 then 'if we are running GNG/Load, disable FC/Gen buttons
+    case item% <= 2 and DlgValue(1) = 0 and DlgValue(2) < 2 then 'if we are running GNG/Load, disable FC/Gen buttons
         DlgEnable(0,3); 'Disable FC list selection (gen)
         DlgEnable(0,4); 'Disable FC list selection (load)
         DlgEnable(0,-recExpOneStimDiscrimAddExpButton%); 'Disable FC add button
@@ -3158,7 +3214,7 @@ func RecExpOneStimDiscrimDialogChanged%(item%)
         'Do not allow second comparator to be AMFreq2, must be Value
         DlgValue(16,1);  'We don't have to check, just set it
     endif
-    if DlgValue(2) = 1 and DlgValue(14) = 4 then  'If we are generating stimuli, we don't have a StimName!
+    if DlgValue(2) = 2 and DlgValue(14) = 4 then  'If we are generating stimuli, we don't have a StimName!
         DlgValue(14,0);  'force to AMFreq
     endif;
     if DlgValue(14) = 4 then  'if we are doing StimName
@@ -4092,6 +4148,7 @@ proc RecCharDialogFRAGetParams()
     recCharExpIndexGenFRA% := GetIntRegistryValue%(key$, "CharExpIndexGenFRA", recCharExpIndexGenFRA%);
     recCharExpIndexGenSigNoise% := GetIntRegistryValue%(key$, "CharExpIndexGenSigNoise", recCharExpIndexGenSigNoise%);
     recCharExpIndexLoadArbStim% := GetIntRegistryValue%(key$, "CharExpIndexLoadArbStim", recCharExpIndexLoadArbStim%);
+    recCharExpIndexLoadArbStimUncal% := GetIntRegistryValue%(key$, "CharExpIndexLoadArbStimUncal", recCharExpIndexLoadArbStimUncal%);
     
     
     'This is only allowed in Project Boilermaker, do not allow "Select Boiler->Cancel->Select This" to activate it.
@@ -4145,10 +4202,13 @@ proc RecCharDialogFRASaveParams()
     SetIntRegistryValue(key$, "CharExpIndexGenFRA", recCharExpIndexGenFRA%);
     SetIntRegistryValue(key$, "CharExpIndexGenSigNoise", recCharExpIndexGenSigNoise%);
     SetIntRegistryValue(key$, "CharExpIndexLoadArbStim", recCharExpIndexLoadArbStim%);
-	return;
+	SetIntRegistryValue(key$, "CharExpIndexLoadArbStimUncal", recCharExpIndexLoadArbStimUncal%);
+    
+    
+    return;
 end
 
-'===== End RecCharDialogFCharSaveParams =====
+'===== End RecCharDialogFRASaveParams =====
 '
 '
 
@@ -5526,6 +5586,150 @@ end;
 
 
 
+
+'===== RecCharAddExpLoadArbStimUncal =====
+
+'This is a dialog that comes up to allow adding "experiments" to ArbStim Uncalibrated, Load version
+'Please note that in order to reset the list box in the calling dialog, we have to actually
+'CLOSE the calling dialog and reopen it.  That's gotta be manual.
+func RecCharAddExpLoadArbStimUncal%()
+    
+    var i%;
+    var j%;
+    var k%;
+    var status% := 0;
+    'var createMode%;   'Not using this, could potentially have been useful if we passed the value in, but we're not doing that
+    var mystr$;
+    var mystr2$;
+    var mystr3$;
+    var mystr4$;
+
+    ' Generate the dialog
+    DlgCreate("Arbitrary Uncalibrated Stimulus (Load) Experiment ADD Dialog", 62, 10);
+    DlgString(1,40,100,"a-zA-Z0-9",26,1);
+    DlgText("Name of New Experiment",2,1);
+    DlgButton(recSelectStimFileButton%,   "Select Stim/Cal File", RecSelectStimFile%,2,2);
+    DlgButton(recSelectTrialsFileButton%, " Select Trials File ", RecSelectTrialsFile%,2,3);
+    DlgString(2,40,200,"",26,2);  'for visual confirmation of selected stim file
+    DlgString(3,40,200,"",26,3);  'for visual confirmation of selected trials file
+    DlgString(4,40,100,"a-zA-Z0-9",26,4);
+    DlgText("Prefix of New Experiment",2,4);
+    
+    
+    ' Show the dialog. 
+    i%:=DlgShow(mystr$,mystr2$,mystr3$,mystr4$);
+    
+    ' If user hit OK then add new experiment 
+	if i% = 1 then 
+        'load parameters
+        RecCharExpListLoadArbStimUncalGetParams(recCharExpNameLoadArbStimUncal$[],recCharStimcalFileLoadArbStimUncal$[],recCharTrialsFileLoadArbStimUncal$[],recCharExpPrefixLoadArbStimUncal$[]);
+        'find first empty slot
+        j% := 0;
+        k% := -1;
+        while j% < recCharNumExps% do
+            if recCharExpNameLoadArbStimUncal$[j%] = "" then
+                k% := j%;  'k% holds index of first empty slot
+                j% := recCharNumExps%;
+            endif;
+            j%+=1;
+        wend
+        'Return if all slots are full
+        if k% = -1 then
+            Message("All " + Str$(recCharNumExps%) + " slots are full!  You must delete an experiment!");
+            return 1;
+        endif;
+        'Otherwise place values 
+        recCharExpNameLoadArbStimUncal$[k%] := mystr$;
+        recCharStimcalFileLoadArbStimUncal$[k%] := mystr2$;
+        recCharTrialsFileLoadArbStimUncal$[k%] := mystr3$;
+        recCharExpPrefixLoadArbStimUncal$[k%] := mystr4$;
+        'And save them
+        RecCharExpListLoadArbStimUncalSaveParams(recCharExpNameLoadArbStimUncal$[],recCharStimcalFileLoadArbStimUncal$[],recCharTrialsFileLoadArbStimUncal$[],recCharExpPrefixLoadArbStimUncal$[]);
+        status% := 0;  'close the calling dialog - necessary to refresh list in Dialog
+
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+
+end;
+
+'===== End RecCharAddExpLoadArbStimUncal =====
+'
+'
+
+
+
+'
+'
+'===== RecCharDeleteExpLoadArbStimUncal =====
+
+'This is a dialog that comes up to allow deleting "experiments" from the Char dialog (Load Uncalibrated ArbStim version)
+func RecCharDeleteExpLoadArbStimUncal%()
+
+    var i%;
+    var j%;
+    var status% := 0;
+    var mystr$[recCharNumExps%];
+    var mystr1$[recCharNumExps%];
+    var mystr2$[recCharNumExps%];
+    var mystr3$[recCharNumExps%];
+    
+    var sli%;
+
+    ' Fetch parameters from registry    
+    RecCharExpListLoadArbStimUncalGetParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+    
+    ' Generate the dialog
+    
+    DlgCreate("ArbStim Uncalibrated (Load) Experiment DELETE Dialog", 62, 10);
+    DlgText("Select Experiment to Delete",2,1);
+    DlgList(1,27,mystr$,recCharNumExps%,28,1);
+
+    ' Show the dialog. 
+    i%:=DlgShow(sli%);
+    
+    ' If user hit OK then save parameters (and return 1). 
+	if i% = 1 then
+        'Remove experiment that has been selected and move everything up one
+        if sli% < recCharNumExps%-1 then  'Without this "if", would crash if asked to remove final entry
+            for j% := sli% to recCharNumExps%-2 do
+                mystr$[j%] := mystr$[j%+1];
+                mystr1$[j%] := mystr1$[j%+1];
+                mystr2$[j%] := mystr2$[j%+1];
+                mystr3$[j%] := mystr3$[j%+1];
+            next;
+        endif;
+        'Clear the final experiment slot, this is the only part to execute if asked to remove final entry
+        mystr$[recCharNumExps%-1] := "";
+        mystr1$[recCharNumExps%-1] := "";
+        mystr2$[recCharNumExps%-1] := "";
+        mystr3$[recCharNumExps%-1] := "";
+        
+        'Save the new values
+        RecCharExpListLoadArbStimUncalSaveParams(mystr$[],mystr1$[],mystr2$[],mystr3$[]);
+        
+        status% := 0;  'Close the calling dialog
+    else
+        status% := 1;
+    endif
+    
+	return status%;
+    
+end;
+
+'===== End RecCharDeleteExpLoadArbStimUncal =====
+
+
+
+
+
+
+
+
+
+
 '
 '
 '===== RecCharReportExp =====
@@ -5561,6 +5765,11 @@ func RecCharReportExp%()
         '...also it appears to be filling with trailing commas that don't exist anywhere, which I can't figure out...
         'Verdict: I DON'T KNOW AND I DON'T CARE
         currIndex% := DlgValue(30);
+    case DlgValue(25) = 6 then  ' Load Arbitrary Uncalibrated
+        RecCharExpListLoadArbStimUncalGetParams(recExpName$[],recStimcalName$[],recTrialsName$[],recStimcalDistractor$[]);  'the final value isn't a distractor, but we can go with it
+        '...also it appears to be filling with trailing commas that don't exist anywhere, which I can't figure out...
+        'Verdict: I DON'T KNOW AND I DON'T CARE
+        currIndex% := DlgValue(31);    
     endcase;  
     
     'report
@@ -7258,6 +7467,40 @@ end
 
 '
 '
+'===== RecCharExpListLoadArbStimUncalGetParams =====
+
+'Fetch experiment lists from the registry for Uncalibrated Arbitrary stimulus characterization, loading stim, experiments
+proc RecCharExpListLoadArbStimUncalGetParams(&expName$[],&stimcalName$[],&trialsName$[],&expPrefix$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\ArbStimUncalExpListLoadParam";
+    
+    'Note that the file locations for StimCal and Trials files are not the normal default path
+    'Note that this really doesn't seem like a sensible thing to do, given that the function that
+    'selects the file location via the GUI saves a full-path, not partial-path location in the variable
+    'that is being saved in the registry.  This path concatenation should probably be done away with
+    'ASARP, with the caveat that apparently all the currently defined FRA experiments will have to be
+    're-done in the dialog box.
+    for i% := 0 to recCharNumExps%-1 do
+        expName$[i%] := GetStringRegistryValue$(key$, "ExpName"+Str$(i%), expName$[i%]);
+        stimcalName$[i%] := GetStringRegistryValue$(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        trialsName$[i%] := GetStringRegistryValue$(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+        expPrefix$[i%] := GetStringRegistryValue$(key$, "ExpPrefix"+Str$(i%), expPrefix$[i%]);
+    next;
+
+    PrintLog("RecCharExpListLoadArbStimUncalGetParams\n");
+     
+	return;
+end
+
+'===== End RecCharExpListLoadArbStimUncalGetParams =====
+'
+'
+
+
+
+'
+'
 '===== RecCharExpListLoadFRASaveParams =====
 
 'Save experiment lists to the registry for AMDisc, loading stim, experiments
@@ -7378,6 +7621,33 @@ end
 '===== End RecCharExpListLoadArbStimSaveParams =====
 '
 '
+
+
+'
+'
+'===== RecCharExpListLoadArbStimUncalSaveParams =====
+
+'Save experiment lists to the registry for Uncalibrated Arbstim, loading stim, experiments
+proc RecCharExpListLoadArbStimUncalSaveParams(expName$[],stimcalName$[],trialsName$[],expPrefix$[])
+	var key$;
+    var i%;
+    key$:="Reclab\\ArbStimUncalExpListLoadParam";
+    
+    for i% := 0 to recCharNumExps%-1 do
+        SetStringRegistryValue(key$, "ExpName"+Str$(i%), expName$[i%]);
+        SetStringRegistryValue(key$, "StimcalName"+Str$(i%), stimcalName$[i%]);
+        SetStringRegistryValue(key$, "TrialsName"+Str$(i%), trialsName$[i%]);
+        SetStringRegistryValue(key$, "ExpPrefix"+Str$(i%), expPrefix$[i%]);
+    next;
+     
+	return;
+end
+
+'===== End RecCharExpListLoadArbStimUncalSaveParams =====
+'
+'
+
+
 
 
 '
