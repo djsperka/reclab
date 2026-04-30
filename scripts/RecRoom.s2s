@@ -1796,7 +1796,7 @@ func RecVerifyInputFile%(fileIn$)
     docase
     case temp$ = "S1" then
         printlog("File %s appears to be a Trial file\n",fileIn$);
-    case temp$ = "File Location" or temp$ = "File location" then  'this lower version should not be standard, but...
+    case temp$ = "File Location" or temp$ = "File location" or temp$ = "Filename" then  'this lower version should not be standard, but...
         printlog("File %s appears to be a Stim/Cal file\n",fileIn$);
     case temp$ = "Dur" then
         printlog("File %s appears to be a Tone/Noise/AM generation file\n",fileIn$);
