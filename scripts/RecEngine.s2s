@@ -985,7 +985,10 @@ Proc SetSpeedPlayWaveAreas()
         endif        
         
     next
-
+    
+    'If we are resetting the speed of the PWAs, then we need to recreate the "target" pink noise at the appropriate play rate
+    recTargetSoundLoaded% := 0;
+    
 end
 
 
