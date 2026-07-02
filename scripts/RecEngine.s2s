@@ -577,7 +577,7 @@ proc CreateSampleConfiguration()
     
     ' Record sound output only on debug, it will inflate the file sizes...
     if recSoundRecording% = 1 then
-        SampleWaveform(audioOutputCopyChannel%, 2, recPlayRateHzDefault);   'create a channel (at default play rate) to record sound output (on testing only)
+        SampleWaveform(audioOutputCopyChannel%, 2, recPlayRateHzDefaultAdjustFactor*recPlayRateHzDefault);   'create a channel (at default play rate) to record sound output at 100 kHz (on testing only)
         SampleTitle$(audioOutputCopyChannel%, "Audio");
         SampleComment$(audioOutputCopyChannel%, "Audio");
     endif   
@@ -936,7 +936,7 @@ Proc InitializePlayWaveAreasLongBP()
     
     for i% := 0 to nLongTones%-1 do
         
-        nPoints% := recPlayRateHzDefault*(LongDursAllocate[i%]+0.020);  'have to add in the ramp
+        nPoints% := recPlayRateHzDefaultAdjustFactor*recPlayRateHzDefault*(LongDursAllocate[i%]+0.020);  'have to add in the ramp
         'Note here that the *PWAs* being initialized are capital letter PWAs, but that the jump points
         'that we assign to them in the sequencer code are lower case equivalents (some capital jump points
         'have already been reserved for other uses)
@@ -2749,7 +2749,7 @@ func LoadLongNoiseToPWA%()
     
     lndur := (LongDurs[recLongToneDurationIndex%[recCurrentTrial%]]+0.020)*1000;  'Calculate actual duration, in ms, have to add in ramp
     lnpad% := recPlayRateHzCurrent*lndur/1000;  'pad to correct length
-    lnpadfull% := recPlayRateHzDefault*lndur/1000;  'This is the full length of the PWA
+    lnpadfull% := recPlayRateHzDefaultAdjustFactor*recPlayRateHzDefault*lndur/1000;  'This is the full length of the PWA
     
     'printlog("lndur is %f\n",lndur); 
     'printlog("lnpad is %d\n",lnpad%);
