@@ -3124,7 +3124,10 @@ func PrepareNextTrial%(loadPWAs%)
                 file$ := recTrialLoadLoc$[ind%];
                 
                 'open current stimulus
+                loadStart := Seconds(); 'Serious concern that load time on the NAS is weird if it has been idle
                 fh%:=fileopen(file$,9,0);
+                loadEnd := Seconds();
+                printlog("*\n*\n*\n*\nTime to open the file, that's it, just open the file = %f seconds\n*\n*\n*\n*\n",loadEnd-loadStart);
                 if fh%<0 then
                     message("Warning Message | failed to load the stimulus waveform!");
                     printlog("Quitting because the Stim waveform %s failed to load!\n",file$);
@@ -5337,7 +5340,7 @@ func IdleLoop%()
                             printlog("MissRepeatsCounter = %d this trial; keeps track of consecutive Misses \n", recMissRepeatsCounter%);
                             recMissRepeatsCounter% += 1; 'increment MissRepeatsCounter, keep track of consecutive Misses
                             printlog("MissRepeatsCounter incremented! is now = %d \n", recMissRepeatsCounter%);
-                        case recMissRepeatsCounter% >= recMissRepeatsMax% then  'shouldn't be greater than but just in case
+                        case recMissRepeats% = 1 and recMissRepeatsCounter% >= recMissRepeatsMax% then  'shouldn't be greater than but just in case
                             printlog("max missed trial repeats reached, not repeating \n");
                             recMissRepeatsCounter% := 0;
                         else
