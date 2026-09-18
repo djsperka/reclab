@@ -4026,7 +4026,7 @@ func IdleLoop%()
                     stmp% := PrepareNextTrial%(0);  'don't load PWAs for repeated audiogram stimuli
                 case recExpToRun% = recExpSearchButton% and recSearchLoaded% = 1 then
                     stmp% := PrepareNextTrial%(0);  'don't load PWAs for search trials after #1
-                case recExpToRun% = recExpJoyTrainButton% then
+                case recExpToRun% = recExpJoyTrnButton% then
                     stmp% := PrepareNextTrial%(0);  'don't load PWAs for joystick training
                 else
                     stmp% := PrepareNextTrial%(1); 'load PWAs, should gracefully pass through in debug mode as well
