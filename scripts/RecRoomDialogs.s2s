@@ -561,7 +561,23 @@ func RecExpSelectDialog%()
     case recUseJoystick% = 4 then
         levText$ := "Joystick (-XY) Selected";
     endcase;
-
+    
+    'Apply joystick flip based on initial value of recUseJoystick%, if changed in dialog, will be reapplied
+    docase
+    case recUseJoystick% = 1 then
+        flipx := 1;  'no flip, etc.
+        flipy := 1;
+    case recUseJoystick% = 2 then
+        flipx := -1;  'flip, etc.
+        flipy := 1;
+    case recUseJoystick% = 3 then
+        flipx := 1;
+        flipy := -1; 
+    case recUseJoystick% = 4 then
+        flipx := -1;  
+        flipy := -1;            
+    endcase
+    
     'Just DO this, even if we're not using the joystick.  Because I want it to just work.
     GetJoystickDegreesInVoltage(joystickVoltageConversionFactor);
     
