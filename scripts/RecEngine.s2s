@@ -2834,6 +2834,7 @@ func PrepareNextTrial%(loadPWAs%)
     var matPutOK% := 0;
     var matGetStimOK%;
     var matGetAttenOK%;
+    var matGetCalibOK%;
     var matGetSeedOK%;
     var playWaveCopyOK%;
     var ok% := 1;  'by default, return 1 (success)
@@ -2845,7 +2846,7 @@ func PrepareNextTrial%(loadPWAs%)
     var sDur%;             'stimulus duration, for Boilermaker Active
     var tDur%;             'target duration, for Boilermaker Active
     var tIns%;             'target insertion point, for Boilermaker Active
-    
+    var trlatten;
     
     
     ' Check to see if we are done
@@ -2921,7 +2922,7 @@ func PrepareNextTrial%(loadPWAs%)
             EvalMatlabStatement%(statement$);
             matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recTargetSoundOrig%[]);
             matGetAttenOK% := GetMatlabValueFloat%("atten65",recTargetSoundAtten);
-            matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
+            matGetCalibOK% := GetMatlabValueFloat%("calibval",tempfloat);  'this value is reported, but that's all we ever do with it
             printlog("Matlab's calib value for target sound is %f\n",tempfloat);
             printlog("Value to get target sound to 65 dB is %f\n",recTargetSoundAtten);
             matGetSeedOK% := GetMatlabValueInt%("seed",recTargetSoundRandomSeed%);  'report in a sampletext TODO no such SampleText exists
@@ -2936,6 +2937,12 @@ func PrepareNextTrial%(loadPWAs%)
                 return -1;
             case matGetAttenOK% < 0 then 'error
                 message("There has been an error in getting target sound atten data from Matlab!");
+                recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                SafeSampleKey("M");  'Turn off LED
+                Stop%();
+                return -1;
+            case matGetCalibOK% < 0 then 'error
+                message("There has been an error in getting target sound calib data from Matlab!");
                 recReadyToQuit% := 1;  'This will allow the entire thing to quit
                 SafeSampleKey("M");  'Turn off LED
                 Stop%();
@@ -2970,9 +2977,10 @@ func PrepareNextTrial%(loadPWAs%)
                 printlog("No roving attenuation for active boilermaker target\n")
             endif
 
-            'Scale target sound            
-            tempScale := recTargetSoundAtten;  'this is dB to get to 65 dB
-            tempScale := tempScale + 65 - recTargetSounddB + recRoveAttenDig;  'this is dB atten to get to target sound dB 
+            'Scale target sound  
+            trlatten := recDeltadBList[0][recCurrentTrial%]; 'This is the trial-based attenuation on this trial, this value will be on the PA4          
+            tempScale := recTargetSoundAtten;  'this is dB atten to get to 65 dB
+            tempScale := tempScale + 65 - recTargetSounddB + recRoveAttenDig - trlatten;  'this is dB atten to get to target sound dB, removing trlatten which will be on the PA4 so don't duplicate it
             tempScale := pow(10,(-tempScale/20));  'solving "dB = 20 * log10(A1/A2)" for (A1/A2) gives multiplicative scale factor
             ArrMul(recTargetSound%[],tempScale);
             
@@ -3063,7 +3071,7 @@ func PrepareNextTrial%(loadPWAs%)
                 'Get the stimulus and the seed back from Matlab
                 matGetStimOK%:= GetMatlabValueIntArray%("stimulus",recStimTransfer%[]);
                 matGetAttenOK% := GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
-                matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
+                matGetCalibOK% := GetMatlabValueFloat%("calibval",tempfloat);
                 printlog("Matlab's calib value is %f\n",tempfloat);
                 printlog("Value to get Matlab stim to 65 dB is %f\n",recGeneratedAtten[i%]);
                 matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
@@ -3080,6 +3088,12 @@ func PrepareNextTrial%(loadPWAs%)
                     'return -1;
                 case matGetAttenOK% < 0 then 'error
                     message("There has been an error in getting atten data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");  'Turn off LED
+                    'Stop%();
+                    'return -1;
+                case matGetCalibOK% < 0 then 'error
+                    message("There has been an error in getting calib data from Matlab!");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
@@ -3650,6 +3664,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
     var matPutOK% := 0;
     var matGetStimOK%;
     var matGetAttenOK%;
+    var matGetCalibOK%;
     var matGetSeedOK%;
     var playWaveCopyOK%;
     var tempfloat;
@@ -3796,7 +3811,7 @@ func PrepareNextTrialParallel%(loadPWAs%)
                 'Get the stimulus and the seed back from Matlab
                 matGetStimOK%:= GetMatlabValueIntArray%("stimulus",rec2StimTransfer%[][i%]);
                 matGetAttenOK% := GetMatlabValueFloat%("atten65",recGeneratedAtten[i%]);
-                matGetAttenOK% := GetMatlabValueFloat%("calibval",tempfloat);
+                matGetCalibOK% := GetMatlabValueFloat%("calibval",tempfloat);
                 printlog("Matlab's calib value is %f\n",tempfloat);
                 printlog("Value to get Matlab stim to 65 dB is %f\n",recGeneratedAtten[i%]);
                 matGetSeedOK% := GetMatlabValueInt%("seed",recCurrRandomSeed%[i%]);  'put current random seed into variable for NameThatStimulus
@@ -3813,6 +3828,12 @@ func PrepareNextTrialParallel%(loadPWAs%)
                     'return -1;
                 case matGetAttenOK% < 0 then 'error
                     message("There has been an error in getting atten data from Matlab!");
+                    'recReadyToQuit% := 1;  'This will allow the entire thing to quit
+                    'SafeSampleKey("M");  'Turn off LED
+                    'Stop%();
+                    'return -1;
+                case matGetCalibOK% < 0 then 'error
+                    message("There has been an error in getting calib data from Matlab!");
                     'recReadyToQuit% := 1;  'This will allow the entire thing to quit
                     'SafeSampleKey("M");  'Turn off LED
                     'Stop%();
@@ -4030,7 +4051,7 @@ func IdleLoop%()
                     stmp% := PrepareNextTrial%(0);  'don't load PWAs for joystick training
                 else
                     stmp% := PrepareNextTrial%(1); 'load PWAs, should gracefully pass through in debug mode as well
-                    recSearchLoaded% := 1;  'only allow loading PWAs once for search                  
+                    recSearchLoaded% := 1;  'only allow loading PWAs once for search, will do nothing for any other scenario                  
                 endcase;
                 
                 docase

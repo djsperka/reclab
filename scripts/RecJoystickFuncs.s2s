@@ -255,52 +255,115 @@ func ReadJoystick%()
     endif;
     'printlog("Voltage crossings are right %f, left %f, up %f, down %f\n",vRightThreshOuter,vLeftThreshOuter,vUpThreshOuter,vDownThreshOuter);
     
+    'Define events by threshold crossings; Put event times into the eight channels - old version, does not account for flipped joysticks, commented 10/13/26 -jj
+    'MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vRightThreshOuter);  'Crossing RO thresh going outward
+    'MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vLeftThreshOuter);    'Crossing LO thresh going outward
+    'MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vUpThreshOuter);     'Crossing UO thresh going outward
+    'MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vDownThreshOuter);    'Crossing DO thresh going outward
+    'MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vRightThreshInner);  'Crossing RI thresh going inward
+    'MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vLeftThreshInner);    'Crossing LI thresh going inward
+    'MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vUpThreshInner);     'Crossing UI thresh going inward
+    'MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vDownThreshInner);    'Crossing DI thresh going inward
+    
     'Define events by threshold crossings; Put event times into the eight channels
-    MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vRightThreshOuter);  'Crossing RO thresh going outward
-    MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vLeftThreshOuter);    'Crossing LO thresh going outward
-    MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vUpThreshOuter);     'Crossing UO thresh going outward
-    MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vDownThreshOuter);    'Crossing DO thresh going outward
-    MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vRightThreshInner);  'Crossing RI thresh going inward
-    MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vLeftThreshInner);    'Crossing LI thresh going inward
-    MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vUpThreshInner);     'Crossing UI thresh going inward
-    MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vDownThreshInner);    'Crossing DI thresh going inward
+    'Account for any flipped joystick axes here, updated 10/13/26 -jj
+    if flipx = 1 then  'normal
+        MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vRightThreshOuter);  'Crossing RO thresh going outward, right is positive
+        MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vLeftThreshOuter);    'Crossing LO thresh going outward, left is negative
+        MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vRightThreshInner);  'Crossing RI thresh going inward, right is positive
+        MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vLeftThreshInner);    'Crossing LI thresh going inward, left is negative
+    else  'flipped, put right events on left channel and left events on right channel
+        MemImport(MemChanJoystickRO%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vRightThreshOuter);  'Crossing RO thresh going outward, right is negative
+        MemImport(MemChanJoystickLO%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,vLeftThreshOuter);    'Crossing LO thresh going outward, left is positive
+        MemImport(MemChanJoystickRI%,configJoyXChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vRightThreshInner);  'Crossing RI thresh going inward, right is negative
+        MemImport(MemChanJoystickLI%,configJoyXChannel%,LastRunTime-tic2,Now,3,DebounceTime,vLeftThreshInner);    'Crossing LI thresh going inward, left is positive
+    endif
+    
+    if flipy = 1 then  'normal
+        MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vUpThreshOuter);     'Crossing UO thresh going outward, up is positive
+        MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vDownThreshOuter);    'Crossing DO thresh going outward, down is negative
+        MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vUpThreshInner);     'Crossing UI thresh going inward, up is positive
+        MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vDownThreshInner);    'Crossing DI thresh going inward, down is negative
+    else
+        MemImport(MemChanJoystickUO%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,-vUpThreshOuter);     'Crossing UO thresh going outward, up is negative
+        MemImport(MemChanJoystickDO%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,vDownThreshOuter);    'Crossing DO thresh going outward, down is positive
+        MemImport(MemChanJoystickUI%,configJoyYChannel%,LastRunTime-tic2,Now,2,DebounceTime,-vUpThreshInner);     'Crossing UI thresh going inward, up is negative
+        MemImport(MemChanJoystickDI%,configJoyYChannel%,LastRunTime-tic2,Now,3,DebounceTime,vDownThreshInner);    'Crossing DI thresh going inward, down is positive
+    endif
+    
     
     'Determine initial joystick location the very first time ReadJoystick is run, per experiment
+    'Note on 10/13/26 - it damn sure seems to me that the initial joystick locations were flipped until just now,
+    'because above it is clear that "normal" is right=positive and up=positive, but this next code definitely
+    'treated left=positive and down=positive.  Now, the subsequent code will force through unexpected transitions
+    'and then just deal with it, so it was probably OK once the joystick got moved once, but now I think it's right. -jj
     if JoystickReadOnce% = 0 then
         JoystickReadOnce% := 1;  'only do this the very first time the joystick is read
-        'tempx := ChanValue(configJoyXChannel%,0);  'Put the very first X axis value into tempx
-        'tempy := ChanValue(configJoyYChannel%,0);  'Same for Y, tempy
         tempx := ChanValue(configJoyXChannel%,LastRunTime);  'Put the very first X axis value valid for this experiment into tempx, LastRunTime will be 0 on a new data file, but not on a second/third/etc. experiment on a running data file
         tempy := ChanValue(configJoyYChannel%,LastRunTime);  'Same for Y, tempy
         LastPos% := 0;
         XTime := LastRunTime;
         YTime := LastRunTime;
-        docase
-        case tempx < -vRightThreshOuter then  'if right
-            LastPos% := LastPos% + 2;
-            xstat% := 2;
-            XPos% := 1; 
-        case tempx < vLeftThreshOuter then 'if center
-            LastPos% := LastPos% + 1;
-            xstat% := 1;
-            XPos% := 0;  
-        else 'otherwise left
-            xstat% := 0;
-            XPos% := 2; 
-        endcase
-        docase
-        case tempy < -vUpThreshOuter then  'if up
-            LastPos% := LastPos% + 20;
-            ystat% := 20;
-            YPos% := 1;  
-        case tempy < vDownThreshOuter then 'if center
-            LastPos% := LastPos% + 10;
-            ystat% := 10;
-            YPos% := 0; 
-        else 'otherwise down
-            ystat% := 0;
-            YPos% := 2;  
-        endcase
+        if flipx = 1 then  'normal, right is positive
+            docase
+            case tempx > vRightThreshOuter then  'if right
+                LastPos% := LastPos% + 2;
+                xstat% := 2;
+                XPos% := 1; 
+            case tempx > -vLeftThreshOuter then 'if center
+                LastPos% := LastPos% + 1;
+                xstat% := 1;
+                XPos% := 0;  
+            else 'otherwise left
+                xstat% := 0;
+                XPos% := 2; 
+            endcase
+        else  'flipped, right is negative
+            docase
+            case tempx < -vRightThreshOuter then  'if right
+                LastPos% := LastPos% + 2;
+                xstat% := 2;
+                XPos% := 1; 
+            case tempx < vLeftThreshOuter then 'if center
+                LastPos% := LastPos% + 1;
+                xstat% := 1;
+                XPos% := 0;  
+            else 'otherwise left
+                xstat% := 0;
+                XPos% := 2; 
+            endcase
+        endif
+        
+        if flipy = 1 then  'normal, up is positive
+            docase
+            case tempy > vUpThreshOuter then  'if up
+                LastPos% := LastPos% + 20;
+                ystat% := 20;
+                YPos% := 1;  
+            case tempy > -vDownThreshOuter then 'if center
+                LastPos% := LastPos% + 10;
+                ystat% := 10;
+                YPos% := 0; 
+            else 'otherwise down
+                ystat% := 0;
+                YPos% := 2;  
+            endcase
+        else  'flipped, up is negative
+            docase
+            case tempy < -vUpThreshOuter then  'if up
+                LastPos% := LastPos% + 20;
+                ystat% := 20;
+                YPos% := 1;  
+            case tempy < vDownThreshOuter then 'if center
+                LastPos% := LastPos% + 10;
+                ystat% := 10;
+                YPos% := 0; 
+            else 'otherwise down
+                ystat% := 0;
+                YPos% := 2;  
+            endcase
+        endif
+        
         printlog("Initial values: x = %f, y = %f, upthreshinner = %f, downthreshinner = %f, leftthreshinner = %f, rightthreshinner = %f\n",tempx,tempy,UpThreshInner,DownThreshInner,LeftThreshInner,RightThreshInner);
         printlog("    upthreshouter = %f, downthreshouter = %f, leftthreshouter = %f, rightthreshouter = %f\n",UpThreshOuter,DownThreshOuter,LeftThreshOuter,RightThreshOuter);
         printlog("Initial joystick position was %d where 20-10-0 is up-center-down and 2-1-0 is right-center-left\n",LastPos%);
