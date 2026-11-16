@@ -4438,7 +4438,7 @@ func IdleLoop%()
         case iState% = stateTrialInitReward% then
             
             'We will only pass through this state if recTrialInitReward% is 1, but check if trial init reward is off
-            if recInitRewardmL > 0 and recTurnOffReward% = 0 then
+            if recInitRewardmL > 0 and recTurnOffReward% = 0 and rand(100,0) < recInitRewardProb then
                 RecLogStatus("TrialInitReward", "Giving trial init reward, size " + str$(recInitRewardmL) + " mLs");
                 amountRewarded += recInitRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then
@@ -5018,7 +5018,7 @@ func IdleLoop%()
         case iState% = stateTrialHoldReward% then
             
             ' Are we giving trial hold rewards? Was stimulus held all the way through? If yes, then give reward, otherwise we just pass on through. 
-            if recTrialHoldReward% = 1 and isEarlyResponse% = 0 and recHoldRewardmL > 0 and recTurnOffReward% = 0 then
+            if recTrialHoldReward% = 1 and isEarlyResponse% = 0 and recHoldRewardmL > 0 and recTurnOffReward% = 0 and rand(100,0) < recHoldRewardProb then
                 RecLogStatus("TrialHoldReward", "Giving trial hold reward, size " + str$(recHoldRewardmL) + " mLs");
                 amountRewarded += recHoldRewardmL;  'add reward to juice counter
                 if recCEDIsPresent% = 1 then

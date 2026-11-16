@@ -3330,15 +3330,17 @@ func RecExpTimingRewardDialog%()
     endif;
     
     'Set up container for reals so we can have more than 20 elements in the dialog
-    var eightReals[8];
-    eightReals[0] := recInitRewardmL;
-    eightReals[1] := recHoldRewardmL;
-    eightReals[2] := recHitRewardmL;
-    eightReals[3] := recCRRewardmL;
-    eightReals[4] := recMaxHitRewardmL;
-    eightReals[5] := recMaxCRRewardmL;
-    eightReals[6] := recHitRewardIncmL;
-    eightReals[7] := recS1RewardIncmL;
+    var tenReals[10];
+    tenReals[0] := recInitRewardmL;
+    tenReals[1] := recHoldRewardmL;
+    tenReals[2] := recInitRewardProb;
+    tenReals[3] := recHoldRewardProb;
+    tenReals[4] := recHitRewardmL;
+    tenReals[5] := recCRRewardmL;
+    tenReals[6] := recMaxHitRewardmL;
+    tenReals[7] := recMaxCRRewardmL;
+    tenReals[8] := recHitRewardIncmL;
+    tenReals[9] := recS1RewardIncmL;
     
     'This will tell us how much is neither juice nor Stimulation
     var pctBoth%;
@@ -3376,20 +3378,24 @@ func RecExpTimingRewardDialog%()
     
     DlgReal(8,12,0,300,c1%,7); DlgText("Miss TO, s",c1txt%,7);
     DlgReal(9,12,0,300,c1%,8); DlgText("False Alarm TO, s",c1txt%,8);
-    DlgCheck(20,"Do Miss Repeats?",c2txt%+8,7);
-    DlgInteger(21,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
+    DlgCheck(22,"Do Miss Repeats?",c2txt%+8,7);
+    DlgInteger(23,12,0,30,c2%,8); DlgText("Max # Miss Repeats", c2txt%,8);
     
-    DlgGroup("Rewards",1,11,trwid%-2,7);
+    DlgGroup("Rewards",1,11,trwid%-2,8);
     DlgReal(10,12,0,3,c1%,12); DlgText("Init Training Reward, mL",c1txt%,12); 'recInitRewardmL
     DlgReal(11,12,0,3,c2%,12); DlgText("Hold Training Reward, mL",c2txt%,12); 'recHoldRewardmL
-    DlgReal(12,12,0,3,c1%,13); DlgText("Hit Reward, mL",c1txt%,13);
-    DlgReal(13,12,0,3,c2%,13); DlgText("CR Reward, mL",c2txt%,13);
-    DlgReal(14,12,0,3,c1%,14); DlgText("Max Hit Reward, mL",c1txt%,14);
-    DlgReal(15,12,0,3,c2%,14); DlgText("Max CR Reward, mL",c2txt%,14);
-    DlgReal(16,12,0,1,c1%,15); DlgText("Reward Increment on hits, mL",c1txt%,15);
-    DlgReal(17,12,0,1,c2%,15); DlgText("Reward Increment Per S1, mL",c2txt%,15);
-    DlgList(22,19,rewardType$[],4,c1%-7,16); DlgText("Reward Type",c1txt%,16);
-    DlgReal(23,12,0,1500,c2%,16); DlgText("Start Water/Juice Volume (mL)", c2txt%,16);
+    
+    DlgReal(12,12,0,100,c1%,13); DlgText("Init Reward Prob (0-100)",c1txt%,13); 'recInitRewardProb
+    DlgReal(13,12,0,100,c2%,13); DlgText("Hold Reward Prob (0-100)",c2txt%,13); 'recHoldRewardProb
+    
+    DlgReal(14,12,0,3,c1%,14); DlgText("Hit Reward, mL",c1txt%,14);
+    DlgReal(15,12,0,3,c2%,14); DlgText("CR Reward, mL",c2txt%,14);
+    DlgReal(16,12,0,3,c1%,15); DlgText("Max Hit Reward, mL",c1txt%,15);
+    DlgReal(17,12,0,3,c2%,15); DlgText("Max CR Reward, mL",c2txt%,15);
+    DlgReal(18,12,0,1,c1%,16); DlgText("Reward Increment on hits, mL",c1txt%,16);
+    DlgReal(19,12,0,1,c2%,16); DlgText("Reward Increment Per S1, mL",c2txt%,16);
+    DlgList(24,19,rewardType$[],4,c1%-7,17); DlgText("Reward Type",c1txt%,17);
+    DlgReal(25,12,0,1500,c2%,17); DlgText("Start Water/Juice Volume (mL)", c2txt%,17);
     
 'Retained code for using stimulation reward that will probably never ever come back    
 '    DlgList(21,19,rewardType$[],6,c1%-7,16); DlgText("Reward Type",c1txt%,16);    
@@ -3399,16 +3405,16 @@ func RecExpTimingRewardDialog%()
 '    DlgInteger(25,12,0,500,c2%,16); DlgText("Stim Delay rel. to Juice (ms)", c2txt%,16);
     
     DlgGroup("Interrupts",1,19,trwid%-2,2);
-    DlgList(18,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
-    DlgList(19,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
+    DlgList(20,20,intStr$[],2,c1%-8,20); DlgText("On S1 Interrupt",c1txt%,20);
+    DlgList(21,20,intStr$[],2,c2%-8,20); DlgText("On S2 Interrupt",c2txt%,20);
     
     DlgGroup("House Light",1,22,trwid%-2,2);
-    DlgList(24,20,houseLightType$[],3,c1%-8,23); DlgText("House Light",c1txt%,23);
+    DlgList(26,20,houseLightType$[],3,c1%-8,23); DlgText("House Light",c1txt%,23);
     
     DlgAllow(0xffff, 0, RecExpTimingRewardDialogChanged%);
         
     i%:=DlgShow(recMinOnsetDelay,recVarOnsetDelay,recISI,recISIVariable,recTrialInitWindow,recResponseWindow,recLazyMonkeyTO,recMissTO,recFalseAlarmTO,
-                eightReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
+                tenReals[],recContinueSoundOnS1Interrupt%,recContinueSoundOnS2Interrupt%,recMissRepeats%, recMissRepeatsMax%, 
                 recJuiceWaterBooth%,recInitialJuiceVolumemL,recHouseLight%);
     
 'Retained code for using stimulation reward that will probably never ever come back    
@@ -3418,15 +3424,17 @@ func RecExpTimingRewardDialog%()
     
     ' If user hit OK then save parameters (and return 1). 
 	if i% = 1 then
-        'unpack eightReals
-        recInitRewardmL := eightReals[0];
-        recHoldRewardmL := eightReals[1];
-        recHitRewardmL := eightReals[2];
-        recCRRewardmL := eightReals[3];
-        recMaxHitRewardmL := eightReals[4];
-        recMaxCRRewardmL := eightReals[5];
-        recHitRewardIncmL := eightReals[6];
-        recS1RewardIncmL := eightReals[7];
+        'unpack tenReals
+        recInitRewardmL := tenReals[0];
+        recHoldRewardmL := tenReals[1];
+        recInitRewardProb := tenReals[2];
+        recHoldRewardProb := tenReals[3];
+        recHitRewardmL := tenReals[4];
+        recCRRewardmL := tenReals[5];
+        recMaxHitRewardmL := tenReals[6];
+        recMaxCRRewardmL := tenReals[7];
+        recHitRewardIncmL := tenReals[8];
+        recS1RewardIncmL := tenReals[9];
         
         recCurrentJuiceVolumemL := recInitialJuiceVolumemL;  'Set the volume of juice in the juicer, current volume will be updated continuously
         
@@ -3534,16 +3542,16 @@ func RecExpTimingRewardDialogChanged%(item%)
 '        DlgValue$(24,"Pct Juice+Stimulation = "+Str$(100-DlgValue(22)-DlgValue(23)));
 '    endif;
     
-    DlgEnable(0,15); 'Disable max CR reward, not implemented
-    DlgEnable(0,17); 'Disable increment on S1, not implemented    
+    DlgEnable(0,17); 'Disable max CR reward, not implemented
+    DlgEnable(0,19); 'Disable increment on S1, not implemented    
     
     'Set max CR reward to whatever the current CR reward is
     if item% = 13 then
-        DlgValue(15,DlgValue(13));
+        DlgValue(17,DlgValue(15));
     endif;
     
     'And zero out the increment on S1 value - hate to do it every single time the dialog is updated, but whatevs.
-    DlgValue(17,0);
+    DlgValue(19,0);
     
     return 1;
 end
@@ -4796,6 +4804,8 @@ proc RecTimingRewardGetParams()
     recInterruptTO := GetFloatRegistryValue(key$, "InterruptTO", recInterruptTO);
     recInitRewardmL := GetFloatRegistryValue(key$, "InitRewardmL", recInitRewardmL);
     recHoldRewardmL := GetFloatRegistryValue(key$, "HoldRewardmL", recHoldRewardmL);
+    recInitRewardProb := GetFloatRegistryValue(key$, "InitRewardProb", recInitRewardProb);
+    recHoldRewardProb := GetFloatRegistryValue(key$, "HoldRewardProb", recHoldRewardProb);
     recHitRewardmL := GetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
     recCRRewardmL := GetFloatRegistryValue(key$, "CRRewardmL", recCRRewardmL);
     recMaxHitRewardmL := GetFloatRegistryValue(key$, "MaxHitRewardmL", recMaxHitRewardmL);
@@ -4846,6 +4856,8 @@ proc RecTimingRewardSaveParams()
     SetFloatRegistryValue(key$, "InterruptTO", recInterruptTO);
     SetFloatRegistryValue(key$, "InitRewardmL", recInitRewardmL);
     SetFloatRegistryValue(key$, "HoldRewardmL", recHoldRewardmL);
+    SetFloatRegistryValue(key$, "InitRewardProb", recInitRewardProb);
+    SetFloatRegistryValue(key$, "HoldRewardProb", recHoldRewardProb);
     SetFloatRegistryValue(key$, "HitRewardmL", recHitRewardmL);
     SetFloatRegistryValue(key$, "CRRewardmL", recCRRewardmL);
     SetFloatRegistryValue(key$, "MaxHitRewardmL", recMaxHitRewardmL);

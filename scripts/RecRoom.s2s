@@ -264,6 +264,8 @@ var recPctStimulation%;             'percentage of time variable reward will be 
 var recJuiceToStimDelay%;           'ms delay between (nominal) juice reward and stimulation reward, can attempt to deliver both at "same" time
 var recChangeRewardType% := 1;      'Do we change reward type before this trial?  Do change on first trial, or after error    
 var recTurnOffReward%;              'Do we turn off the reward?    
+var recInitRewardProb;              'Probability of init reward, 0-100, allows tapering it out
+var recHoldRewardProb;              'Probability of hold reward, 0-100, allows tapering it out
     
 'Interrupts
 var recContinueSoundOnS1Interrupt%; 'If 0, stop sound on S1 interrupt, otherwise continue
