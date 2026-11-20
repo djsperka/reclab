@@ -5401,7 +5401,7 @@ func IdleLoop%()
                     recUpdateRewardByGap% := 1;
                 endif
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial
-                tNextTrial := tNow;  'ready to go
+                tNextTrial := tNow + recITI;  'ready to go
             endif
             '----- End stateMissTimeout% -----
             
@@ -5439,7 +5439,7 @@ func IdleLoop%()
                     recUpdateRewardByGap% := 1;
                 endif
                 ChangeStateTo(stateInitializeTrials%); 
-                tNextTrial := tNow;  'ready to go
+                tNextTrial := tNow + recITI;  'ready to go
             endif
             '----- End stateFalsePositive% -----
             
@@ -5460,7 +5460,7 @@ func IdleLoop%()
                 'recCurrentTrial% := recCurrentTrial% - 1;
                 
                 ChangeStateTo(stateInitializeTrials%); 
-                tNextTrial := tNow;  'ready to go
+                tNextTrial := tNow + recITI;  'ready to go
             endif            
             '----- End stateFalseAlarmAudiogram% -----
             
@@ -5496,7 +5496,7 @@ func IdleLoop%()
                 'endcase;
                 
                 ChangeStateTo(stateInitializeTrials%); 
-                tNextTrial := tNow;  'ready to go
+                tNextTrial := tNow + recITI;  'ready to go
             endif            
             '----- End stateFAInterrupt% -----
             
@@ -5560,11 +5560,11 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     else
                         ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
-                        tNextTrial := tNow + (recRewardMs/1000);
+                        tNextTrial := tNow + (recRewardMs/1000) + recITI;
                     endif;
                 else
                     ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
-                    tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                    tNextTrial := tNow + recITI; 'the TDT delay is built in, ready to go
                 endif
                 'If we are keeping track of gap, reset after reward is issued
                 if recUpdateRewardByGap% > 0 then
@@ -5572,7 +5572,7 @@ func IdleLoop%()
                 endif
             else
                 ChangeStateTo(stateInitializeTrials%);  'move to next trial after reward is done
-                tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                tNextTrial := tNow + recITI; 'the TDT delay is built in, ready to go
             endif;
             '----- End stateHitReward% -----
             
@@ -5613,17 +5613,17 @@ func IdleLoop%()
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     else
                         ChangeStateTo(stateCharJuiceBreak%);  'move to next trial after reward is done
-                        tNextTrial := tNow + (recRewardMs/1000);
+                        tNextTrial := tNow + (recRewardMs/1000) + recITI;
                     endif;
                 else
                     RecLogStatus("HitReward", "No reward given, CED not present");
                     ChangeStateTo(stateCharJuiceBreak%);  'move to next trial after reward is done
-                    tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                    tNextTrial := tNow + recITI; 'the TDT delay is built in, ready to go
                 endif
             else
                 RecLogStatus("HitReward", "No reward given, Hit reward size = 0");
                 ChangeStateTo(stateCharJuiceBreak%);  'move to next trial after reward is done
-                tNextTrial := tNow; 'the TDT delay is built in, ready to go
+                tNextTrial := tNow + recITI; 'the TDT delay is built in, ready to go
             endif;
             '----- End stateCharHitReward% -----
             
@@ -5661,14 +5661,14 @@ func IdleLoop%()
                         view(recLog%).print("ERROR: Reward -- Reward returned non-zero value: " + Str$(stmp%) + "\n");
                         ChangeStateTo(stateTDTError%);  'TDT error is actually apropriate because if CED is called, no error checking is used right now
                     endif;
-                    tNextTrial := tNow + (recRewardMs/1000);
+                    tNextTrial := tNow + (recRewardMs/1000) + recITI;
                 else
                     RecLogStatus("CRReward", "No reward given, CED not present");
-                    tNextTrial := tNow;
+                    tNextTrial := tNow + recITI;
                 endif
             else
                 RecLogStatus("CRReward", "No reward given, CR reward size = 0");
-                tNextTrial := tNow;
+                tNextTrial := tNow + recITI;
             endif
             
             'Check for ballistic mode, it is activated following CRs (can only be on if experiment is GNG)

@@ -214,11 +214,13 @@ var recISIVariable;                 'Variable time added to interstimulus interv
 var recTrialInitWindow;             'Allowable time for monkey to initiate trial before TO, seconds
 var recResponseWindow;              'Allowable time for monkey to respond to target, seconds
 var recMinJoystickRespTime;         'Minimum time required for a joystick move to be considered real, seconds
-
+var recITI;                         'A true ITI, period between previous trial end and start of blink - amazingly did not have this until 11-20-2026!!!?!?!?!!!!    
+    
+    
 'Time-Outs
-var recLazyMonkeyTO;                'Duration of time-out for not working, seconds
-var recMissTO;                      'Duration of time-out for miss, seconds
-var recFalseAlarmTO;                'Duration of time-out for false alarms, seconds
+var recLazyMonkeyTO;                'Duration of time-out for not working, seconds, recITI will be **added**
+var recMissTO;                      'Duration of time-out for miss, seconds, recITI will be **added**
+var recFalseAlarmTO;                'Duration of time-out for false alarms, seconds, recITI will be **added**
 var recInterruptTO;
 var recMissRepeats%;                'Whether to repeat missed trials '*jao
 var recMissRepeatsMax%;             'Max # times to repeat missed trials
